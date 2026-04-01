@@ -213,17 +213,6 @@ export const useAuthStore = defineStore("auth", {
     }
   },
 
-  // ✅ Forgot Password
-  async userForgotPassword(payload: { email: string }) {
-    try {
-      const res = await endpoint.post("/api/admin/users/forgot-password/", payload);
-      return { status: true, message: res.data.message || "Reset link sent successfully." };
-    } catch (error: any) {
-      const msg = error.response?.data?.message || error.response?.data?.detail || "Failed to send reset link.";
-      return { status: false, message: msg };
-    }
-  },
-
   // ✅ Check scoping upload status
   async getScopingUploadStatus() {
     const res = await endpoint.get("/api/admin/scoping/upload-status/");
