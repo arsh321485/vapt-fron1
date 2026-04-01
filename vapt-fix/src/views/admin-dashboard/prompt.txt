@@ -1,1 +1,0 @@
-user saide me koi bhi page par land hone par thoda load hiota hai fr hit hit hota hai to direct hit hona chahiye aur agr 1 bar page par aye aur load ho gya data and fr dusre page se frse usi page par aye to again loading par nhi jana chahiye direct hit hona chahiye4 
