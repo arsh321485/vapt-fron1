@@ -145,7 +145,7 @@
               <div class="assets-right-panel">
                 <!-- Detail Header -->
                 <div class="right-panel-header">
-                  <div class="d-flex align-items-center gap-3 mb-3 flex-wrap pt-5">
+                  <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
                     <h1 class="asset-detail-title">{{ selectedAsset?.asset }}</h1>
                     <span v-if="selectedAsset && getTopSeverity(selectedAsset.severity_counts)" class="sev-badge"
                       :class="'sev-' + getTopSeverity(selectedAsset.severity_counts).toLowerCase()">
@@ -933,9 +933,10 @@ export default {
 }
 
 .right-panel-header {
-  padding: 24px 28px 0;
+  padding: 80px 28px 16px;
   background: #f8f9fc;
   flex-shrink: 0;
+  border-bottom: 1px solid rgba(203, 196, 208, 0.2);
 }
 
 .asset-detail-title {
@@ -943,7 +944,7 @@ export default {
   font-weight: 800;
   color: #241447;
   letter-spacing: -0.02em;
-  margin: 0;
+  margin: 0 0 28px 0;
 }
 
 .status-open-badge {

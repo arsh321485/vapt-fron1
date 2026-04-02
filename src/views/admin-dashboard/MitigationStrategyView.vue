@@ -10,754 +10,192 @@
             <DashboardMenu />
           </div>
 
-          <div class="col-11 pt-5 pb-3 pe-5">
-            <div class="row">
-                <div class="col-12">
-                <div class="d-flex justify-content-between my-4">
-                <h2>Mitigation Strategy</h2>
-                <div class="d-flex justify-content-between gap-3">
-                  <button class="btn fw-semibold px-3 py-2" style="border-radius: 20px;border: 1px solid rgba(0, 0, 0, 0.12);color: rgba(49, 33, 177, 1);" @click="$router.push('/viewreport')"><i class="bi bi-eye me-2"></i> View Report</button>
-                  <!-- Overlay Popup -->
-                  <div
-                    v-if="showPopup"
-                    class="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
-                    style="background-color: rgba(0, 0, 0, 0.6); z-index: 1050;"
-                  >
-                    <div
-                      class="bg-white p-4 rounded shadow"
-                      style="width: 600px; max-height: 90vh; overflow-y: auto; position: relative;"
-                    >
-                      <!-- Close Button -->
-                      <button
-                        @click="showPopup = false"
-                        class="btn-close position-absolute top-0 end-0 m-3"
-                        aria-label="Close"
-                      ></button>
-
-                      <!-- Heading -->
-                      <h2 class="mb-2 text-center">Report</h2>
-                      <p class="mb-2 text-center" style="color: rgba(0, 0, 0, 0.6);font-weight: 500;font-size: 13px;">Create a report</p>
-                      <div class="d-flex justify-content-between">
-                        <div class="dropdown">
-                        <div class="dropdown-btn"> Select location</div>
-                        <div class="dropdown-content">
-                            <a href="#">Greece</a>
-                            <a href="#">Germany</a>
-                            <a href="#">Bahrain</a>
-                        </div>
-                        </div>
-                      <button type="button" class="btn patch-btn rounded-pill text-nowrap ms-3 mb-3" style="padding: 15px 18px;">
-                        June 1 - June 30 <i class="bi bi-calendar-minus"></i>
-                      </button>
-                      </div>
-
-                      <!-- Accordion -->
-                      <div class="accordion" id="globalReportAccordion">
-                        <div class="accordion-item">
-                          <h2 class="accordion-header" id="headingOne">
-                            <button
-                              class="accordion-button"
-                              type="button"
-                              data-bs-toggle="collapse"
-                              data-bs-target="#collapseOne"
-                              aria-expanded="true"
-                              aria-controls="collapseOne"
-                            >
-                              Software vulnerabilities(11) <span class="text-primary ms-2">4 selected</span>
-                            </button>
-                          </h2>
-                          <div
-                            id="collapseOne"
-                            class="accordion-collapse collapse show"
-                            aria-labelledby="headingOne"
-                            data-bs-parent="#globalReportAccordion"
-                          >
-                            <div class="accordion-body">
-                              Software vulnerabilities
-                            </div>
-                          </div>
-                        </div>
-
-                        <div class="accordion-item">
-                          <h2 class="accordion-header" id="headingTwo">
-                            <button
-                              class="accordion-button collapsed"
-                              type="button"
-                              data-bs-toggle="collapse"
-                              data-bs-target="#collapseTwo"
-                              aria-expanded="false"
-                              aria-controls="collapseTwo"
-                            >
-                              Network vulnerabilities(6)
-                            </button>
-                          </h2>
-                          <div
-                            id="collapseTwo"
-                            class="accordion-collapse collapse"
-                            aria-labelledby="headingTwo"
-                            data-bs-parent="#globalReportAccordion"
-                          >
-                            <div class="accordion-body">
-                              Network vulnerabilities
-                            </div>
-                          </div>
-                        </div>
-
-                        <div class="accordion-item">
-                          <h2 class="accordion-header" id="headingThree">
-                            <button
-                              class="accordion-button collapsed"
-                              type="button"
-                              data-bs-toggle="collapse"
-                              data-bs-target="#collapseThree"
-                              aria-expanded="false"
-                              aria-controls="collapseThree"
-                            >
-                              Configuration vulnerabilities(11)
-                            </button>
-                          </h2>
-                          <div
-                            id="collapseThree"
-                            class="accordion-collapse collapse"
-                            aria-labelledby="headingThree"
-                            data-bs-parent="#globalReportAccordion"
-                          >
-                            <div class="accordion-body">
-                              Configuration vulnerabilities
-                            </div>
-                          </div>
-                        </div>
-
-                        <div class="accordion-item">
-                          <h2 class="accordion-header" id="headingFour">
-                            <button
-                              class="accordion-button collapsed"
-                              type="button"
-                              data-bs-toggle="collapse"
-                              data-bs-target="#collapseFour"
-                              aria-expanded="false"
-                              aria-controls="collapseFour"
-                            >
-                              Human vulnerabilities(4)
-                            </button>
-                          </h2>
-                          <div
-                            id="collapseFour"
-                            class="accordion-collapse collapse"
-                            aria-labelledby="headingFour"
-                            data-bs-parent="#globalReportAccordion"
-                          >
-                            <div class="accordion-body">
-                              Human vulnerabilities
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <button class="btn download-btn btn-sm ms-3 mt-4"><i class="bi bi-download me-2"></i> Download report</button>
-
-                    </div>
-                  </div>
-                  
-                </div>
-
-                </div>
-                </div>
-                
-            </div>
-
-            <div class="row">
-                <div class="col-10">
-                <div class="d-flex justify-content-between tab-wrapper position-relative">
-                    <p
-                      v-for="(tab, idx) in tabs"
-                      :key="tab.key"
-                      class="nav-item"
-                      :style="{ width: '25%', color: activeTab === tab.key ? 'rgba(49, 33, 177, 1)' : '' }"
-                      @click="setActiveTab(tab.key, idx)"
-                    >
-                      <i :class="tab.icon"></i> {{ tab.label }}
-                    </p>
-
-                    <!-- Blue underline for active tab -->
-                    <div class="tab-line" :style="{ width: '25%', left: (activeTabIndex * 25) + '%' }"></div>
-                </div>
-                <div class="col-2">
-                    <!-- blank -->
-                </div>
-                </div>
-            </div>
-
-            <div class="row my-4">
+          <div class="col-11 pt-4 pb-4 pe-4 mitigation-shell">
+            <div class="top-strip d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
               <div>
-                <span style="color: rgba(0, 0, 0, 0.87);">Assigned to {{ activeTab }} team </span>
+                <h2 class="mb-1 fw-bold">Mitigation Strategy</h2>
+                <p class="subtext mb-0">Operational overview for remediation workflow and team ownership.</p>
               </div>
-              <div class="d-flex gap-4 my-3">
-                      <div class="d-flex flex-column gap-2">
-                          <button class="btn rounded-pill btn-outline-secondary d-flex align-items-center justify-content-center w-100" style="color: maroon;">Critical</button>
-                          <button type="button" class="btn patch-btn rounded-pill text-nowrap">{{ riskCriteria.critical ?? '—' }}  <i class="bi bi-plus-circle text-danger" style="cursor:pointer;" @click="openRiskModal('critical')"></i></button>
-                      </div>
-                      <div class="d-flex flex-column gap-2">
-                          <button class="btn rounded-pill btn-outline-secondary d-flex align-items-center justify-content-center w-100 text-danger">High</button>
-                          <button type="button" class="btn patch-btn rounded-pill text-nowrap">{{ riskCriteria.high ?? '—' }}  <i class="bi bi-plus-circle text-danger" style="cursor:pointer;" @click="openRiskModal('high')"></i></button>
-                      </div>
-                      <div class="d-flex flex-column gap-2">
-                          <button class="btn rounded-pill btn-outline-secondary d-flex align-items-center justify-content-center w-100 text-warning">Medium</button>
-                          <button type="button" class="btn patch-btn rounded-pill text-nowrap">{{ riskCriteria.medium ?? '—' }} <i class="bi bi-plus-circle text-danger" style="cursor:pointer;" @click="openRiskModal('medium')"></i></button>
-                      </div>
-                      <div class="d-flex flex-column gap-2">
-                          <button class="btn rounded-pill btn-outline-secondary d-flex align-items-center justify-content-center w-100 text-success">Low</button>
-                          <button type="button" class="btn patch-btn rounded-pill text-nowrap">{{ riskCriteria.low ?? '—' }}  <i class="bi bi-plus-circle text-danger" style="cursor:pointer;" @click="openRiskModal('low')"></i></button>
-                      </div>
-              </div>
+              <button class="btn view-report-btn fw-semibold px-3 py-2" @click="$router.push('/viewreport')">
+                <i class="bi bi-eye me-2"></i>View Report
+              </button>
+            </div>
 
-              <!-- Update Risk Criteria Modal -->
-              <div v-if="showRiskModal" class="risk-modal-backdrop">
-                <div class="risk-modal-box" @click.stop>
-                  <h5 class="mb-3">Update Days — {{ riskModalSeverityLabel }}</h5>
-                  <div class="mb-3">
-                    <label class="form-label">Days</label>
-                    <select class="form-select" style="border-radius: 10px;" v-model="riskModalDays">
-                      <option value="" disabled>Select timeline</option>
-                      <option v-for="opt in timeOptions" :key="opt" :value="opt">{{ opt }}</option>
-                    </select>
-                  </div>
-                  <div class="mb-3">
-                    <label class="form-label">Reason</label>
-                    <textarea class="form-control" style="border-radius: 10px;" rows="2" v-model="riskModalReason"></textarea>
-                  </div>
-                  <div class="d-flex justify-content-end gap-2">
-                    <button class="btn btn-secondary" @click="closeRiskModal">Cancel</button>
-                    <button class="btn btn-primary" :disabled="riskUpdating" @click="submitRiskCriteria">
-                      {{ riskUpdating ? 'Saving...' : 'Submit' }}
-                    </button>
-                  </div>
+            <div class="hero-grid mb-4">
+              <div class="hero-focus-card">
+                <p class="hero-label mb-2">Active Exposure</p>
+                <div class="d-flex align-items-end gap-3">
+                  <h3 class="hero-count mb-0">{{ uniqueVulns.length }}</h3>
+                  <span class="hero-trend"><i class="bi bi-arrow-up-short"></i> Mitigation Queue</span>
                 </div>
+                <p class="hero-note mb-0">Unique vulnerabilities currently mapped to mitigation teams.</p>
+              </div>
+              <div class="hero-mini-card">
+                <p class="mini-label mb-2">Assigned Team</p>
+                <h4 class="mini-value mb-1">{{ activeTab }}</h4>
+                <p class="mini-note mb-0">Current response owner</p>
+              </div>
+              <div class="hero-mini-card hero-mini-card-dark">
+                <p class="mini-label mb-2">Primary Action</p>
+                <h4 class="mini-value mb-1">Patch & Prioritize</h4>
+                <p class="mini-note mb-0">Focus on critical and high first</p>
               </div>
             </div>
 
-            <section id="details">
-            <div class="row">
-                <div class="col-11">
-                    <div class="d-flex justify-content-between">
-                      <p style="color: rgba(0, 0, 0, 0.6);font-weight: 600;font-size: 15px;">
-                        Vulnerabilities ({{ uniqueVulns.length }})
-                      </p>
-                    </div>
-
-                    <!-- Loading state -->
-                    <div v-if="loading" class="py-4 text-center text-muted">Loading...</div>
-
-                    <!-- No data state -->
-                    <div v-else-if="uniqueVulns.length === 0" class="py-4 text-muted">
-                      No vulnerabilities assigned to this team.
-                    </div>
-
-                    <!-- Vulnerability cards (first card UI, up to 4) -->
-                    <div v-else class="row align-items-stretch">
-                        <div
-                          v-for="vuln in uniqueVulns.slice(0, 4)"
-                          :key="vuln.plugin_name"
-                          class="col-3 d-flex"
-                        >
-                          <div class="card py-4 px-3 w-100 d-flex flex-column" style="border-radius: 12px;">
-                            <div class="d-flex justify-content-between">
-                              <p style="color: rgba(0, 0, 0, 0.6);font-weight: 500;font-size: 13px;">
-                                {{ vuln.assets.length > 1 ? vuln.assets.length + ' assets' : vuln.assets[0] }}
-                              </p>
-                              <span
-                                :style="{ color: riskColor(vuln.risk_factor), fontSize: '12px', fontWeight: '600' }"
-                              >{{ vuln.risk_factor }}</span>
-                            </div>
-                            <h4 class="truncated-text" :title="vuln.plugin_name">
-                              {{ vuln.plugin_name }}
-                            </h4>
-                            <div class="d-flex justify-content-start mt-2">
-                              <i class="bi bi-hdd-network me-2"></i>
-                              <h6 style="color: rgba(0, 0, 0, 1);font-weight: 500;font-size: 14px;margin-top: 2px">
-                                {{ vuln.assets.length }} affected asset{{ vuln.assets.length !== 1 ? 's' : '' }}
-                              </h6>
-                            </div>
-                            <div class="text-end">
-                              <router-link :to="{ path: '/missingsecurityupdates', query: { team: activeTab } }" style="color: rgba(49, 33, 177, 1);font-weight: 600;font-size: 15px;text-decoration: none;">
-                                Details <i class="bi bi-arrow-right"></i>
-                              </router-link>
-                            </div>
-                          </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-1">
-                  <!-- blank -->
-                </div>
-            </div>
-            </section>
-
-            <!-- Operating system vulnerabilities by version - commented out, separate API pending -->
-            <div v-if="false" class="row my-5">
-                <div class="col-11">
-                    <div class="d-flex justify-content-between">
-                      <p style="color: rgba(0, 0, 0, 0.6);font-weight: 600;font-size: 15px;">Operating system vulnerabilities by version</p>
-                    <p style="cursor: pointer;color: rgba(49, 33, 177, 1);font-weight: 600;font-size: 15px;">View all</p>
-                    </div>
-                    <div class="row">
-                        <div class="col-3">
-                          <div class="card py-3 px-3" style="border-radius: 12px;">
-                                <p style="color: rgba(0, 0, 0, 0.6);font-weight: 500;font-size: 13px;">Assets</p>
-                                <div class="d-flex justify-content-between">
-                                    <h1 style="color: rgba(0, 0, 0, 0.87);font-size: 52px;">23</h1>
-                                    <p class="mt-auto" style="color: rgba(49, 33, 177, 1);font-weight: 600;font-size: 15px;">Details <i class="bi bi-arrow-right"></i></p>
-                                </div>
-                                <div class="d-flex justify-content-start">
-                                    <i class="bi bi-microsoft me-2"></i>
-                                    <h6 style="color: rgba(0, 0, 0, 1);font-weight: 500;font-size: 17px;margin-top: 2px">Microsoft</h6>
-                                </div>
-                                <div class="d-flex align-items-center gap-3">
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #b31c1c"></span>
-                                <span class="text-danger fw-bold">11</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f44336"></span>
-                                <span class="text-danger fw-bold">4</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f6b100"></span>
-                                <span class="text-warning fw-bold">8</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #4caf50"></span>
-                                <span class="text-success fw-bold">0</span>
-                              </span>
-                                </div>
-                          </div>
-                        </div>
-                        <div class="col-3">
-                          <div class="card py-3 px-3" style="border-radius: 12px;">
-                                <p style="color: rgba(0, 0, 0, 0.6);font-weight: 500;font-size: 13px;">Assets</p>
-                                <div class="d-flex justify-content-between">
-                                    <h1 style="color: rgba(0, 0, 0, 0.87);font-size: 52px;">23</h1>
-                                    <p class="mt-auto" style="color: rgba(49, 33, 177, 1);font-weight: 600;font-size: 15px;">Details <i class="bi bi-arrow-right"></i></p>
-                                </div>
-                                <div class="d-flex justify-content-start">
-                                    <i class="bi bi-microsoft me-2"></i>
-                                    <h6 style="color: rgba(0, 0, 0, 1);font-weight: 500;font-size: 17px;margin-top: 2px">Microsoft</h6>
-                                </div>
-                                <div class="d-flex align-items-center gap-3">
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #b31c1c"></span>
-                                <span class="text-danger fw-bold">11</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f44336"></span>
-                                <span class="text-danger fw-bold">4</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f6b100"></span>
-                                <span class="text-warning fw-bold">8</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #4caf50"></span>
-                                <span class="text-success fw-bold">0</span>
-                              </span>
-                                </div>
-                          </div>
-                        </div>
-                        <div class="col-3">
-                          <div class="card py-3 px-3" style="border-radius: 12px;">
-                                <p style="color: rgba(0, 0, 0, 0.6);font-weight: 500;font-size: 13px;">Assets</p>
-                                <div class="d-flex justify-content-between">
-                                    <h1 style="color: rgba(0, 0, 0, 0.87);font-size: 52px;">23</h1>
-                                    <p class="mt-auto" style="color: rgba(49, 33, 177, 1);font-weight: 600;font-size: 15px;">Details <i class="bi bi-arrow-right"></i></p>
-                                </div>
-                                <div class="d-flex justify-content-start">
-                                    <i class="bi bi-microsoft me-2"></i>
-                                    <h6 style="color: rgba(0, 0, 0, 1);font-weight: 500;font-size: 17px;margin-top: 2px">Microsoft</h6>
-                                </div>
-                                <div class="d-flex align-items-center gap-3">
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #b31c1c"></span>
-                                <span class="text-danger fw-bold">11</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f44336"></span>
-                                <span class="text-danger fw-bold">4</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f6b100"></span>
-                                <span class="text-warning fw-bold">8</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #4caf50"></span>
-                                <span class="text-success fw-bold">0</span>
-                              </span>
-                                </div>
-                          </div>
-                        </div>
-                        <div class="col-3">
-                          <div class="card py-3 px-3" style="border-radius: 12px;">
-                                <p style="color: rgba(0, 0, 0, 0.6);font-weight: 500;font-size: 13px;">Assets</p>
-                                <div class="d-flex justify-content-between">
-                                    <h1 style="color: rgba(0, 0, 0, 0.87);font-size: 52px;">23</h1>
-                                    <p class="mt-auto" style="color: rgba(49, 33, 177, 1);font-weight: 600;font-size: 15px;">Details <i class="bi bi-arrow-right"></i></p>
-                                </div>
-                                <div class="d-flex justify-content-start">
-                                    <i class="bi bi-microsoft me-2"></i>
-                                    <h6 style="color: rgba(0, 0, 0, 1);font-weight: 500;font-size: 17px;margin-top: 2px">Microsoft</h6>
-                                </div>
-                                <div class="d-flex align-items-center gap-3">
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #b31c1c"></span>
-                                <span class="text-danger fw-bold">11</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f44336"></span>
-                                <span class="text-danger fw-bold">4</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f6b100"></span>
-                                <span class="text-warning fw-bold">8</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #4caf50"></span>
-                                <span class="text-success fw-bold">0</span>
-                              </span>
-                                </div>
-                          </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-1">
-                  <!-- blank -->
-                </div>
+            <div class="team-tabs mb-4">
+              <button
+                v-for="(tab, idx) in tabs"
+                :key="tab.key"
+                class="team-tab-pill"
+                :class="{ active: activeTab === tab.key }"
+                @click="setActiveTab(tab.key, idx)"
+              >
+                <i :class="tab.icon"></i> {{ tab.label }}
+              </button>
             </div>
 
-            <!-- Application vulnerabilities by software packages - commented out, separate API pending -->
-            <div v-if="false" class="row my-5">
-                <div class="col-11">
-                    <div class="d-flex justify-content-between">
-                      <p style="color: rgba(0, 0, 0, 0.6);font-weight: 600;font-size: 15px;">Application vulnerabilities by software packages</p>
-                    <p style="cursor: pointer;color: rgba(49, 33, 177, 1);font-weight: 600;font-size: 15px;">View all</p>
-                    </div>
-                    <div class="row">
-                        <div class="col-3">
-                          <div class="card py-3 px-3" style="border-radius: 12px;">
-                                <p style="color: rgba(0, 0, 0, 0.6);font-weight: 500;font-size: 13px;">Assets</p>
-                                <div class="d-flex justify-content-between">
-                                    <h1 style="color: rgba(0, 0, 0, 0.87);font-size: 52px;">23</h1>
-                                    <p class="mt-auto" style="color: rgba(49, 33, 177, 1);font-weight: 600;font-size: 15px;">Details <i class="bi bi-arrow-right"></i></p>
-                                </div>
-                                <div class="d-flex justify-content-start">
-                                    <i class="bi bi-microsoft me-2"></i>
-                                    <h6 style="color: rgba(0, 0, 0, 1);font-weight: 500;font-size: 17px;margin-top: 2px">Microsoft</h6>
-                                </div>
-                                <div class="d-flex align-items-center gap-3">
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #b31c1c"></span>
-                                <span class="text-danger fw-bold">11</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f44336"></span>
-                                <span class="text-danger fw-bold">4</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f6b100"></span>
-                                <span class="text-warning fw-bold">8</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #4caf50"></span>
-                                <span class="text-success fw-bold">0</span>
-                              </span>
-                                </div>
-                          </div>
-                        </div>
-                        <div class="col-3">
-                          <div class="card py-3 px-3" style="border-radius: 12px;">
-                                <p style="color: rgba(0, 0, 0, 0.6);font-weight: 500;font-size: 13px;">Assets</p>
-                                <div class="d-flex justify-content-between">
-                                    <h1 style="color: rgba(0, 0, 0, 0.87);font-size: 52px;">23</h1>
-                                    <p class="mt-auto" style="color: rgba(49, 33, 177, 1);font-weight: 600;font-size: 15px;">Details <i class="bi bi-arrow-right"></i></p>
-                                </div>
-                                <div class="d-flex justify-content-start">
-                                    <i class="bi bi-microsoft me-2"></i>
-                                    <h6 style="color: rgba(0, 0, 0, 1);font-weight: 500;font-size: 17px;margin-top: 2px">Microsoft</h6>
-                                </div>
-                                <div class="d-flex align-items-center gap-3">
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #b31c1c"></span>
-                                <span class="text-danger fw-bold">11</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f44336"></span>
-                                <span class="text-danger fw-bold">4</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f6b100"></span>
-                                <span class="text-warning fw-bold">8</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #4caf50"></span>
-                                <span class="text-success fw-bold">0</span>
-                              </span>
-                                </div>
-                          </div>
-                        </div>
-                        <div class="col-3">
-                          <div class="card py-3 px-3" style="border-radius: 12px;">
-                                <p style="color: rgba(0, 0, 0, 0.6);font-weight: 500;font-size: 13px;">Assets</p>
-                                <div class="d-flex justify-content-between">
-                                    <h1 style="color: rgba(0, 0, 0, 0.87);font-size: 52px;">23</h1>
-                                    <p class="mt-auto" style="color: rgba(49, 33, 177, 1);font-weight: 600;font-size: 15px;">Details <i class="bi bi-arrow-right"></i></p>
-                                </div>
-                                <div class="d-flex justify-content-start">
-                                    <i class="bi bi-microsoft me-2"></i>
-                                    <h6 style="color: rgba(0, 0, 0, 1);font-weight: 500;font-size: 17px;margin-top: 2px">Microsoft</h6>
-                                </div>
-                                <div class="d-flex align-items-center gap-3">
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #b31c1c"></span>
-                                <span class="text-danger fw-bold">11</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f44336"></span>
-                                <span class="text-danger fw-bold">4</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f6b100"></span>
-                                <span class="text-warning fw-bold">8</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #4caf50"></span>
-                                <span class="text-success fw-bold">0</span>
-                              </span>
-                                </div>
-                          </div>
-                        </div>
-                        <div class="col-3">
-                          <div class="card py-3 px-3" style="border-radius: 12px;">
-                                <p style="color: rgba(0, 0, 0, 0.6);font-weight: 500;font-size: 13px;">Assets</p>
-                                <div class="d-flex justify-content-between">
-                                    <h1 style="color: rgba(0, 0, 0, 0.87);font-size: 52px;">23</h1>
-                                    <p class="mt-auto" style="color: rgba(49, 33, 177, 1);font-weight: 600;font-size: 15px;">Details <i class="bi bi-arrow-right"></i></p>
-                                </div>
-                                <div class="d-flex justify-content-start">
-                                    <i class="bi bi-microsoft me-2"></i>
-                                    <h6 style="color: rgba(0, 0, 0, 1);font-weight: 500;font-size: 17px;margin-top: 2px">Microsoft</h6>
-                                </div>
-                                <div class="d-flex align-items-center gap-3">
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #b31c1c"></span>
-                                <span class="text-danger fw-bold">11</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f44336"></span>
-                                <span class="text-danger fw-bold">4</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f6b100"></span>
-                                <span class="text-warning fw-bold">8</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #4caf50"></span>
-                                <span class="text-success fw-bold">0</span>
-                              </span>
-                                </div>
-                          </div>
-                        </div>
-                    </div>
+            <div class="criteria-panel mb-4">
+              <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+                <h5 class="mb-0">Risk Criteria Timelines</h5>
+                <span class="criteria-team">Assigned to {{ activeTab }} team</span>
+              </div>
+
+              <div class="criteria-grid">
+                <div class="criteria-card critical">
+                  <span class="severity">Critical</span>
+                  <button type="button" class="btn timeline-btn">
+                    {{ riskCriteria.critical ?? "—" }}
+                    <i class="bi bi-plus-circle text-danger ms-2" @click="openRiskModal('critical')"></i>
+                  </button>
                 </div>
-                <div class="col-1">
-                  <!-- blank -->
+                <div class="criteria-card high">
+                  <span class="severity">High</span>
+                  <button type="button" class="btn timeline-btn">
+                    {{ riskCriteria.high ?? "—" }}
+                    <i class="bi bi-plus-circle text-danger ms-2" @click="openRiskModal('high')"></i>
+                  </button>
                 </div>
+                <div class="criteria-card medium">
+                  <span class="severity">Medium</span>
+                  <button type="button" class="btn timeline-btn">
+                    {{ riskCriteria.medium ?? "—" }}
+                    <i class="bi bi-plus-circle text-danger ms-2" @click="openRiskModal('medium')"></i>
+                  </button>
+                </div>
+                <div class="criteria-card low">
+                  <span class="severity">Low</span>
+                  <button type="button" class="btn timeline-btn">
+                    {{ riskCriteria.low ?? "—" }}
+                    <i class="bi bi-plus-circle text-danger ms-2" @click="openRiskModal('low')"></i>
+                  </button>
+                </div>
+              </div>
             </div>
 
-            <!-- End of life systems requiring replacement - commented out, separate API pending -->
-            <div v-if="false" class="row my-5">
-                <div class="col-11">
-                    <div class="d-flex justify-content-between">
-                      <p style="color: rgba(0, 0, 0, 0.6);font-weight: 600;font-size: 15px;">End of life systems requiring replacement</p>
-                    <p style="cursor: pointer;color: rgba(49, 33, 177, 1);font-weight: 600;font-size: 15px;">View all</p>
-                    </div>
-                    <div class="row">
-                        <div class="col-3">
-                          <div class="card py-3 px-3" style="border-radius: 12px;">
-                                <p style="color: rgba(0, 0, 0, 0.6);font-weight: 500;font-size: 13px;">Assets</p>
-                                <div class="d-flex justify-content-between">
-                                    <h1 style="color: rgba(0, 0, 0, 0.87);font-size: 52px;">23</h1>
-                                    <p class="mt-auto" style="color: rgba(49, 33, 177, 1);font-weight: 600;font-size: 15px;">Details <i class="bi bi-arrow-right"></i></p>
-                                </div>
-                                <div class="d-flex justify-content-start">
-                                    <i class="bi bi-microsoft me-2"></i>
-                                    <h6 style="color: rgba(0, 0, 0, 1);font-weight: 500;font-size: 17px;margin-top: 2px">Microsoft</h6>
-                                </div>
-                                <div class="d-flex align-items-center gap-3">
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #b31c1c"></span>
-                                <span class="text-danger fw-bold">11</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f44336"></span>
-                                <span class="text-danger fw-bold">4</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f6b100"></span>
-                                <span class="text-warning fw-bold">8</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #4caf50"></span>
-                                <span class="text-success fw-bold">0</span>
-                              </span>
-                                </div>
-                          </div>
-                        </div>
-                        <div class="col-3">
-                          <div class="card py-3 px-3" style="border-radius: 12px;">
-                                <p style="color: rgba(0, 0, 0, 0.6);font-weight: 500;font-size: 13px;">Assets</p>
-                                <div class="d-flex justify-content-between">
-                                    <h1 style="color: rgba(0, 0, 0, 0.87);font-size: 52px;">23</h1>
-                                    <p class="mt-auto" style="color: rgba(49, 33, 177, 1);font-weight: 600;font-size: 15px;">Details <i class="bi bi-arrow-right"></i></p>
-                                </div>
-                                <div class="d-flex justify-content-start">
-                                    <i class="bi bi-microsoft me-2"></i>
-                                    <h6 style="color: rgba(0, 0, 0, 1);font-weight: 500;font-size: 17px;margin-top: 2px">Microsoft</h6>
-                                </div>
-                                <div class="d-flex align-items-center gap-3">
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #b31c1c"></span>
-                                <span class="text-danger fw-bold">11</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f44336"></span>
-                                <span class="text-danger fw-bold">4</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f6b100"></span>
-                                <span class="text-warning fw-bold">8</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #4caf50"></span>
-                                <span class="text-success fw-bold">0</span>
-                              </span>
-                                </div>
-                          </div>
-                        </div>
-                        <div class="col-3">
-                          <div class="card py-3 px-3" style="border-radius: 12px;">
-                                <p style="color: rgba(0, 0, 0, 0.6);font-weight: 500;font-size: 13px;">Assets</p>
-                                <div class="d-flex justify-content-between">
-                                    <h1 style="color: rgba(0, 0, 0, 0.87);font-size: 52px;">23</h1>
-                                    <p class="mt-auto" style="color: rgba(49, 33, 177, 1);font-weight: 600;font-size: 15px;">Details <i class="bi bi-arrow-right"></i></p>
-                                </div>
-                                <div class="d-flex justify-content-start">
-                                    <i class="bi bi-microsoft me-2"></i>
-                                    <h6 style="color: rgba(0, 0, 0, 1);font-weight: 500;font-size: 17px;margin-top: 2px">Microsoft</h6>
-                                </div>
-                                <div class="d-flex align-items-center gap-3">
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #b31c1c"></span>
-                                <span class="text-danger fw-bold">11</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f44336"></span>
-                                <span class="text-danger fw-bold">4</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f6b100"></span>
-                                <span class="text-warning fw-bold">8</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #4caf50"></span>
-                                <span class="text-success fw-bold">0</span>
-                              </span>
-                                </div>
-                          </div>
-                        </div>
-                        <div class="col-3">
-                          <div class="card py-3 px-3" style="border-radius: 12px;">
-                                <p style="color: rgba(0, 0, 0, 0.6);font-weight: 500;font-size: 13px;">Assets</p>
-                                <div class="d-flex justify-content-between">
-                                    <h1 style="color: rgba(0, 0, 0, 0.87);font-size: 52px;">23</h1>
-                                    <p class="mt-auto" style="color: rgba(49, 33, 177, 1);font-weight: 600;font-size: 15px;">Details <i class="bi bi-arrow-right"></i></p>
-                                </div>
-                                <div class="d-flex justify-content-start">
-                                    <i class="bi bi-microsoft me-2"></i>
-                                    <h6 style="color: rgba(0, 0, 0, 1);font-weight: 500;font-size: 17px;margin-top: 2px">Microsoft</h6>
-                                </div>
-                                <div class="d-flex align-items-center gap-3">
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #b31c1c"></span>
-                                <span class="text-danger fw-bold">11</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f44336"></span>
-                                <span class="text-danger fw-bold">4</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f6b100"></span>
-                                <span class="text-warning fw-bold">8</span>
-                              </span>
-                              <span class="d-flex align-items-center">
-                                <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #4caf50"></span>
-                                <span class="text-success fw-bold">0</span>
-                              </span>
-                                </div>
-                          </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-1">
-                  <!-- blank -->
-                </div>
+            <div class="findings-panel">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Vulnerabilities ({{ uniqueVulns.length }})</h5>
+                <router-link :to="{ path: '/missingsecurityupdates', query: { team: activeTab } }" class="details-link">
+                  View Details <i class="bi bi-arrow-right"></i>
+                </router-link>
+              </div>
+
+              <div v-if="loading" class="py-4 text-center text-muted">Loading...</div>
+              <div v-else-if="uniqueVulns.length === 0" class="py-4 text-muted">No vulnerabilities assigned to this team.</div>
+
+              <div v-else class="table-responsive">
+                <table class="table findings-table align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>Vulnerability</th>
+                      <th>Assets</th>
+                      <th>Severity</th>
+                      <th class="text-end">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="vuln in uniqueVulns.slice(0, 8)" :key="vuln.plugin_name">
+                      <td>
+                        <p class="mb-0 vuln-name" :title="vuln.plugin_name">{{ vuln.plugin_name }}</p>
+                      </td>
+                      <td>
+                        <span class="asset-chip">
+                          <i class="bi bi-hdd-network me-1"></i>
+                          {{ vuln.assets.length }} asset{{ vuln.assets.length !== 1 ? "s" : "" }}
+                        </span>
+                      </td>
+                      <td>
+                        <span class="severity-chip" :style="{ color: riskColor(vuln.risk_factor) }">
+                          {{ vuln.risk_factor }}
+                        </span>
+                      </td>
+                      <td class="text-end">
+                        <router-link :to="{ path: '/missingsecurityupdates', query: { team: activeTab } }" class="row-action">
+                          Open
+                        </router-link>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
 
+            <div v-if="showPopup" class="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center report-backdrop">
+              <div class="bg-white p-4 rounded shadow report-box">
+                <button @click="showPopup = false" class="btn-close position-absolute top-0 end-0 m-3" aria-label="Close"></button>
+                <h2 class="mb-2 text-center">Report</h2>
+                <p class="mb-2 text-center report-sub">Create a report</p>
+                <div class="d-flex justify-content-between">
+                  <div class="dropdown">
+                    <div class="dropdown-btn">Select location</div>
+                    <div class="dropdown-content">
+                      <a href="#">Greece</a>
+                      <a href="#">Germany</a>
+                      <a href="#">Bahrain</a>
+                    </div>
+                  </div>
+                  <button type="button" class="btn timeline-btn rounded-pill text-nowrap ms-3 mb-3">
+                    June 1 - June 30 <i class="bi bi-calendar-minus ms-2"></i>
+                  </button>
+                </div>
+                <div class="accordion" id="globalReportAccordion">
+                  <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingOne">
+                      <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                        Software vulnerabilities(11) <span class="text-primary ms-2">4 selected</span>
+                      </button>
+                    </h2>
+                    <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#globalReportAccordion">
+                      <div class="accordion-body">Software vulnerabilities</div>
+                    </div>
+                  </div>
+                </div>
+                <button class="btn download-btn btn-sm ms-3 mt-4"><i class="bi bi-download me-2"></i>Download report</button>
+              </div>
+            </div>
+
+            <div v-if="showRiskModal" class="risk-modal-backdrop">
+              <div class="risk-modal-box" @click.stop>
+                <h5 class="mb-3">Update Days - {{ riskModalSeverityLabel }}</h5>
+                <div class="mb-3">
+                  <label class="form-label">Days</label>
+                  <select class="form-select" style="border-radius: 10px;" v-model="riskModalDays">
+                    <option value="" disabled>Select timeline</option>
+                    <option v-for="opt in timeOptions" :key="opt" :value="opt">{{ opt }}</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Reason</label>
+                  <textarea class="form-control" style="border-radius: 10px;" rows="2" v-model="riskModalReason"></textarea>
+                </div>
+                <div class="d-flex justify-content-end gap-2">
+                  <button class="btn btn-secondary" @click="closeRiskModal">Cancel</button>
+                  <button class="btn btn-primary" :disabled="riskUpdating" @click="submitRiskCriteria">
+                    {{ riskUpdating ? "Saving..." : "Submit" }}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1038,224 +476,300 @@ export default {
 
 
 <style scoped>
-.download-report-btn {
-    font-weight: 600;
-    font-size: 15px;
-    padding: 10px 15px;
-    /* margin-right: 150px; */
-    color: rgba(49, 33, 177, 1);
-    background-color: white;
-    border-radius: 30px;
-    border: 1px solid rgba(0, 0, 0, 0.12);
+.mitigation-shell {
+  background: #f8f9fc;
+  min-height: calc(100vh - 64px);
+}
+
+.top-strip h2 {
+  color: #241447;
+}
+
+.subtext {
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 13px;
+}
+
+.view-report-btn {
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  color: #241447;
+  background: #fff;
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 16px;
+}
+
+.hero-focus-card,
+.hero-mini-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+}
+
+.hero-focus-card {
+  background: linear-gradient(145deg, #f2f3f6, #ffffff);
+}
+
+.hero-mini-card-dark {
+  background: #241447;
+  color: #fff;
+}
+
+.hero-label,
+.mini-label {
+  color: rgba(0, 0, 0, 0.55);
+  font-size: 12px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.hero-count {
+  font-size: 52px;
+  color: #241447;
+  line-height: 1;
+}
+
+.hero-trend {
+  color: #ba1a1a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.hero-note,
+.mini-note {
+  color: rgba(0, 0, 0, 0.62);
+  font-size: 13px;
+}
+
+.mini-value {
+  color: inherit;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.team-tabs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #e1e2e5;
+  padding-bottom: 12px;
+}
+
+.team-tab-pill {
+  border: 1px solid #e1e2e5;
+  background: #fff;
+  color: #333;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.team-tab-pill.active {
+  background: #241447;
+  color: #fff;
+  border-color: #241447;
+}
+
+.criteria-panel,
+.findings-panel {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+}
+
+.criteria-team {
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 13px;
+}
+
+.criteria-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.criteria-card {
+  border: 1px solid #ececf0;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.severity {
+  display: inline-block;
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.critical .severity { color: #b31c1c; }
+.high .severity { color: #f44336; }
+.medium .severity { color: #d28a00; }
+.low .severity { color: #2f9e44; }
+
+.timeline-btn {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  width: 100%;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.details-link,
+.row-action {
+  color: #241447;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.findings-table thead th {
+  color: rgba(0, 0, 0, 0.5);
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  border-bottom: 1px solid #ececf0;
+}
+
+.findings-table tbody td {
+  border-color: #f1f1f4;
+}
+
+.vuln-name {
+  font-weight: 600;
+  max-width: 400px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.asset-chip {
+  background: #f2f3f6;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.severity-chip {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.report-backdrop {
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 1050;
+}
+
+.report-box {
+  width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.report-sub {
+  color: rgba(0, 0, 0, 0.6);
+  font-weight: 500;
+  font-size: 13px;
 }
 
 .download-btn {
-    font-weight: 600;
-    font-size: 12px;
-    padding: 8px 15px;
-    color: white;
-    background-color: rgba(49, 33, 177, 1);
-    border-radius: 30px;
-    border: 1px solid rgba(0, 0, 0, 0.12);
+  font-weight: 600;
+  font-size: 12px;
+  padding: 8px 15px;
+  color: #fff;
+  background-color: rgba(49, 33, 177, 1);
+  border-radius: 30px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
 }
 
-.tab-wrapper {
-        position: relative;
-        border-bottom: 1px solid #e0e0e0;
-    }
-
-    .tab-line {
-        position: absolute;
-        bottom: 0;
-        height: 2px;
-        background-color: rgba(49, 33, 177, 1); /* Active blue color */
-        transition: all 0.3s ease;
-    }
-
-    .nav-item {
-        text-align: center;
-        cursor: pointer;
-        padding: 8px 0;
-        color: black;
-        font-weight: 500;
-        position: relative;
-        z-index: 1;
-    }
-
-    .nav-item i {
-        margin-right: 5px;
-    }
-    .dropdown {
-    position: relative;
-    display: inline-block;
-    width: 200px;
+.dropdown {
+  position: relative;
+  display: inline-block;
+  width: 200px;
 }
 
 .dropdown-btn {
-    background-color: white;
-    border: 1px solid rgba(0, 0, 0, 0.16);
-    border-radius: 50px;
-    padding: 4px 20px 4px 12px; /* extra right padding for the arrow */
-    cursor: pointer;
-    position: relative;
+  background-color: white;
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  border-radius: 50px;
+  padding: 8px 40px 8px 16px;
+  cursor: pointer;
+  position: relative;
 }
 
 .dropdown-btn::after {
-    content: "▼"; /* arrow symbol */
-    font-size: 12px;
-    color: #333;
-    position: absolute;
-    right: 16px;
-    top: 50%;
-    transform: translateY(-50%);
-    pointer-events: none;
+  content: "▼";
+  font-size: 12px;
+  color: #333;
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
 }
 
 .dropdown-content {
-    display: none;
-    position: absolute;
-    background-color: white;
-    min-width: 100%;
-    border-radius: 12px;
-    box-shadow: 0px 8px 16px rgba(0,0,0,0.2);
-    z-index: 1;
-    margin-top: 4px;
+  display: none;
+  position: absolute;
+  background-color: white;
+  min-width: 100%;
+  border-radius: 12px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  z-index: 1;
+  margin-top: 4px;
 }
 
 .dropdown-content a {
-    padding: 8px 12px;
-    display: block;
-    text-decoration: none;
-    color: black;
-    border-radius: 8px;
+  padding: 8px 12px;
+  display: block;
+  text-decoration: none;
+  color: black;
+  border-radius: 8px;
 }
 
 .dropdown-content a:hover {
-    background-color: #f1f1f1;
+  background-color: #f1f1f1;
 }
 
 .dropdown.show .dropdown-content {
-    display: block;
+  display: block;
 }
 
-.truncated-text {
-    color: rgba(0, 0, 0, 0.87);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-    width: 100%;
-    display: block;
-    cursor: pointer;
-  }
-
-  .risk-modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-  }
-
-  .risk-modal-box {
-    background: #fff;
-    padding: 20px;
-    border-radius: 10px;
-    width: 350px;
-  }
-
-  .tooltip-text {
-    visibility: hidden;
-    width: max-content;
-    max-width: 200px;
-    background-color: #333;
-    color: #fff;
-    text-align: left;
-    border-radius: 4px;
-    padding: 6px 8px;
-    position: absolute;
-    z-index: 1;
-    bottom: 125%; /* Position above the icon */
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 12px;
-    line-height: 1.3;
-    opacity: 0;
-    transition: opacity 0.3s;
-  }
-
-  .tooltip-text::after {
-    content: "";
-    position: absolute;
-    top: 100%; /* Arrow position */
-    left: 50%;
-    margin-left: -5px;
-    border-width: 5px;
-    border-style: solid;
-    border-color: #333 transparent transparent transparent;
-  }
-
-  .info-icon:hover .tooltip-text {
-    visibility: visible;
-    opacity: 1;
-  }
-
-  .rounded-pill:hover {
-    background-color: transparent;
-  }
-
-  .dropdown {
-    position: relative;
-    display: inline-block;
-    width: 200px;
+.risk-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
 }
 
-.dropdown-btn {
-    background-color: white;
-    border: 1px solid rgba(0, 0, 0, 0.16);
-    border-radius: 50px;
-    padding: 8px 40px 8px 16px; /* extra right padding for the arrow */
-    cursor: pointer;
-    position: relative;
+.risk-modal-box {
+  background: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  width: 350px;
 }
 
-.dropdown-btn::after {
-    content: "▼"; /* arrow symbol */
-    font-size: 12px;
-    color: #333;
-    position: absolute;
-    right: 16px;
-    top: 50%;
-    transform: translateY(-50%);
-    pointer-events: none;
-}
+@media (max-width: 1200px) {
+  .hero-grid {
+    grid-template-columns: 1fr;
+  }
 
-.dropdown-content {
-    display: none;
-    position: absolute;
-    background-color: white;
-    min-width: 100%;
-    border-radius: 12px;
-    box-shadow: 0px 8px 16px rgba(0,0,0,0.2);
-    z-index: 1;
-    margin-top: 4px;
-}
-
-.dropdown-content a {
-    padding: 8px 12px;
-    display: block;
-    text-decoration: none;
-    color: black;
-    border-radius: 8px;
-}
-
-.dropdown-content a:hover {
-    background-color: #f1f1f1;
-}
-
-.dropdown.show .dropdown-content {
-    display: block;
+  .criteria-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 </style>

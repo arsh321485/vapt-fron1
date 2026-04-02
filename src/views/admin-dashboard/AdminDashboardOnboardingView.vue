@@ -1,5 +1,4 @@
 <template>
-  <main>
     <section>
       <div class="container-fluid">
         <div class="row">
@@ -95,7 +94,7 @@
 
               <!-- View Report Button -->
               <button
-                class="btn fw-semibold px-3 py-2 bg-white mt-5" 
+                class="btn fw-semibold px-3 py-2 bg-white mt-5"
                 style="border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; color: #374151; display:flex; align-items:center; gap:6px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);"
                 @click="$router.push('/viewreport')"
               >
@@ -104,44 +103,31 @@
             </div>
 
             <!-- ===== 6-CARD ANALYTICS GRID ===== -->
-            <div class="row g-4 mb-4">
+            <div class="row g-4 mb-4 align-items-stretch">
 
               <!-- Card 1: Total Assets -->
-              <div class="col-4">
-                <router-link to="/assets" class="text-decoration-none">
-                  <div class="dash-card h-100">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                      <div class="d-flex align-items-center gap-2">
-                        <div class="dash-icon-wrap">
-                          <i class="bi bi-laptop dash-icon-teal" style="font-size: 14px;"></i>
+              <div class="col-2">
+                <router-link to="/assets" class="text-decoration-none d-block">
+                  <div class="dash-card" style="padding: 22px 22px;">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                      <div class="d-flex align-items-center gap-1">
+                        <div class="dash-icon-wrap" style="width:32px; height:32px;">
+                          <i class="bi bi-laptop dash-icon-teal" style="font-size: 15px;"></i>
                         </div>
-                        <span class="dash-card-label">Total Assets</span>
+                        <span class="dash-card-label" style="font-size:14px;">Total Assets</span>
                       </div>
-                      <div class="dash-bs-badge">Bs</div>
+
                     </div>
-                    <div class="d-flex align-items-baseline gap-3 mb-3">
-                      <span class="dash-big-num">{{ authStore.totalAssets }}</span>
-                      <span class="dash-sub-text">Avg. score: <strong class="text-dark">{{ Number(authStore.avgScore).toFixed(2) }}</strong></span>
-                    </div>
-                    <!-- Sparkline chart -->
-                    <div style="height: 64px; width: 100%;">
-                      <svg style="width:100%; height:100%;" viewBox="0 0 100 30" preserveAspectRatio="none">
-                        <defs>
-                          <linearGradient id="grad-teal" x1="0%" x2="0%" y1="0%" y2="100%">
-                            <stop offset="0%" stop-color="#0f696e" stop-opacity="0.8"/>
-                            <stop offset="100%" stop-color="#0f696e" stop-opacity="0"/>
-                          </linearGradient>
-                        </defs>
-                        <path d="M0 25 L15 20 L30 23 L45 15 L60 18 L75 12 L90 8 L100 10 V30 H0 Z" fill="url(#grad-teal)" fill-opacity="0.12"/>
-                        <path d="M0 25 L15 20 L30 23 L45 15 L60 18 L75 12 L90 8 L100 10" fill="none" stroke="#0f696e" stroke-linecap="round" stroke-width="1.5"/>
-                      </svg>
+                    <div class="d-flex align-items-baseline gap-2 mb-1">
+                      <span class="dash-big-num" style="font-size:2.4rem;">{{ authStore.totalAssets }}</span>
+                      <!-- <span class="dash-sub-text">Avg. score: <strong class="text-dark">{{ Number(authStore.avgScore).toFixed(2) }}</strong></span> -->
                     </div>
                   </div>
                 </router-link>
               </div>
 
               <!-- Card 2: Vulnerabilities Gauge -->
-              <div class="col-4">
+              <div class="col-5">
                 <div class="dash-card h-100">
                   <div class="d-flex align-items-center gap-2 mb-3">
                     <div class="dash-icon-wrap">
@@ -151,29 +137,42 @@
                     <span class="info-tooltip" data-tooltip="Total number of identified vulnerabilities across all assets, categorized by severity levels."><i class="bi bi-info-circle dash-info-icon"></i></span>
                   </div>
 
-                  <!-- Semi-circle gauge -->
-                  <div class="d-flex flex-column align-items-center">
-                    <div style="width: 192px; height: 96px; position: relative; overflow: hidden;">
-                      <svg width="100%" height="100%" viewBox="0 0 100 50">
-                        <!-- Background arc -->
-                        <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="#f3f4f6" stroke-width="12"/>
-                        <!-- Dynamic severity segments -->
-                        <path v-if="vulnGaugePaths.critical" :d="vulnGaugePaths.critical" fill="none" stroke="#b91c1c" stroke-width="12" stroke-linecap="butt"/>
-                        <path v-if="vulnGaugePaths.high" :d="vulnGaugePaths.high" fill="none" stroke="#ef4444" stroke-width="12" stroke-linecap="butt"/>
-                        <path v-if="vulnGaugePaths.medium" :d="vulnGaugePaths.medium" fill="none" stroke="#f59e0b" stroke-width="12" stroke-linecap="butt"/>
-                        <path v-if="vulnGaugePaths.low" :d="vulnGaugePaths.low" fill="none" stroke="#10b981" stroke-width="12" stroke-linecap="butt"/>
-                      </svg>
-                      <!-- Center info overlay -->
-                      <div style="position:absolute; bottom:0; left:50%; transform:translateX(-50%); text-align:center; white-space:nowrap;">
-                        <span class="dash-sev-badge" style="background:#f59e0b;">{{ authStore.vulnerabilities.medium }}</span>
-                        <div style="font-size:1.5rem; font-weight:800; color:#1f2937; line-height:1.1;">{{ totalVulnerabilities }}</div>
-                        <div style="font-size:9px; color:#9ca3af; font-weight:700; letter-spacing:0.08em; text-transform:uppercase;">Total</div>
+                  <!-- Bar Chart -->
+                  <div class="d-flex align-items-end justify-content-around gap-2 px-2" style="height: 110px;">
+                    <!-- Critical -->
+                    <div class="d-flex flex-column align-items-center gap-1" style="width:30px;">
+                      <span style="font-size:11px; font-weight:700; color:#1f2937;">{{ authStore.vulnerabilities.critical || 0 }}</span>
+                      <div style="width:100%; border-radius:4px 4px 0 0; background:#b91c1c; min-height:4px;"
+                        :style="{ height: totalVulnerabilities ? ((authStore.vulnerabilities.critical || 0) / totalVulnerabilities * 90) + 'px' : '4px' }">
+                      </div>
+                    </div>
+                    <!-- High -->
+                    <div class="d-flex flex-column align-items-center gap-1" style="width:30px;">
+                      <span style="font-size:11px; font-weight:700; color:#1f2937;">{{ authStore.vulnerabilities.high || 0 }}</span>
+                      <div style="width:100%; border-radius:4px 4px 0 0; background:#ef4444; min-height:4px;"
+                        :style="{ height: totalVulnerabilities ? ((authStore.vulnerabilities.high || 0) / totalVulnerabilities * 90) + 'px' : '4px' }">
+                      </div>
+                    </div>
+                    <!-- Medium -->
+                    <div class="d-flex flex-column align-items-center gap-1" style="width:30px;">
+                      <span style="font-size:11px; font-weight:700; color:#1f2937;">{{ authStore.vulnerabilities.medium || 0 }}</span>
+                      <div style="width:100%; border-radius:4px 4px 0 0; background:#f59e0b; min-height:4px;"
+                        :style="{ height: totalVulnerabilities ? ((authStore.vulnerabilities.medium || 0) / totalVulnerabilities * 90) + 'px' : '4px' }">
+                      </div>
+                    </div>
+                    <!-- Low -->
+                    <div class="d-flex flex-column align-items-center gap-1" style="width:30px;">
+                      <span style="font-size:11px; font-weight:700; color:#1f2937;">{{ authStore.vulnerabilities.low || 0 }}</span>
+                      <div style="width:100%; border-radius:4px 4px 0 0; background:#10b981; min-height:4px;"
+                        :style="{ height: totalVulnerabilities ? ((authStore.vulnerabilities.low || 0) / totalVulnerabilities * 90) + 'px' : '4px' }">
                       </div>
                     </div>
                   </div>
+                  <!-- X-axis line -->
+                  <div style="border-top: 2px solid #e5e7eb; margin: 0 8px;"></div>
 
                   <!-- Legend -->
-                  <div class="d-flex justify-content-center gap-3 mt-3 flex-wrap">
+                  <div class="d-flex justify-content-around mt-2 flex-wrap px-1">
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#b91c1c;"></span>Critical</div>
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#ef4444;"></span>High</div>
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#f59e0b;"></span>Medium</div>
@@ -183,7 +182,7 @@
               </div>
 
               <!-- Card 3: Mitigation Timeline -->
-              <div class="col-4">
+              <div class="col-5">
                 <div class="dash-card h-100">
                   <div class="d-flex align-items-center gap-2 mb-4">
                     <div class="dash-icon-wrap">
@@ -193,39 +192,73 @@
                     <span class="info-tooltip" data-tooltip="Displays the remaining remediation time for vulnerabilities based on the defined risk criteria."><i class="bi bi-info-circle dash-info-icon"></i></span>
                   </div>
 
-                  <div class="d-flex flex-column gap-3">
+                  <!-- Half-circle gauges -->
+                  <div class="d-flex justify-content-around align-items-end mt-2">
+
                     <!-- Critical -->
-                    <div class="d-flex align-items-center gap-3">
-                      <span class="dash-sev-label">Critical</span>
-                      <div class="dash-progress-track flex-fill">
-                        <div class="dash-progress-fill" :style="{ width: mitigationPct('critical').compliancePct + '%', background: '#0f696e' }"></div>
+                    <div class="d-flex flex-column align-items-center">
+                      <div style="position:relative; width:90px; height:50px; overflow:hidden;">
+                        <svg width="90" height="50" viewBox="0 0 90 50">
+                          <path d="M8 46 A37 37 0 0 1 82 46" fill="none" stroke="#fde8e8" stroke-width="10" stroke-linecap="round"/>
+                          <path d="M8 46 A37 37 0 0 1 82 46" fill="none" stroke="#e53e3e" stroke-width="10" stroke-linecap="round"
+                            stroke-dasharray="116"
+                            :stroke-dashoffset="116 - (mitigationPct('critical').compliancePct / 100 * 116)"/>
+                        </svg>
+                        <div style="position:absolute; bottom:2px; left:50%; transform:translateX(-50%); text-align:center; white-space:nowrap;">
+                          <div style="font-size:13px; font-weight:800; color:#1f2937;">{{ formatTimeline(authStore.mitigationTimeline?.critical) }}</div>
+                        </div>
                       </div>
-                      <span class="dash-sev-pct">{{ formatTimeline(authStore.mitigationTimeline?.critical) }}</span>
+                      <span style="font-size:12px; font-weight:600; color:#e53e3e; margin-top:4px;">Critical</span>
                     </div>
+
                     <!-- High -->
-                    <div class="d-flex align-items-center gap-3">
-                      <span class="dash-sev-label">High</span>
-                      <div class="dash-progress-track flex-fill">
-                        <div class="dash-progress-fill" :style="{ width: mitigationPct('high').compliancePct + '%', background: '#0f696e' }"></div>
+                    <div class="d-flex flex-column align-items-center">
+                      <div style="position:relative; width:90px; height:50px; overflow:hidden;">
+                        <svg width="90" height="50" viewBox="0 0 90 50">
+                          <path d="M8 46 A37 37 0 0 1 82 46" fill="none" stroke="#fde8e8" stroke-width="10" stroke-linecap="round"/>
+                          <path d="M8 46 A37 37 0 0 1 82 46" fill="none" stroke="#fc6b57" stroke-width="10" stroke-linecap="round"
+                            stroke-dasharray="116"
+                            :stroke-dashoffset="116 - (mitigationPct('high').compliancePct / 100 * 116)"/>
+                        </svg>
+                        <div style="position:absolute; bottom:2px; left:50%; transform:translateX(-50%); text-align:center; white-space:nowrap;">
+                          <div style="font-size:13px; font-weight:800; color:#1f2937;">{{ formatTimeline(authStore.mitigationTimeline?.high) }}</div>
+                        </div>
                       </div>
-                      <span class="dash-sev-pct">{{ formatTimeline(authStore.mitigationTimeline?.high) }}</span>
+                      <span style="font-size:12px; font-weight:600; color:#fc6b57; margin-top:4px;">High</span>
                     </div>
+
                     <!-- Medium -->
-                    <div class="d-flex align-items-center gap-3">
-                      <span class="dash-sev-label">Medium</span>
-                      <div class="dash-progress-track flex-fill">
-                        <div class="dash-progress-fill" :style="{ width: mitigationPct('medium').compliancePct + '%', background: '#0f696e' }"></div>
+                    <div class="d-flex flex-column align-items-center">
+                      <div style="position:relative; width:90px; height:50px; overflow:hidden;">
+                        <svg width="90" height="50" viewBox="0 0 90 50">
+                          <path d="M8 46 A37 37 0 0 1 82 46" fill="none" stroke="#fef3cd" stroke-width="10" stroke-linecap="round"/>
+                          <path d="M8 46 A37 37 0 0 1 82 46" fill="none" stroke="#f59e0b" stroke-width="10" stroke-linecap="round"
+                            stroke-dasharray="116"
+                            :stroke-dashoffset="116 - (mitigationPct('medium').compliancePct / 100 * 116)"/>
+                        </svg>
+                        <div style="position:absolute; bottom:2px; left:50%; transform:translateX(-50%); text-align:center; white-space:nowrap;">
+                          <div style="font-size:13px; font-weight:800; color:#1f2937;">{{ formatTimeline(authStore.mitigationTimeline?.medium) }}</div>
+                        </div>
                       </div>
-                      <span class="dash-sev-pct">{{ formatTimeline(authStore.mitigationTimeline?.medium) }}</span>
+                      <span style="font-size:12px; font-weight:600; color:#f59e0b; margin-top:4px;">Medium</span>
                     </div>
+
                     <!-- Low -->
-                    <div class="d-flex align-items-center gap-3">
-                      <span class="dash-sev-label">Low</span>
-                      <div class="dash-progress-track flex-fill">
-                        <div class="dash-progress-fill" :style="{ width: mitigationPct('low').compliancePct + '%', background: '#0f696e' }"></div>
+                    <div class="d-flex flex-column align-items-center">
+                      <div style="position:relative; width:90px; height:50px; overflow:hidden;">
+                        <svg width="90" height="50" viewBox="0 0 90 50">
+                          <path d="M8 46 A37 37 0 0 1 82 46" fill="none" stroke="#d1fae5" stroke-width="10" stroke-linecap="round"/>
+                          <path d="M8 46 A37 37 0 0 1 82 46" fill="none" stroke="#10b981" stroke-width="10" stroke-linecap="round"
+                            stroke-dasharray="116"
+                            :stroke-dashoffset="116 - (mitigationPct('low').compliancePct / 100 * 116)"/>
+                        </svg>
+                        <div style="position:absolute; bottom:2px; left:50%; transform:translateX(-50%); text-align:center; white-space:nowrap;">
+                          <div style="font-size:13px; font-weight:800; color:#1f2937;">{{ formatTimeline(authStore.mitigationTimeline?.low) }}</div>
+                        </div>
                       </div>
-                      <span class="dash-sev-pct">{{ formatTimeline(authStore.mitigationTimeline?.low) }}</span>
+                      <span style="font-size:12px; font-weight:600; color:#10b981; margin-top:4px;">Low</span>
                     </div>
+
                   </div>
 
                   <div class="d-flex justify-content-center gap-4 mt-4">
@@ -236,7 +269,7 @@
               </div>
 
               <!-- Card 4: Total Vulnerabilities Fixed -->
-              <div class="col-4">
+              <div class="col-4" style="display:flex; flex-direction:column;">
                 <div class="dash-card h-100">
                   <div class="d-flex align-items-center gap-2 mb-3">
                     <div class="dash-icon-wrap">
@@ -247,22 +280,52 @@
                   </div>
                   <div class="d-flex align-items-center gap-3 mb-3">
                     <span class="dash-big-num">{{ String(vulFixedTotal).padStart(2, '0') }}</span>
-                    <div class="dash-mom-badge">
-                      <i class="bi bi-arrow-up-short"></i>+5% MoM
+                  </div>
+                  <!-- API Data Vertical Bar Chart -->
+                  <div class="d-flex align-items-end justify-content-around gap-2 px-2" style="height: 90px;">
+                    <!-- Critical -->
+                    <div class="d-flex flex-column align-items-center gap-1" style="width:30px;">
+                      <span style="font-size:11px; font-weight:700; color:#1f2937;">{{ vulFixedCritical }}</span>
+                      <div style="width:100%; border-radius:4px 4px 0 0; background:#b91c1c; min-height:4px;"
+                        :style="{ height: vulFixedTotal ? (vulFixedCritical / vulFixedTotal * 70) + 'px' : '4px' }">
+                      </div>
+                    </div>
+                    <!-- High -->
+                    <div class="d-flex flex-column align-items-center gap-1" style="width:30px;">
+                      <span style="font-size:11px; font-weight:700; color:#1f2937;">{{ vulFixedHigh }}</span>
+                      <div style="width:100%; border-radius:4px 4px 0 0; background:#ef4444; min-height:4px;"
+                        :style="{ height: vulFixedTotal ? (vulFixedHigh / vulFixedTotal * 70) + 'px' : '4px' }">
+                      </div>
+                    </div>
+                    <!-- Medium -->
+                    <div class="d-flex flex-column align-items-center gap-1" style="width:30px;">
+                      <span style="font-size:11px; font-weight:700; color:#1f2937;">{{ vulFixedMedium }}</span>
+                      <div style="width:100%; border-radius:4px 4px 0 0; background:#f59e0b; min-height:4px;"
+                        :style="{ height: vulFixedTotal ? (vulFixedMedium / vulFixedTotal * 70) + 'px' : '4px' }">
+                      </div>
+                    </div>
+                    <!-- Low -->
+                    <div class="d-flex flex-column align-items-center gap-1" style="width:30px;">
+                      <span style="font-size:11px; font-weight:700; color:#1f2937;">{{ vulFixedLow }}</span>
+                      <div style="width:100%; border-radius:4px 4px 0 0; background:#10b981; min-height:4px;"
+                        :style="{ height: vulFixedTotal ? (vulFixedLow / vulFixedTotal * 70) + 'px' : '4px' }">
+                      </div>
                     </div>
                   </div>
-                  <!-- Decorative bar chart -->
-                  <div class="d-flex align-items-end gap-1" style="height: 64px;">
-                    <div v-for="(bar, idx) in fixedBars" :key="idx" class="flex-fill d-flex flex-column align-items-center gap-1">
-                      <div class="dash-mini-bar" :style="{ height: bar.h + '%', opacity: bar.op }"></div>
-                      <span class="dash-bar-lbl">{{ idx + 1 }}</span>
-                    </div>
+                  <!-- X-axis line -->
+                  <div style="border-top: 2px solid #e5e7eb; margin: 0 8px;"></div>
+                  <!-- Legend -->
+                  <div class="d-flex justify-content-around mt-2 flex-wrap px-1">
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#b91c1c;"></span>Critical</div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#ef4444;"></span>High</div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#f59e0b;"></span>Medium</div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#10b981;"></span>Low</div>
                   </div>
                 </div>
               </div>
 
               <!-- Card 5: MTTR -->
-              <div class="col-4">
+              <div class="col-4" style="display:flex; flex-direction:column;">
                 <div class="dash-card h-100">
                   <div class="d-flex align-items-center gap-2 mb-4">
                     <div class="dash-icon-wrap">
@@ -271,33 +334,77 @@
                     <span class="dash-card-label">Mean Time to Remediate (MTTR)</span>
                     <span class="info-tooltip" data-tooltip="Represents the average remediation time calculated based on the risk criteria defined for different vulnerability severity levels."><i class="bi bi-info-circle dash-info-icon"></i></span>
                   </div>
-                  <div class="d-flex align-items-center justify-content-between">
-                    <div class="d-flex align-items-center gap-2">
-                      <span style="font-size:1.4rem; font-weight:800; color:#1f2937;">{{ meanRemediateHuman }}</span>
-                      <i class="bi bi-arrow-down-circle-fill" style="color:#16a34a; font-size:1.1rem;"></i>
-                    </div>
-                    <!-- Circular gradient gauge -->
-                    <div style="width:80px; height:80px; flex-shrink:0;">
-                      <svg width="100%" height="100%" viewBox="0 0 100 100">
+                  <!-- Gauge + Time side by side -->
+                  <div class="d-flex align-items-center justify-content-center gap-4">
+
+                    <!-- Circular Gradient Gauge -->
+                    <div style="position:relative; width:110px; height:110px; flex-shrink:0;">
+                      <svg width="110" height="110" viewBox="0 0 110 110">
                         <defs>
-                          <linearGradient id="grad-gauge" x1="0%" x2="100%" y1="0%" y2="0%">
-                            <stop offset="0%" stop-color="#ef4444"/>
+                          <linearGradient id="mttr-grad" x1="0%" x2="100%" y1="0%" y2="0%">
+                            <stop offset="0%" stop-color="#10b981"/>
                             <stop offset="50%" stop-color="#f59e0b"/>
-                            <stop offset="100%" stop-color="#10b981"/>
+                            <stop offset="100%" stop-color="#ef4444"/>
                           </linearGradient>
                         </defs>
-                        <path d="M 20 80 A 40 40 0 1 1 80 80" fill="none" stroke="#f3f4f6" stroke-linecap="round" stroke-width="12"/>
-                        <path d="M 20 80 A 40 40 0 0 1 80 40" fill="none" stroke="url(#grad-gauge)" stroke-linecap="round" stroke-width="12"/>
-                        <line stroke="#475569" stroke-linecap="round" stroke-width="3" x1="50" x2="70" y1="50" y2="30"/>
-                        <circle cx="50" cy="50" fill="#475569" r="4"/>
+                        <!-- Background track -->
+                        <path d="M18 92 A46 46 0 1 1 92 92" fill="none" stroke="#f1f5f9" stroke-linecap="round" stroke-width="10"/>
+                        <!-- Filled arc -->
+                        <path d="M18 92 A46 46 0 1 1 92 92" fill="none" stroke="url(#mttr-grad)" stroke-linecap="round" stroke-width="10"
+                          stroke-dasharray="257"
+                          :stroke-dashoffset="257 - ((Math.min((authStore.meanTimeToRemediate?.mean_time_to_remediate?.weeks ?? 0), 4) / 4) * 257)"/>
+                        <!-- Center value -->
+                        <text x="55" y="68" text-anchor="middle" font-size="9" font-weight="900" fill="#1f2937">{{ meanRemediateHuman }}</text>
+                        <text x="55" y="80" text-anchor="middle" font-size="7" fill="#94a3b8">MTTR</text>
                       </svg>
                     </div>
+
+                    <!-- Weeks / Days / Hours breakdown -->
+                    <div class="d-flex flex-column gap-3" style="min-width:120px;">
+                      <!-- Weeks -->
+                      <div>
+                        <div class="d-flex justify-content-between mb-1">
+                          <span style="font-size:11px; color:#64748b;">Weeks</span>
+                          <strong style="font-size:11px; color:#1f2937;">{{ authStore.meanTimeToRemediate?.mean_time_to_remediate?.weeks ?? 0 }}</strong>
+                        </div>
+                        <div style="height:5px; background:#f1f5f9; border-radius:3px;">
+                          <div style="height:100%; border-radius:3px; background:#10b981; transition:width 0.4s;"
+                            :style="{ width: Math.min((authStore.meanTimeToRemediate?.mean_time_to_remediate?.weeks ?? 0), 4) / 4 * 100 + '%' }">
+                          </div>
+                        </div>
+                      </div>
+                      <!-- Days -->
+                      <div>
+                        <div class="d-flex justify-content-between mb-1">
+                          <span style="font-size:11px; color:#64748b;">Days</span>
+                          <strong style="font-size:11px; color:#1f2937;">{{ authStore.meanTimeToRemediate?.mean_time_to_remediate?.days ?? 0 }}</strong>
+                        </div>
+                        <div style="height:5px; background:#f1f5f9; border-radius:3px;">
+                          <div style="height:100%; border-radius:3px; background:#f59e0b; transition:width 0.4s;"
+                            :style="{ width: Math.min((authStore.meanTimeToRemediate?.mean_time_to_remediate?.days ?? 0), 7) / 7 * 100 + '%' }">
+                          </div>
+                        </div>
+                      </div>
+                      <!-- Hours -->
+                      <div>
+                        <div class="d-flex justify-content-between mb-1">
+                          <span style="font-size:11px; color:#64748b;">Hours</span>
+                          <strong style="font-size:11px; color:#1f2937;">{{ authStore.meanTimeToRemediate?.mean_time_to_remediate?.hours_remaining ?? 0 }}</strong>
+                        </div>
+                        <div style="height:5px; background:#f1f5f9; border-radius:3px;">
+                          <div style="height:100%; border-radius:3px; background:#ef4444; transition:width 0.4s;"
+                            :style="{ width: Math.min((authStore.meanTimeToRemediate?.mean_time_to_remediate?.hours_remaining ?? 0), 24) / 24 * 100 + '%' }">
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
                   </div>
                 </div>
               </div>
 
               <!-- Card 6: Support Requests -->
-              <div class="col-4">
+              <div class="col-4" style="display:flex; flex-direction:column;">
                 <router-link to="/supportrequests" class="text-decoration-none">
                   <div class="dash-card h-100">
                     <div class="d-flex align-items-center gap-2 mb-4">
@@ -346,101 +453,217 @@
                 </div>
 
                 <div class="p-4">
-                  <!-- Team label -->
-                  <p class="ms-team-label mb-3">Assigned to <strong>{{ mitigationActiveTab }}</strong> team</p>
 
-                  <!-- Risk Criteria — stacked vertically -->
-                  <div class="ms-risk-stack mb-4">
-
-                    <div class="ms-risk-row ms-risk-critical">
-                      <div class="ms-risk-left">
-                        <span class="ms-risk-dot" style="background:#9b1c1c;"></span>
-                        <span class="ms-risk-name" style="color:#9b1c1c;">Critical</span>
-                      </div>
-                      <div class="ms-risk-right">
-                        <span class="ms-risk-value">{{ riskCriteria.critical ?? '—' }}</span>
-                        <button class="ms-risk-add" @click.stop="openModal('critical')" title="Update">
-                          <i class="bi bi-pencil-square"></i>
-                        </button>
-                      </div>
-                    </div>
-
-                    <div class="ms-risk-row ms-risk-high">
-                      <div class="ms-risk-left">
-                        <span class="ms-risk-dot" style="background:#c2410c;"></span>
-                        <span class="ms-risk-name" style="color:#c2410c;">High</span>
-                      </div>
-                      <div class="ms-risk-right">
-                        <span class="ms-risk-value">{{ riskCriteria.high ?? '—' }}</span>
-                        <button class="ms-risk-add" @click.stop="openModal('high')" title="Update">
-                          <i class="bi bi-pencil-square"></i>
-                        </button>
-                      </div>
-                    </div>
-
-                    <div class="ms-risk-row ms-risk-medium">
-                      <div class="ms-risk-left">
-                        <span class="ms-risk-dot" style="background:#a16207;"></span>
-                        <span class="ms-risk-name" style="color:#a16207;">Medium</span>
-                      </div>
-                      <div class="ms-risk-right">
-                        <span class="ms-risk-value">{{ riskCriteria.medium ?? '—' }}</span>
-                        <button class="ms-risk-add" @click.stop="openModal('medium')" title="Update">
-                          <i class="bi bi-pencil-square"></i>
-                        </button>
-                      </div>
-                    </div>
-
-                    <div class="ms-risk-row ms-risk-low">
-                      <div class="ms-risk-left">
-                        <span class="ms-risk-dot" style="background:#15803d;"></span>
-                        <span class="ms-risk-name" style="color:#15803d;">Low</span>
-                      </div>
-                      <div class="ms-risk-right">
-                        <span class="ms-risk-value">{{ riskCriteria.low ?? '—' }}</span>
-                        <button class="ms-risk-add" @click.stop="openModal('low')" title="Update">
-                          <i class="bi bi-pencil-square"></i>
-                        </button>
-                      </div>
-                    </div>
-
+                  <!-- Assets count row -->
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <p class="mb-0 fw-semibold" style="font-size:14px;">Assets <span style="color:#3121B1;">({{ teamAssets.length }})</span></p>
+                    <button class="btn border-0 p-0" style="color:#3121B1; font-weight:600; font-size:14px;" @click="showAssetsOverlay = true">
+                      View Assets <i class="bi bi-arrow-right"></i>
+                    </button>
                   </div>
+                  <div v-if="teamAssets.length === 0" class="py-2 text-muted small mb-3">No assets assigned to this team.</div>
 
                   <!-- Vulnerabilities header -->
-                  <div class="d-flex justify-content-between align-items-center mb-3">
+                  <div class="d-flex justify-content-between align-items-center mb-3 mt-2">
                     <p class="mb-0 fw-semibold" style="font-size:14px;">Vulnerabilities ({{ uniqueMitigationVulns.length }})</p>
                     <router-link :to="{ path: '/missingsecurityupdates', query: { team: mitigationActiveTab } }">
-                      <button class="btn border-0" style="color:#0f696e; font-weight:600; font-size:14px;">More details <i class="bi bi-arrow-right"></i></button>
+                      <button class="btn border-0" style="color:#3121B1; font-weight:600; font-size:14px;">More details <i class="bi bi-arrow-right"></i></button>
                     </router-link>
                   </div>
-
-                  <!-- Vulnerability cards grid -->
                   <div v-if="mitigationLoading" class="py-3 text-center text-muted">Loading...</div>
-                  <div v-else-if="uniqueMitigationVulns.length === 0" class="py-3 text-muted small">No vulnerabilities assigned to this team.</div>
-                  <div v-else class="row g-3">
-                    <div
-                      v-for="vuln in uniqueMitigationVulns.slice(0, 4)"
-                      :key="vuln.plugin_name"
-                      class="col-3"
-                    >
-                      <div class="dash-vuln-card">
-                        <div class="d-flex justify-content-between align-items-start mb-3">
-                          <div class="dash-icon-wrap">
-                            <i class="bi bi-hdd-network dash-icon-teal" style="font-size:14px;"></i>
-                          </div>
-                          <span :style="{ color: getMitigationRiskColor(vuln.risk_factor), fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }">{{ vuln.risk_factor }}</span>
-                        </div>
-                        <h6 class="truncated-text fw-bold mb-2" style="font-size:13px; color:#1f2937; line-height:1.4;" :title="vuln.plugin_name">{{ vuln.plugin_name }}</h6>
-                        <div class="d-flex align-items-center gap-1 mb-4">
-                          <i class="bi bi-hdd-network" style="font-size:12px; color:#94a3b8;"></i>
-                          <span style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">{{ vulnAssetCountMap[vuln.plugin_name] ?? 1 }} assets</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <div v-else-if="uniqueMitigationVulns.length === 0" class="py-2 text-muted small">No vulnerabilities assigned to this team.</div>
+
                 </div>
               </div>
             </section>
+
+            <!-- ===== ASSETS SLIDE-IN OVERLAY ===== -->
+            <div v-if="showAssetsOverlay" style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.35); z-index:1050;" @click.self="showAssetsOverlay = false">
+              <div style="position:fixed; top:0; right:0; width:82vw; height:100vh; background:#f3f4f6; display:flex; flex-direction:column; box-shadow:-4px 0 24px rgba(0,0,0,0.15); z-index:1051; overflow:hidden;">
+
+                <!-- Close button -->
+                <button class="btn border-0 p-0" style="position:absolute; top:16px; right:16px; z-index:10; font-size:1.3rem; color:#64748b;" @click="showAssetsOverlay = false">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+
+                <!-- Split Panel -->
+                <div class="assets-split-panel" style="height:100%; overflow:hidden;">
+
+                  <!-- Left Panel -->
+                  <div class="assets-left-panel">
+                    <div class="left-panel-header">
+                      <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h2 class="assets-title">All Assets</h2>
+                        <span class="assets-count-badge">{{ authStore.assetCount }} Assets</span>
+                      </div>
+                      <div class="position-relative search-wrap">
+                        <i class="bi bi-search search-icon-left"></i>
+                        <input v-model="overlayQuery" class="assets-search" placeholder="Search assets, IPs..." />
+                        <i v-if="overlayQuery" class="bi bi-x-circle-fill clear-icon" @click="overlayQuery = ''"></i>
+                      </div>
+                    </div>
+
+                    <div class="asset-list-scroll">
+                      <div
+                        v-for="(asset, i) in overlayPagedAssets"
+                        :key="asset.id || asset.asset || i"
+                        class="asset-item-new"
+                        :class="{ 'asset-item-active': overlayActiveIndex === asset.asset }"
+                        @click="overlaySetActive(asset)"
+                      >
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                          <span class="asset-ip">{{ asset.asset }}</span>
+                          <span v-if="getPrioritySeverity(asset)" class="sev-badge" :class="'sev-' + getPrioritySeverity(asset).toLowerCase()">
+                            {{ getPrioritySeverity(asset) }}
+                          </span>
+                        </div>
+                        <div class="d-flex gap-2 flex-wrap mt-1">
+                          <span class="sev-count-dot critical-dot">{{ asset.severity_counts?.critical || 0 }}</span>
+                          <span class="sev-count-dot high-dot">{{ asset.severity_counts?.high || 0 }}</span>
+                          <span class="sev-count-dot medium-dot">{{ asset.severity_counts?.medium || 0 }}</span>
+                          <span class="sev-count-dot low-dot">{{ asset.severity_counts?.low || 0 }}</span>
+                        </div>
+                      </div>
+                      <div v-if="overlayPagedAssets.length === 0" class="text-muted small py-3 text-center">No assets found.</div>
+                    </div>
+                  </div>
+
+                  <!-- Right Panel -->
+                  <div class="assets-right-panel">
+                    <div v-if="!overlaySelectedAsset" class="d-flex align-items-center justify-content-center h-100 text-muted">
+                      <div class="text-center">
+                        <i class="bi bi-hdd-network" style="font-size:3rem; color:#cbd5e1;"></i>
+                        <p class="mt-3">Select an asset to view details</p>
+                      </div>
+                    </div>
+                    <div v-else>
+                      <div class="right-panel-header">
+                        <div class="d-flex align-items-center gap-3 mb-3 flex-wrap pt-3 asset-top-meta-row">
+                          <h1 class="asset-detail-title">{{ authStore.selectedAssetDetail?.asset }}</h1>
+                          <span v-if="authStore.selectedAssetDetail?.severity" class="sev-badge" :class="'sev-' + (authStore.selectedAssetDetail.severity?.toLowerCase() || '')">
+                            {{ authStore.selectedAssetDetail.severity }}
+                          </span>
+                          <span class="status-open-badge"><span class="status-dot-open"></span>Open</span>
+                          <span class="asset-last-scanned" style="color:#64748b; font-size:12px;">Last scanned: 2 hours ago</span>
+                        </div>
+                        <div class="detail-tabs">
+                          <button class="detail-tab" :class="{ 'detail-tab-active': overlayActiveTab === 'vulnerabilities' }" @click="overlayActiveTab = 'vulnerabilities'">
+                            Vulnerabilities ({{ overlayFilteredVulns.length }})
+                          </button>
+                          <button class="detail-tab" :class="{ 'detail-tab-active': overlayActiveTab === 'exceptions' }" @click="overlayActiveTab = 'exceptions'">
+                            Support Requests
+                            <span v-if="overlaySupportRequests.length > 0" class="badge rounded-circle bg-danger ms-1" style="font-size:11px;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;">
+                              {{ overlaySupportRequests.length }}
+                            </span>
+                          </button>
+                          <button class="detail-tab" disabled style="opacity:0.4;cursor:not-allowed;">Related Assets</button>
+                        </div>
+                      </div>
+
+                      <div class="right-panel-scroll">
+                        <!-- Vulnerabilities Tab -->
+                        <div v-if="overlayActiveTab === 'vulnerabilities'">
+                          <div class="d-flex gap-2 mb-4">
+                            <button class="sev-pill" :class="{ 'sev-pill-active': overlayActiveSeverity === 'All' }" @click="overlayActiveSeverity = 'All'">All</button>
+                            <button class="sev-pill sev-pill-critical" :class="{ 'sev-pill-active': overlayActiveSeverity === 'Critical' }" @click="overlayActiveSeverity = 'Critical'">Critical</button>
+                            <button class="sev-pill sev-pill-high" :class="{ 'sev-pill-active': overlayActiveSeverity === 'High' }" @click="overlayActiveSeverity = 'High'">High</button>
+                            <button class="sev-pill sev-pill-medium" :class="{ 'sev-pill-active': overlayActiveSeverity === 'Medium' }" @click="overlayActiveSeverity = 'Medium'">Medium</button>
+                            <button class="sev-pill sev-pill-low" :class="{ 'sev-pill-active': overlayActiveSeverity === 'Low' }" @click="overlayActiveSeverity = 'Low'">Low</button>
+                          </div>
+                          <h3 class="section-label mb-3">Active Threats</h3>
+                          <div v-if="overlayVulnsLoading" class="text-center py-4 text-muted">Loading...</div>
+                          <div v-else-if="overlayFilteredVulns.length === 0" class="text-muted small py-3">No vulnerabilities found.</div>
+                          <div v-else class="d-flex flex-column gap-3">
+                            <div v-for="(v, i) in overlayFilteredVulns" :key="i" class="vuln-accordion-item">
+                              <div class="vuln-accordion-header" data-bs-toggle="collapse" :data-bs-target="'#ov' + i" role="button">
+                                <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
+                                  <i class="bi bi-exclamation-triangle-fill vuln-icon flex-shrink-0"
+                                    :class="{
+                                      'vuln-icon-critical': v.severity === 'Critical',
+                                      'vuln-icon-high': v.severity === 'High',
+                                      'vuln-icon-medium': v.severity === 'Medium',
+                                      'vuln-icon-low': v.severity === 'Low'
+                                    }"></i>
+                                  <span class="vuln-name">{{ v.vul_name }}</span>
+                                </div>
+                                <div class="d-flex align-items-center gap-3 flex-shrink-0 vuln-top-meta-row">
+                                  <span class="sev-badge" :class="'sev-' + (v.severity?.toLowerCase() || '')">{{ v.severity }}</span>
+                                  <span class="status-open-badge"><span class="status-dot-open"></span>Open</span>
+                                  <span class="text-muted" style="font-size:0.78rem;">CVSS: {{ v.cvss_score || '-' }}</span>
+                                  <i class="bi bi-chevron-down text-muted"></i>
+                                </div>
+                              </div>
+                              <div :id="'ov' + i" class="accordion-collapse collapse" :class="{ show: i === 0 }">
+                                <div class="vuln-accordion-body">
+                                  <div class="vuln-meta-grid">
+                                    <div class="vuln-meta-cell">
+                                      <p class="vuln-meta-label">Vendor Fix</p>
+                                      <p class="vuln-meta-value teal">{{ v.vendor_fix_available || '-' }}</p>
+                                    </div>
+                                    <div class="vuln-meta-cell">
+                                      <p class="vuln-meta-label">CVSS Score</p>
+                                      <p class="vuln-meta-value">{{ v.cvss_score || '-' }}</p>
+                                    </div>
+                                  </div>
+                                  <div class="mb-4">
+                                    <h5 class="vuln-desc-title">Description</h5>
+                                    <p class="vuln-desc-text">{{ v.description }}</p>
+                                  </div>
+                                  <div class="d-flex gap-3">
+                                    <router-link
+                                      v-if="authStore.latestReportId"
+                                      :to="{ name: 'VulFix', params: { reportId: authStore.latestReportId, asset: authStore.selectedAssetDetail?.asset }, query: { id: getOverlayVulRegisterId(v), plugin_name: v.vul_name, risk_factor: v.severity } }"
+                                      class="btn-fix-now text-decoration-none"
+                                      @click="showAssetsOverlay = false">
+                                      Fix Now
+                                    </router-link>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <!-- Fixed Recently -->
+                          <div v-if="overlayClosedVulns.length" class="mt-5">
+                            <div class="d-flex align-items-center mb-3">
+                              <h3 class="section-label">Fixed Recently</h3>
+                              <div class="fixed-divider flex-grow-1 ms-3"></div>
+                            </div>
+                            <div class="d-flex flex-column gap-2">
+                              <div v-for="(item, i) in overlayClosedVulns" :key="i" class="fixed-item">
+                                <div class="d-flex align-items-center gap-3">
+                                  <i class="bi bi-check-circle-fill fixed-check-icon"></i>
+                                  <div>
+                                    <p class="fixed-vuln-name">{{ item.vulnerability_name }}</p>
+                                    <p class="fixed-vuln-date">Status: {{ item.status }}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Support Requests Tab -->
+                        <div v-if="overlayActiveTab === 'exceptions'">
+                          <div v-if="overlaySupportRequests.length">
+                            <div v-for="(req, i) in overlaySupportRequests" :key="req._id" class="support-req-item">
+                              <div class="d-flex align-items-center gap-3">
+                                <div class="sr-index-circle">{{ i + 1 }}</div>
+                                <p class="sr-vul-name mb-0">{{ req.vul_name }}</p>
+                              </div>
+                            </div>
+                          </div>
+                          <div v-else class="sr-empty">
+                            <i class="bi bi-inbox me-2"></i>No support requests raised for this asset.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
 
           </div>
         </div>
@@ -468,7 +691,6 @@
       </div>
 
     </section>
-  </main>
 </template>
 
 <script>
@@ -527,6 +749,15 @@ export default {
       reportStatusInterval: null,
       currentReportId: null,
       supportTotal: 0,
+      showAssetsOverlay: false,
+      overlayQuery: '',
+      overlaySelectedAsset: null,
+      overlayActiveTab: 'vulnerabilities',
+      overlayActiveSeverity: 'All',
+      overlayVulnsLoading: false,
+      overlaySupportRequests: [],
+      overlayClosedVulns: [],
+      overlayActiveIndex: null,
       supportPending: 0,
       supportClosed: 0,
       vulFixedTotal: 0,
@@ -537,6 +768,7 @@ export default {
       mitigationLoading: false,
       mitigationByTeamData: null,
       vulnAssetCountData: null,
+      allAssets: [],
       mitigationActiveTab: "Patch Management",
       mitigationTabs: [
         { key: "Patch Management", label: "Patch Management" },
@@ -568,6 +800,40 @@ export default {
         }
       }
       return map;
+    },
+    teamAssets() {
+      if (!this.mitigationActiveTab || !this.allAssets.length) return [];
+      const norm = (s) => String(s).toLowerCase().trim();
+      const byTeam = this.allAssets.filter(a =>
+        Array.isArray(a.assigned_teams) &&
+        a.assigned_teams.some(t => norm(t) === norm(this.mitigationActiveTab))
+      );
+      if (byTeam.length > 0) return byTeam;
+      const teamVulns = this.mitigationActiveTeamData.vulnerabilities || [];
+      const teamHostnames = new Set();
+      for (const vuln of teamVulns) {
+        if (Array.isArray(vuln.assets)) vuln.assets.forEach(h => teamHostnames.add(norm(h)));
+        else if (vuln.host_name) teamHostnames.add(norm(vuln.host_name));
+      }
+      if (teamHostnames.size === 0) return [];
+      return this.allAssets.filter(a => teamHostnames.has(norm(a.asset)));
+    },
+    filteredOverlayAssets() {
+      const q = (this.overlayQuery || '').toLowerCase();
+      const assets = this.authStore.assetRows || [];
+      if (!q) return assets;
+      return assets.filter(a => (a.asset || '').toLowerCase().includes(q));
+    },
+    overlayPagedAssets() {
+      return this.filteredOverlayAssets;
+    },
+    overlayFilteredVulns() {
+      const list = this.authStore.selectedAssetVulnerabilities || [];
+      const filtered = this.overlayActiveSeverity === 'All' ? list : list.filter(v => v.severity === this.overlayActiveSeverity);
+      return [...filtered].sort((a, b) => {
+        const rank = { Critical: 1, High: 2, Medium: 3, Low: 4 };
+        return (rank[a.severity] || 99) - (rank[b.severity] || 99);
+      });
     },
     uniqueMitigationVulns() {
       const seen = new Map();
@@ -658,17 +924,7 @@ export default {
         low: seg(p3, p4, lf),
       };
     },
-    fixedBars() {
-      return [
-        { h: 20, op: 0.3 },
-        { h: 30, op: 0.4 },
-        { h: 70, op: 0.8 },
-        { h: 25, op: 0.3 },
-        { h: 45, op: 0.5 },
-        { h: 75, op: 0.8 },
-        { h: 25, op: 0.3 },
-      ];
-    },
+
   },
   watch: {},
   methods: {
@@ -691,6 +947,52 @@ export default {
       if (str.includes('week')) allowed *= 7;
       if (!allowed) return { compliancePct: 50 };
       return { compliancePct: Math.min(Math.max((remaining / allowed) * 100, 0), 100) };
+    },
+    async loadAllAssets() {
+      const result = await this.authStore.fetchAssets();
+      if (result.status) {
+        this.allAssets = this.authStore.assetRows || [];
+      }
+    },
+
+    getPrioritySeverity(asset) {
+      const s = asset?.severity_counts || {};
+      if ((s.critical ?? 0) > 0) return 'Critical';
+      if ((s.high ?? 0) > 0) return 'High';
+      if ((s.medium ?? 0) > 0) return 'Medium';
+      if ((s.low ?? 0) > 0) return 'Low';
+      return '';
+    },
+    async overlaySetActive(asset) {
+      if (!asset?.asset) return;
+      this.overlaySelectedAsset = asset;
+      this.overlayActiveIndex = asset.asset;
+      this.overlayActiveTab = 'vulnerabilities';
+      this.overlayActiveSeverity = 'All';
+      this.overlayVulnsLoading = true;
+      this.overlaySupportRequests = [];
+      this.overlayClosedVulns = [];
+
+      await this.authStore.fetchSingleAssetVulnerabilities(asset.asset);
+      this.overlayVulnsLoading = false;
+
+      const supRes = await this.authStore.getSupportRequestsByHost(asset.asset);
+      if (supRes.status) this.overlaySupportRequests = supRes.data || [];
+
+      const reportId = this.authStore.latestReportId;
+      if (reportId) {
+        const fixRes = await this.authStore.getClosedVulnerabilities(reportId, asset.asset);
+        if (fixRes.status && fixRes.data?.results) {
+          this.overlayClosedVulns = fixRes.data.results.filter(v => v.status?.toLowerCase() === 'closed');
+        }
+      }
+    },
+    getOverlayVulRegisterId(v) {
+      const asset = this.authStore.selectedAssetDetail?.asset;
+      const match = this.authStore.vulnerabilityRows?.find(
+        row => (row.vul_name === v.vul_name || row.vulnerability_name === v.vul_name) && row.asset === asset
+      );
+      return match?.id || v.id || '';
     },
     async loadMitigationByTeam() {
       this.mitigationLoading = true;
@@ -1066,6 +1368,7 @@ export default {
       this.loadMitigationByTeam();
       this.loadVulnAssetCount();
       this.loadRiskCriteria();
+      this.loadAllAssets();
       Promise.all([
         this.authStore.fetchDashboardTotalAssets(),
         this.authStore.fetchDashboardAvgScore(),
@@ -1634,5 +1937,456 @@ mounted() {
 .ms-risk-add:hover {
   color: #241447;
   background: rgba(36,20,71,0.08);
+}
+
+/* ===== ASSETS OVERLAY CSS ===== */
+.assets-split-panel {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  background: #f8f9fc;
+  overflow: hidden;
+}
+
+.assets-left-panel {
+  width: 340px;
+  min-width: 300px;
+  max-width: 340px;
+  flex-shrink: 0;
+  border-right: 1px solid rgba(203,196,208,0.3);
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  overflow: hidden;
+  padding-top: 10px;
+}
+
+.left-panel-header {
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid rgba(203,196,208,0.2);
+  flex-shrink: 0;
+}
+
+.assets-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #241447;
+  margin: 0;
+}
+
+.assets-count-badge {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #49454f;
+  background: #edeef1;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.search-wrap {
+  position: relative;
+  margin-top: 20px;
+  padding-top: 0;
+}
+.search-icon-left {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #49454f;
+  font-size: 0.82rem;
+  pointer-events: none;
+}
+
+.assets-search {
+  width: 100%;
+  padding: 8px 32px 8px 30px;
+  border: none;
+  border-radius: 8px;
+  background: #f8f9fc;
+  font-size: 0.84rem;
+  outline: none;
+  color: #191c1e;
+}
+.assets-search:focus { box-shadow: 0 0 0 2px rgba(15,105,110,0.2); }
+
+.clear-icon {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: #49454f;
+  font-size: 0.85rem;
+}
+
+.asset-list-scroll {
+  flex: 1;
+  overflow-y: auto;
+}
+.asset-list-scroll::-webkit-scrollbar { width: 4px; }
+.asset-list-scroll::-webkit-scrollbar-thumb { background: #cbc4d0; border-radius: 10px; }
+
+.asset-item-new {
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(203,196,208,0.15);
+  cursor: pointer;
+  transition: background 0.15s;
+  border-left: 4px solid transparent;
+}
+.asset-item-new:hover { background: #f2f3f6; }
+.asset-item-active {
+  background: #ffffff;
+  border-left: 4px solid #0f696e !important;
+}
+.asset-item-new .sev-badge {
+  margin-top: 8px;
+}
+
+.asset-ip {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #241447;
+}
+
+.sev-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 4px 12px;
+  border-radius: 50px;
+  white-space: nowrap;
+  border: none;
+}
+.sev-critical { background: #ffdad6; color: #93000a; }
+.sev-high     { background: #ffedd5; color: #c2410c; }
+.sev-medium   { background: #fef9c3; color: #854d0e; }
+.sev-low      { background: #ccfbf1; color: #0f696e; }
+
+.sev-count-dot {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+.critical-dot { color: maroon;  background: #fdeaea; }
+.high-dot     { color: red;     background: rgb(246,214,214); }
+.medium-dot   { color: orange;  background: rgb(249,225,193); }
+.low-dot      { color: green;   background: rgb(202,233,204); }
+
+.assets-right-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #f8f9fc;
+  overflow: hidden;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.right-panel-header {
+  padding: 56px 36px 0;
+  background: #f8f9fc;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.asset-detail-title {
+  font-size: 1.7rem;
+  font-weight: 800;
+  color: #241447;
+  letter-spacing: -0.02em;
+  margin: 0;
+  padding-top: 0;
+}
+
+.asset-top-meta-row {
+  margin-top: 0;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.asset-top-meta-row .sev-badge,
+.asset-top-meta-row .status-open-badge {
+  margin-top: 0;
+}
+
+.asset-top-meta-row .asset-last-scanned {
+  margin-top: 0;
+}
+
+.status-open-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+.status-dot-open {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #16a34a;
+  flex-shrink: 0;
+}
+
+.vuln-top-meta-row {
+  margin-top: 4px;
+}
+
+.detail-tabs {
+  display: flex;
+  gap: 24px;
+  border-bottom: 1px solid rgba(203,196,208,0.2);
+}
+.detail-tab {
+  padding-bottom: 10px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #49454f;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.detail-tab:hover { color: #241447; }
+.detail-tab-active {
+  font-weight: 700;
+  color: #0f696e;
+  border-bottom: 2px solid #0f696e;
+}
+
+.right-panel-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 24px 36px;
+}
+.right-panel-scroll::-webkit-scrollbar { width: 4px; }
+.right-panel-scroll::-webkit-scrollbar-thumb { background: #cbc4d0; border-radius: 10px; }
+
+.section-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #49454f;
+  margin: 0;
+}
+
+.sev-pill {
+  border-radius: 50px;
+  padding: 5px 14px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  background: white;
+  border: 1px solid rgba(0,0,0,0.12);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.sev-pill:hover { background: #f2f3f6; }
+.sev-pill-active {
+  background: #e0f2f1 !important;
+  color: #0f696e !important;
+  border-color: #0f696e !important;
+  font-weight: 700;
+}
+.sev-pill-critical { color: #93000a; }
+.sev-pill-high     { color: #9a3412; }
+.sev-pill-medium   { color: #854d0e; }
+.sev-pill-low      { color: #0f696e; }
+
+.vuln-accordion-item {
+  border-radius: 12px;
+  overflow: hidden;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  border: 1px solid rgba(203,196,208,0.25);
+}
+
+.vuln-accordion-header {
+  padding: 14px 16px;
+  background: #f2f3f6;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  gap: 12px;
+}
+.vuln-accordion-header:hover { background: #edeef1; }
+
+.vuln-icon { font-size: 1rem; }
+.vuln-icon-critical { color: #ba1a1a; }
+.vuln-icon-high     { color: #ea580c; }
+.vuln-icon-medium   { color: #ca8a04; }
+.vuln-icon-low      { color: #0f696e; }
+
+.vuln-name {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #241447;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vuln-accordion-body { padding: 18px 20px; }
+
+.vuln-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.vuln-meta-cell {
+  background: #f2f3f6;
+  padding: 10px;
+  border-radius: 8px;
+}
+.vuln-meta-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #49454f;
+  margin-bottom: 3px;
+}
+.vuln-meta-value {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #241447;
+  margin: 0;
+}
+.vuln-meta-value.teal { color: #0f696e; }
+
+.vuln-desc-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #241447;
+  margin-bottom: 5px;
+}
+.vuln-desc-text {
+  font-size: 0.875rem;
+  color: #49454f;
+  line-height: 1.6;
+}
+
+.btn-fix-now {
+  background: #241447;
+  color: white !important;
+  padding: 7px 22px;
+  border-radius: 50px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  display: inline-block;
+}
+.btn-fix-now:hover { opacity: 0.88; }
+
+.fixed-divider { height: 1px; background: rgba(203,196,208,0.25); }
+.fixed-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f2f3f6;
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+.fixed-check-icon { color: #16a34a; font-size: 1.1rem; }
+.fixed-vuln-name {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #241447;
+  margin: 0;
+}
+.fixed-vuln-date {
+  font-size: 0.7rem;
+  color: #49454f;
+  margin: 0;
+}
+
+.support-req-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(203,196,208,0.2);
+}
+.sr-index-circle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #f0ecff;
+  color: #241447;
+  font-size: 0.78rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.sr-vul-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #241447;
+}
+.sr-empty {
+  color: #94a3b8;
+  font-size: 0.875rem;
+  padding: 16px 0;
+  display: flex;
+  align-items: center;
+}
+
+.mitigation-hold-section {
+  flex-shrink: 0;
+  background: #f2f3f6;
+  padding: 14px 16px;
+  border-top: 1px solid rgba(203,196,208,0.2);
+  max-height: 220px;
+  overflow-y: auto;
+}
+.hold-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #49454f;
+  margin: 0;
+}
+.hold-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 9px 12px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  border-left: 3px solid #7a7580;
+}
+.hold-ip {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #241447;
+  margin: 0;
+}
+.hold-sub {
+  font-size: 0.7rem;
+  color: #49454f;
+  margin: 0;
+  text-transform: capitalize;
 }
 </style>
