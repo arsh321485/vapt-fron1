@@ -10,660 +10,362 @@
             <DashboardMenu />
           </div>
 
-          <div class="col-11 pt-5 mt-2 pb-3 pe-5">
-            <div class="row">
-                <div class="col-4 p-3 border-end px-0">
-                  <div class="d-flex justify-content-between ms-3 pt-3">
-                    <h5 class="mb-0 fw-semibold" style="font-weight: 500;font-size: 28px;">Assigned Assets ({{ totalAssets }})</h5>
-                    <div class="d-flex flex-row gap-3 me-3 mt-1">
-                      <i class="bi bi-trash fs-5" style="cursor: pointer;" data-bs-toggle="tooltip"  :class="{ 'text-muted': activeAction !== '' && activeAction !== 'delete' }" @click="handleDeleteClick" title="Remove an asset"></i>
-                      <i class="bi bi-eye-slash fs-5" style="cursor: pointer;" data-bs-toggle="tooltip" :class="{ 'text-muted': activeAction !== '' && activeAction !== 'hold' }"  @click="toggleHoldMode" title="Hold mitigation"></i>
-                    </div>
-                  </div>
+          <div class="col-11 assets-content">
+            <div class="assets-split-panel">
 
-                <div class="mb-4 pe-3 ms-3 mt-3">
-                  <form class="d-flex">
-                    <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search" v-model="searchQuery" style="padding-top: 6px;padding-bottom: 6px;">
-                  </form>
+              <!-- Left Panel: Asset List -->
+              <div class="assets-left-panel">
+                <!-- Header -->
+                <div class="left-panel-header">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h2 class="assets-title">All Assets</h2>
+                    <span class="assets-count-badge">{{ totalAssets }} Assets</span>
+                  </div>
+                  <div class="d-flex gap-3 mb-3">
+                    <i class="bi bi-trash action-icon" data-bs-toggle="tooltip"
+                      :class="{ 'text-muted': activeAction !== '' && activeAction !== 'delete' }"
+                      @click.stop="handleDeleteClick" title="Remove an asset" role="button"></i>
+                    <i class="bi bi-eye-slash action-icon" data-bs-toggle="tooltip"
+                      :class="{ 'text-muted': activeAction !== '' && activeAction !== 'hold' }"
+                      @click.stop="toggleHoldMode" title="Hold mitigation" role="button"></i>
+                  </div>
+                  <div class="position-relative search-wrap">
+                    <i class="bi bi-search search-icon-left"></i>
+                    <input v-model="searchQuery" class="assets-search" placeholder="Search assets, IPs..." />
+                    <i v-if="searchQuery" class="bi bi-x-circle-fill clear-icon" @click="searchQuery = ''"></i>
+                  </div>
                 </div>
 
                 <!-- Asset List -->
-                <div v-if="loading" class="text-center py-4">
-                  <span class="spinner-border text-primary"></span>
+                <div class="asset-list-scroll">
+                  <div v-if="loading" class="text-center py-4">
+                    <span class="spinner-border spinner-border-sm text-primary"></span>
+                  </div>
+                  <template v-else>
+                    <div v-for="(asset, i) in pagedAssets" :key="asset.id || asset.asset || i"
+                      class="asset-item-new"
+                      :class="{ 'asset-item-active': activeIndex === asset.asset }"
+                      @click="setActive(asset)">
+                      <div class="d-flex justify-content-between align-items-start mb-1">
+                        <div class="d-flex align-items-center gap-2">
+                          <input v-if="showCheckboxes" type="checkbox" v-model="asset.selected" class="form-check-input" />
+                          <input v-if="showHoldCheckboxes" type="checkbox" v-model="asset.selected" class="form-check-input" />
+                          <span class="asset-ip">{{ asset.asset }}</span>
+                        </div>
+                        <span v-if="getTopSeverity(asset.severity_counts)" class="sev-badge"
+                          :class="'sev-' + getTopSeverity(asset.severity_counts).toLowerCase()">
+                          {{ getTopSeverity(asset.severity_counts) }}
+                        </span>
+                      </div>
+                      <p class="asset-sub mb-2">
+                        <i class="bi bi-link-45deg me-1"></i>
+                        {{ asset.isInternal ? 'Internal' : 'External' }}
+                      </p>
+                      <div class="d-flex gap-2 flex-wrap">
+                        <span class="vuln-chip">
+                          {{ (asset.severity_counts?.critical || 0) + (asset.severity_counts?.high || 0) + (asset.severity_counts?.medium || 0) + (asset.severity_counts?.low || 0) }} Vulns
+                        </span>
+                        <span class="sev-count-dot critical-dot">{{ asset.severity_counts?.critical || 0 }}</span>
+                        <span class="sev-count-dot high-dot">{{ asset.severity_counts?.high || 0 }}</span>
+                        <span class="sev-count-dot medium-dot">{{ asset.severity_counts?.medium || 0 }}</span>
+                        <span class="sev-count-dot low-dot">{{ asset.severity_counts?.low || 0 }}</span>
+                      </div>
+                    </div>
+
+                    <!-- Pagination -->
+                    <nav v-if="totalPages > 1" class="pagination-bottom">
+                      <ul class="pagination pagination-sm mb-0 custom-pagination">
+                        <li class="page-item" :class="{ disabled: currentPage === 1 }">
+                          <a class="page-link" href="#" @click.prevent="prevPage">Prev</a>
+                        </li>
+                        <li v-for="p in pageNumbers" :key="p" class="page-item" :class="{ active: currentPage === p }">
+                          <a class="page-link" href="#" @click.prevent="goToPage(p)">{{ p }}</a>
+                        </li>
+                        <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+                          <a class="page-link" href="#" @click.prevent="nextPage">Next</a>
+                        </li>
+                      </ul>
+                    </nav>
+                  </template>
                 </div>
-                <div v-else class="d-flex flex-column gap-3 mt-3">
-                  <div
-                    v-for="asset in pagedAssets"
-                    :key="asset.asset"
-                    class="asset-item border-bottom"
-                    :class="{ active: activeIndex === asset.asset }"
-                    :style="activeIndex === asset.asset ? 'background: linear-gradient(90deg, #FFFFFF 0%, #F2F2F2 100%);' : ''"
-                    @click="setActive(asset)"
-                  >
-                    <div class="d-flex justify-content-between">
-                      <div class="d-flex justify-content-start gap-3">
-                        <input v-if="showCheckboxes" type="checkbox" v-model="asset.selected" class="form-check-input me-2" />
-                        <input v-if="showHoldCheckboxes" type="checkbox" v-model="asset.selected" class="form-check-input me-2" />
 
-                        <div class="fw-semibold" style="color: rgba(0, 0, 0, 0.87); font-size: 22px;">
-                          {{ asset.asset }}
-                        </div>
-                        <div v-if="getTopSeverity(asset.severity_counts)">
-                          <span class="d-flex align-items-center badge-critical">
-                            <span class="rounded-circle me-1" :style="{ width: '6px', height: '6px', backgroundColor: getSeverityColor(getTopSeverity(asset.severity_counts)) }"></span>
-                            <span>{{ getTopSeverity(asset.severity_counts) }}</span>
-                          </span>
-                        </div>
+                <!-- Mitigation on Hold -->
+                <div v-if="showHeld && heldAssets.length" class="mitigation-hold-section">
+                  <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h3 class="hold-title">Mitigation on hold</h3>
+                    <i class="bi bi-eye text-muted" style="cursor:pointer;font-size:0.95rem;" @click="toggleUnholdMode" title="Unhold"></i>
+                  </div>
+                  <div v-for="(held, i) in heldAssets" :key="i" class="hold-item">
+                    <div>
+                      <div class="d-flex align-items-center gap-2">
+                        <input v-if="showUnholdCheckboxes" type="checkbox" v-model="held.selected" class="form-check-input" />
+                        <p class="hold-ip">{{ held.asset }}</p>
                       </div>
-
-                      <div class="align-items-end gap-2">
-                        <div class="d-flex flex-row">
-                          <i class="bi bi-link-45deg me-1" style="color: rgba(0, 0, 0, 0.6); font-size: 20px; vertical-align: -2px"></i>
-                          <p class="mb-0">{{ asset.isInternal ? 'Internal' : 'External' }}</p>
-                        </div>
-                      </div>
+                      <p class="hold-sub">{{ held.member_type || 'Awaiting resolution' }}</p>
                     </div>
-
-                    <!-- Severity counts row -->
-                    <div class="d-flex align-items-center gap-3 mt-3 mb-2 ms-3">
-                      <span class="d-flex align-items-center">
-                        <span class="rounded-circle me-1" style="width: 6px; height: 6px; background-color: #b31c1c"></span>
-                        <span class="text-danger fw-bold">{{ asset.severity_counts?.critical ?? 0 }}</span>
-                      </span>
-                      <span class="d-flex align-items-center">
-                        <span class="rounded-circle me-1" style="width: 6px; height: 6px; background-color: #f44336"></span>
-                        <span class="text-danger fw-bold">{{ asset.severity_counts?.high ?? 0 }}</span>
-                      </span>
-                      <span class="d-flex align-items-center">
-                        <span class="rounded-circle me-1" style="width: 6px; height: 6px; background-color: #f6b100"></span>
-                        <span class="text-warning fw-bold">{{ asset.severity_counts?.medium ?? 0 }}</span>
-                      </span>
-                      <span class="d-flex align-items-center">
-                        <span class="rounded-circle me-1" style="width: 6px; height: 6px; background-color: #4caf50"></span>
-                        <span class="text-success fw-bold">{{ asset.severity_counts?.low ?? 0 }}</span>
-                      </span>
-                    </div>
+                    <span v-if="getTopSeverity(held.severity_counts)" class="sev-badge"
+                      :class="'sev-' + getTopSeverity(held.severity_counts).toLowerCase()">
+                      {{ getTopSeverity(held.severity_counts) }}
+                    </span>
                   </div>
                 </div>
 
-                <!-- delete Modal -->
-                <div
-                  class="modal fade"
-                  id="deleteModal"
-                  tabindex="-1"
-                  aria-hidden="true"
-                >
+                <!-- Delete Modal -->
+                <div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
                   <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
                       <div class="modal-header">
                         <h5 class="modal-title">Confirm Delete</h5>
-                        <button
-                          type="button"
-                          class="btn-close"
-                          data-bs-dismiss="modal"
-                          aria-label="Close"
-                        ></button>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                       </div>
-                      <div class="modal-body">
-                        Are you sure you want to delete the selected assets?  
-                        
-                      </div>
+                      <div class="modal-body">Are you sure you want to delete the selected assets?</div>
                       <div class="modal-footer">
-                        <button
-                          type="button"
-                          class="btn btn-secondary"
-                          data-bs-dismiss="modal" @click="cancelDelete"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          class="btn btn-danger"
-                          @click="confirmDelete"
-                          data-bs-dismiss="modal"
-                        >
-                          OK
-                        </button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @click="cancelDelete">Cancel</button>
+                        <button type="button" class="btn btn-danger" @click="confirmDelete" data-bs-dismiss="modal">OK</button>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <!-- hold mitigation -->
-    <div
-      class="modal fade"
-      id="holdConfirmModal"
-      tabindex="-1"
-      aria-hidden="true"
-    >
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-body">
-            <p>Do you want to hold to mitigation?</p>
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-secondary" data-bs-dismiss="modal" @click="cancelHold">
-              No
-            </button>
-            <button class="btn btn-primary" data-bs-dismiss="modal" @click="confirmHold">
-              Yes
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+                <!-- Hold Modal -->
+                <div class="modal fade" id="holdConfirmModal" tabindex="-1" aria-hidden="true">
+                  <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                      <div class="modal-body"><p>Do you want to hold to mitigation?</p></div>
+                      <div class="modal-footer">
+                        <button class="btn btn-secondary" data-bs-dismiss="modal" @click="cancelHold">No</button>
+                        <button class="btn btn-primary" data-bs-dismiss="modal" @click="confirmHold">Yes</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-                <!-- Pagination -->
-                <nav v-if="totalPages > 1" class="mt-4 position-relative custom-pagination-wrapper">
-                  <ul class="pagination pagination-sm mb-0 custom-pagination">
-                    <li class="page-item" :class="{ disabled: currentPage === 1 }">
-                      <a class="page-link" href="#" @click.prevent="prevPage">Prev</a>
-                    </li>
-                    <li v-for="p in pageNumbers" :key="p" class="page-item" :class="{ active: currentPage === p }">
-                      <a class="page-link" href="#" @click.prevent="goToPage(p)">{{ p }}</a>
-                    </li>
-                    <li class="page-item" :class="{ disabled: currentPage === totalPages }">
-                      <a class="page-link" href="#" @click.prevent="nextPage">Next</a>
-                    </li>
-                  </ul>
-                </nav>
-
-                 <!-- Held Vulnerabilities List -->
-<div v-if="showHeld && heldAssets.length" class=" py-1 px-2 mt-5">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h4 class="mb-0">Mitigation on hold</h4>
-    <i
-      class="bi bi-eye fs-5"
-      @click="toggleUnholdMode"
-      title="Unhold"
-      style="cursor: pointer;"
-    ></i>
-  </div>
-
-  <div class="d-flex flex-column">
-    <div
-      v-for="(held, i) in heldAssets"
-      :key="i"
-      class="hold-asset border-bottom">
-      <div class="d-flex justify-content-between">
-        <div class="d-flex justify-content-start gap-1">
-          <!-- Checkbox only in unhold mode -->
-          <input
-            v-if="showUnholdCheckboxes"
-            type="checkbox"
-            v-model="held.selected"
-            class="form-check-input me-2"
-          />
-
-          <!-- Asset Name (grayed if held) -->
-          <span :class="{ 'text-muted': held.held }">{{ held.name }}</span>
-
-          <!-- Asset IP -->
-          <div
-            class="fw-semibold text-muted"
-            style="color: rgba(0, 0, 0, 0.87); font-size: 18px;"
-          >
-            {{ held.asset }}
-          </div>
-
-          <!-- Badge -->
-          <div>
-            <span class="d-flex align-items-center badge-critical ms-2">
-              <span
-                class="rounded-circle me-1"
-                style="width: 6px; height: 6px; background-color: rgba(173, 0, 0, 1)"
-              ></span>
-              <span>Critical</span>
-            </span>
-          </div>
-        </div>
-
-        <div class="align-items-end gap-2">
-          <div class="d-flex flex-row">
-            <div>
-              <i
-                class="bi bi-link-45deg me-1"
-                style="color: rgba(0, 0, 0, 0.6); font-size: 20px; vertical-align: -2px"
-              ></i>
-            </div>
-            <div>
-              <p class="mb-0">
-  {{ held.isInternal ? 'Internal' : 'External' }}
-</p>
-
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Status Row (same as assets) -->
-      <div class="d-flex align-items-center gap-3 mt-3 mb-2 ms-1">
-        <span class="d-flex align-items-center">
-          <span class="rounded-circle me-1" style="width: 6px; height: 6px; background-color: #b31c1c"></span>
-          <span class="text-danger fw-bold">{{ held.severity_counts?.critical ?? 0 }}</span>
-        </span>
-        <span class="d-flex align-items-center">
-          <span class="rounded-circle me-1" style="width: 6px; height: 6px; background-color: #f44336"></span>
-          <span class="text-danger fw-bold">{{ held.severity_counts?.high ?? 0 }}</span>
-        </span>
-        <span class="d-flex align-items-center">
-          <span class="rounded-circle me-1" style="width: 6px; height: 6px; background-color: #f6b100"></span>
-          <span class="text-warning fw-bold">{{ held.severity_counts?.medium ?? 0 }}</span>
-        </span>
-        <span class="d-flex align-items-center">
-          <span class="rounded-circle me-1" style="width: 6px; height: 6px; background-color: #4caf50"></span>
-          <span class="text-success fw-bold">{{ held.severity_counts?.low ?? 0 }}</span>
-        </span>
-      </div>
-    </div>
-  </div>
-</div>
-
+              <!-- Right Panel: Vulnerability Details -->
+              <div class="assets-right-panel">
+                <!-- Detail Header -->
+                <div class="right-panel-header">
+                  <div class="d-flex align-items-center gap-3 mb-3 flex-wrap pt-5">
+                    <h1 class="asset-detail-title">{{ selectedAsset?.asset }}</h1>
+                    <span v-if="selectedAsset && getTopSeverity(selectedAsset.severity_counts)" class="sev-badge"
+                      :class="'sev-' + getTopSeverity(selectedAsset.severity_counts).toLowerCase()">
+                      {{ getTopSeverity(selectedAsset.severity_counts) }} Severity
+                    </span>
+                    <span class="status-open-badge">
+                      <span class="status-dot-open"></span>
+                      Open
+                    </span>
+                  </div>
+                  <div class="d-flex gap-5 mb-4 flex-wrap">
+                    <div v-if="selectedAsset">
+                      <p class="meta-label">Exposure</p>
+                      <p class="meta-value" style="text-transform:capitalize;">{{ selectedAsset.isInternal ? 'Internal' : 'External' }}</p>
+                    </div>
+                    <div v-if="selectedAsset?.host_information?.['Netbios Name']">
+                      <p class="meta-label">Hostname</p>
+                      <p class="meta-value">{{ selectedAsset.host_information['Netbios Name'] }}</p>
+                    </div>
+                    <div v-if="selectedAsset?.host_information?.['DNS Name']">
+                      <p class="meta-label">DNS Name</p>
+                      <p class="meta-value">{{ selectedAsset.host_information['DNS Name'] }}</p>
+                    </div>
+                    <div v-if="selectedAsset?.assigned_teams?.length">
+                      <p class="meta-label">Teams</p>
+                      <p class="meta-value">{{ selectedAsset.assigned_teams.join(', ') }}</p>
+                    </div>
+                  </div>
+                  <!-- Tabs -->
+                  <div class="detail-tabs">
+                    <button class="detail-tab" :class="{ 'detail-tab-active': activeTab === 'vulnerabilities' }" @click="activeTab = 'vulnerabilities'">
+                      Vulnerabilities ({{ filteredVulnerabilities.length }})
+                    </button>
+                    <button class="detail-tab" :class="{ 'detail-tab-active': activeTab === 'exceptions' }" @click="activeTab = 'exceptions'">
+                      Support Requests
+                      <span v-if="assetSupportRequests.length > 0" class="badge rounded-circle bg-danger ms-1"
+                        style="font-size:11px;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;">
+                        {{ assetSupportRequests.length }}
+                      </span>
+                    </button>
+                    <button class="detail-tab" disabled style="opacity:0.4;cursor:not-allowed;">Related Assets</button>
+                    <button class="detail-tab" disabled style="opacity:0.4;cursor:not-allowed;">History</button>
+                  </div>
                 </div>
 
-                <div class="col-8">
-                    <div class="row py-3 px-3">
-                        <div class="d-flex justify-content-between">
-                          <p class="mt-1" style="color: rgba(0, 0, 0, 0.6);font-weight: 500;font-size: 13px;">Vulnerability card</p>
-                          <div class="d-flex justify-content-between">
+                <!-- Tab Content -->
+                <div class="right-panel-scroll">
+
+                  <!-- Vulnerabilities Tab -->
+                  <div v-if="activeTab === 'vulnerabilities'">
+                    <div class="d-flex gap-2 mb-4">
+                      <button class="sev-pill" :class="{ 'sev-pill-active': activeSeverity === 'All' }" @click="setSeverity('All')">All</button>
+                      <button class="sev-pill sev-pill-critical" :class="{ 'sev-pill-active': activeSeverity === 'Critical' }" @click="setSeverity('Critical')">Critical</button>
+                      <button class="sev-pill sev-pill-high" :class="{ 'sev-pill-active': activeSeverity === 'High' }" @click="setSeverity('High')">High</button>
+                      <button class="sev-pill sev-pill-medium" :class="{ 'sev-pill-active': activeSeverity === 'Medium' }" @click="setSeverity('Medium')">Medium</button>
+                      <button class="sev-pill sev-pill-low" :class="{ 'sev-pill-active': activeSeverity === 'Low' }" @click="setSeverity('Low')">Low</button>
+                    </div>
+
+                    <h3 class="section-label mb-3">Active Threats</h3>
+
+                    <div class="d-flex flex-column gap-3">
+                      <div v-for="(vuln, idx) in filteredVulnerabilities" :key="idx" class="vuln-accordion-item">
+                        <div class="vuln-accordion-header" data-bs-toggle="collapse" :data-bs-target="'#uvn' + idx" role="button">
+                          <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
+                            <i class="bi bi-exclamation-triangle-fill vuln-icon flex-shrink-0"
+                              :class="{
+                                'vuln-icon-critical': vuln.severity === 'Critical',
+                                'vuln-icon-high': vuln.severity === 'High',
+                                'vuln-icon-medium': vuln.severity === 'Medium',
+                                'vuln-icon-low': vuln.severity === 'Low'
+                              }"></i>
+                            <span class="vuln-name">{{ vuln.vul_name }}</span>
+                          </div>
+                          <div class="d-flex align-items-center gap-3 flex-shrink-0">
+                            <span class="sev-badge" :class="'sev-' + (vuln.severity?.toLowerCase() || '')">{{ vuln.severity }}</span>
+                            <span class="status-open-badge">
+                              <span class="status-dot-open"></span>{{ vuln.status || 'Open' }}
+                            </span>
+                            <span class="text-muted" style="font-size:0.78rem;">CVSS: {{ vuln.cvss_score || '-' }}</span>
+                            <i class="bi bi-chevron-down text-muted"></i>
                           </div>
                         </div>
-                        <div v-if="selectedAsset" class="d-flex justify-content-between">
-                            <div class="d-flex justify-content-start gap-3">
-                            <div class="fw-semibold" style="color: rgba(0, 0, 0, 0.87);font-size: 22px;">{{ selectedAsset.asset }}</div>
-                            <span v-if="getTopSeverity(selectedAsset.severity_counts)" class="d-flex align-items-center badge-critical">
-                                <span class="rounded-circle me-1" :style="{ width: '6px', height: '6px', backgroundColor: getSeverityColor(getTopSeverity(selectedAsset.severity_counts)) }"></span>
-                                <span>{{ getTopSeverity(selectedAsset.severity_counts) }}</span>
-                            </span>
+                        <div :id="'uvn' + idx" class="accordion-collapse collapse" :class="{ show: idx === 0 }">
+                          <div class="vuln-accordion-body">
+                            <div class="vuln-meta-grid">
+                              <div class="vuln-meta-cell">
+                                <p class="vuln-meta-label">Vendor Fix</p>
+                                <p class="vuln-meta-value teal">{{ vuln.vendor_fix_available || '-' }}</p>
+                              </div>
+                              <div class="vuln-meta-cell">
+                                <p class="vuln-meta-label">CVSS Score</p>
+                                <p class="vuln-meta-value">{{ vuln.cvss_score || '-' }}</p>
+                              </div>
+                              <div class="vuln-meta-cell">
+                                <p class="vuln-meta-label">Assigned Team</p>
+                                <p class="vuln-meta-value">{{ vuln.assigned_team || '-' }}</p>
+                              </div>
+                              <div class="vuln-meta-cell">
+                                <p class="vuln-meta-label">Status</p>
+                                <p class="vuln-meta-value">{{ vuln.status || '-' }}</p>
+                              </div>
                             </div>
+                            <div class="mb-4">
+                              <h5 class="vuln-desc-title">Description</h5>
+                              <p class="vuln-desc-text">{{ vuln.description }}</p>
+                            </div>
+                            <div class="d-flex gap-3">
+                              <router-link
+                                v-if="authStore.userLatestReportId && activeIndex"
+                                :to="{
+                                  name: 'UserVulFix',
+                                  params: { reportId: authStore.userLatestReportId, asset: activeIndex },
+                                  query: { plugin_name: vuln.vul_name, risk_factor: vuln.severity }
+                                }"
+                                class="btn-fix-now text-decoration-none">
+                                Fix Now
+                              </router-link>
+                            </div>
+                          </div>
                         </div>
+                      </div>
                     </div>
 
-                    <div v-if="selectedAsset" class="row px-3 pt-4">
-                    <div class="d-flex justify-content-start gap-5 flex-wrap">
-                        <div class="d-flex flex-column">
-                            <p class="mb-0" style="color: rgba(0, 0, 0, 0.6);font-weight: 500;font-size: 13px;">Exposure</p>
-                            <p style="color: rgba(0, 0, 0, 0.87);font-weight: 500;font-size: 16px;">{{ selectedAsset.isInternal ? 'Internal' : 'External' }}</p>
+                    <!-- Fixed Recently -->
+                    <div v-if="closedFixVulnerabilities.length" class="mt-5">
+                      <div class="d-flex align-items-center mb-3">
+                        <h3 class="section-label">Fixed Recently</h3>
+                        <div class="fixed-divider flex-grow-1 ms-3"></div>
+                      </div>
+                      <div class="d-flex flex-column gap-2">
+                        <div v-for="(item, i) in closedFixVulnerabilities" :key="item.fix_vulnerability_id" class="fixed-item">
+                          <div class="d-flex align-items-center gap-3">
+                            <i class="bi bi-check-circle-fill fixed-check-icon"></i>
+                            <div>
+                              <p class="fixed-vuln-name">{{ item.plugin_name }}</p>
+                              <p class="fixed-vuln-date">Status: {{ item.status }}</p>
+                            </div>
+                          </div>
+                          <button class="btn-view-detail" @click="viewFixDetail(item)">View detail</button>
                         </div>
-                        <div v-if="selectedAsset.host_information?.['Netbios Name']" class="d-flex flex-column">
-                            <p class="mb-0" style="color: rgba(0, 0, 0, 0.6);font-weight: 500;font-size: 13px;">Hostname</p>
-                            <p style="color: rgba(0, 0, 0, 0.87);font-weight: 500;font-size: 16px;">{{ selectedAsset.host_information['Netbios Name'] }}</p>
-                        </div>
-                        <div v-if="selectedAsset.host_information?.['DNS Name']" class="d-flex flex-column">
-                            <p class="mb-0" style="color: rgba(0, 0, 0, 0.6);font-weight: 500;font-size: 13px;">DNS Name</p>
-                            <p style="color: rgba(0, 0, 0, 0.87);font-weight: 500;font-size: 16px;">{{ selectedAsset.host_information['DNS Name'] }}</p>
-                        </div>
-                        <div v-if="selectedAsset.host_information?.['OS']" class="d-flex flex-column">
-                            <p class="mb-0" style="color: rgba(0, 0, 0, 0.6);font-weight: 500;font-size: 13px;">OS</p>
-                            <p style="color: rgba(0, 0, 0, 0.87);font-weight: 500;font-size: 16px;">{{ selectedAsset.host_information['OS'] }}</p>
-                        </div>
-                        <div v-if="selectedAsset.assigned_teams?.length" class="d-flex flex-column">
-                            <p class="mb-0" style="color: rgba(0, 0, 0, 0.6);font-weight: 500;font-size: 13px;">Teams</p>
-                            <p style="color: rgba(0, 0, 0, 0.87);font-weight: 500;font-size: 16px;">{{ selectedAsset.assigned_teams.join(', ') }}</p>
-                        </div>
-                    </div>
-                    </div>
-
-                    <div class="row ps-3">
-                      <ul class="nav nav-tabs custom-tabs">
-      <li class="nav-item">
-        <button 
-          class="nav-link" 
-          :class="{ active: activeTab === 'vulnerabilities' }" 
-          @click="activeTab = 'vulnerabilities'">
-          Vulnerabilities
-        </button>
-      </li>
-      <li class="nav-item">
-        <button
-          class="nav-link"
-          :class="{ active: activeTab === 'exceptions' }"
-          @click="activeTab = 'exceptions'">
-          Support Requests
-          <span
-            v-if="assetSupportRequests.length > 0"
-            class="badge rounded-circle bg-danger ms-1"
-            style="font-size: 12px; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center;"
-          >{{ assetSupportRequests.length }}</span>
-        </button>
-      </li>
-      <li class="nav-item">
-        <button
-          class="nav-link"
-          disabled
-          style="opacity: 0.5; cursor: not-allowed;">
-          Related
-        </button>
-      </li>
-    </ul>
-
-    <!-- Tab Content -->
-    <div class="tab-content mt-3">
-      <!-- Vulnerabilities -->
-      <div v-if="activeTab === 'vulnerabilities'">
-
-        <!-- Severity filters -->
-        <div class="d-flex gap-3 mb-3">
-          <button class="btn btn-pill fw-semibold text-dark"
-            :class="activeSeverity === 'All' ? 'btn-primary active-tab' : 'btn-outline-secondary'"
-            @click="setSeverity('All')">All</button>
-          <button class="btn btn-pill"
-            :class="activeSeverity === 'Critical' ? 'btn-primary active-tab' : 'btn-outline-secondary'"
-            style="color: maroon;" @click="setSeverity('Critical')">Critical</button>
-          <button class="btn btn-pill"
-            :class="activeSeverity === 'High' ? 'btn-primary active-tab' : 'btn-outline-secondary text-danger'"
-            @click="setSeverity('High')">High</button>
-          <button class="btn btn-pill"
-            :class="activeSeverity === 'Medium' ? 'btn-primary active-tab' : 'btn-outline-secondary text-warning'"
-            @click="setSeverity('Medium')">Medium</button>
-          <button class="btn btn-pill"
-            :class="activeSeverity === 'Low' ? 'btn-primary active-tab' : 'btn-outline-secondary text-success'"
-            @click="setSeverity('Low')">Low</button>
-        </div>
-
-        <!-- Empty state -->
-        <div v-if="filteredVulnerabilities.length === 0" class="text-center text-muted py-5">
-          No vulnerabilities found for this asset.
-        </div>
-
-        <!-- Accordion list -->
-        <div v-else class="accordion border-0" id="accordionExample">
-          <div
-            v-for="(vuln, idx) in filteredVulnerabilities"
-            :key="idx"
-            class="accordion-item border-0 border-bottom"
-          >
-            <h2 class="accordion-header" :id="'heading' + idx">
-              <button
-                class="accordion-button border-bottom-0 collapsed"
-                type="button"
-                data-bs-toggle="collapse"
-                :data-bs-target="'#collapse' + idx"
-                aria-expanded="false"
-                :aria-controls="'collapse' + idx"
-              >
-                <div class="d-flex justify-content-start align-items-center gap-3">
-                  <p class="mb-0" style="background-color: black;height: 30px;width: 30px;color: white;border-radius: 50%;display: grid;place-items: center;flex-shrink:0;">{{ idx + 1 }}</p>
-                  <p class="mb-0" style="color: rgba(0, 0, 0, 0.87);font-weight: 500;font-size: 16px;">{{ vuln.vul_name }}</p>
-                  <span class="d-flex align-items-center badge-critical" style="margin-top: 0;" :style="{ color: getSeverityColor(vuln.severity) }">
-                    <span class="rounded-circle me-1" :style="{ width: '6px', height: '6px', backgroundColor: getSeverityColor(vuln.severity) }"></span>
-                    <span>{{ vuln.severity }}</span>
-                  </span>
-                  <span
-                    class="d-flex align-items-center"
-                    :class="vuln.status === 'open' ? 'badge-open' : 'badge-close'"
-                    style="margin-top: 0;"
-                  >
-                    <span class="rounded-circle me-1" style="width: 6px; height: 6px; background-color: white;"></span>
-                    <span>{{ vuln.status }}</span>
-                  </span>
-                </div>
-              </button>
-            </h2>
-            <div
-              :id="'collapse' + idx"
-              class="accordion-collapse collapse border-top-0"
-              :aria-labelledby="'heading' + idx"
-              data-bs-parent="#accordionExample"
-            >
-              <div class="accordion-body border-top-0">
-                <div class="d-flex justify-content-between gap-3">
-                  <div class="d-flex justify-content-start gap-5 flex-wrap">
-                    <div v-if="vuln.description" class="d-flex flex-column" style="max-width: 400px;">
-                      <p class="mb-1" style="color: rgba(0, 0, 0, 0.6);font-weight: 500;font-size: 12px;">Description</p>
-                      <p style="color: rgba(0, 0, 0, 0.87);font-weight: 500;font-size: 15px;">{{ vuln.description }}</p>
-                    </div>
-                    <div v-if="vuln.cvss_score" class="d-flex flex-column">
-                      <p class="mb-1" style="color: rgba(0, 0, 0, 0.6);font-weight: 500;font-size: 12px;">CVSS Score</p>
-                      <p style="color: rgba(0, 0, 0, 0.87);font-weight: 500;font-size: 16px;">{{ vuln.cvss_score }}</p>
-                    </div>
-                    <div v-if="vuln.vendor_fix_available" class="d-flex flex-column">
-                      <p class="mb-1" style="color: rgba(0, 0, 0, 0.6);font-weight: 500;font-size: 12px;">Vendor Fix</p>
-                      <p style="color: rgba(0, 0, 0, 0.87);font-weight: 500;font-size: 16px;">{{ vuln.vendor_fix_available }}</p>
-                    </div>
-                    <div v-if="vuln.assigned_team" class="d-flex flex-column">
-                      <p class="mb-1" style="color: rgba(0, 0, 0, 0.6);font-weight: 500;font-size: 12px;">Assigned Team</p>
-                      <p style="color: rgba(0, 0, 0, 0.87);font-weight: 500;font-size: 16px;">{{ vuln.assigned_team }}</p>
+                      </div>
                     </div>
                   </div>
-                  <div class="d-flex flex-column">
-                    <router-link
-                      v-if="authStore.userLatestReportId && activeIndex"
-                      :to="{
-                        name: 'UserVulFix',
-                        params: {
-                          reportId: authStore.userLatestReportId,
-                          asset: activeIndex,
-                        },
-                        query: {
-                          plugin_name: vuln.vul_name,
-                          risk_factor: vuln.severity,
-                        }
-                      }"
-                      class="btn rounded-pill px-3 text-decoration-none"
-                      style="background-color: rgba(49, 33, 177, 1);color: white;white-space:nowrap;"
-                    >
-                      <i class="bi bi-magic"></i> Fix Now
-                    </router-link>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- Fixed / Closed vulnerabilities -->
-        <div class="row mt-3 px-1">
-          <div v-if="loadingClosedFix" class="text-center py-3">
-            <span class="spinner-border spinner-border-sm text-secondary"></span>
-          </div>
-          <div v-else-if="closedFixVulnerabilities.length" class="card p-3 my-2">
-            <h5 class="mb-3">Fixed</h5>
-            <div
-              v-for="(item, i) in closedFixVulnerabilities"
-              :key="item.fix_vulnerability_id"
-              class="d-flex justify-content-between align-items-center py-2 border-bottom"
-            >
-              <div class="d-flex align-items-center gap-3">
-                <div class="rounded-circle bg-dark text-white d-flex align-items-center justify-content-center" style="width:30px;height:30px;font-size:14px;flex-shrink:0;">
-                  {{ i + 1 }}
-                </div>
-                <p class="mb-0 fw-semibold" style="font-size:15px;">{{ item.plugin_name }}</p>
-              </div>
-              <div class="d-flex align-items-center gap-3">
-                <span class="badge d-flex align-items-center gap-1" :style="{ background: getSeverityColor(item.risk_factor) + '22', color: getSeverityColor(item.risk_factor), fontSize: '12px' }">
-                  <span class="rounded-circle" :style="{ width:'6px', height:'6px', backgroundColor: getSeverityColor(item.risk_factor) }"></span>
-                  {{ item.risk_factor }}
-                </span>
-                <span class="badge d-flex align-items-center gap-1" style="background:#0a7d00;color:#fff;font-size:12px;">
-                  <span class="rounded-circle" style="width:6px;height:6px;background:#fff;"></span>
-                  Close
-                </span>
-                <button class="btn btn-sm rounded-pill text-light px-3" style="background-color: rgba(49,33,177,1);" @click="viewFixDetail(item)">
-                  View detail
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <!-- Support Requests Tab -->
-      <div v-if="activeTab === 'exceptions'">
-        <div v-if="loadingSupportRequests" class="text-center py-4">
-          <span class="spinner-border spinner-border-sm text-primary"></span>
-        </div>
-        <div v-else-if="assetSupportRequests.length === 0" class="text-center text-muted py-4">
-          No support requests for this asset.
-        </div>
-        <div v-else>
-          <div
-            v-for="(req, idx) in assetSupportRequests"
-            :key="req._id"
-            class="d-flex justify-content-between align-items-center gap-3 py-2 border-bottom"
-          >
-            <p class="mb-0 flex-shrink-0" style="background-color: black; height: 30px; width: 30px; color: white; border-radius: 50%; display: grid; place-items: center;">{{ idx + 1 }}</p>
-            <p class="mb-0 flex-grow-1 text-truncate" style="color: rgba(0,0,0,0.87); font-weight: 500; font-size: 15px;" :title="req.vul_name">{{ req.vul_name }}</p>
-            <span
-              class="badge rounded-pill px-3 py-2 flex-shrink-0"
-              :class="req.status === 'open' ? 'bg-danger' : 'bg-success'"
-              style="font-size: 12px; text-transform: capitalize;"
-            >{{ req.status }}</span>
-            <button
-              class="btn btn-sm fixes-btn flex-shrink-0"
-              data-bs-toggle="modal"
-              data-bs-target="#userSupportRequestModal"
-              @click="selectedSupportRequest = req"
-            >View raised requests</button>
-          </div>
-        </div>
-
-        <!-- Support Request Detail Modal -->
-        <div class="modal fade" id="userSupportRequestModal" tabindex="-1" aria-hidden="true">
-          <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h5 class="modal-title">Issues Raised for Support</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-              </div>
-              <div class="modal-body" v-if="selectedSupportRequest">
-                <p class="mb-1 text-muted" style="font-size: 13px;">Vulnerability</p>
-                <p class="fw-semibold mb-3" style="font-size: 15px;">{{ selectedSupportRequest.vul_name }}</p>
-
-                <p class="mb-1 fw-semibold">Steps Requested</p>
-                <div class="row g-2 mb-3">
-                  <template v-if="selectedSupportRequest.step_requested === 'all'">
-                    <div class="col-auto">
-                      <span class="badge rounded-pill bg-primary py-2 px-3" style="font-size: 12px;">All Steps</span>
+                  <!-- Support Requests Tab -->
+                  <div v-if="activeTab === 'exceptions'">
+                    <div v-if="loadingSupportRequests" class="text-center py-4">
+                      <span class="spinner-border spinner-border-sm text-primary"></span>
                     </div>
-                  </template>
-                  <template v-else>
-                    <div
-                      v-for="step in selectedSupportRequest.step_requested.split(',')"
-                      :key="step"
-                      class="col-auto"
-                    >
-                      <span class="badge rounded-pill bg-primary py-2 px-3" style="font-size: 12px;">Step {{ step.trim() }}</span>
+                    <div v-else-if="assetSupportRequests.length === 0" class="sr-empty">
+                      <i class="bi bi-inbox me-2"></i>No support requests raised for this asset.
                     </div>
-                  </template>
-                </div>
-
-                <p class="mb-1 fw-semibold">Description</p>
-                <textarea class="form-control rounded-0 mb-3" rows="4" readonly>{{ selectedSupportRequest.description }}</textarea>
-
-                <div class="d-flex gap-4">
-                  <div>
-                    <p class="mb-0 text-muted" style="font-size: 12px;">Requested by</p>
-                    <p class="mb-0 fw-semibold" style="font-size: 14px;">{{ selectedSupportRequest.requested_by }}</p>
-                  </div>
-                  <div>
-                    <p class="mb-0 text-muted" style="font-size: 12px;">Date</p>
-                    <p class="mb-0 fw-semibold" style="font-size: 14px;">{{ formatRequestDate(selectedSupportRequest.requested_at) }}</p>
-                  </div>
-                </div>
-              </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Related -->
-      <div v-if="activeTab === 'related'">
-        <div class="accordion border-0" id="accordionExample">
-          <div class="accordion-item border-0 border-bottom">
-            <h2 class="accordion-header" id="headingOne">
-            <button class="accordion-button border-bottom-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
-            <div class="d-flex justify-content-start align-items-center gap-3">
-            <p style="background-color: black;height: 30px;width: 30px;color: white;border-radius: 50%;display: grid;place-items: center;">1</p>
-            <p style="color: rgba(0, 0, 0, 0.87);font-weight: 500;font-size: 16px;">VMware ESXi 7.0/8.0 Sandbox Escape (CVE - 2025-22225)</p>
-            <span class="d-flex align-items-center badge-critical" style="margin-top: -17px;">
-            <span class="rounded-circle me-1" style="width: 6px; height: 6px; background-color: rgba(173, 0, 0, 1)"></span>
-              <span>High</span>
-            </span>
-          </div> 
-            </button>
-            </h2>
-            <div id="collapseOne" class="accordion-collapse collapse show border-top-0" aria-labelledby="headingOne" data-bs-parent="#accordionExample">
-            <div class="accordion-body border-top-0">
-              <table class="table table-bordered table-striped">
-                  <tbody>
-                    <tr>
-                      <th scope="row">Resource ID</th>
-                      <td>arn:aws:ecr:ap-southeast-1:058264139340:repository/...</td>
-                    </tr>
-                    <tr>
-                      <th scope="row">Region</th>
-                      <td>ap-southeast-1</td>
-                    </tr>
-                    <tr>
-                      <th scope="row">Affected Packages</th>
-                      <td>org.apache.tomcat.embed:tomcat-embed-core</td>
-                    </tr>
-                    <tr>
-                      <th scope="row">Vendor Advisory</th>
-                      <td><a href="https://nvd.nist.gov/vuln/detail/CVE-2024-52316" target="_blank">CVE-2024-52316</a></td>
-                    </tr>
-                    <tr>
-                      <th scope="row">Reference Link</th>
-                      <td><a href="https://autohub-demo/link123" target="_blank">https://autohub-demo/link123</a></td>
-                    </tr>
-                  </tbody>
-                </table>  
-              </div>
-            </div>
-          </div>
-          <div class="accordion-item border-0 border-bottom">
-            <h2 class="accordion-header" id="headingTwo">
-            <button class="accordion-button border-bottom-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="true" aria-controls="collapseTwo">
-            <div class="d-flex justify-content-start align-items-center gap-3">
-            <p style="background-color: black;height: 30px;width: 30px;color: white;border-radius: 50%;display: grid;place-items: center;">2</p>
-            <p style="color: rgba(0, 0, 0, 0.87);font-weight: 500;font-size: 16px;">VMware ESXi 7.0/8.0 Sandbox Escape (CVE - 2025-22226)</p>
-            <span class="d-flex align-items-center badge-critical" style="margin-top: -17px;">
-            <span class="rounded-circle me-1" style="width: 6px; height: 6px; background-color: rgba(173, 0, 0, 1)"></span>
-              <span>High</span>
-            </span>
-          </div> 
-            </button>
-            </h2>
-            <div id="collapseTwo" class="accordion-collapse collapse show border-top-0" aria-labelledby="headingTwo" data-bs-parent="#accordionExample">
-            <div class="accordion-body border-top-0">
-              <table class="table table-bordered table-striped">
-                  <tbody>
-                    <tr>
-                      <th scope="row">Resource ID</th>
-                      <td>arn:aws:ecr:ap-southeast-1:058264139340:repository/...</td>
-                    </tr>
-                    <tr>
-                      <th scope="row">Region</th>
-                      <td>ap-southeast-1</td>
-                    </tr>
-                    <tr>
-                      <th scope="row">Affected Packages</th>
-                      <td>org.apache.tomcat.embed:tomcat-embed-core</td>
-                    </tr>
-                    <tr>
-                      <th scope="row">Vendor Advisory</th>
-                      <td><a href="https://nvd.nist.gov/vuln/detail/CVE-2024-52316" target="_blank">CVE-2024-52316</a></td>
-                    </tr>
-                    <tr>
-                      <th scope="row">Reference Link</th>
-                      <td><a href="https://autohub-demo/link123" target="_blank">https://autohub-demo/link123</a></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+                    <div v-else>
+                      <div v-for="(req, i) in assetSupportRequests" :key="req._id" class="support-req-item">
+                        <div class="d-flex align-items-center gap-3">
+                          <div class="sr-index-circle">{{ i + 1 }}</div>
+                          <p class="sr-vul-name mb-0">{{ req.vul_name }}</p>
+                        </div>
+                        <button class="btn-view-requests" data-bs-toggle="modal" data-bs-target="#userSupportRequestModal"
+                          @click="selectedSupportRequest = req">
+                          <i class="bi bi-eye me-1"></i>View raised requests
+                        </button>
+                      </div>
                     </div>
 
-                </div>
-            </div>
+                    <!-- Support Request Detail Modal -->
+                    <div class="modal fade" id="userSupportRequestModal" tabindex="-1" aria-hidden="true">
+                      <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content sr-modal-content">
+                          <div class="modal-header sr-modal-header">
+                            <div>
+                              <h5 class="modal-title sr-modal-title">
+                                <i class="bi bi-headset me-2"></i>Issues Raised for Support
+                              </h5>
+                              <p class="sr-modal-sub mb-0">{{ selectedSupportRequest?.vul_name }}</p>
+                            </div>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                          </div>
+                          <div class="modal-body p-4" v-if="selectedSupportRequest">
+                            <p class="sr-section-label mb-2">Vulnerability</p>
+                            <p class="fw-semibold mb-3" style="font-size:15px;">{{ selectedSupportRequest.vul_name }}</p>
 
+                            <p class="sr-section-label mb-2">Steps Requested</p>
+                            <div class="d-flex flex-wrap gap-2 mb-4">
+                              <template v-if="selectedSupportRequest.step_requested === 'all'">
+                                <span class="sr-step-pill">All Steps</span>
+                              </template>
+                              <template v-else>
+                                <span v-for="step in selectedSupportRequest.step_requested?.split(',')" :key="step" class="sr-step-pill">
+                                  Step {{ step.trim() }}
+                                </span>
+                              </template>
+                            </div>
+
+                            <p class="sr-section-label mb-2">Description</p>
+                            <textarea class="sr-textarea" rows="4" :value="selectedSupportRequest.description || ''" readonly></textarea>
+
+                            <div class="d-flex gap-4 mt-3">
+                              <div>
+                                <p class="mb-0 text-muted" style="font-size:12px;">Requested by</p>
+                                <p class="mb-0 fw-semibold" style="font-size:14px;">{{ selectedSupportRequest.requested_by }}</p>
+                              </div>
+                              <div>
+                                <p class="mb-0 text-muted" style="font-size:12px;">Date</p>
+                                <p class="mb-0 fw-semibold" style="font-size:14px;">{{ formatRequestDate(selectedSupportRequest.requested_at) }}</p>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="modal-footer sr-modal-footer">
+                            <button type="button" class="sr-btn-close" data-bs-dismiss="modal">Close</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
           </div>
         </div>
       </div>
@@ -996,228 +698,613 @@ export default {
 };
 </script>
 
-
 <style scoped>
-  .hold-asset {
-    padding: 7px 10px;
-    position: relative;
-  }
-  .asset-item {
-    padding: 12px 16px;
-    position: relative;
-  }
-
-  .asset-item.active::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    right: 0px;
-    width: 3px;
-    height: 100%;
-    background-color: #3f37c9; 
-  }
-
-  .badge-critical {
-    background-color: rgba(255, 225, 225, 1);
-    color: rgba(173, 0, 0, 1);
-    font-weight: 600;
-    font-size: 0.75rem;
-    padding: 4px 8px;
-    border-radius: 8px;
-  }
-
-  .badge-open {
-    background-color: rgb(194, 60, 60);
-    color: white;
-    font-weight: 600;
-    font-size: 0.75rem;
-    padding: 4px 8px;
-    border-radius: 8px;
-  }
-
-  .badge-close {
-    background-color:green;
-    color: white;
-    font-weight: 600;
-    font-size: 0.75rem;
-    padding: 4px 8px;
-    border-radius: 8px;
-  }
-
-  .view-link {
-    font-size: 0.85rem;
-    color: #3f37c9;
-    font-weight: 500;
-    text-decoration: none;
-  }
-
-  .view-link:hover {
-    text-decoration: underline;
-  }
-
-  .custom-pagination .page-link {
-  color: rgba(49, 33, 177, 1);
-  background-color: transparent;
-  border: none;
-  font-weight: 500;
-  padding: 6px 10px;
-  border-radius: 50%;
-  margin: 0 8px;
+.assets-content {
+  padding: 0;
 }
 
-.custom-pagination .page-item.active .page-link {
-  background-color: rgba(49, 33, 177, 1);
-  color: white;
-  height: 35px;
-  width:35px;
+.assets-split-panel {
+  display: flex;
+  height: calc(100vh - 72px);
+  background: #f8f9fc;
+}
+
+/* ── Left Panel ── */
+.assets-left-panel {
+  width: 33%;
+  min-width: 280px;
+  border-right: 1px solid rgba(203, 196, 208, 0.3);
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  overflow: hidden;
+  padding-top: 70px;
+}
+
+.left-panel-header {
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid rgba(203, 196, 208, 0.2);
+  flex-shrink: 0;
+}
+
+.assets-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #241447;
+  margin: 0;
+}
+
+.assets-count-badge {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #49454f;
+  background: #edeef1;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.action-icon {
+  font-size: 1.05rem;
+  cursor: pointer;
+  color: #49454f;
+  transition: color 0.15s;
+}
+.action-icon:hover { color: #241447; }
+
+.search-wrap { position: relative; }
+
+.search-icon-left {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #49454f;
+  font-size: 0.82rem;
+  pointer-events: none;
+}
+
+.assets-search {
+  width: 100%;
+  padding: 8px 32px 8px 30px;
+  border: none;
+  border-radius: 8px;
+  background: #f8f9fc;
+  font-size: 0.84rem;
+  outline: none;
+  color: #191c1e;
+}
+.assets-search:focus {
+  box-shadow: 0 0 0 2px rgba(15, 105, 110, 0.2);
+}
+
+.clear-icon {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: #49454f;
+  font-size: 0.85rem;
+}
+
+/* Asset list */
+.asset-list-scroll {
+  flex: 1;
+  overflow-y: auto;
+}
+.asset-list-scroll::-webkit-scrollbar { width: 4px; }
+.asset-list-scroll::-webkit-scrollbar-track { background: transparent; }
+.asset-list-scroll::-webkit-scrollbar-thumb { background: #cbc4d0; border-radius: 10px; }
+
+.asset-item-new {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(203, 196, 208, 0.15);
+  cursor: pointer;
+  transition: background 0.15s;
+  border-left: 4px solid transparent;
+}
+.asset-item-new:hover { background: #f2f3f6; }
+.asset-item-active {
+  background: #ffffff;
+  border-left: 4px solid #0f696e !important;
+}
+
+.asset-ip {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #241447;
+}
+
+.asset-sub {
+  font-size: 0.73rem;
+  color: #49454f;
+}
+
+/* Severity badges */
+.sev-badge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.sev-critical { background: #ffdad6; color: #93000a; }
+.sev-high     { background: #ffedd5; color: #9a3412; }
+.sev-medium   { background: #fef9c3; color: #854d0e; }
+.sev-low      { background: #a1ecf2; color: #002022; }
+
+.vuln-chip {
+  font-size: 0.65rem;
+  color: #176d72;
+  background: #a1ecf2;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.sev-count-dot {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+.critical-dot { color: maroon;  background: #fdeaea; }
+.high-dot     { color: red;     background: rgb(246,214,214); }
+.medium-dot   { color: orange;  background: rgb(249,225,193); }
+.low-dot      { color: green;   background: rgb(202,233,204); }
+
+/* Mitigation on hold */
+.mitigation-hold-section {
+  flex-shrink: 0;
+  background: #f2f3f6;
+  padding: 14px 16px;
+  border-top: 1px solid rgba(203, 196, 208, 0.2);
+  max-height: 220px;
+  overflow-y: auto;
+}
+.mitigation-hold-section::-webkit-scrollbar { width: 3px; }
+.mitigation-hold-section::-webkit-scrollbar-thumb { background: #cbc4d0; border-radius: 10px; }
+
+.hold-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #49454f;
+  margin: 0;
+}
+
+.hold-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 9px 12px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  border-left: 3px solid #7a7580;
+}
+
+.hold-ip {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #241447;
+  margin: 0;
+}
+.hold-sub {
+  font-size: 0.7rem;
+  color: #49454f;
+  margin: 0;
+  text-transform: capitalize;
+}
+
+/* Pagination */
+.pagination-bottom {
+  padding: 10px 16px;
   display: flex;
   justify-content: center;
-  align-items: center;
+  background: white;
+  border-top: 1px solid rgba(203, 196, 208, 0.15);
+}
+.custom-pagination .page-link {
+  color: #0f696e;
+  background: transparent;
+  border: none;
+  font-weight: 500;
+  padding: 5px 9px;
   border-radius: 50%;
 }
-
-.custom-pagination-wrapper {
-  display: inline-block;
-  position: relative;
-  padding-right: 10px;
+.custom-pagination .page-item.active .page-link {
+  background: #0f696e;
+  color: white;
 }
 
-.tab-wrapper {
-        position: relative;
-        border-bottom: 1px solid #e0e0e0;
-    }
-
-    .tab-line {
-        position: absolute;
-        bottom: 0;
-        height: 2px;
-        background-color: rgba(49, 33, 177, 1); /* Active blue color */
-        transition: all 0.3s ease;
-    }
-
-    .nav-item {
-        text-align: center;
-        cursor: pointer;
-        padding: 8px 0;
-        color: black;
-        font-weight: 500;
-        position: relative;
-        z-index: 1;
-    }
-
-    .nav-item i {
-        margin-right: 5px;
-    }
-.btn-pill {
-    border-radius: 50px;
-    padding: 6px 20px;
-    font-size: 0.875rem;
-    font-weight: 500;
-    display: inline-flex;
-    align-items: center;
-    white-space: nowrap;
-    height: 36px;
-}
-
-.active-tab {
-    background-color: #E6E3FF;
-    color: #3121B1;
-    border: none;
-    font-size: 13px;
-}
-
-.btn-outline-secondary:hover {
-    background-color: transparent;
-}
-.accordion-button:not(.collapsed) {
-    background-color: white;
-}
-.accordion-button:focus {
-    box-shadow: none;
-}
-.accordion {
-     --bs-accordion-border-color: none;
-     --bs-accordion-body-padding-y: 0;
-}
-
-.dropdown {
-    position: relative;
-    display: inline-block;
-    width: 200px;
-}
-
-.dropdown-btn {
-    background-color: white;
-    border: 1px solid rgba(0, 0, 0, 0.16);
-    border-radius: 50px;
-    padding: 8px 20px 8px 12px;
-    cursor: pointer;
-    position: relative;
-}
-
-.dropdown-btn::after {
-    content: "▼"; /* arrow symbol */
-    font-size: 12px;
-    color: #333;
-    position: absolute;
-    right: 16px;
-    top: 50%;
-    transform: translateY(-50%);
-    pointer-events: none;
-}
-
-.dropdown-content {
-    display: none;
-    position: absolute;
-    background-color: white;
-    min-width: 100%;
-    border-radius: 12px;
-    box-shadow: 0px 8px 16px rgba(0,0,0,0.2);
-    z-index: 1;
-    margin-top: 4px;
-}
-
-.dropdown-content a {
-    padding: 8px 12px;
-    display: block;
-    text-decoration: none;
-    color: black;
-    border-radius: 8px;
-}
-
-.dropdown-content a:hover {
-    background-color: #f1f1f1;
-}
-
-.dropdown.show .dropdown-content {
-    display: block;
-}
-.custom-tabs {
+/* ── Right Panel ── */
+.assets-right-panel {
+  flex: 1;
   display: flex;
-  justify-content: space-around; /* equal spacing */
-  border-bottom: 1px solid #dee2e6; /* grey line */
+  flex-direction: column;
+  background: #f8f9fc;
+  overflow: hidden;
+  min-width: 0;
 }
 
-.custom-tabs .nav-item {
-  flex: 1; /* each tab takes equal width */
-  text-align: center; /* center text */
+.right-panel-header {
+  padding: 24px 28px 0;
+  background: #f8f9fc;
+  flex-shrink: 0;
 }
 
-.custom-tabs .nav-link {
-  color: black;
+.asset-detail-title {
+  font-size: 1.7rem;
+  font-weight: 800;
+  color: #241447;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.status-open-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+.status-dot-open {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #16a34a;
+  flex-shrink: 0;
+}
+
+.meta-label {
+  font-size: 0.73rem;
+  color: #49454f;
   font-weight: 500;
-  background: transparent !important;
-  margin-bottom: -10px;
+  margin-bottom: 2px;
+}
+.meta-value {
+  font-size: 0.92rem;
+  color: #191c1e;
+  font-weight: 500;
+  margin: 0;
 }
 
-.custom-tabs .nav-link.active {
-  color: rgba(49, 33, 177, 1);
+/* Detail tabs */
+.detail-tabs {
+  display: flex;
+  gap: 24px;
+  border-bottom: 1px solid rgba(203, 196, 208, 0.2);
+}
+.detail-tab {
+  padding-bottom: 10px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #49454f;
+  background: none;
   border: none;
-  border-bottom: 2px solid rgba(49, 33, 177, 1); 
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s;
 }
-.fixes-btn {
-    background-color:rgba(49, 33, 177, 1);
-    border-radius: 15px;
-    color: white;
+.detail-tab:hover { color: #241447; }
+.detail-tab-active {
+  font-weight: 700;
+  color: #0f696e;
+  border-bottom: 2px solid #0f696e;
 }
+
+/* Right panel scrollable body */
+.right-panel-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 28px;
+}
+.right-panel-scroll::-webkit-scrollbar { width: 4px; }
+.right-panel-scroll::-webkit-scrollbar-track { background: transparent; }
+.right-panel-scroll::-webkit-scrollbar-thumb { background: #cbc4d0; border-radius: 10px; }
+
+.section-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #49454f;
+  margin: 0;
+}
+
+/* Severity pills filter */
+.sev-pill {
+  border-radius: 50px;
+  padding: 5px 14px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  background: white;
+  border: 1px solid rgba(0,0,0,0.12);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.sev-pill:hover { background: #f2f3f6; }
+.sev-pill-active {
+  background: #e0f2f1 !important;
+  color: #0f696e !important;
+  border-color: #0f696e !important;
+  font-weight: 700;
+}
+.sev-pill-critical { color: #93000a; }
+.sev-pill-high     { color: #9a3412; }
+.sev-pill-medium   { color: #854d0e; }
+.sev-pill-low      { color: #0f696e; }
+
+/* Vuln accordion */
+.vuln-accordion-item {
+  border-radius: 12px;
+  overflow: hidden;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  border: 1px solid rgba(203, 196, 208, 0.25);
+}
+
+.vuln-accordion-header {
+  padding: 14px 16px;
+  background: #f2f3f6;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  gap: 12px;
+}
+.vuln-accordion-header:hover { background: #edeef1; }
+
+.vuln-icon { font-size: 1rem; }
+.vuln-icon-critical { color: #ba1a1a; }
+.vuln-icon-high     { color: #ea580c; }
+.vuln-icon-medium   { color: #ca8a04; }
+.vuln-icon-low      { color: #0f696e; }
+
+.vuln-name {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #241447;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vuln-accordion-body {
+  padding: 18px 20px;
+}
+
+.vuln-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.vuln-meta-cell {
+  background: #f2f3f6;
+  padding: 10px;
+  border-radius: 8px;
+}
+.vuln-meta-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #49454f;
+  margin-bottom: 3px;
+}
+.vuln-meta-value {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #241447;
+  margin: 0;
+}
+.vuln-meta-value.teal { color: #0f696e; }
+
+.vuln-desc-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #241447;
+  margin-bottom: 5px;
+}
+.vuln-desc-text {
+  font-size: 0.875rem;
+  color: #49454f;
+  line-height: 1.6;
+}
+
+.btn-fix-now {
+  background: #241447;
+  color: white !important;
+  padding: 7px 22px;
+  border-radius: 50px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  display: inline-block;
+}
+.btn-fix-now:hover { opacity: 0.88; }
+
+/* Fixed Recently */
+.fixed-divider { height: 1px; background: rgba(203, 196, 208, 0.25); }
+
+.fixed-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f2f3f6;
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+.fixed-check-icon { color: #16a34a; font-size: 1.1rem; }
+.fixed-vuln-name {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #241447;
+  margin: 0;
+}
+.fixed-vuln-date {
+  font-size: 0.7rem;
+  color: #49454f;
+  margin: 0;
+}
+.btn-view-detail {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #0f696e;
+  padding: 4px 14px;
+  border-radius: 50px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-view-detail:hover { background: #a1ecf2; }
+
+/* Support Requests */
+.support-req-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(203, 196, 208, 0.2);
+}
+
+.sr-index-circle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #f0ecff;
+  color: #241447;
+  font-size: 0.78rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sr-vul-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #241447;
+}
+
+.sr-empty {
+  color: #94a3b8;
+  font-size: 0.875rem;
+  padding: 16px 0;
+  display: flex;
+  align-items: center;
+}
+
+/* Modal */
+.sr-modal-content {
+  border-radius: 14px;
+  overflow: hidden;
+  border: none;
+}
+
+.sr-modal-header {
+  background: #241447;
+  border-bottom: none;
+  padding: 18px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.sr-modal-title {
+  color: white;
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 3px;
+  display: flex;
+  align-items: center;
+}
+
+.sr-modal-sub {
+  color: rgba(255,255,255,0.55);
+  font-size: 0.78rem;
+  padding-left: 26px;
+}
+
+.sr-section-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+}
+
+.sr-step-pill {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(15,105,110,0.1);
+  color: #0f696e;
+  border: 1.5px solid rgba(15,105,110,0.25);
+  border-radius: 50px;
+  padding: 4px 14px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.sr-textarea {
+  width: 100%;
+  background: #f8f9fc;
+  border: 1.5px solid #e8ecf0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.875rem;
+  color: #475569;
+  resize: none;
+  outline: none;
+}
+
+.sr-modal-footer {
+  padding: 14px 24px;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.sr-btn-close {
+  background: #241447;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 22px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.sr-btn-close:hover { background: #1a0f35; }
+
+.btn-view-requests {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #0f696e;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: #e0f2f1;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-view-requests:hover { background: #a1ecf2; }
 </style>
