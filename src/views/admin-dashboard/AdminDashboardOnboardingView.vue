@@ -472,6 +472,34 @@
                   </div>
                   <div v-if="mitigationLoading" class="py-3 text-center text-muted">Loading...</div>
                   <div v-else-if="uniqueMitigationVulns.length === 0" class="py-2 text-muted small">No vulnerabilities assigned to this team.</div>
+                  <div v-else class="mitigation-vuln-grid">
+                    <div
+                      v-for="(vuln, i) in uniqueMitigationVulns.slice(0, 4)"
+                      :key="(vuln.plugin_name || 'vuln') + i"
+                      class="mitigation-vuln-col"
+                    >
+                      <div class="mitigation-vuln-card">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                          <div class="mitigation-vuln-meta">
+                            <i class="bi bi-hdd-network me-1"></i>
+                            {{ vuln.assetCount ?? 0 }} assets
+                          </div>
+                          <span class="mitigation-vuln-severity">
+                            {{ vuln.risk_factor || 'Medium' }}
+                          </span>
+                        </div>
+
+                        <h6 class="mitigation-vuln-title" :title="vuln.plugin_name">
+                          {{ vuln.plugin_name }}
+                        </h6>
+
+                        <div class="mitigation-vuln-meta mt-3">
+                          <i class="bi bi-hdd-network me-1"></i>
+                          {{ vuln.assetCount ?? 0 }} affected assets
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
                 </div>
               </div>
@@ -492,7 +520,7 @@
                   <!-- Left Panel -->
                   <div class="assets-left-panel">
                     <div class="left-panel-header">
-                      <div class="d-flex justify-content-between align-items-center mb-2">
+                      <div class="d-flex justify-content-between align-items-center mb-2 assets-header-row">
                         <h2 class="assets-title">All Assets</h2>
                         <span class="assets-count-badge">{{ authStore.assetCount }} Assets</span>
                       </div>
@@ -839,9 +867,30 @@ export default {
       const seen = new Map();
       for (const vuln of this.mitigationActiveTeamData.vulnerabilities) {
         const key = (vuln.plugin_name || '').trim().toLowerCase();
-        if (!seen.has(key)) seen.set(key, vuln);
+        if (!seen.has(key)) {
+          const assets = new Set();
+          if (Array.isArray(vuln.assets)) vuln.assets.forEach(a => assets.add(String(a)));
+          if (vuln.host_name) assets.add(String(vuln.host_name));
+          if (vuln.asset) assets.add(String(vuln.asset));
+          if (vuln.ip) assets.add(String(vuln.ip));
+          if (vuln.hostname) assets.add(String(vuln.hostname));
+
+          seen.set(key, {
+            ...vuln,
+            _assetSet: assets,
+            assetCount: assets.size,
+          });
+        } else {
+          const existing = seen.get(key);
+          if (Array.isArray(vuln.assets)) vuln.assets.forEach(a => existing._assetSet.add(String(a)));
+          if (vuln.host_name) existing._assetSet.add(String(vuln.host_name));
+          if (vuln.asset) existing._assetSet.add(String(vuln.asset));
+          if (vuln.ip) existing._assetSet.add(String(vuln.ip));
+          if (vuln.hostname) existing._assetSet.add(String(vuln.hostname));
+          existing.assetCount = existing._assetSet.size;
+        }
       }
-      return Array.from(seen.values());
+      return Array.from(seen.values()).map(({ _assetSet, ...rest }) => rest);
     },
     modalSeverityLabel() {
       const map = { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low' };
@@ -1958,13 +2007,21 @@ mounted() {
   flex-direction: column;
   background: #ffffff;
   overflow: hidden;
-  padding-top: 10px;
+  padding-top: 72px;
 }
 
 .left-panel-header {
-  padding: 16px 20px 14px;
+  padding: 22px 20px 14px;
   border-bottom: 1px solid rgba(203,196,208,0.2);
   flex-shrink: 0;
+}
+
+.assets-header-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  min-height: 28px;
+  margin-bottom: 10px !important;
 }
 
 .assets-title {
@@ -2388,5 +2445,50 @@ mounted() {
   color: #49454f;
   margin: 0;
   text-transform: capitalize;
+}
+
+.mitigation-vuln-card {
+  background: #ffffff;
+  border: 1px solid rgba(203, 196, 208, 0.45);
+  border-radius: 14px;
+  padding: 18px;
+  min-height: 190px;
+  max-width: 100%;
+}
+
+.mitigation-vuln-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.mitigation-vuln-col {
+  width: 280px;
+  max-width: 280px;
+  flex: 0 0 280px;
+}
+
+.mitigation-vuln-meta {
+  color: #4b5563;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mitigation-vuln-severity {
+  color: #a16207;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  text-transform: capitalize;
+}
+
+.mitigation-vuln-title {
+  color: #111827;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>
