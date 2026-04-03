@@ -18,10 +18,10 @@
               <div class="pm-page-header">
                 <div>
                   <h2 class="pm-title">
-                    Vulnerability Management Program
-                    <i class="bi bi-calendar3 ms-2 pm-title-icon"></i>
+                    Team Perfrormance Monitoring
+
                   </h2>
-                  <p class="pm-subtitle">Cross-departmental vulnerability resolution tracking</p>
+
                 </div>
                 <button class="pm-view-report-btn">
                   <i class="bi bi-eye me-2"></i>
@@ -38,9 +38,7 @@
                       <h3 class="pm-card-title">{{ cfg.name }} Team</h3>
                       <p class="pm-card-subtitle">{{ cfg.focus }}</p>
                     </div>
-                    <span class="pm-status-tag" :class="closureRate(cfg.name) >= 50 ? 'pm-tag-active' : 'pm-tag-review'">
-                      {{ closureRate(cfg.name) >= 50 ? 'Active Sync' : 'Reviewing' }}
-                    </span>
+
                   </div>
 
                   <!-- Metrics Row -->

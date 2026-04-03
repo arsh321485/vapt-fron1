@@ -55,7 +55,7 @@
         <div>
           <button class="btn border-0" :class="{ activeBtn: isActive('/performance-monitoring') }" @click="navigateTo('/performance-monitoring')">
           <i class="bi bi-graph-up-arrow nav-menu"></i>
-          <p class="menu-heading">Performance Monitoring</p></button>
+          <p class="menu-heading">Team Performance</p></button>
         </div>
 
         <!-- PENDING - Restricted during testing -->
