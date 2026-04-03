@@ -32,21 +32,27 @@
                   <i class="bi bi-shield-check me-2"></i>No vulnerabilities found for this team.
                 </div>
 
-                <!-- Grouped vulnerability tables -->
-                <div v-for="group in groupedVulns" :key="group.name" class="msu-group mb-4">
-                  <div class="msu-group-header">
-                    <h6 class="msu-group-title">{{ group.name }}</h6>
-                    <span class="msu-group-count">
-                      {{ group.rows.length }} {{ group.rows.length === 1 ? 'asset' : 'assets' }}
-                    </span>
+                <!-- Accordion Groups -->
+                <div v-for="(group, gIdx) in groupedVulns" :key="group.name" class="msu-accordion-card mb-3">
+
+                  <!-- Accordion Header -->
+                  <div class="msu-accordion-header" @click="toggleGroup(gIdx)">
+                    <div class="d-flex align-items-center gap-3">
+                      <span class="msu-severity-bar" :class="getSeverityBarClass(group)"></span>
+                      <div>
+                        <h6 class="msu-accordion-title mb-0">{{ group.name }}</h6>
+                        <p class="msu-accordion-sub mb-0">Vulnerability ID: {{ group.vulnId || 'VAPT-' + (2024 + gIdx) + '-' + String(gIdx + 800).padStart(4,'0') }}</p>
+                      </div>
+                    </div>
+                    <i class="bi" :class="openGroups.includes(gIdx) ? 'bi-chevron-up' : 'bi-chevron-down'" style="color:#64748b;"></i>
                   </div>
 
-                  <div class="msu-table-wrap">
+                  <!-- Accordion Body -->
+                  <div v-if="openGroups.includes(gIdx)" class="msu-accordion-body">
                     <table class="msu-table">
                       <thead>
                         <tr>
-                          <th>Vulnerability Name</th>
-                          <th>Asset</th>
+                          <th>Asset (IP)</th>
                           <th>OS</th>
                           <th>Severity</th>
                           <th>Status</th>
@@ -55,44 +61,47 @@
                       </thead>
                       <tbody>
                         <tr v-for="vuln in group.rows" :key="vuln.id">
+                          <td class="msu-td-asset">{{ vuln.host_name }}</td>
+                          <td class="msu-td-os">{{ vuln.os || '—' }}</td>
                           <td>
-                            <span class="msu-vuln-name" :title="vuln.plugin_name">{{ vuln.plugin_name }}</span>
-                          </td>
-                          <td>
-                            <span class="msu-asset-chip">{{ vuln.host_name }}</span>
-                          </td>
-                          <td>
-                            <span class="msu-os-text" :title="vuln.os">{{ vuln.os || '—' }}</span>
-                          </td>
-                          <td>
-                            <span class="msu-sev-badge" :class="'msu-sev-' + (vuln.risk_factor || '').toLowerCase()">
-                              <span class="msu-sev-dot"></span>
-                              {{ vuln.risk_factor }}
+                            <span class="msu-sev-chip" :class="'msu-sev-' + (vuln.risk_factor || '').toLowerCase()">
+                              {{ (vuln.risk_factor || '').toUpperCase() }}
                             </span>
                           </td>
                           <td>
-                            <span class="msu-status-badge" :class="(vuln.status?.toLowerCase() === 'open') ? 'msu-status-open' : 'msu-status-closed'">
-                              <span class="msu-status-dot"></span>
-                              <span class="text-capitalize">{{ vuln.status }}</span>
-                            </span>
+                            <div class="d-flex align-items-center gap-2">
+                              <span class="msu-status-dot-inline" :class="getStatusDotClass(vuln.status)"></span>
+                              <span class="msu-status-text" :class="getStatusTextClass(vuln.status)">
+                                {{ vuln.status }}
+                              </span>
+                            </div>
                           </td>
                           <td>
                             <router-link :to="{
                               name: 'VulFix',
                               params: { reportId: reportId, asset: vuln.host_name },
                               query: { id: vuln.id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor }
-                            }">
-                              <button class="msu-view-btn">
-                                View <i class="bi bi-arrow-right-circle-fill ms-1"></i>
-                              </button>
+                            }" class="text-decoration-none">
+                              <button class="msu-view-btn">View <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
                             </router-link>
                           </td>
                         </tr>
                       </tbody>
                     </table>
                   </div>
+
                 </div>
               </template>
+            </div>
+
+            <!-- Footer Actions -->
+            <div class="msu-footer">
+              <button class="msu-export-btn" @click="exportPDF">
+                <i class="bi bi-download me-2"></i>Export PDF
+              </button>
+              <button class="msu-apply-btn">
+                Apply Fixes
+              </button>
             </div>
 
           </div>
@@ -118,6 +127,7 @@ export default {
       loading: false,
       mitigationData: null,
       reportId: null,
+      openGroups: [0], // first group open by default
     };
   },
   computed: {
@@ -141,17 +151,35 @@ export default {
     },
   },
   methods: {
-    getSeverityColor(sev) {
-      if (sev === 'Critical') return 'maroon';
-      if (sev === 'High') return 'red';
-      if (sev === 'Medium') return 'orange';
-      return 'green';
+    toggleGroup(idx) {
+      if (this.openGroups.includes(idx)) {
+        this.openGroups = this.openGroups.filter(i => i !== idx);
+      } else {
+        this.openGroups.push(idx);
+      }
     },
-    getStatusStyle(status) {
-      const s = status?.toLowerCase();
-      if (s === 'closed' || s === 'close') return { backgroundColor: '#28a745' };
-      if (s === 'open') return { backgroundColor: 'rgb(194, 60, 60)' };
-      return {};
+    getSeverityBarClass(group) {
+      const sevs = group.rows.map(r => (r.risk_factor || '').toLowerCase());
+      if (sevs.includes('critical')) return 'bar-critical';
+      if (sevs.includes('high')) return 'bar-high';
+      if (sevs.includes('medium')) return 'bar-medium';
+      return 'bar-low';
+    },
+
+    getStatusDotClass(status) {
+      const s = (status || '').toLowerCase();
+      if (s === 'open') return 'dot-red';
+      if (s === 'closed' || s === 'close') return 'dot-teal';
+      return 'dot-grey';
+    },
+    getStatusTextClass(status) {
+      const s = (status || '').toLowerCase();
+      if (s === 'open') return 'text-unpatched';
+      if (s === 'closed' || s === 'close') return 'text-patched';
+      return 'text-inprogress';
+    },
+    exportPDF() {
+      window.print();
     },
     async loadData() {
       const store = useAuthStore();
@@ -173,14 +201,14 @@ export default {
 <style scoped>
 .msu-content {
   padding: 0;
-  background: #f8f9fc;
+  background: #f4f5f7;
   min-height: 100vh;
 }
 
 /* Page Header */
 .msu-page-header {
   padding: 70px 40px 20px;
-  background: #f8f9fc;
+  background: #f4f5f7;
 }
 
 .msu-back-link {
@@ -192,12 +220,12 @@ export default {
   align-items: center;
   transition: opacity 0.15s;
 }
-.msu-back-link:hover { opacity: 0.75; color: #0f696e; }
+.msu-back-link:hover { opacity: 0.75; }
 
 .msu-title {
   font-size: 1.6rem;
   font-weight: 800;
-  color: #241447;
+  color: #1e293b;
   margin: 0;
 }
 
@@ -216,9 +244,9 @@ export default {
   margin: 4px 0 0;
 }
 
-/* Inner content */
+/* Inner */
 .msu-inner {
-  padding: 8px 40px 40px;
+  padding: 8px 40px 100px;
 }
 
 .msu-empty {
@@ -228,41 +256,57 @@ export default {
   text-align: center;
   color: #94a3b8;
   font-size: 0.9rem;
+}
+
+/* Accordion Card */
+.msu-accordion-card {
+  background: #ffffff;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
   border: 1px solid #f1f5f9;
 }
 
-/* Group */
-.msu-group-header {
+.msu-accordion-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-  padding-left: 4px;
+  justify-content: space-between;
+  padding: 18px 24px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+.msu-accordion-header:hover {
+  background: #fafbfc;
 }
 
-.msu-group-title {
+.msu-severity-bar {
+  width: 4px;
+  height: 40px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.bar-critical { background: #dc2626; }
+.bar-high     { background: #f97316; }
+.bar-medium   { background: #f59e0b; }
+.bar-low      { background: #10b981; }
+
+.msu-accordion-title {
   font-size: 0.95rem;
   font-weight: 700;
-  color: #241447;
-  margin: 0;
+  color: #1e293b;
 }
 
-.msu-group-count {
-  font-size: 0.72rem;
-  font-weight: 700;
-  background: #f0ecff;
-  color: #241447;
-  padding: 2px 10px;
-  border-radius: 50px;
+.msu-accordion-sub {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-top: 2px;
 }
 
 /* Table */
-.msu-table-wrap {
-  background: white;
-  border-radius: 14px;
-  border: 1px solid #f1f5f9;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  overflow: hidden;
+.msu-accordion-body {
+  border-top: 1px solid #f1f5f9;
+  padding: 0;
 }
 
 .msu-table {
@@ -276,8 +320,8 @@ export default {
 }
 
 .msu-table th {
-  padding: 12px 16px;
-  font-size: 0.65rem;
+  padding: 10px 24px;
+  font-size: 0.7rem;
   font-weight: 700;
   color: #94a3b8;
   text-transform: uppercase;
@@ -287,7 +331,7 @@ export default {
 }
 
 .msu-table td {
-  padding: 12px 16px;
+  padding: 14px 24px;
   border-bottom: 1px solid #f8f9fc;
   vertical-align: middle;
 }
@@ -300,81 +344,50 @@ export default {
   background: #fafbfc;
 }
 
-/* Cell content */
-.msu-vuln-name {
+.msu-td-asset {
   font-weight: 600;
-  color: #241447;
-  display: block;
-  max-width: 240px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.msu-asset-chip {
-  background: #edeef1;
   color: #1e293b;
-  font-size: 0.78rem;
-  font-weight: 600;
-  padding: 3px 10px;
-  border-radius: 6px;
+  font-size: 0.875rem;
 }
 
-.msu-os-text {
+.msu-td-os {
   color: #64748b;
   font-size: 0.82rem;
-  display: block;
-  max-width: 160px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-/* Severity badge */
-.msu-sev-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.75rem;
-  font-weight: 700;
+/* Severity chip */
+.msu-sev-chip {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 800;
   padding: 3px 10px;
-  border-radius: 20px;
+  border-radius: 6px;
+  letter-spacing: 0.04em;
 }
-.msu-sev-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.msu-sev-critical { background: #fef2f2; color: #9b1c1c; }
-.msu-sev-critical .msu-sev-dot { background: #9b1c1c; }
-.msu-sev-high { background: #fff7ed; color: #c2410c; }
-.msu-sev-high .msu-sev-dot { background: #c2410c; }
-.msu-sev-medium { background: #fefce8; color: #a16207; }
-.msu-sev-medium .msu-sev-dot { background: #a16207; }
-.msu-sev-low { background: #f0fdf4; color: #15803d; }
-.msu-sev-low .msu-sev-dot { background: #15803d; }
+.msu-sev-critical { background: #fee2e2; color: #dc2626; }
+.msu-sev-high     { background: #fff7ed; color: #f97316; }
+.msu-sev-medium   { background: #fefce8; color: #ca8a04; }
+.msu-sev-low      { background: #f0fdf4; color: #16a34a; }
 
-/* Status badge */
-.msu-status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: 20px;
-}
-.msu-status-dot {
-  width: 6px;
-  height: 6px;
+/* Status */
+.msu-status-dot-inline {
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
+  display: inline-block;
 }
-.msu-status-open { background: #fef2f2; color: #ba1a1a; }
-.msu-status-open .msu-status-dot { background: #ba1a1a; }
-.msu-status-closed { background: #f0fdf4; color: #15803d; }
-.msu-status-closed .msu-status-dot { background: #15803d; }
+.dot-red  { background: #dc2626; }
+.dot-teal { background: #0f696e; }
+.dot-grey { background: #64748b; }
+
+.msu-status-text {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.text-unpatched  { color: #dc2626; }
+.text-patched    { color: #0f696e; }
+.text-inprogress { color: #64748b; }
 
 /* View button */
 .msu-view-btn {
@@ -395,4 +408,50 @@ export default {
   background: rgba(15,105,110,0.07);
   border-color: #0f696e;
 }
+
+/* Footer */
+.msu-footer {
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  left: 8.333%; /* col-1 width */
+  background: #ffffff;
+  border-top: 1px solid #f1f5f9;
+  padding: 16px 40px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  z-index: 100;
+  box-shadow: 0 -2px 12px rgba(0,0,0,0.06);
+}
+
+.msu-export-btn {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 50px;
+  padding: 10px 24px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #1e293b;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  transition: background 0.15s;
+}
+.msu-export-btn:hover { background: #f8f9fc; }
+
+.msu-apply-btn {
+  background: #1e293b;
+  border: none;
+  border-radius: 50px;
+  padding: 10px 28px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #ffffff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  transition: background 0.15s;
+}
+.msu-apply-btn:hover { background: #0f172a; }
 </style>

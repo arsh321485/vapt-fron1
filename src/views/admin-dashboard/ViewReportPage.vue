@@ -12,219 +12,311 @@
 
           <div class="col-11 vr-content">
 
-            <!-- Page Header -->
-            <div class="report-sticky-header d-flex justify-content-between align-items-center">
-              <button class="btn btn-back" @click="$router.back()">
-                <i class="bi bi-arrow-left me-1"></i> Back
+            <!-- Sticky Top Header -->
+            <div class="report-sticky-header">
+              <button class="btn-back" @click="$router.back()">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:6px;"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                Back
               </button>
-              <button class="btn btn-download" @click="downloadReport">
-                <i class="bi bi-download me-2"></i>Download Report
+              <button class="btn-export" @click="downloadReport">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:7px;"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
+                Export PDF
               </button>
             </div>
 
-            <div class="report-page-wrap" ref="reportWrap">
+            <!-- Report Body -->
+            <div class="report-body" ref="reportWrap">
 
-              <!-- Report Heading -->
-              <div class="report-main-heading mb-4">
-                <h2 class="report-heading-title">Vulnerability Management Report</h2>
+              <!-- Page Title -->
+              <div class="page-title-block">
+                <h1 class="page-main-title">Vulnerability Management Report</h1>
+                <p class="page-subtitle">
+                  <svg width="14" height="14" fill="none" stroke="#7c6fa0" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:5px;"><rect x="3" y="4" width="18" height="18" rx="2"/><path stroke-linecap="round" d="M16 2v4M8 2v4M3 10h18"/></svg>
+                  Audit Period: Oct 01 – Oct 31, 2023
+                </p>
               </div>
 
-              <!-- Summary Stat Cards -->
-              <div class="stat-cards-row mb-4">
-                <div class="stat-card">
-                  <div class="stat-label">Total Vulnerabilities</div>
-                  <div class="stat-value">{{ statsLoading ? '—' : totalVulnerabilities }}</div>
-                  <div class="stat-sub text-muted">Discovered this cycle</div>
+              <!-- ═══════════════════════════════════════════════════════
+                   SECTION 1 — Executive Summary Bento Grid
+              ═══════════════════════════════════════════════════════ -->
+              <div class="section-label">
+                <span class="section-label-pip"></span>
+                Executive Summary
+              </div>
+              <div class="bento-grid-12 mb-section">
+
+                <!-- Left: Total Vulns -->
+                <div class="bento-card bento-col-4 bento-total-card">
+                  <div class="bento-total-eyebrow">Total Vulnerabilities Discovered</div>
+                  <div class="bento-total-number">{{ totalVulnerabilities }}</div>
+                  <div class="bento-total-trend">
+                    <span class="trend-icon trend-up">
+                      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>
+                    </span>
+                    <span class="trend-text">vs last month</span>
+                  </div>
+                  <div class="bento-total-chart-area">
+                    <canvas id="rTotalVulnsChart" style="max-height:130px;"></canvas>
+                  </div>
                 </div>
-                <div class="stat-card">
-                  <div class="stat-label">Critical</div>
-                  <div class="stat-value" style="color: maroon;">{{ statsLoading ? '—' : vulnStats.critical }}</div>
-                  <div class="stat-sub" style="color: maroon;">Immediate action required</div>
+
+                <!-- Right: Severity Breakdown -->
+                <div class="bento-card bento-col-8 bento-severity-card">
+                  <div class="bento-severity-header">
+                    <div class="bento-severity-title">Severity Breakdown</div>
+                    <div class="sev-legend">
+                      <span class="sev-legend-dot" style="background:#7f1d1d;"></span><span>Critical</span>
+                      <span class="sev-legend-dot" style="background:#dc2626;"></span><span>High</span>
+                      <span class="sev-legend-dot" style="background:#d97706;"></span><span>Medium</span>
+                      <span class="sev-legend-dot" style="background:#16a34a;"></span><span>Low</span>
+                    </div>
+                  </div>
+                  <div class="severity-sub-grid">
+                    <div class="severity-sub-card sev-sub-critical">
+                      <div class="sev-sub-dot" style="background:#7f1d1d;"></div>
+                      <div class="sev-sub-label">Critical</div>
+                      <div class="sev-sub-number">{{ vulnStats.critical }}</div>
+                      <div class="sev-sub-caption">Immediate action</div>
+                    </div>
+                    <div class="severity-sub-card sev-sub-high">
+                      <div class="sev-sub-dot" style="background:#dc2626;"></div>
+                      <div class="sev-sub-label">High</div>
+                      <div class="sev-sub-number">{{ vulnStats.high }}</div>
+                      <div class="sev-sub-caption">Urgent remediation</div>
+                    </div>
+                    <div class="severity-sub-card sev-sub-medium">
+                      <div class="sev-sub-dot" style="background:#d97706;"></div>
+                      <div class="sev-sub-label">Medium</div>
+                      <div class="sev-sub-number">{{ vulnStats.medium }}</div>
+                      <div class="sev-sub-caption">Scheduled patching</div>
+                    </div>
+                    <div class="severity-sub-card sev-sub-low">
+                      <div class="sev-sub-dot" style="background:#16a34a;"></div>
+                      <div class="sev-sub-label">Low</div>
+                      <div class="sev-sub-number">{{ vulnStats.low }}</div>
+                      <div class="sev-sub-caption">Monitor &amp; log</div>
+                    </div>
+                  </div>
+                  <!-- hidden canvas for doughnut (used by initCharts) -->
+                  <canvas id="rCriticalityStatusChart" style="display:none;"></canvas>
                 </div>
-                <div class="stat-card">
-                  <div class="stat-label">High</div>
-                  <div class="stat-value" style="color: red;">{{ statsLoading ? '—' : vulnStats.high }}</div>
-                  <div class="stat-sub" style="color: red;">Urgent remediation needed</div>
+
+              </div>
+
+              <!-- ═══════════════════════════════════════════════════════
+                   SECTION 2 — Secondary Analytics
+              ═══════════════════════════════════════════════════════ -->
+              <div class="section-label">
+                <span class="section-label-pip"></span>
+                Distribution &amp; Velocity
+              </div>
+              <div class="bento-grid-12 mb-section">
+
+                <!-- Left: Team Distribution Donut -->
+                <div class="bento-card bento-col-6 bento-chart-card">
+                  <div class="bento-chart-title">Distribution by Team</div>
+                  <div class="chart-donut-wrap">
+                    <canvas id="rTeamDistributionChart" style="max-height:200px;max-width:200px;"></canvas>
+                    <div class="team-dist-legend">
+                      <div
+                        v-for="cfg in teamCardConfigs"
+                        :key="cfg.name"
+                        class="dist-legend-row"
+                      >
+                        <span class="dist-legend-dot" :style="{ background: cfg.color }"></span>
+                        <span class="dist-legend-name">{{ cfg.name }}</span>
+                        <span class="dist-legend-count">
+                          {{ (teamDetail[cfg.name] || {}).total ?? '—' }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div class="stat-card">
-                  <div class="stat-label">Medium</div>
-                  <div class="stat-value" style="color: goldenrod;">{{ statsLoading ? '—' : vulnStats.medium }}</div>
-                  <div class="stat-sub" style="color: goldenrod;">Scheduled for patching</div>
+
+                <!-- Right: Remediation Velocity -->
+                <div class="bento-card bento-col-6 bento-velocity-card">
+                  <div class="bento-chart-title">Remediation Velocity</div>
+                  <p class="velocity-sub">Closure rate by severity tier across all teams</p>
+
+                  <!-- Critical bar -->
+                  <div class="velocity-item">
+                    <div class="velocity-row-top">
+                      <span class="velocity-label">
+                        <span class="velocity-dot" style="background:#7f1d1d;"></span>Critical
+                      </span>
+                      <span class="velocity-pct velocity-pct-critical">
+                        {{ teamClosureRate('Architectural Flaws') }}%
+                      </span>
+                    </div>
+                    <div class="velocity-bar-track">
+                      <div
+                        class="velocity-bar-fill velocity-fill-critical"
+                        :style="{ width: teamClosureRate('Architectural Flaws') + '%' }"
+                      ></div>
+                    </div>
+                  </div>
+
+                  <!-- High bar -->
+                  <div class="velocity-item">
+                    <div class="velocity-row-top">
+                      <span class="velocity-label">
+                        <span class="velocity-dot" style="background:#dc2626;"></span>High
+                      </span>
+                      <span class="velocity-pct velocity-pct-high">
+                        {{ teamClosureRate('Network Security') }}%
+                      </span>
+                    </div>
+                    <div class="velocity-bar-track">
+                      <div
+                        class="velocity-bar-fill velocity-fill-high"
+                        :style="{ width: teamClosureRate('Network Security') + '%' }"
+                      ></div>
+                    </div>
+                  </div>
+
+                  <!-- Overall bar -->
+                  <div class="velocity-item">
+                    <div class="velocity-row-top">
+                      <span class="velocity-label">
+                        <span class="velocity-dot" style="background:#241447;"></span>Overall
+                      </span>
+                      <span class="velocity-pct velocity-pct-overall">
+                        {{
+                          totalVulnerabilities
+                            ? Math.round(
+                                (teamCardConfigs.reduce((s, c) => {
+                                  const t = teamDetail[c.name];
+                                  return s + (t ? t.closed : 0);
+                                }, 0) /
+                                  teamCardConfigs.reduce((s, c) => {
+                                    const t = teamDetail[c.name];
+                                    return s + (t ? t.total : 0);
+                                  }, 0)) * 100
+                              )
+                            : 0
+                        }}%
+                      </span>
+                    </div>
+                    <div class="velocity-bar-track">
+                      <div
+                        class="velocity-bar-fill velocity-fill-overall"
+                        :style="{
+                          width: (totalVulnerabilities
+                            ? Math.round(
+                                (teamCardConfigs.reduce((s, c) => {
+                                  const t = teamDetail[c.name];
+                                  return s + (t ? t.closed : 0);
+                                }, 0) /
+                                  teamCardConfigs.reduce((s, c) => {
+                                    const t = teamDetail[c.name];
+                                    return s + (t ? t.total : 0);
+                                  }, 0)) * 100
+                              )
+                            : 0) + '%'
+                        }"
+                      ></div>
+                    </div>
+                  </div>
+
+                  <div class="velocity-note">
+                    <svg width="13" height="13" fill="none" stroke="#7c6fa0" stroke-width="2" viewBox="0 0 24 24" style="margin-right:5px;vertical-align:-2px;"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 8v4m0 4h.01"/></svg>
+                    Based on current audit cycle data
+                  </div>
                 </div>
-                <div class="stat-card">
-                  <div class="stat-label">Low</div>
-                  <div class="stat-value" style="color: #16a34a;">{{ statsLoading ? '—' : vulnStats.low }}</div>
-                  <div class="stat-sub" style="color: #16a34a;">Monitor and log</div>
+
+              </div>
+
+              <!-- ═══════════════════════════════════════════════════════
+                   SECTION 3 — Team Performance Grid
+              ═══════════════════════════════════════════════════════ -->
+              <div class="section-label">
+                <span class="section-label-pip"></span>
+                Team Performance
+              </div>
+              <div class="team-perf-grid mb-section">
+                <div
+                  v-for="cfg in teamCardConfigs"
+                  :key="cfg.name"
+                  class="team-perf-card"
+                >
+                  <!-- Card top row: icon + closure badge -->
+                  <div class="tpc-top-row">
+                    <div class="tpc-icon" :style="{ background: cfg.gradient }">{{ cfg.icon }}</div>
+                    <span
+                      class="closure-badge"
+                      :class="teamClosureRate(cfg.name) >= 60 ? 'closure-good' : 'closure-warn'"
+                    >
+                      {{ teamClosureRate(cfg.name) }}% closed
+                    </span>
+                  </div>
+
+                  <!-- Team name -->
+                  <div class="tpc-team-name">{{ cfg.name }}</div>
+
+                  <!-- Open / Closed counts -->
+                  <div class="tpc-counts-row">
+                    <div class="tpc-count-block">
+                      <div class="tpc-count-num tpc-open">{{ (teamDetail[cfg.name] || {}).open ?? '—' }}</div>
+                      <div class="tpc-count-lbl">Open</div>
+                    </div>
+                    <div class="tpc-count-divider"></div>
+                    <div class="tpc-count-block">
+                      <div class="tpc-count-num tpc-closed">{{ (teamDetail[cfg.name] || {}).closed ?? '—' }}</div>
+                      <div class="tpc-count-lbl">Closed</div>
+                    </div>
+                    <div class="tpc-count-divider"></div>
+                    <div class="tpc-count-block">
+                      <div class="tpc-count-num" :style="{ color: cfg.color }">{{ (teamDetail[cfg.name] || {}).total ?? '—' }}</div>
+                      <div class="tpc-count-lbl">Total</div>
+                    </div>
+                  </div>
+
+                  <!-- Progress bar -->
+                  <div class="tpc-progress-track">
+                    <div
+                      class="tpc-progress-fill"
+                      :style="{ width: teamClosureRate(cfg.name) + '%', background: cfg.color }"
+                    ></div>
+                  </div>
+
+                  <!-- Severity mini-badges -->
+                  <div class="tpc-sev-row">
+                    <span class="tpc-sev-chip tpc-sev-critical">{{ ((teamDetail[cfg.name] || {}).by_risk || {}).Critical ?? 0 }} Crit</span>
+                    <span class="tpc-sev-chip tpc-sev-high">{{ ((teamDetail[cfg.name] || {}).by_risk || {}).High ?? 0 }} High</span>
+                    <span class="tpc-sev-chip tpc-sev-medium">{{ ((teamDetail[cfg.name] || {}).by_risk || {}).Medium ?? 0 }} Med</span>
+                    <span class="tpc-sev-chip tpc-sev-low">{{ ((teamDetail[cfg.name] || {}).by_risk || {}).Low ?? 0 }} Low</span>
+                  </div>
                 </div>
               </div>
 
-              <!-- Executive Summary Charts -->
-              <section class="mb-4">
-                <h5 class="section-title">Executive Summary</h5>
-                <div class="charts-row">
-                  <div class="chart-card">
-                    <div class="chart-card-title">Total Vulnerabilities Discovered</div>
-                    <div class="total-vuln-number">{{ totalVulnerabilities }}</div>
-                    <canvas id="rTotalVulnsChart"></canvas>
-                  </div>
-                  <div class="chart-card">
-                    <div class="chart-card-title">Severity Status Overview</div>
-                    <canvas id="rCriticalityStatusChart"></canvas>
-                  </div>
-                  <div class="chart-card">
-                    <div class="chart-card-title">Distribution by Team</div>
-                    <canvas id="rTeamDistributionChart"></canvas>
-                  </div>
+              <!-- ═══════════════════════════════════════════════════════
+                   SECTION 4 — Detailed Vulnerability Log
+              ═══════════════════════════════════════════════════════ -->
+              <div class="section-label">
+                <span class="section-label-pip"></span>
+                Detailed Vulnerability Log
+              </div>
+
+              <!-- Filters Row -->
+              <div class="filter-card mb-filter">
+                <div class="filter-left">
+                  <svg width="15" height="15" fill="none" stroke="#7c6fa0" stroke-width="2" viewBox="0 0 24 24" style="margin-right:6px;vertical-align:-2px;flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h18M7 10h10M11 16h2"/></svg>
+                  <span class="filter-label-text">Filters</span>
                 </div>
-              </section>
-
-              <!-- Team Performance -->
-              <section class="mb-4">
-                <h5 class="section-title">Team Performance Overview</h5>
-                <div class="teams-grid">
-
-                  <div
-                    v-for="cfg in teamCardConfigs"
-                    :key="cfg.name"
-                    class="team-card"
-                    :style="{ borderLeftColor: cfg.color }"
-                  >
-                    <div class="team-header">
-                      <div class="team-icon" :style="{ background: cfg.gradient }">{{ cfg.icon }}</div>
-                      <div>
-                        <div class="team-name">{{ cfg.name }}</div>
-                        <div class="team-total" :style="{ color: cfg.color }">
-                          {{ (teamDetail[cfg.name] || {}).total ?? '—' }}  Vulnerabilities assigned
-                        </div>
-                      </div>
-                    </div>
-                    <div class="team-metrics">
-                      <div class="metric-item">
-                        <div class="metric-value" style="color:#059669">{{ (teamDetail[cfg.name] || {}).closed ?? '—' }}</div>
-                        <div class="metric-label">Closed</div>
-                      </div>
-                      <div class="metric-item">
-                        <div class="metric-value" style="color:#dc2626">{{ (teamDetail[cfg.name] || {}).open ?? '—' }}</div>
-                        <div class="metric-label">Open</div>
-                      </div>
-                      <div class="metric-item"><span class="sev-badge sev-maroon">{{ ((teamDetail[cfg.name] || {}).by_risk || {}).Critical ?? 0 }} Critical</span></div>
-                      <div class="metric-item"><span class="sev-badge sev-red">{{ ((teamDetail[cfg.name] || {}).by_risk || {}).High ?? 0 }} High</span></div>
-                      <div class="metric-item"><span class="sev-badge sev-orange">{{ ((teamDetail[cfg.name] || {}).by_risk || {}).Medium ?? 0 }} Medium</span></div>
-                      <div class="metric-item"><span class="sev-badge sev-green">{{ ((teamDetail[cfg.name] || {}).by_risk || {}).Low ?? 0 }} Low</span></div>
-                    </div>
-                    <div class="team-footer">
-                      {{ teamClosureRate(cfg.name) }}% Closure Rate
-                    </div>
-                  </div>
-
-                </div>
-              </section>
-
-              <!-- SLA Compliance -->
-              <!-- <section class="mb-4">
-                <div class="sla-section-header">
-                  <h5 class="section-title mb-0"><i class="bi bi-shield-check me-2"></i>SLA Compliance</h5>
-                  <span class="sla-policy-badge"><i class="bi bi-info-circle me-1"></i>Policy: 95% on Critical &amp; High</span>
-                </div>
-                <div class="sla-grid">
-
-                  <div class="sla-item-card sla-critical">
-                    <div class="sla-item-top">
-                      <div class="sla-dot" style="background: maroon;"></div>
-                      <div>
-                        <div class="sla-item-label">Critical</div>
-                        <div class="sla-item-window">Response within 48h</div>
-                      </div>
-                      <span class="sla-status-badge sla-pass">PASS</span>
-                    </div>
-                    <div class="sla-item-pct" style="color: maroon;">92%</div>
-                    <div class="sla-item-bar-wrap">
-                      <div class="sla-item-bar" style="width: 92%; background: maroon;"></div>
-                      <div class="sla-threshold-line"></div>
-                    </div>
-                    <div class="sla-item-footer">
-                      <span>0%</span><span class="sla-threshold-label">95% threshold</span><span>100%</span>
-                    </div>
-                  </div>
-
-                  <div class="sla-item-card sla-high">
-                    <div class="sla-item-top">
-                      <div class="sla-dot" style="background: #dc2626;"></div>
-                      <div>
-                        <div class="sla-item-label">High</div>
-                        <div class="sla-item-window">Response within 7 days</div>
-                      </div>
-                      <span class="sla-status-badge sla-fail">BELOW</span>
-                    </div>
-                    <div class="sla-item-pct" style="color: #dc2626;">85%</div>
-                    <div class="sla-item-bar-wrap">
-                      <div class="sla-item-bar" style="width: 85%; background: #dc2626;"></div>
-                      <div class="sla-threshold-line"></div>
-                    </div>
-                    <div class="sla-item-footer">
-                      <span>0%</span><span class="sla-threshold-label">95% threshold</span><span>100%</span>
-                    </div>
-                  </div>
-
-                  <div class="sla-item-card sla-medium">
-                    <div class="sla-item-top">
-                      <div class="sla-dot" style="background: goldenrod;"></div>
-                      <div>
-                        <div class="sla-item-label">Medium</div>
-                        <div class="sla-item-window">Response within 30 days</div>
-                      </div>
-                      <span class="sla-status-badge sla-pass">PASS</span>
-                    </div>
-                    <div class="sla-item-pct" style="color: goldenrod;">98%</div>
-                    <div class="sla-item-bar-wrap">
-                      <div class="sla-item-bar" style="width: 98%; background: goldenrod;"></div>
-                      <div class="sla-threshold-line"></div>
-                    </div>
-                    <div class="sla-item-footer">
-                      <span>0%</span><span class="sla-threshold-label">95% threshold</span><span>100%</span>
-                    </div>
-                  </div>
-
-                  <div class="sla-item-card sla-low">
-                    <div class="sla-item-top">
-                      <div class="sla-dot" style="background: #16a34a;"></div>
-                      <div>
-                        <div class="sla-item-label">Low</div>
-                        <div class="sla-item-window">Response within 90 days</div>
-                      </div>
-                      <span class="sla-status-badge sla-pass">PASS</span>
-                    </div>
-                    <div class="sla-item-pct" style="color: #16a34a;">100%</div>
-                    <div class="sla-item-bar-wrap">
-                      <div class="sla-item-bar" style="width: 100%; background: #16a34a;"></div>
-                      <div class="sla-threshold-line"></div>
-                    </div>
-                    <div class="sla-item-footer">
-                      <span>0%</span><span class="sla-threshold-label">95% threshold</span><span>100%</span>
-                    </div>
-                  </div>
-
-                </div>
-              </section> -->
-
-              <!-- Detailed Vulnerabilities -->
-              <section>
-                <h5 class="section-title">Detailed Vulnerabilities</h5>
-                <div class="filter-row mb-3">
+                <div class="filter-controls">
                   <div class="filter-group">
-                    <label>Team:</label>
-                    <select v-model="teamFilter">
+                    <label class="filter-group-label">Team</label>
+                    <select v-model="teamFilter" class="filter-select">
                       <option value="all">All Teams</option>
                       <option value="network">Network Security</option>
                       <option value="patch">Patch Management</option>
                       <option value="configuration">Configuration Management</option>
                       <option value="architectural">Architectural Flaws</option>
-                      <!-- <option value="unassigned">Unassigned</option> -->
                     </select>
                   </div>
                   <div class="filter-group">
-                    <label>Severity:</label>
-                    <select v-model="severityFilter">
+                    <label class="filter-group-label">Severity</label>
+                    <select v-model="severityFilter" class="filter-select">
                       <option value="all">All</option>
                       <option value="critical">Critical</option>
                       <option value="high">High</option>
@@ -233,15 +325,19 @@
                     </select>
                   </div>
                   <div class="filter-group">
-                    <label>Status:</label>
-                    <select v-model="statusFilter">
+                    <label class="filter-group-label">Status</label>
+                    <select v-model="statusFilter" class="filter-select">
                       <option value="all">All</option>
                       <option value="open">Open</option>
                       <option value="closed">Closed</option>
                     </select>
                   </div>
                 </div>
-                <div class="table-wrap">
+              </div>
+
+              <!-- Table Card -->
+              <div class="vuln-table-card">
+                <div class="vuln-table-scroll">
                   <table class="vuln-table">
                     <thead>
                       <tr>
@@ -256,29 +352,60 @@
                     </thead>
                     <tbody>
                       <tr v-if="tableLoading">
-                        <td colspan="7" style="text-align:center; padding: 24px; color: #6b7280;">Loading...</td>
+                        <td colspan="7" class="table-empty-cell">
+                          <span class="table-loading-spinner"></span>
+                          Loading vulnerabilities…
+                        </td>
                       </tr>
                       <tr v-else-if="filteredData.length === 0">
-                        <td colspan="7" style="text-align:center; padding: 24px; color: #6b7280;">No vulnerabilities found.</td>
+                        <td colspan="7" class="table-empty-cell">No vulnerabilities match the selected filters.</td>
                       </tr>
-                      <tr v-for="row in filteredData" :key="row.id" v-else>
-                        <td><span class="vr-row-id">{{ row.id }}</span></td>
-                        <td><span class="vr-vuln-name">{{ row.name }}</span></td>
-                        <td><span class="vr-asset-chip">{{ row.asset }}</span></td>
+                      <tr v-for="row in filteredData" :key="row.id" v-else class="vuln-table-row">
+                        <td><span class="cell-id">#{{ row.id }}</span></td>
+                        <td><span class="cell-vuln-name">{{ row.name }}</span></td>
+                        <td><span class="cell-asset">{{ row.asset }}</span></td>
                         <td><span :class="['team-badge', 'team-' + row.team]">{{ row.teamLabel }}</span></td>
-                        <td><span :class="['sev-badge', 'sev-' + row.severity]">{{ row.severity.charAt(0).toUpperCase() + row.severity.slice(1) }}</span></td>
-                        <td>{{ row.found }}</td>
-                        <td><span :class="row.status === 'open' ? 'status-open' : 'status-closed'">{{ row.status === 'open' ? 'Open' : 'Closed' }}</span></td>
+                        <td>
+                          <span :class="['sev-badge-pill', 'sev-badge-' + row.severity]">
+                            {{ row.severity.charAt(0).toUpperCase() + row.severity.slice(1) }}
+                          </span>
+                        </td>
+                        <td class="cell-date">{{ row.found }}</td>
+                        <td>
+                          <span v-if="row.status === 'open'" class="status-open">
+                            <span class="status-dot status-dot-open"></span>Open
+                          </span>
+                          <span v-else class="status-closed">
+                            <span class="status-dot status-dot-closed"></span>Closed
+                          </span>
+                        </td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
-              </section>
 
-            </div>
-          </div>
-        </div>
-      </div>
+                <!-- Pagination footer -->
+                <div class="table-footer">
+                  <span class="table-footer-text">
+                    Showing
+                    <strong>{{ filteredData.length }}</strong>
+                    of
+                    <strong>{{ tableData.length }}</strong>
+                    vulnerabilities
+                  </span>
+                  <div class="table-footer-badges">
+                    <span class="footer-sev-pill footer-critical">{{ vulnStats.critical }} Critical</span>
+                    <span class="footer-sev-pill footer-high">{{ vulnStats.high }} High</span>
+                    <span class="footer-sev-pill footer-medium">{{ vulnStats.medium }} Medium</span>
+                    <span class="footer-sev-pill footer-low">{{ vulnStats.low }} Low</span>
+                  </div>
+                </div>
+              </div>
+
+            </div><!-- /report-body -->
+          </div><!-- /col-11 -->
+        </div><!-- /row -->
+      </div><!-- /container-fluid -->
     </section>
   </main>
 </template>
@@ -481,6 +608,10 @@ export default {
       // Remove all padding — no fixed header in the downloaded file
       clone.style.padding = '0';
 
+      // Remove sticky header from clone so it doesn't appear in export
+      const clonedHeader = clone.querySelector('.report-sticky-header');
+      if (clonedHeader) clonedHeader.remove();
+
       // Convert canvas elements → <img> with base64 data URLs so charts are preserved
       const liveCanvases = reportContent.querySelectorAll('canvas');
       const clonedCanvases = clone.querySelectorAll('canvas');
@@ -488,7 +619,12 @@ export default {
         const img = document.createElement('img');
         img.src = canvas.toDataURL('image/png');
         img.style.width = '100%';
+        img.style.maxWidth = '100%';
         img.style.height = 'auto';
+        img.style.maxHeight = '240px';
+        img.style.objectFit = 'contain';
+        img.style.display = 'block';
+        img.style.margin = '0 auto';
         if (clonedCanvases[i]) {
           clonedCanvases[i].parentNode.replaceChild(img, clonedCanvases[i]);
         }
@@ -549,13 +685,23 @@ export default {
     .report-download-wrapper { width: 100%; max-width: 1400px; margin: 0 auto; padding: 48px 56px; }
     ${cssText}
     /* ── Download layout overrides — always show full grids regardless of viewport ── */
-    .report-page-wrap { padding: 0 !important; }
-    .teams-grid { display: grid !important; grid-template-columns: repeat(4, 1fr) !important; gap: 16px !important; }
-    .stat-cards-row { display: grid !important; grid-template-columns: repeat(5, 1fr) !important; gap: 16px !important; }
-    .charts-row { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 20px !important; }
-    /* Prevent cards from being clipped across page breaks when printing */
-    .team-card, .stat-card, .chart-card, .table-wrap { break-inside: avoid; page-break-inside: avoid; }
-    .team-card { overflow: visible !important; }
+    .report-sticky-header { display: none !important; }
+    .report-body { padding: 0 !important; margin-top: 0 !important; }
+    .vuln-table-scroll { max-height: none !important; overflow-y: visible !important; }
+    .table-footer { position: static !important; }
+    .page-title-block { padding-top: 0 !important; }
+    img { max-height: 240px !important; width: 100% !important; height: auto !important; object-fit: contain !important; }
+    .bento-total-card img { max-height: 150px !important; }
+    .bento-severity-card img { display: none !important; }
+    .bento-card { overflow: visible !important; }
+    .section-label { margin-top: 24px !important; }
+    .bento-grid-12 { display: grid !important; grid-template-columns: repeat(12, 1fr) !important; gap: 20px !important; }
+    .bento-col-4 { grid-column: span 4 !important; }
+    .bento-col-6 { grid-column: span 6 !important; }
+    .bento-col-8 { grid-column: span 8 !important; }
+    .team-perf-grid { display: grid !important; grid-template-columns: repeat(4, 1fr) !important; gap: 16px !important; }
+    .severity-sub-grid { display: grid !important; grid-template-columns: repeat(4, 1fr) !important; gap: 12px !important; }
+    .bento-card, .team-perf-card, .vuln-table-card { break-inside: avoid; page-break-inside: avoid; }
   </style>
 </head>
 <body>
@@ -579,13 +725,11 @@ export default {
           tr.style.display = 'none';
         }
       });
-      // Show "no results" row if nothing matches
       var noRow = document.getElementById('dl-no-results');
       if (noRow) noRow.style.display = visible === 0 ? '' : 'none';
     }
 
     window.addEventListener('DOMContentLoaded', function () {
-      // Insert a "no results" row
       var tbody = document.querySelector('.vuln-table tbody');
       if (tbody) {
         var tr = document.createElement('tr');
@@ -617,516 +761,850 @@ export default {
 </script>
 
 <style scoped>
-/* ── Content area ── */
+/* ─────────────────────────────────────────────
+   Base
+───────────────────────────────────────────── */
+* { box-sizing: border-box; }
+
 .vr-content {
-  padding: 0;
   background: #f8f9fc;
   min-height: 100vh;
+  padding: 0;
 }
 
-/* ── Fixed page header ── */
+/* ─────────────────────────────────────────────
+   Sticky Header
+───────────────────────────────────────────── */
 .report-sticky-header {
   position: fixed;
   top: 60px;
   left: 8.333%;
   right: 0;
   z-index: 200;
-  background: #f8f9fc;
-  border-bottom: 1px solid #e8ecf0;
+  background: #ffffff;
+  border-bottom: 1.5px solid #ede9f6;
   padding: 12px 32px;
-}
-
-/* ── Page header ── */
-.page-title {
-  font-size: 22px;
-  font-weight: 700;
-  color: #241447;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 12px rgba(36,20,71,0.06);
 }
 
 .btn-back {
-  background: white;
+  display: inline-flex;
+  align-items: center;
+  background: #ffffff;
   border: 1.5px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #475569;
-  padding: 8px 16px;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.btn-back:hover { background: #f1f5f9; color: #241447; }
-
-.btn-download {
-  background: #241447;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
+  border-radius: 999px;
   padding: 9px 22px;
+  font-size: 0.84rem;
   font-weight: 700;
-  font-size: 0.875rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  transition: background 0.15s;
-}
-.btn-download:hover { background: #1a0f35; color: #fff; }
-
-/* ── Report content offset below fixed header ── */
-.report-page-wrap {
-  padding: 80px 32px 40px;
-}
-
-/* ── Report main heading (inside reportWrap, appears in downloaded file) ── */
-.report-main-heading {
-  padding-top: 8px;
-}
-.report-heading-title {
-  font-size: 1.6rem;
-  font-weight: 800;
   color: #241447;
-  margin-bottom: 0;
-  padding-top: 40px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  letter-spacing: 0.01em;
+}
+.btn-back:hover {
+  background: #f4f0ff;
+  border-color: #7c6fa0;
+  box-shadow: 0 2px 8px rgba(36,20,71,0.09);
 }
 
-/* ── Stat Cards ── */
-.stat-cards-row {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 16px;
-}
-.stat-card {
-  background: #fff;
-  border-radius: 14px;
-  padding: 20px 18px;
-  border: 1px solid #f1f5f9;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  text-align: center;
-  display: flex;
-  flex-direction: column;
+.btn-export {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-}
-.stat-label {
-  font-size: 0.65rem;
+  background: #241447;
+  color: #ffffff;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 26px;
+  font-size: 0.84rem;
   font-weight: 700;
-  color: #94a3b8;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 6px;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+  letter-spacing: 0.01em;
+  box-shadow: 0 2px 10px rgba(36,20,71,0.18);
 }
-.stat-value {
+.btn-export:hover {
+  background: #3b1f7a;
+  box-shadow: 0 4px 16px rgba(36,20,71,0.28);
+}
+
+/* ─────────────────────────────────────────────
+   Report Body
+───────────────────────────────────────────── */
+.report-body {
+  padding: 88px 32px 56px;
+}
+
+/* ─────────────────────────────────────────────
+   Page Title Block
+───────────────────────────────────────────── */
+.page-title-block {
+  margin-bottom: 32px;
+}
+.page-main-title {
   font-size: 2rem;
   font-weight: 800;
-  color: #1e293b;
-  line-height: 1;
-  margin-bottom: 4px;
-}
-.stat-sub {
-  font-size: 0.7rem;
-  font-weight: 500;
-}
-
-/* ── Section title ── */
-.section-title {
-  font-size: 1.1rem;
-  font-weight: 800;
   color: #241447;
-  margin-bottom: 16px;
-  letter-spacing: -0.2px;
-  border-left: 4px solid #0f696e;
-  padding-left: 10px;
+  letter-spacing: -0.5px;
+  margin: 0 0 6px;
+  line-height: 1.15;
 }
-
-/* ── Charts row ── */
-.charts-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-}
-.chart-card {
-  background: #fff;
-  border-radius: 14px;
-  padding: 20px;
-  border: 1px solid #f1f5f9;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-.chart-card canvas {
-  max-height: 200px;
-  width: 100% !important;
-}
-.chart-card-title {
+.page-subtitle {
   font-size: 0.875rem;
-  font-weight: 700;
-  color: #241447;
-  margin-bottom: 10px;
-  text-align: center;
-  width: 100%;
-}
-.total-vuln-number {
-  font-size: 2.2rem;
-  font-weight: 800;
-  color: #241447;
-  text-align: center;
-  margin-bottom: 6px;
+  color: #7c6fa0;
+  font-weight: 500;
+  margin: 0;
 }
 
-/* ── Teams grid ── */
-.teams-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-}
-.team-card {
-  background: #fff;
-  border-radius: 14px;
-  padding: 18px;
-  border: 1px solid #f1f5f9;
-  border-left: 4px solid #f1f5f9;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  transition: box-shadow 0.2s;
-}
-.team-card:hover { box-shadow: 0 6px 18px rgba(0,0,0,0.09); }
-.team-header {
+/* ─────────────────────────────────────────────
+   Section Labels
+───────────────────────────────────────────── */
+.section-label {
   display: flex;
   align-items: center;
   gap: 10px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #7c6fa0;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
   margin-bottom: 14px;
 }
-.team-icon {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
+.section-label-pip {
+  display: inline-block;
+  width: 18px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #0f696e, #241447);
   flex-shrink: 0;
 }
-.team-name {
-  font-weight: 700;
-  font-size: 0.875rem;
-  color: #1e293b;
-}
-.team-total {
-  font-size: 0.72rem;
-  font-weight: 500;
-}
-.team-metrics {
+
+/* ─────────────────────────────────────────────
+   Spacing helpers
+───────────────────────────────────────────── */
+.mb-section { margin-bottom: 36px; }
+.mb-filter  { margin-bottom: 14px; }
+
+/* ─────────────────────────────────────────────
+   Bento Grid — 12 columns
+───────────────────────────────────────────── */
+.bento-grid-12 {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-bottom: 12px;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 20px;
 }
-.metric-item {
-  text-align: center;
+.bento-col-4 { grid-column: span 4; }
+.bento-col-6 { grid-column: span 6; }
+.bento-col-8 { grid-column: span 8; }
+
+/* ─────────────────────────────────────────────
+   Bento Card base
+───────────────────────────────────────────── */
+.bento-card {
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 28px 28px 24px;
+  box-shadow: 0 2px 12px rgba(36,20,71,0.06);
+  border: 1.5px solid #ede9f6;
 }
-.metric-value {
-  font-size: 1.1rem;
-  font-weight: 700;
+
+/* ─────────────────────────────────────────────
+   Total Vulnerabilities Card (col-4)
+───────────────────────────────────────────── */
+.bento-total-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: linear-gradient(145deg, #241447 0%, #0f696e 100%);
+  border: none;
 }
-.metric-label {
-  font-size: 0.65rem;
-  color: #94a3b8;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.team-footer {
+.bento-total-eyebrow {
   font-size: 0.72rem;
-  color: #64748b;
-  border-top: 1px solid #f1f5f9;
-  padding-top: 10px;
-  margin-top: 4px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.65);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+.bento-total-number {
+  font-size: 4.5rem;
+  font-weight: 900;
+  color: #ffffff;
+  line-height: 1;
+  letter-spacing: -2px;
+  margin-bottom: 10px;
+}
+.bento-total-trend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+.trend-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.trend-up {
+  background: rgba(255,255,255,0.18);
+  color: #ffffff;
+}
+.trend-text {
+  font-size: 0.78rem;
   font-weight: 600;
+  color: rgba(255,255,255,0.70);
+}
+.bento-total-chart-area {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  min-height: 100px;
+}
+.bento-total-chart-area canvas {
+  width: 100% !important;
+  max-height: 120px;
+  filter: brightness(1.4) contrast(0.85);
+  opacity: 0.9;
 }
 
-/* ── Team badges ── */
-.team-badge {
-  padding: 3px 8px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 600;
+/* ─────────────────────────────────────────────
+   Severity Breakdown Card (col-8)
+───────────────────────────────────────────── */
+.bento-severity-card {
+  display: flex;
+  flex-direction: column;
 }
-.team-network { background: #dbeafe; color: #1d4ed8; }
-.team-patch { background: #d1fae5; color: #059669; }
-.team-configuration { background: #ffedd5; color: #c2410c; }
-.team-architectural { background: #fee2e2; color: #b91c1c; }
-
-/* ── SLA Compliance ── */
-.sla-section-header {
+.bento-severity-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 10px;
 }
-.sla-policy-badge {
-  font-size: 12px;
+.bento-severity-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #241447;
+  letter-spacing: -0.2px;
+}
+.sev-legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 0.72rem;
   font-weight: 600;
-  color: #6b7280;
-  background: #f3f4f6;
-  border: 1px solid #e5e7eb;
-  border-radius: 20px;
-  padding: 4px 12px;
+  color: #64748b;
 }
-.sla-grid {
+.sev-legend-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.severity-sub-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
+  gap: 12px;
+  flex: 1;
 }
-.sla-item-card {
-  background: #fff;
-  border-radius: 14px;
-  padding: 20px;
-  border: 1px solid #e5e7eb;
-  border-top: 4px solid transparent;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+
+.severity-sub-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 20px 16px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid #f1f5f9;
+  transition: box-shadow 0.18s, transform 0.18s;
+  cursor: default;
+}
+.severity-sub-card:hover {
+  box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+  transform: translateY(-2px);
+}
+
+.sev-sub-critical { border-top: 3px solid #7f1d1d; background: #fff9f9; }
+.sev-sub-high     { border-top: 3px solid #dc2626; background: #fff8f8; }
+.sev-sub-medium   { border-top: 3px solid #d97706; background: #fffdf0; }
+.sev-sub-low      { border-top: 3px solid #16a34a; background: #f6fff8; }
+
+.sev-sub-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-bottom: 10px;
+}
+.sev-sub-label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+.sev-sub-number {
+  font-size: 2.6rem;
+  font-weight: 900;
+  color: #1e293b;
+  line-height: 1;
+  letter-spacing: -1px;
+  margin-bottom: 4px;
+}
+.sev-sub-caption {
+  font-size: 0.66rem;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+/* ─────────────────────────────────────────────
+   Chart Cards (Section 2)
+───────────────────────────────────────────── */
+.bento-chart-card {
+  display: flex;
+  flex-direction: column;
+}
+.bento-chart-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #241447;
+  letter-spacing: -0.2px;
+  margin-bottom: 6px;
+}
+
+/* ── Team Distribution ── */
+.chart-donut-wrap {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex: 1;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.chart-donut-wrap canvas {
+  flex-shrink: 0;
+}
+.team-dist-legend {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  flex: 1;
+  min-width: 140px;
 }
-.sla-critical { border-top-color: maroon; }
-.sla-high     { border-top-color: #dc2626; }
-.sla-medium   { border-top-color: goldenrod; }
-.sla-low      { border-top-color: #16a34a; }
-
-.sla-item-top {
+.dist-legend-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #475569;
 }
-.sla-dot {
-  width: 12px;
-  height: 12px;
+.dist-legend-dot {
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
 }
-.sla-item-label {
-  font-size: 14px;
+.dist-legend-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dist-legend-count {
+  font-weight: 800;
+  color: #241447;
+  font-size: 0.82rem;
+}
+
+/* ── Velocity Card ── */
+.bento-velocity-card {
+  display: flex;
+  flex-direction: column;
+}
+.velocity-sub {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-weight: 500;
+  margin: 0 0 20px;
+}
+.velocity-item {
+  margin-bottom: 20px;
+}
+.velocity-row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.velocity-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
   font-weight: 700;
-  color: #111827;
-  line-height: 1.2;
+  color: #1e293b;
 }
-.sla-item-window {
-  font-size: 11px;
-  color: #9ca3af;
+.velocity-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
-.sla-status-badge {
-  margin-left: auto;
-  font-size: 10px;
+.velocity-pct {
+  font-size: 0.875rem;
+  font-weight: 800;
+  border-radius: 8px;
+  padding: 2px 10px;
+}
+.velocity-pct-critical { color: #7f1d1d; background: #fef2f2; }
+.velocity-pct-high     { color: #b91c1c; background: #fff1f1; }
+.velocity-pct-overall  { color: #241447; background: #f4f0ff; }
+
+.velocity-bar-track {
+  height: 8px;
+  background: #f1f5f9;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.velocity-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.velocity-fill-critical { background: linear-gradient(90deg, #7f1d1d, #dc2626); }
+.velocity-fill-high     { background: linear-gradient(90deg, #dc2626, #f87171); }
+.velocity-fill-overall  { background: linear-gradient(90deg, #241447, #0f696e); }
+
+.velocity-note {
+  margin-top: auto;
+  padding-top: 16px;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+}
+
+/* ─────────────────────────────────────────────
+   Team Performance Grid
+───────────────────────────────────────────── */
+.team-perf-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.team-perf-card {
+  background: #f7f6fb;
+  border-radius: 20px;
+  padding: 22px 20px 18px;
+  border: 1.5px solid #ede9f6;
+  transition: box-shadow 0.2s, transform 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.team-perf-card:hover {
+  box-shadow: 0 8px 28px rgba(36,20,71,0.1);
+  transform: translateY(-3px);
+}
+
+.tpc-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.tpc-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+}
+
+.closure-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 4px 11px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+.closure-good {
+  background: #dcfce7;
+  color: #15803d;
+}
+.closure-warn {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.tpc-team-name {
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: #241447;
+  line-height: 1.3;
+}
+
+.tpc-counts-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 12px 8px;
+  border: 1px solid #ede9f6;
+}
+.tpc-count-block {
+  text-align: center;
+  flex: 1;
+}
+.tpc-count-divider {
+  width: 1px;
+  height: 28px;
+  background: #ede9f6;
+  flex-shrink: 0;
+}
+.tpc-count-num {
+  font-size: 1.4rem;
+  font-weight: 900;
+  line-height: 1;
+  margin-bottom: 3px;
+  letter-spacing: -0.5px;
+}
+.tpc-count-lbl {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.tpc-open   { color: #dc2626; }
+.tpc-closed { color: #16a34a; }
+
+.tpc-progress-track {
+  height: 6px;
+  background: #e9e5f3;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.tpc-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tpc-sev-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.tpc-sev-chip {
+  font-size: 0.62rem;
   font-weight: 700;
   padding: 3px 8px;
-  border-radius: 20px;
-  letter-spacing: 0.5px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
 }
-.sla-pass { background: #d1fae5; color: #059669; }
-.sla-fail { background: #fee2e2; color: #dc2626; }
+.tpc-sev-critical { background: #fef2f2; color: #9b1c1c; }
+.tpc-sev-high     { background: #fff7ed; color: #c2410c; }
+.tpc-sev-medium   { background: #fefce8; color: #a16207; }
+.tpc-sev-low      { background: #f0fdf4; color: #15803d; }
 
-.sla-item-pct {
-  font-size: 36px;
-  font-weight: 800;
-  line-height: 1;
-}
-.sla-item-bar-wrap {
-  position: relative;
-  background: #f3f4f6;
-  border-radius: 20px;
-  height: 8px;
-  overflow: visible;
-}
-.sla-item-bar {
-  height: 100%;
-  border-radius: 20px;
-  transition: width 0.6s ease;
-}
-.sla-threshold-line {
-  position: absolute;
-  top: -4px;
-  left: 95%;
-  width: 2px;
-  height: 16px;
-  background: #374151;
-  border-radius: 2px;
-}
-.sla-item-footer {
+/* ─────────────────────────────────────────────
+   Filter Card
+───────────────────────────────────────────── */
+.filter-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 14px 20px;
+  border: 1.5px solid #ede9f6;
   display: flex;
-  justify-content: space-between;
-  font-size: 10px;
-  color: #9ca3af;
-}
-.sla-threshold-label {
-  font-weight: 600;
-  color: #374151;
-}
-.critical-text { color: maroon; }
-.high-text { color: #dc2626; }
-.medium-text { color: goldenrod; }
-.low-text { color: #16a34a; }
-
-/* ── Filters ── */
-.filter-row {
-  display: flex;
-  gap: 16px;
+  align-items: center;
+  gap: 20px;
   flex-wrap: wrap;
-  background: white;
-  border-radius: 12px;
-  padding: 14px 18px;
-  border: 1px solid #f1f5f9;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  box-shadow: 0 1px 6px rgba(36,20,71,0.05);
+}
+.filter-left {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.filter-label-text {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #7c6fa0;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.filter-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  flex: 1;
 }
 .filter-group {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: #475569;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  gap: 7px;
 }
-.filter-group select {
+.filter-group-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+  margin: 0;
+}
+.filter-select {
   border: 1.5px solid #e8ecf0;
-  border-radius: 8px;
-  padding: 6px 12px;
+  border-radius: 10px;
+  padding: 7px 14px;
   font-size: 0.82rem;
   color: #1e293b;
   background: #f8f9fc;
   cursor: pointer;
   outline: none;
-  font-weight: 500;
-  text-transform: none;
-  letter-spacing: 0;
+  font-weight: 600;
+  appearance: auto;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-.filter-group select:focus {
-  outline: none;
+.filter-select:focus {
   border-color: #0f696e;
-  box-shadow: 0 0 0 3px rgba(15,105,110,0.1);
+  box-shadow: 0 0 0 3px rgba(15,105,110,0.12);
 }
 
-/* ── Table ── */
-.table-wrap {
-  background: #fff;
-  border-radius: 14px;
-  border: 1px solid #f1f5f9;
+/* ─────────────────────────────────────────────
+   Vulnerability Table Card
+───────────────────────────────────────────── */
+.vuln-table-card {
+  background: #ffffff;
+  border-radius: 24px;
+  border: 1.5px solid #ede9f6;
+  box-shadow: 0 2px 12px rgba(36,20,71,0.06);
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  max-height: 480px;
+}
+
+.vuln-table-scroll {
+  overflow-x: auto;
   overflow-y: auto;
+  max-height: 500px;
 }
-.table-wrap::-webkit-scrollbar {
-  width: 5px;
-}
-.table-wrap::-webkit-scrollbar-track {
-  background: #f8f9fc;
-  border-radius: 0 14px 14px 0;
-}
-.table-wrap::-webkit-scrollbar-thumb {
-  background: rgba(15,105,110,0.25);
-  border-radius: 20px;
-}
-.table-wrap::-webkit-scrollbar-thumb:hover {
-  background: rgba(15,105,110,0.45);
-}
+.vuln-table-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
+.vuln-table-scroll::-webkit-scrollbar-track { background: #f8f9fc; }
+.vuln-table-scroll::-webkit-scrollbar-thumb { background: rgba(36,20,71,0.18); border-radius: 20px; }
+.vuln-table-scroll::-webkit-scrollbar-thumb:hover { background: rgba(36,20,71,0.32); }
+
 .vuln-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.82rem;
 }
+
 .vuln-table thead {
-  background: #f8f9fc;
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 2;
 }
+
 .vuln-table th {
-  padding: 12px 16px;
+  background: #f2f3f6;
+  padding: 14px 24px;
   text-align: left;
-  font-weight: 700;
+  font-size: 0.62rem;
+  font-weight: 800;
   color: #94a3b8;
-  font-size: 0.65rem;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  border-bottom: 1px solid #f1f5f9;
+  letter-spacing: 0.12em;
+  border-bottom: 1.5px solid #ede9f6;
+  white-space: nowrap;
 }
+
 .vuln-table td {
-  padding: 12px 16px;
-  border-bottom: 1px solid #f8f9fc;
+  padding: 18px 24px;
+  border-bottom: 1px solid #f4f2f9;
   color: #475569;
+  vertical-align: middle;
 }
-.vuln-table tbody tr:hover {
-  background: #f8f9fc;
+.vuln-table-row:hover td { background: #faf9ff; }
+.vuln-table tbody tr:last-child td { border-bottom: none; }
+
+.table-empty-cell {
+  text-align: center;
+  padding: 40px 24px !important;
+  color: #94a3b8;
+  font-size: 0.875rem;
+  font-weight: 500;
 }
-.vuln-table tbody tr:last-child td {
-  border-bottom: none;
+
+.table-loading-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #ede9f6;
+  border-top-color: #241447;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  margin-right: 8px;
+  vertical-align: -2px;
 }
-.status-open {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  background: #fee2e2;
-  color: #dc2626;
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Table cell helpers */
+.cell-id {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #b8b0cc;
+  font-variant-numeric: tabular-nums;
+}
+.cell-vuln-name {
+  font-weight: 700;
+  color: #241447;
+}
+.cell-asset {
+  display: inline-block;
+  background: #f0ecff;
+  color: #241447;
+  font-size: 0.72rem;
+  font-weight: 700;
   padding: 3px 10px;
-  border-radius: 20px;
+  border-radius: 8px;
+}
+.cell-date {
+  font-size: 0.78rem;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Team badges */
+.team-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 8px;
   font-size: 0.72rem;
   font-weight: 700;
 }
+.team-network       { background: #dbeafe; color: #1d4ed8; }
+.team-patch         { background: #d1fae5; color: #059669; }
+.team-configuration { background: #ffedd5; color: #c2410c; }
+.team-architectural { background: #fee2e2; color: #b91c1c; }
+.team-unassigned    { background: #f3f4f6; color: #6b7280; }
+
+/* Severity pill badges */
+.sev-badge-pill {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+.sev-badge-critical { background: #fef2f2; color: #9b1c1c; }
+.sev-badge-high     { background: #fff7ed; color: #c2410c; }
+.sev-badge-medium   { background: #fefce8; color: #a16207; }
+.sev-badge-low      { background: #f0fdf4; color: #15803d; }
+
+/* Status badges */
+.status-open,
 .status-closed {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  background: #dcfce7;
-  color: #15803d;
-  padding: 3px 10px;
-  border-radius: 20px;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: 800;
 }
+.status-open   { background: #fee2e2; color: #dc2626; }
+.status-closed { background: #dcfce7; color: #15803d; }
 
-/* ── Table helper classes ── */
-.vr-row-id {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #94a3b8;
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
-.vr-vuln-name {
-  font-weight: 600;
+.status-dot-open   { background: #dc2626; }
+.status-dot-closed { background: #15803d; }
+
+/* ─────────────────────────────────────────────
+   Table Footer
+───────────────────────────────────────────── */
+.table-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  border-top: 1.5px solid #ede9f6;
+  background: #faf9ff;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.table-footer-text {
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 500;
+}
+.table-footer-text strong {
   color: #241447;
+  font-weight: 800;
 }
-.vr-asset-chip {
-  background: #f0ecff;
-  color: #241447;
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 2px 10px;
-  border-radius: 6px;
+.table-footer-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
+.footer-sev-pill {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 3px 11px;
+  border-radius: 999px;
+}
+.footer-critical { background: #fef2f2; color: #9b1c1c; }
+.footer-high     { background: #fff7ed; color: #c2410c; }
+.footer-medium   { background: #fefce8; color: #a16207; }
+.footer-low      { background: #f0fdf4; color: #15803d; }
 
-/* ── Severity badges ── */
-.sev-badge {
-  padding: 3px 9px;
-  border-radius: 6px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  display: inline-block;
+/* ─────────────────────────────────────────────
+   Responsive
+───────────────────────────────────────────── */
+@media (max-width: 1280px) {
+  .bento-col-4 { grid-column: span 6; }
+  .bento-col-8 { grid-column: span 6; }
+  .team-perf-grid { grid-template-columns: repeat(2, 1fr); }
+  .severity-sub-grid { grid-template-columns: repeat(2, 1fr); }
 }
-.sev-critical, .sev-maroon { background: #fef2f2; color: #9b1c1c; }
-.sev-high, .sev-red { background: #fff7ed; color: #c2410c; }
-.sev-medium, .sev-orange { background: #fefce8; color: #a16207; }
-.sev-low, .sev-green { background: #f0fdf4; color: #15803d; }
-
-/* ── Responsive ── */
-@media (max-width: 1200px) {
-  .stat-cards-row { grid-template-columns: repeat(3, 1fr); }
-  .teams-grid { grid-template-columns: repeat(2, 1fr); }
-  .charts-row { grid-template-columns: repeat(2, 1fr); }
-  .sla-grid { grid-template-columns: repeat(2, 1fr); }
+@media (max-width: 900px) {
+  .bento-col-4,
+  .bento-col-6,
+  .bento-col-8 { grid-column: span 12; }
+  .team-perf-grid { grid-template-columns: 1fr; }
+  .severity-sub-grid { grid-template-columns: repeat(2, 1fr); }
+  .report-body { padding: 88px 16px 40px; }
+  .report-sticky-header { padding: 10px 16px; }
 }
-@media (max-width: 768px) {
-  .stat-cards-row { grid-template-columns: repeat(2, 1fr); }
-  .teams-grid { grid-template-columns: 1fr; }
-  .charts-row { grid-template-columns: 1fr; }
-  .sla-grid { grid-template-columns: 1fr; }
+@media (max-width: 600px) {
+  .severity-sub-grid { grid-template-columns: 1fr 1fr; }
+  .filter-controls { flex-direction: column; align-items: flex-start; }
+  .bento-total-number { font-size: 3rem; }
 }
 </style>

@@ -188,7 +188,7 @@
                     <div class="dash-icon-wrap">
                       <i class="bi bi-clock-history dash-icon-teal" style="font-size: 14px;"></i>
                     </div>
-                    <span class="dash-card-label">Mitigation Timeline</span>
+                    <span class="dash-card-label">Mitigation Criteria Timeline</span>
                     <span class="info-tooltip" data-tooltip="Displays the remaining remediation time for vulnerabilities based on the defined risk criteria."><i class="bi bi-info-circle dash-info-icon"></i></span>
                   </div>
 
@@ -199,8 +199,10 @@
                     <div class="d-flex flex-column align-items-center">
                       <div style="position:relative; width:90px; height:50px; overflow:hidden;">
                         <svg width="90" height="50" viewBox="0 0 90 50">
-                          <path d="M8 46 A37 37 0 0 1 82 46" fill="none" stroke="#fde8e8" stroke-width="10" stroke-linecap="round"/>
-                          <path d="M8 46 A37 37 0 0 1 82 46" fill="none" stroke="#e53e3e" stroke-width="10" stroke-linecap="round"
+                          <path d="M8 46 A37 37 0 0 1 82 46" fill="none" stroke="#d1d5db" stroke-width="10" stroke-linecap="round"/>
+                          <path d="M8 46 A37 37 0 0 1 82 46" fill="none"
+                            :stroke="mitigationPct('critical').compliancePct <= 0 ? '#4b5563' : '#e53e3e'"
+                            stroke-width="10" stroke-linecap="round"
                             stroke-dasharray="116"
                             :stroke-dashoffset="116 - (mitigationPct('critical').compliancePct / 100 * 116)"/>
                         </svg>
@@ -215,8 +217,10 @@
                     <div class="d-flex flex-column align-items-center">
                       <div style="position:relative; width:90px; height:50px; overflow:hidden;">
                         <svg width="90" height="50" viewBox="0 0 90 50">
-                          <path d="M8 46 A37 37 0 0 1 82 46" fill="none" stroke="#fde8e8" stroke-width="10" stroke-linecap="round"/>
-                          <path d="M8 46 A37 37 0 0 1 82 46" fill="none" stroke="#fc6b57" stroke-width="10" stroke-linecap="round"
+                          <path d="M8 46 A37 37 0 0 1 82 46" fill="none" stroke="#d1d5db" stroke-width="10" stroke-linecap="round"/>
+                          <path d="M8 46 A37 37 0 0 1 82 46" fill="none"
+                            :stroke="mitigationPct('high').compliancePct <= 0 ? '#4b5563' : '#fc6b57'"
+                            stroke-width="10" stroke-linecap="round"
                             stroke-dasharray="116"
                             :stroke-dashoffset="116 - (mitigationPct('high').compliancePct / 100 * 116)"/>
                         </svg>
@@ -231,8 +235,10 @@
                     <div class="d-flex flex-column align-items-center">
                       <div style="position:relative; width:90px; height:50px; overflow:hidden;">
                         <svg width="90" height="50" viewBox="0 0 90 50">
-                          <path d="M8 46 A37 37 0 0 1 82 46" fill="none" stroke="#fef3cd" stroke-width="10" stroke-linecap="round"/>
-                          <path d="M8 46 A37 37 0 0 1 82 46" fill="none" stroke="#f59e0b" stroke-width="10" stroke-linecap="round"
+                          <path d="M8 46 A37 37 0 0 1 82 46" fill="none" stroke="#d1d5db" stroke-width="10" stroke-linecap="round"/>
+                          <path d="M8 46 A37 37 0 0 1 82 46" fill="none"
+                            :stroke="mitigationPct('medium').compliancePct <= 0 ? '#4b5563' : '#f59e0b'"
+                            stroke-width="10" stroke-linecap="round"
                             stroke-dasharray="116"
                             :stroke-dashoffset="116 - (mitigationPct('medium').compliancePct / 100 * 116)"/>
                         </svg>
@@ -247,8 +253,10 @@
                     <div class="d-flex flex-column align-items-center">
                       <div style="position:relative; width:90px; height:50px; overflow:hidden;">
                         <svg width="90" height="50" viewBox="0 0 90 50">
-                          <path d="M8 46 A37 37 0 0 1 82 46" fill="none" stroke="#d1fae5" stroke-width="10" stroke-linecap="round"/>
-                          <path d="M8 46 A37 37 0 0 1 82 46" fill="none" stroke="#10b981" stroke-width="10" stroke-linecap="round"
+                          <path d="M8 46 A37 37 0 0 1 82 46" fill="none" stroke="#d1d5db" stroke-width="10" stroke-linecap="round"/>
+                          <path d="M8 46 A37 37 0 0 1 82 46" fill="none"
+                            :stroke="mitigationPct('low').compliancePct <= 0 ? '#4b5563' : '#10b981'"
+                            stroke-width="10" stroke-linecap="round"
                             stroke-dasharray="116"
                             :stroke-dashoffset="116 - (mitigationPct('low').compliancePct / 100 * 116)"/>
                         </svg>
@@ -263,7 +271,7 @@
 
                   <div class="d-flex justify-content-center gap-4 mt-4">
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#0f696e;"></span>SLA compliance</div>
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#ef4444;"></span>Non-compliance</div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#4b5563;"></span>Non-compliance</div>
                   </div>
                 </div>
               </div>
@@ -437,72 +445,72 @@
             <!-- end 6-card analytics grid -->
 
             <!-- ===== MITIGATION STRATEGY SECTION ===== -->
-            <section>
-              <h5 class="fw-bold mb-4" style="color:#1e293b; font-size:1.15rem;">Mitigation Strategy</h5>
-              <div class="dash-card p-0 overflow-hidden">
+            <section class="mb-5">
 
-                <!-- Tab Navigation -->
-                <div class="d-flex" style="border-bottom: 1px solid #f1f5f9; overflow-x:auto;">
-                  <button
-                    v-for="tab in mitigationTabs"
-                    :key="tab.key"
-                    class="dash-tab-btn"
-                    :class="{ 'dash-tab-active': mitigationActiveTab === tab.key }"
-                    @click="setMitigationTab(tab.key)"
-                  >{{ tab.label }}</button>
-                </div>
+              <!-- Section Header -->
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0" style="color:#1e293b; font-size:1.15rem;">Common Vulnerabilities</h5>
+              </div>
 
-                <div class="p-4">
-
-                  <!-- Assets count row -->
-                  <div class="d-flex justify-content-between align-items-center mb-3">
-                    <p class="mb-0 fw-semibold" style="font-size:14px;">Assets <span style="color:#3121B1;">({{ teamAssets.length }})</span></p>
-                    <button class="btn border-0 p-0" style="color:#3121B1; font-weight:600; font-size:14px;" @click="showAssetsOverlay = true">
-                      View Assets <i class="bi bi-arrow-right"></i>
-                    </button>
-                  </div>
-                  <div v-if="teamAssets.length === 0" class="py-2 text-muted small mb-3">No assets assigned to this team.</div>
-
-                  <!-- Vulnerabilities header -->
-                  <div class="d-flex justify-content-between align-items-center mb-3 mt-2">
-                    <p class="mb-0 fw-semibold" style="font-size:14px;">Vulnerabilities ({{ uniqueMitigationVulns.length }})</p>
-                    <router-link :to="{ path: '/missingsecurityupdates', query: { team: mitigationActiveTab } }">
-                      <button class="btn border-0" style="color:#3121B1; font-weight:600; font-size:14px;">More details <i class="bi bi-arrow-right"></i></button>
-                    </router-link>
-                  </div>
-                  <div v-if="mitigationLoading" class="py-3 text-center text-muted">Loading...</div>
-                  <div v-else-if="uniqueMitigationVulns.length === 0" class="py-2 text-muted small">No vulnerabilities assigned to this team.</div>
-                  <div v-else class="mitigation-vuln-grid">
-                    <div
-                      v-for="(vuln, i) in uniqueMitigationVulns.slice(0, 4)"
-                      :key="(vuln.plugin_name || 'vuln') + i"
-                      class="mitigation-vuln-col"
-                    >
-                      <div class="mitigation-vuln-card">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                          <div class="mitigation-vuln-meta">
-                            <i class="bi bi-hdd-network me-1"></i>
-                            {{ vuln.assetCount ?? 0 }} assets
-                          </div>
-                          <span class="mitigation-vuln-severity">
-                            {{ vuln.risk_factor || 'Medium' }}
-                          </span>
-                        </div>
-
-                        <h6 class="mitigation-vuln-title" :title="vuln.plugin_name">
-                          {{ vuln.plugin_name }}
-                        </h6>
-
-                        <div class="mitigation-vuln-meta mt-3">
-                          <i class="bi bi-hdd-network me-1"></i>
-                          {{ vuln.assetCount ?? 0 }} affected assets
-                        </div>
+              <!-- Team Cards -->
+              <div class="row g-3 mb-4">
+                <div class="col-md-3" v-for="tab in mitigationTabs" :key="tab.key">
+                  <div class="cv-team-card" :class="mitigationActiveTab === tab.key ? 'cv-team-card-active' : ''" @click="setMitigationTab(tab.key)">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                      <div class="cv-team-icon-wrap">
+                        <i :class="tab.icon || 'bi bi-grid-1x2'"></i>
+                      </div>
+                      <span class="cv-team-id">{{ tab.id || 'ID: --' }}</span>
+                    </div>
+                    <p class="cv-team-name">{{ tab.key }}</p>
+                    <h2 class="cv-team-count">{{ getTeamVulnCount(tab.key) }}</h2>
+                    <p class="cv-team-assigned">{{ tab.assigned || 'ASSIGNED TO TEAM' }}</p>
+                    <div class="cv-team-stats">
+                      <div class="cv-stat-row">
+                        <span class="cv-stat-dot cv-dot-critical"></span>
+                        <span class="cv-stat-label">Critical</span>
+                        <span class="cv-stat-val">{{ getTeamSevCount(tab.key, 'critical') }}</span>
+                      </div>
+                      <div class="cv-stat-row">
+                        <span class="cv-stat-dot cv-dot-high"></span>
+                        <span class="cv-stat-label">High</span>
+                        <span class="cv-stat-val">{{ getTeamSevCount(tab.key, 'high') }}</span>
                       </div>
                     </div>
+                    <div class="cv-affected-row">
+                      <span class="cv-affected-label">Affected Assets</span>
+                      <span class="cv-affected-num">{{ getTeamAssetCount(tab.key) }}</span>
+                    </div>
                   </div>
-
                 </div>
               </div>
+
+              <!-- Vulnerabilities for selected team -->
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="cv-vuln-heading mb-0">Vulnerabilities ({{ mitigationActiveTab }}) — {{ uniqueMitigationVulns.length }}</h6>
+                <router-link :to="{ path: '/missingsecurityupdates', query: { team: mitigationActiveTab } }" class="text-decoration-none" style="color:#0f696e; font-size:13px; font-weight:600;">
+                  More details <i class="bi bi-arrow-right ms-1"></i>
+                </router-link>
+              </div>
+
+              <div v-if="mitigationLoading" class="py-3 text-center text-muted">Loading...</div>
+              <div v-else-if="uniqueMitigationVulns.length === 0" class="py-3 text-muted small">No vulnerabilities assigned to this team.</div>
+              <div v-else class="row g-3">
+                <div class="col-md-3" v-for="(vuln, i) in uniqueMitigationVulns.slice(0, 8)" :key="(vuln.plugin_name || 'vuln') + i">
+                  <div class="cv-vuln-card">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="cv-vuln-assets"><i class="bi bi-hdd-network me-1"></i>{{ getVulnAssetCount(vuln) ?? 1 }} assets</span>
+                      <span class="cv-sev-badge" :class="'cv-badge-' + (vuln.risk_factor || '').toLowerCase()">{{ (vuln.risk_factor || '').toUpperCase() }}</span>
+                    </div>
+                    <h6 class="cv-vuln-name" :title="vuln.plugin_name">{{ vuln.plugin_name }}</h6>
+                    <div class="d-flex align-items-center mt-auto pt-2">
+                      <i class="bi bi-person me-1" style="color:#94a3b8; font-size:0.78rem;"></i>
+                        <span class="cv-affected-label">{{ getVulnAssetCount(vuln) ?? 1 }} affected assets</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             </section>
 
             <!-- ===== ASSETS SLIDE-IN OVERLAY ===== -->
@@ -799,10 +807,10 @@ export default {
       allAssets: [],
       mitigationActiveTab: "Patch Management",
       mitigationTabs: [
-        { key: "Patch Management", label: "Patch Management" },
-        { key: "Configuration Management", label: "Configuration Management" },
-        { key: "Network Security", label: "Network Security" },
-        { key: "Architectural Flaws", label: "Architectural Flaws" },
+        { key: "Patch Management",        label: "Patch Management",        icon: "bi bi-grid-1x2",          id: "ID: PV-01", assigned: "ASSIGNED TO CORE INFRASTRUCTURE" },
+        { key: "Configuration Management",label: "Configuration Management",icon: "bi bi-gear",               id: "ID: CM-04", assigned: "ASSIGNED TO DEVOPS TEAM" },
+        { key: "Network Security",        label: "Network Security",        icon: "bi bi-shield-exclamation", id: "ID: NS-02", assigned: "ASSIGNED TO NETWORK OPS" },
+        { key: "Architectural Flaws",     label: "Architectural Flaws",     icon: "bi bi-diagram-3",          id: "ID: AF-09", assigned: "ASSIGNED TO ARCHITECTURE" },
       ],
     };
   },
@@ -822,9 +830,10 @@ export default {
     vulnAssetCountMap() {
       if (!this.vulnAssetCountData?.teams) return {};
       const map = {};
+      const norm = (s) => String(s || '').trim().toLowerCase();
       for (const teamData of Object.values(this.vulnAssetCountData.teams)) {
         for (const v of (teamData.vulnerabilities || [])) {
-          map[v.plugin_name] = v.asset_count;
+          map[norm(v.plugin_name)] = v.asset_count;
         }
       }
       return map;
@@ -980,6 +989,32 @@ export default {
     setMitigationTab(key) {
       this.mitigationActiveTab = key;
     },
+    getTeamVulnCount(teamKey) {
+      const teams = this.mitigationByTeamData?.teams || this.mitigationByTeamData || {};
+      const normalize = s => String(s).toLowerCase().replace(/\s+/g, ' ').trim();
+      const matchKey = Object.keys(teams).find(k => normalize(k) === normalize(teamKey));
+      return matchKey ? (teams[matchKey]?.vulnerabilities?.length || 0) : 0;
+    },
+    getTeamSevCount(teamKey, sev) {
+      const teams = this.mitigationByTeamData?.teams || this.mitigationByTeamData || {};
+      const normalize = s => String(s).toLowerCase().replace(/\s+/g, ' ').trim();
+      const matchKey = Object.keys(teams).find(k => normalize(k) === normalize(teamKey));
+      if (!matchKey) return 0;
+      return (teams[matchKey]?.vulnerabilities || []).filter(v => (v.risk_factor || '').toLowerCase() === sev).length;
+    },
+    getTeamAssetCount(teamKey) {
+      const teams = this.mitigationByTeamData?.teams || this.mitigationByTeamData || {};
+      const normalize = s => String(s).toLowerCase().replace(/\s+/g, ' ').trim();
+      const matchKey = Object.keys(teams).find(k => normalize(k) === normalize(teamKey));
+      if (!matchKey) return 0;
+      const vulns = teams[matchKey]?.vulnerabilities || [];
+      const assetsSet = new Set();
+      vulns.forEach(v => {
+        if (Array.isArray(v.assets)) v.assets.forEach(a => assetsSet.add(a));
+        else if (v.host_name) assetsSet.add(v.host_name);
+      });
+      return assetsSet.size;
+    },
     getMitigationRiskColor(risk) {
       const map = { Critical: "#b31c1c", High: "#f44336", Medium: "#f6b100", Low: "#4caf50" };
       return map[risk] || "#666";
@@ -1011,6 +1046,13 @@ export default {
       if ((s.medium ?? 0) > 0) return 'Medium';
       if ((s.low ?? 0) > 0) return 'Low';
       return '';
+    },
+
+    // Normalized lookup so API plugin_name capitalization/spacing differences don't break mapping
+    getVulnAssetCount(vuln) {
+      const key = String(vuln?.plugin_name || '').trim().toLowerCase();
+      if (!key) return vuln?.assetCount ?? 0;
+      return this.vulnAssetCountMap[key] ?? vuln?.assetCount ?? 0;
     },
     async overlaySetActive(asset) {
       if (!asset?.asset) return;
@@ -1641,6 +1683,66 @@ mounted() {
 </script>
 
 <style scoped>
+/* ===== COMMON VULNERABILITIES ===== */
+.cv-team-card {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 18px 16px;
+  cursor: pointer;
+  transition: box-shadow 0.15s, border-color 0.15s;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.cv-team-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+.cv-team-card-active { border-color: #0f696e; box-shadow: 0 0 0 2px rgba(15,105,110,0.15); }
+.cv-team-icon-wrap {
+  width: 32px; height: 32px;
+  background: #e0f2f1;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  color: #0f696e; font-size: 15px;
+}
+.cv-team-id { font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; }
+.cv-team-name { font-size: 0.78rem; font-weight: 700; color: #475569; margin: 10px 0 2px; text-transform: uppercase; letter-spacing: 0.04em; }
+.cv-team-count { font-size: 2rem; font-weight: 800; color: #1e293b; margin: 0 0 4px; line-height: 1; }
+.cv-team-assigned { font-size: 9px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+.cv-team-stats { margin: 8px 0 10px; display: flex; flex-direction: column; gap: 4px; }
+.cv-stat-row { display: flex; align-items: center; gap: 6px; }
+.cv-stat-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.cv-dot-critical { background: #dc2626; }
+.cv-dot-high { background: #f97316; }
+.cv-stat-label { font-size: 11px; color: #64748b; flex: 1; }
+.cv-stat-val { font-size: 12px; font-weight: 700; color: #1e293b; }
+.cv-affected-row { display: flex; align-items: center; gap: 6px; margin-top: auto; padding-top: 10px; border-top: 1px solid #f1f5f9; }
+.cv-affected-label { font-size: 11px; color: #94a3b8; font-weight: 500; flex: 1; }
+.cv-affected-num { font-size: 13px; font-weight: 800; color: #1e293b; }
+.cv-vuln-heading { font-size: 0.95rem; font-weight: 700; color: #1e293b; }
+.cv-vuln-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex; flex-direction: column; height: 100%;
+  transition: box-shadow 0.15s;
+}
+.cv-vuln-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+.cv-vuln-assets { font-size: 11px; color: #64748b; font-weight: 500; }
+.cv-vuln-name {
+  font-size: 13px; font-weight: 700; color: #1e293b;
+  overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  line-clamp: 2;
+  white-space: normal; margin: 6px 0 4px; line-height: 1.4;
+}
+.cv-affected-label { font-size: 11px; color: #64748b; font-weight: 500; }
+.cv-sev-badge { font-size: 9px; font-weight: 800; padding: 2px 7px; border-radius: 4px; letter-spacing: 0.04em; white-space: nowrap; }
+.cv-badge-critical { background: #fee2e2; color: #dc2626; }
+.cv-badge-high     { background: #fff7ed; color: #f97316; }
+.cv-badge-medium   { background: #fefce8; color: #ca8a04; }
+.cv-badge-low      { background: #f0fdf4; color: #16a34a; }
+
 /* ===== DASHBOARD REDESIGN ===== */
 .dash-card {
   background: #ffffff;

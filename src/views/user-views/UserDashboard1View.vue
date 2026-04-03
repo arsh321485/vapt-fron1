@@ -279,85 +279,75 @@
               </div>
             </div>
 
-            <!-- Mitigation Strategy Section -->
-            <div class="ud-section-card mb-5">
+            <!-- Common Vulnerabilities Section -->
+            <div class="mb-4">
               <!-- Section Header -->
-              <div class="ud-section-header">
-                <h4 class="ud-section-title">Mitigation Strategy</h4>
-                <router-link to="/userexception" class="ud-pending-badge text-decoration-none">
-                  {{ supportReqs.pending ?? '—' }} Support requests ongoing
-                  <i class="bi bi-arrow-right ms-1"></i>
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="cv-section-title">Common Vulnerabilities</h5>
+                <router-link to="/userexception" class="cv-view-link text-decoration-none">
+                  View Methodology <i class="bi bi-arrow-right ms-1"></i>
                 </router-link>
               </div>
 
-              <!-- Team Tabs -->
-              <div class="d-flex gap-2 flex-wrap mb-4">
-                <button
-                  v-for="team in userTeams"
-                  :key="team"
-                  class="ud-team-tab"
-                  :class="selectedTeam === team ? 'ud-team-tab-active' : ''"
-                  @click="selectTeam(team)"
-                >{{ team }}</button>
-              </div>
-
-              <p class="ud-assigned-label">Assigned to {{ selectedTeam === 'both' ? 'All Teams' : selectedTeam }} team</p>
-
-              <!-- Risk Criteria -->
-              <div class="ud-risk-row">
-                <div class="ud-risk-item">
-                  <span class="ud-risk-label ud-risk-critical">Critical</span>
-                  <button type="button" class="ud-risk-val">
-                    {{ riskCriteria.critical ?? '—' }}
-                    <i class="bi bi-plus-circle ms-2" style="cursor:pointer;" @click.stop="openModal('critical')"></i>
-                  </button>
-                </div>
-                <div class="ud-risk-item">
-                  <span class="ud-risk-label ud-risk-high">High</span>
-                  <button type="button" class="ud-risk-val">
-                    {{ riskCriteria.high ?? '—' }}
-                    <i class="bi bi-plus-circle ms-2" style="cursor:pointer;" @click.stop="openModal('high')"></i>
-                  </button>
-                </div>
-                <div class="ud-risk-item">
-                  <span class="ud-risk-label ud-risk-medium">Medium</span>
-                  <button type="button" class="ud-risk-val">
-                    {{ riskCriteria.medium ?? '—' }}
-                    <i class="bi bi-plus-circle ms-2" style="cursor:pointer;" @click.stop="openModal('medium')"></i>
-                  </button>
-                </div>
-                <div class="ud-risk-item">
-                  <span class="ud-risk-label ud-risk-low">Low</span>
-                  <button type="button" class="ud-risk-val">
-                    {{ riskCriteria.low ?? '—' }}
-                    <i class="bi bi-plus-circle ms-2" style="cursor:pointer;" @click.stop="openModal('low')"></i>
-                  </button>
+              <!-- Team Cards -->
+              <div class="row g-3 mb-4">
+                <div class="col-md-3" v-for="team in allTeamsData" :key="team.key">
+                  <div class="cv-team-card" :class="selectedTeam === team.key ? 'cv-team-card-active' : ''" @click="selectTeam(team.key)">
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                      <div class="cv-team-icon-wrap">
+                        <i :class="team.icon"></i>
+                      </div>
+                      <span class="cv-team-id">{{ team.id }}</span>
+                    </div>
+                    <p class="cv-team-name">{{ team.key }}</p>
+                    <h2 class="cv-team-count">{{ team.total }}</h2>
+                    <p class="cv-team-assigned">{{ team.assigned }}</p>
+                    <div class="d-flex gap-1 flex-wrap mb-2">
+                      <span v-for="tag in team.tags" :key="tag.label" class="cv-tag" :class="tag.cls">{{ tag.label }}</span>
+                    </div>
+                    <div class="cv-team-stats">
+                      <div v-if="team.critical != null" class="cv-stat-row">
+                        <span class="cv-stat-dot cv-dot-critical"></span>
+                        <span class="cv-stat-label">Critical</span>
+                        <span class="cv-stat-val">{{ team.critical }}</span>
+                      </div>
+                      <div v-if="team.high != null" class="cv-stat-row">
+                        <span class="cv-stat-dot cv-dot-high"></span>
+                        <span class="cv-stat-label">High</span>
+                        <span class="cv-stat-val">{{ team.high }}</span>
+                      </div>
+                    </div>
+                    <div class="cv-affected-row">
+                      <span class="cv-affected-label">Affected Assets</span>
+                      <span class="cv-affected-num">{{ team.affectedAssets }}</span>
+                      <span class="cv-affected-type">{{ team.assetType }}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <!-- Vulnerabilities Sub-section -->
-              <div class="mt-4">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                  <p class="ud-vuln-count-label mb-0">Vulnerabilities ({{ mitigationActiveTeamData.count }})</p>
-                  <router-link :to="{ path: '/usermissingsecurityupdates', query: { team: selectedTeam } }" class="ud-more-link text-decoration-none">
-                    More details <i class="bi bi-arrow-right"></i>
-                  </router-link>
-                </div>
-                <div v-if="mitigationActiveTeamData.vulnerabilities.length === 0" class="py-4 text-center text-muted">
-                  No vulnerabilities assigned to this team.
-                </div>
-                <div v-else class="row g-3">
-                  <div class="col-md-3" v-for="vuln in mitigationActiveTeamData.vulnerabilities.slice(0, 4)" :key="vuln.host_name + vuln.plugin_name">
-                    <div class="ud-vuln-card">
-                      <div class="d-flex justify-content-between align-items-start mb-2">
-                        <span class="ud-vuln-assets"><i class="bi bi-hdd-network me-1"></i>{{ vulnAssetCountMap[vuln.plugin_name] ?? 1 }} assets</span>
-                        <span class="ud-sev-badge" :class="'ud-badge-' + (vuln.risk_factor || '').toLowerCase()">{{ vuln.risk_factor }}</span>
-                      </div>
-                      <h6 class="ud-vuln-name" :title="vuln.plugin_name">{{ vuln.plugin_name }}</h6>
-                      <div class="d-flex align-items-center mt-auto">
-                        <i class="bi bi-hdd-network me-2 text-muted"></i>
-                        <span class="ud-affected-label">{{ vuln.assets.length }} affected asset{{ vuln.assets.length !== 1 ? 's' : '' }}</span>
-                      </div>
+              <!-- Vulnerabilities for selected team -->
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="cv-vuln-heading mb-0">Vulnerabilities ({{ selectedTeam }})</h6>
+                <router-link :to="{ path: '/usermissingsecurityupdates', query: { team: selectedTeam } }" class="cv-view-link text-decoration-none">
+                  More details <i class="bi bi-arrow-right"></i>
+                </router-link>
+              </div>
+
+              <div v-if="uniqueVulns.length === 0" class="py-4 text-center text-muted">
+                No vulnerabilities assigned to this team.
+              </div>
+              <div v-else class="row g-3 mb-5">
+                <div class="col-md-3" v-for="vuln in uniqueVulns.slice(0, 8)" :key="vuln.plugin_name">
+                  <div class="cv-vuln-card">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <span class="cv-vuln-assets"><i class="bi bi-hdd-network me-1"></i>{{ vulnAssetCountMap[vuln.plugin_name] ?? vuln.assets?.length ?? 1 }} assets</span>
+                      <span class="cv-sev-badge" :class="'cv-badge-' + (vuln.risk_factor || '').toLowerCase()">{{ (vuln.risk_factor || '').toUpperCase() }}</span>
+                    </div>
+                    <h6 class="cv-vuln-name" :title="vuln.plugin_name">{{ vuln.plugin_name }}</h6>
+                    <div class="d-flex align-items-center mt-auto pt-2">
+                      <i class="bi bi-person me-1" style="color:#94a3b8;font-size:0.78rem;"></i>
+                      <span class="cv-affected-label">{{ vuln.assets?.length ?? 1 }} affected asset{{ (vuln.assets?.length ?? 1) !== 1 ? 's' : '' }}</span>
                     </div>
                   </div>
                 </div>
@@ -459,6 +449,36 @@ export default {
         map[v.plugin_name] = v.asset_count;
       }
       return map;
+    },
+    allTeamsData() {
+      const teamConfigs = [
+        { key: 'Patch Management',        id: 'ID: PV-01', icon: 'bi bi-grid-1x2',         assigned: 'ASSIGNED TO CORE INFRASTRUCTURE', assetType: 'Hosts',    tags: [{ label: '+2.4k', cls: 'cv-tag-red' }, { label: '+30', cls: 'cv-tag-orange' }, { label: '+70', cls: 'cv-tag-grey' }] },
+        { key: 'Configuration Management',id: 'ID: CM-04', icon: 'bi bi-gear',              assigned: 'ASSIGNED TO DEVOPS TEAM',          assetType: 'Hosts',    tags: [{ label: '+124', cls: 'cv-tag-red' }, { label: '+20', cls: 'cv-tag-orange' }] },
+        { key: 'Network Security',        id: 'ID: NS-02', icon: 'bi bi-shield-exclamation',assigned: 'ASSIGNED TO NETWORK OPS',          assetType: 'Nodes',    tags: [{ label: '+80', cls: 'cv-tag-red' }, { label: '+24k', cls: 'cv-tag-orange' }, { label: '+56', cls: 'cv-tag-grey' }] },
+        { key: 'Architectural Flaws',     id: 'ID: AF-09', icon: 'bi bi-diagram-3',         assigned: 'ASSIGNED TO ARCHITECTURE',         assetType: 'Entities', tags: [{ label: '+30', cls: 'cv-tag-red' }, { label: '+56', cls: 'cv-tag-orange' }] },
+      ];
+      const teams = this.mitigationByTeamData?.teams || this.mitigationByTeamData || {};
+      return teamConfigs.map(cfg => {
+        const normalize = s => String(s).toLowerCase().replace(/\s+/g, ' ').trim();
+        const matchKey = Object.keys(teams).find(k => normalize(k) === normalize(cfg.key));
+        const teamData = matchKey ? teams[matchKey] : null;
+        const vulns = teamData?.vulnerabilities || [];
+        const total = vulns.length;
+        const critical = vulns.filter(v => (v.risk_factor || '').toLowerCase() === 'critical').length;
+        const high = vulns.filter(v => (v.risk_factor || '').toLowerCase() === 'high').length;
+        const assetsSet = new Set();
+        vulns.forEach(v => { if (Array.isArray(v.assets)) v.assets.forEach(a => assetsSet.add(a)); else if (v.host_name) assetsSet.add(v.host_name); });
+        return { ...cfg, total, critical, high, affectedAssets: assetsSet.size || 0 };
+      });
+    },
+    uniqueVulns() {
+      const vulns = this.mitigationActiveTeamData.vulnerabilities || [];
+      const seen = new Map();
+      for (const v of vulns) {
+        const key = (v.plugin_name || '').trim().toLowerCase();
+        if (!seen.has(key)) seen.set(key, v);
+      }
+      return Array.from(seen.values());
     },
     daysInMonth() {
       const year = this.currentDate.getFullYear();
@@ -1075,144 +1095,155 @@ export default {
 .ud-label-medium   { color: #8a6000; }
 .ud-label-low      { color: #0f696e; }
 
-/* ===== SECTION CARD ===== */
-.ud-section-card {
-  background: #ffffff;
-  border-radius: 20px;
-  padding: 28px 32px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-}
-.ud-section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-}
-.ud-section-title {
-  font-size: 1.1rem;
+/* ===== COMMON VULNERABILITIES ===== */
+.cv-section-title {
+  font-size: 1.05rem;
   font-weight: 700;
-  color: #241447;
+  color: #1e293b;
   margin: 0;
 }
-.ud-pending-badge {
-  background: #eaddff;
-  color: #241447;
-  font-size: 12px;
-  font-weight: 700;
-  border-radius: 50px;
-  padding: 6px 16px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.ud-pending-badge:hover { background: #d9cfff; }
-
-/* Team Tabs */
-.ud-team-tab {
-  border: 1px solid #cbc4d0;
-  background: #fff;
-  border-radius: 50px;
-  padding: 6px 18px;
+.cv-view-link {
   font-size: 13px;
   font-weight: 600;
-  color: #49454f;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.ud-team-tab:hover { background: #f2f3f6; }
-.ud-team-tab-active { background: #241447; color: #fff; border-color: #241447; }
-
-.ud-assigned-label {
-  font-size: 13px;
-  color: #49454f;
-  margin-bottom: 16px;
-}
-
-/* Risk Criteria Row */
-.ud-risk-row {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin-bottom: 8px;
-}
-.ud-risk-item { display: flex; flex-direction: column; gap: 6px; }
-.ud-risk-label {
-  display: inline-block;
-  border-radius: 50px;
-  padding: 4px 18px;
-  font-size: 12px;
-  font-weight: 700;
-  text-align: center;
-  border: 1px solid currentColor;
-}
-.ud-risk-critical { color: #ba1a1a; border-color: #ba1a1a; background: #fff9f9; }
-.ud-risk-high     { color: #c05000; border-color: #c05000; background: #fff6f2; }
-.ud-risk-medium   { color: #8a6000; border-color: #8a6000; background: #fffdf0; }
-.ud-risk-low      { color: #0f696e; border-color: #0f696e; background: #f0fbfb; }
-.ud-risk-val {
-  background: #eaddff;
-  color: #241447;
-  border: none;
-  border-radius: 50px;
-  padding: 6px 16px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: default;
-  display: flex;
-  align-items: center;
-  white-space: nowrap;
-}
-
-/* Vuln count label */
-.ud-vuln-count-label {
-  font-size: 14px;
-  font-weight: 700;
-  color: #241447;
-}
-.ud-more-link {
-  font-size: 13px;
-  font-weight: 700;
   color: #0f696e;
 }
-.ud-more-link:hover { opacity: 0.7; }
+.cv-view-link:hover { opacity: 0.75; }
+
+/* Team Cards */
+.cv-team-card {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 18px 16px;
+  cursor: pointer;
+  transition: box-shadow 0.15s, border-color 0.15s;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.cv-team-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+.cv-team-card-active {
+  border-color: #0f696e;
+  box-shadow: 0 0 0 2px rgba(15,105,110,0.15);
+}
+.cv-team-icon-wrap {
+  width: 32px;
+  height: 32px;
+  background: #e0f2f1;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0f696e;
+  font-size: 15px;
+}
+.cv-team-id {
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.cv-team-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #475569;
+  margin: 10px 0 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.cv-team-count {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #1e293b;
+  margin: 0 0 4px;
+  line-height: 1;
+}
+.cv-team-assigned {
+  font-size: 9px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+.cv-tag {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.cv-tag-red    { background: #fee2e2; color: #dc2626; }
+.cv-tag-orange { background: #fff7ed; color: #f97316; }
+.cv-tag-grey   { background: #f1f5f9; color: #64748b; }
+
+.cv-team-stats { margin: 8px 0 10px; display: flex; flex-direction: column; gap: 4px; }
+.cv-stat-row { display: flex; align-items: center; gap: 6px; }
+.cv-stat-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.cv-dot-critical { background: #dc2626; }
+.cv-dot-high     { background: #f97316; }
+.cv-stat-label { font-size: 11px; color: #64748b; flex: 1; }
+.cv-stat-val   { font-size: 12px; font-weight: 700; color: #1e293b; }
+
+.cv-affected-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
+}
+.cv-affected-label { font-size: 11px; color: #94a3b8; font-weight: 500; flex: 1; }
+.cv-affected-num   { font-size: 13px; font-weight: 800; color: #1e293b; }
+.cv-affected-type  { font-size: 11px; font-weight: 700; color: #0f696e; }
+
+/* Vuln heading */
+.cv-vuln-heading {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e293b;
+}
 
 /* Vuln cards */
-.ud-vuln-card {
-  background: #f8f9fc;
-  border: 1px solid #e8e8ee;
-  border-radius: 14px;
-  padding: 18px 16px;
+.cv-vuln-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   height: 100%;
   transition: box-shadow 0.15s;
 }
-.ud-vuln-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-.ud-vuln-assets { font-size: 12px; color: #49454f; font-weight: 500; }
-.ud-vuln-name {
+.cv-vuln-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+.cv-vuln-assets { font-size: 11px; color: #64748b; font-weight: 500; }
+.cv-vuln-name {
   font-size: 13px;
   font-weight: 700;
-  color: #241447;
+  color: #1e293b;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
-  margin: 8px 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  margin: 6px 0 4px;
+  line-height: 1.4;
 }
-.ud-affected-label { font-size: 12px; color: #49454f; font-weight: 500; }
+.cv-affected-label { font-size: 11px; color: #64748b; font-weight: 500; }
 
-/* Severity badges on vuln cards */
-.ud-sev-badge {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 2px 8px;
+.cv-sev-badge {
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 7px;
   border-radius: 4px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
-.ud-badge-critical { background: #ffdad6; color: #ba1a1a; }
-.ud-badge-high     { background: #ffe0cc; color: #c05000; }
-.ud-badge-medium   { background: #fff3cc; color: #8a6000; }
-.ud-badge-low      { background: #a1ecf2; color: #004f53; }
+.cv-badge-critical { background: #fee2e2; color: #dc2626; }
+.cv-badge-high     { background: #fff7ed; color: #f97316; }
+.cv-badge-medium   { background: #fefce8; color: #ca8a04; }
+.cv-badge-low      { background: #f0fdf4; color: #16a34a; }
 
 /* Tooltip */
 .ud-tooltip {

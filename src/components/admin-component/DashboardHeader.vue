@@ -7,7 +7,7 @@
     
       <div class="browser-bar">
         <router-link to="/admindashboardonboarding">
-          <img src="@/assets/images/logo1.png" alt="" style="cursor:pointer;">
+          <img src="@/assets/images/vaptfix_white.png" alt="" style="cursor:pointer;">
         </router-link>
       </div>
   
