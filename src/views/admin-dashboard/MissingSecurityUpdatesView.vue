@@ -18,7 +18,7 @@
                 <i class="bi bi-arrow-left me-1"></i>Back
               </router-link>
               <div class="d-flex align-items-baseline gap-3 mt-2">
-                <h2 class="msu-title">Missing Security Updates</h2>
+                <h2 class="msu-title">Common Vulnerabilities</h2>
                 <span v-if="activeTeamKey" class="msu-team-badge">{{ activeTeamKey }}</span>
               </div>
               <p class="msu-subtitle">Vulnerability patch status by asset group</p>
