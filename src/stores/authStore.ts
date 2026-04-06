@@ -919,13 +919,16 @@ export const useAuthStore = defineStore("auth", {
     }
   },
 
-  //Microsoft Teams
-  async getMicrosoftOAuthUrl(redirectUri: string) {
+   //Microsoft Teams
+async getMicrosoftOAuthUrl(redirectUri: string, adminId: string) {
     try {
+      if (!adminId) {
+        return { status: false, message: "admin_id is required" };
+      }
       const res = await endpoint.get(
         `/api/admin/users/microsoft-teams/oauth-url/?redirect_uri=${encodeURIComponent(
           redirectUri
-        )}`
+        )}&admin_id=${encodeURIComponent(adminId)}`
       );
 
       if (res.data?.auth_url) {
@@ -1190,12 +1193,16 @@ export const useAuthStore = defineStore("auth", {
   },
 
   // Slack
-  async getSlackOAuthUrl(baseUrl: string) {
-      console.log("Calling POST /api/admin/users/slack/oauth-url/ with baseUrl:", baseUrl);
+async getSlackOAuthUrl(baseUrl: string, adminId: string) {
+      if (!adminId) {
+        return { status: false, message: "admin_id is required" };
+      }
+      console.log("Calling POST /api/admin/users/slack/oauth-url/ with baseUrl and adminId:", baseUrl, adminId);
       const res = await endpoint.post(
         "/api/admin/users/slack/oauth-url/",
         {
           base_url: baseUrl,
+          admin_id: adminId,
         }
       );
       console.log("Slack OAuth URL response:", res.data);

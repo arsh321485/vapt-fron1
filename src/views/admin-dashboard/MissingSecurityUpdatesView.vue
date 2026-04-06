@@ -95,14 +95,6 @@
             </div>
 
             <!-- Footer Actions -->
-            <div class="msu-footer">
-              <button class="msu-export-btn" @click="exportPDF">
-                <i class="bi bi-download me-2"></i>Export PDF
-              </button>
-              <button class="msu-apply-btn">
-                Apply Fixes
-              </button>
-            </div>
 
           </div>
         </div>
@@ -127,7 +119,7 @@ export default {
       loading: false,
       mitigationData: null,
       reportId: null,
-      openGroups: [0], // first group open by default
+      openGroups: [], // all groups closed by default
     };
   },
   computed: {

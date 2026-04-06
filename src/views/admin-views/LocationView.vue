@@ -1,136 +1,255 @@
 <template>
-  <main>
+  <main class="loc-main">
     <!-- TOP BAR -->
-    <div class="topbar">
-      <img src="@/assets/images/logo1.png" alt="" class="h-50">
+    <div class="row gx-0 no-gutters">
+      <DashboardHeader />
     </div>
 
-    <div class="app">
-      <!-- STEPPER -->
-      <Stepper />
+    <div class="loc-page">
 
-      <!-- CONTENT -->
-      <div class="content">
-        <h1>Add users</h1>
-        <p>Align your team and tools for a seamless build.</p>
+      <!-- MAIN LAYOUT -->
+      <div class="loc-layout">
 
-        <!-- Communication -->
-        <div class="section">
-          <div class="section-title">Communication platform</div>
-          <div class="chip-group selectable">
-            <div v-for="platform in communicationPlatforms" :key="platform.value" class="chip"
-              :class="{ active: selectedCommunication === platform.value }" @mousedown.prevent
-              @click.stop="handleCommunicationClick(platform.value)">
-              <img v-if="platform.icon" :src="platform.icon" />
-              {{ platform.label }}
-            </div>
+        <!-- LEFT: Main Content -->
+        <div class="loc-content">
+
+          <div class="loc-page-header">
+            <h1 class="loc-title">Setup Organization</h1>
+            <p class="loc-subtitle">Configure your team's communication and issue tracking tools to streamline your security workflow.</p>
           </div>
-        </div>
 
-        <!-- Project -->
-        <div class="section">
-          <div class="section-title">Project management</div>
-          <div class="chip-group selectable">
-            <div v-for="tool in projectPlatforms" :key="tool.value" class="chip"
-              :class="{ active: selectedProject === tool.value }" @mousedown.prevent
-              @click.stop="handleProjectClick(tool.value)">
-              <img v-if="tool.icon" :src="tool.icon" />
-              {{ tool.label }}
+          <!-- STEPPER -->
+          <div class="loc-stepper-row">
+            <div class="loc-step loc-step-active">
+              <span class="loc-step-num">1</span>
+              <span class="loc-step-label">Add users</span>
+            </div>
+            <div class="loc-step-line"></div>
+            <div class="loc-step loc-step-inactive">
+              <span class="loc-step-num loc-step-num-inactive">2</span>
+              <span class="loc-step-label loc-step-label-inactive">Risk Criteria</span>
             </div>
           </div>
 
-          <!-- Jira Connected User -->
-          <div v-if="jiraConnected && jiraUser" class="jira-user-card mt-3">
-            <img :src="jiraUser.picture" class="jira-user-avatar" />
-            <div class="jira-user-info">
-              <div class="jira-user-name">{{ jiraUser.name }}</div>
-              <div class="jira-user-email">{{ jiraUser.email }}</div>
+          <!-- Communication Platforms -->
+          <div class="loc-section">
+            <div class="loc-section-header">
+              <i class="bi bi-chat-dots loc-section-icon"></i>
+              <span class="loc-section-title">Communication Platforms</span>
             </div>
-            <span class="jira-user-badge">
-              <i class="bi bi-check-circle-fill me-1"></i>Connected
-            </span>
-          </div>
-
-          <!-- Jira Cloud Resources -->
-          <div v-if="jiraConnected && jiraResources.length" class="jira-resources mt-3">
-            <div class="jira-resources-title">
-              <i class="bi bi-check-circle-fill text-success me-1"></i>
-              Jira Connected — Select your workspace:
-            </div>
-            <div class="jira-resource-list mt-2">
+            <div class="loc-cards-grid">
               <div
-                v-for="resource in jiraResources"
-                :key="resource.id"
-                class="jira-resource-item"
-                :class="{ active: selectedJiraCloudId === resource.id }"
-                @click="selectedJiraCloudId = resource.id"
+                v-for="platform in communicationPlatforms"
+                :key="platform.value"
+                class="loc-tool-card"
+                :class="{ 'loc-tool-card-active': selectedCommunication === platform.value }"
+                @click.stop="handleCommunicationClick(platform.value)"
               >
-                <img :src="resource.avatarUrl" class="jira-resource-avatar" />
-                <div class="jira-resource-info">
-                  <div class="jira-resource-name">{{ resource.name }}</div>
-                  <div class="jira-resource-url">{{ resource.url }}</div>
+                <div class="loc-tool-card-top">
+                  <div class="loc-tool-icon-wrap">
+                    <img v-if="platform.icon" :src="platform.icon" class="loc-tool-icon" />
+                    <i v-else class="bi bi-app loc-tool-icon-fallback"></i>
+                  </div>
+                  <div class="loc-tool-radio" :class="{ 'loc-tool-radio-active': selectedCommunication === platform.value }">
+                    <div v-if="selectedCommunication === platform.value" class="loc-tool-radio-dot"></div>
+                  </div>
                 </div>
-                <i v-if="selectedJiraCloudId === resource.id" class="bi bi-check-circle-fill text-success ms-auto"></i>
+                <h6 class="loc-tool-name">{{ platform.label }}</h6>
+                <p class="loc-tool-desc">
+                  {{ platform.value === 'teams' ? 'Sync security alerts directly to your enterprise channels.' : 'Real-time collaboration for devsecops teams.' }}
+                </p>
               </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Users -->
-        <div class="section">
-          <div class="section-title">Users</div>
-
-          <div class="row-users">
-            <!-- User Type -->
-            <select v-model="form.user_type" class="form-select">
-              <option disabled value="">User type</option>
-              <option value="internal">Internal</option>
-              <option value="external">External</option>
-            </select>
-
-            <!-- First Name -->
-            <input class="form-control" placeholder="First name" v-model="form.first_name" />
-
-            <!-- Last Name -->
-            <input class="form-control" placeholder="Last name" v-model="form.last_name" />
-
-            <!-- Email -->
-            <input class="form-control" placeholder="Email" type="email" v-model="form.email" />
-
-            <!-- Location -->
-            <!-- <select v-model="selectedLocation" class="form-select">
-              <option disabled value="">Location</option>
-              <option v-for="loc in authStore.locations" :key="loc._id" :value="loc._id">
-                {{ loc.location_name }}
-              </option>
-            </select> -->
-
-            <!-- Member Role (Multi Select) -->
-            <div class="position-relative" ref="roleDropdown">
-              <div class="form-select" @click="isRoleOpen = !isRoleOpen">
-                {{ selectedRoles.length ? selectedRoles.join(", ") : "Role" }}
-              </div>
-
-              <div v-if="isRoleOpen" class="dropdown-list">
-                <label v-for="role in roleOptions" :key="role.short">
-                  <input type="checkbox" :value="role.short" v-model="selectedRoles" />
-                  {{ role.full }}
-                </label>
+              <!-- Add more tool placeholder -->
+              <div class="loc-tool-card loc-tool-card-add">
+                <div class="loc-tool-add-icon"><i class="bi bi-plus"></i></div>
+                <h6 class="loc-tool-name">Connect other tool</h6>
+                <p class="loc-tool-desc">Add more platforms</p>
               </div>
             </div>
           </div>
 
-          <div class="row-users-btn mt-4">
-            <button class="btn btn-primary" @click="addUser">
-              Add User
+          <!-- Project Management -->
+          <div class="loc-section">
+            <div class="loc-section-header">
+              <i class="bi bi-check-circle loc-section-icon"></i>
+              <span class="loc-section-title">Project Management</span>
+            </div>
+            <div class="loc-cards-grid">
+              <div
+                v-for="tool in projectPlatforms"
+                :key="tool.value"
+                class="loc-tool-card"
+                :class="{ 'loc-tool-card-active': selectedProject === tool.value }"
+                @click.stop="handleProjectClick(tool.value)"
+              >
+                <div class="loc-tool-card-top">
+                  <div class="loc-tool-icon-wrap">
+                    <img v-if="tool.icon" :src="tool.icon" class="loc-tool-icon" />
+                    <i v-else class="bi bi-kanban loc-tool-icon-fallback"></i>
+                  </div>
+                  <div class="loc-tool-radio" :class="{ 'loc-tool-radio-active': selectedProject === tool.value }">
+                    <i v-if="selectedProject === tool.value" class="bi bi-check-circle-fill loc-tool-check"></i>
+                  </div>
+                </div>
+                <h6 class="loc-tool-name">{{ tool.label }}</h6>
+                <p class="loc-tool-desc">Automated ticket creation for vulnerabilities.</p>
+              </div>
+              <!-- Connect other tool -->
+              <div class="loc-tool-card loc-tool-card-add">
+                <div class="loc-tool-add-icon"><i class="bi bi-plus"></i></div>
+                <h6 class="loc-tool-name">Connect other tool</h6>
+                <p class="loc-tool-desc">Asana, Trello, or Custom Webhooks</p>
+              </div>
+            </div>
+
+            <!-- Jira Connected User -->
+            <div v-if="jiraConnected && jiraUser" class="loc-jira-user mt-3">
+              <img :src="jiraUser.picture" class="loc-jira-avatar" />
+              <div class="loc-jira-info">
+                <div class="loc-jira-name">{{ jiraUser.name }}</div>
+                <div class="loc-jira-email">{{ jiraUser.email }}</div>
+              </div>
+              <span class="loc-jira-badge"><i class="bi bi-check-circle-fill me-1"></i>Connected</span>
+            </div>
+
+            <!-- Jira Cloud Resources -->
+            <div v-if="jiraConnected && jiraResources.length" class="loc-jira-resources mt-3">
+              <div class="loc-jira-res-title">
+                <i class="bi bi-check-circle-fill text-success me-1"></i>
+                Jira Connected — Select your workspace:
+              </div>
+              <div class="loc-jira-res-list mt-2">
+                <div
+                  v-for="resource in jiraResources"
+                  :key="resource.id"
+                  class="loc-jira-res-item"
+                  :class="{ active: selectedJiraCloudId === resource.id }"
+                  @click="selectedJiraCloudId = resource.id"
+                >
+                  <img :src="resource.avatarUrl" class="loc-jira-res-avatar" />
+                  <div>
+                    <div class="loc-jira-res-name">{{ resource.name }}</div>
+                    <div class="loc-jira-res-url">{{ resource.url }}</div>
+                  </div>
+                  <i v-if="selectedJiraCloudId === resource.id" class="bi bi-check-circle-fill text-success ms-auto"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Add Team Members -->
+          <div class="loc-section">
+            <div class="loc-section-header">
+              <i class="bi bi-people loc-section-icon"></i>
+              <span class="loc-section-title">Add Team Members</span>
+            </div>
+
+            <div class="loc-form-row">
+              <!-- Type -->
+              <div class="loc-form-group loc-form-type">
+                <label class="loc-form-label">TYPE</label>
+                <select v-model="form.user_type" class="loc-select">
+                  <option disabled value="">Select</option>
+                  <option value="internal">Internal</option>
+                  <option value="external">External</option>
+                </select>
+              </div>
+              <!-- First Name -->
+              <div class="loc-form-group loc-form-name">
+                <label class="loc-form-label">FIRST NAME</label>
+                <input class="loc-input" placeholder="John" v-model="form.first_name" />
+              </div>
+              <!-- Last Name -->
+              <div class="loc-form-group loc-form-name">
+                <label class="loc-form-label">LAST NAME</label>
+                <input class="loc-input" placeholder="Doe" v-model="form.last_name" />
+              </div>
+              <!-- Role -->
+              <div class="loc-form-group loc-form-role" ref="roleDropdown">
+                <label class="loc-form-label">ROLE</label>
+                <div class="loc-select loc-select-custom" @click="toggleRoleDropdown" ref="roleTrigger">
+                  <span class="loc-role-text">{{ selectedRoles.length ? selectedRoles.join(', ') : 'Select Role' }}</span>
+                  <i class="bi bi-chevron-down loc-select-arrow"></i>
+                </div>
+                <teleport to="body">
+                  <div v-if="isRoleOpen" class="loc-dropdown-list" :style="roleDropdownStyle">
+                    <label v-for="role in roleOptions" :key="role.short" class="loc-dropdown-item">
+                      <input type="checkbox" :value="role.short" v-model="selectedRoles" class="me-2" />
+                      {{ role.full }}
+                    </label>
+                  </div>
+                </teleport>
+              </div>
+            </div>
+
+            <!-- Email row -->
+            <div class="loc-email-row">
+              <input class="loc-input loc-email-input" placeholder="email@company.com" type="email" v-model="form.email" />
+              <button class="loc-add-user-btn" @click="addUser">
+                <i class="bi bi-plus-circle me-1"></i> Add Another User
+              </button>
+            </div>
+          </div>
+
+          <!-- Footer Buttons -->
+          <div class="loc-footer">
+            <button class="loc-btn-back" @click="$router.back()">
+              <i class="bi bi-arrow-left me-1"></i> Back to Selection
             </button>
+            <div class="d-flex gap-3">
+              <button class="loc-btn-draft" @click="addUser">Save User</button>
+              <button class="loc-btn-continue" @click="handleContinue">
+                {{ returnTo ? 'Back to Previous Page' : 'Continue to Risk Criteria' }}
+                <i class="bi bi-arrow-right ms-1"></i>
+              </button>
+            </div>
           </div>
+
         </div>
 
-        <div class="cta">
-           <button class="btn btn-primary" @click="handleContinue">
-    {{ returnTo ? 'Back to Previous Page →' : 'Continue to Risk Criteria →' }}
-  </button>
+        <!-- RIGHT: Sidebar -->
+        <div class="loc-sidebar">
+
+          <!-- Integration Help -->
+          <div class="loc-help-card">
+            <div class="loc-help-header">
+              <i class="bi bi-lightning-charge-fill loc-help-icon"></i>
+              <span class="loc-help-title">Integration Help</span>
+            </div>
+            <div class="loc-help-item">
+              <i class="bi bi-shield-check loc-help-item-icon"></i>
+              <div>
+                <span class="loc-help-bold">OAuth 2.0 Secure:</span>
+                <span class="loc-help-text"> All third-party integrations use encrypted token-based authentication.</span>
+              </div>
+            </div>
+            <div class="loc-help-item mt-2">
+              <i class="bi bi-diagram-3 loc-help-item-icon"></i>
+              <div>
+                <span class="loc-help-bold">Smart Mapping:</span>
+                <span class="loc-help-text"> Automatically assign security findings to the correct Slack channel or Jira project.</span>
+              </div>
+            </div>
+            <a href="#" class="loc-help-link">READ SETUP GUIDE <i class="bi bi-box-arrow-up-right ms-1"></i></a>
+          </div>
+
+          <!-- Pending Setup -->
+          <div class="loc-pending-card">
+            <h6 class="loc-pending-title">Pending Setup</h6>
+            <div class="loc-pending-item loc-pending-done">
+              <i class="bi bi-check-circle-fill loc-pending-icon-done"></i>
+              <span>Project Space: Alpha</span>
+            </div>
+            <div class="loc-pending-item">
+              <span class="loc-pending-dot-grey"></span>
+              <span class="flex-1">Team Members (0)</span>
+              <span class="loc-required-badge">REQUIRED</span>
+            </div>
+            <div class="loc-pending-item">
+              <span class="loc-pending-dot-grey"></span>
+              <span>Risk Scoring</span>
+            </div>
+          </div>
 
         </div>
       </div>
@@ -139,7 +258,7 @@
 </template>
 
 <script>
-import Stepper from "@/components/admin-component/Stepper.vue";
+import DashboardHeader from "@/components/admin-component/DashboardHeader.vue";
 import { useAuthStore } from "@/stores/authStore";
 import Swal from "sweetalert2";
 import teamsIcon from "@/assets/images/teams.png";
@@ -150,11 +269,12 @@ import asanaIcon from "@/assets/images/asana.png";
 export default {
   name: "LocationView",
   components: {
-    Stepper
+    DashboardHeader
   },
   data() {
     return {
       authStore: useAuthStore(),
+      roleDropdownStyle: {},
       locationName: "",
       showDropdown: false,
       filteredCountries: [],
@@ -193,7 +313,7 @@ export default {
       projectNoneSelected: false,
       projectPlatforms: [
         { value: "jira", label: "Jira", icon: jiraIcon },
-        { value: "asana", label: "Asana", icon: asanaIcon },
+        // { value: "asana", label: "Asana", icon: asanaIcon },
         // { value: "none", label: "None" }
       ],
       slackPopup: null,
@@ -267,8 +387,26 @@ export default {
     initChipSelection() {
       // Active state is handled by Vue :class binding — no manual DOM manipulation needed
     },
+    toggleRoleDropdown(e) {
+      e && e.stopPropagation();
+      this.isRoleOpen = !this.isRoleOpen;
+      if (this.isRoleOpen) {
+        this.$nextTick(() => {
+          const trigger = this.$refs.roleTrigger;
+          if (trigger) {
+            const rect = trigger.getBoundingClientRect();
+            this.roleDropdownStyle = {
+              position: 'fixed',
+              top: (rect.bottom + 4) + 'px',
+              left: rect.left + 'px',
+              minWidth: Math.max(rect.width, 200) + 'px',
+            };
+          }
+        });
+      }
+    },
     async addUser() {
-      // 1️⃣ Validate required fields before API call
+      // Validate required fields
       if (!this.form.first_name?.trim()) {
         Swal.fire("Missing Field", "Please enter the First Name.", "warning");
         return;
@@ -290,44 +428,89 @@ export default {
         return;
       }
 
-      // 2️⃣ Get admin id
-      const adminId =
-        this.authStore.user?._id ||
-        this.authStore.user?.id;
-
+      const adminId = this.authStore.user?._id || this.authStore.user?.id;
       if (!adminId) {
         Swal.fire("Error", "Please login again", "error");
         return;
       }
 
-      // 3️⃣ Build payload (❌ location removed)
+      // Gate Add User until OAuth connect is complete
+      if (this.selectedCommunication === "slack") {
+        const botToken = localStorage.getItem("slack_bot_token");
+        if (!botToken) {
+          Swal.fire("Slack not connected", "Please connect Slack first.", "warning");
+          return;
+        }
+      }
+
+      if (this.selectedCommunication === "teams") {
+        const graphToken = localStorage.getItem("microsoft_graph_token");
+        const vaptfixTeam = JSON.parse(
+          localStorage.getItem("vaptfix_team") || "null"
+        );
+        const teamId = vaptfixTeam?.id || vaptfixTeam?.team_id;
+
+        if (!graphToken || !teamId) {
+          Swal.fire(
+            "Microsoft Teams not connected",
+            "Please connect Microsoft Teams first.",
+            "warning"
+          );
+          return;
+        }
+      }
+
+      // Base payload
       const payload = {
-        admin_id: adminId,                 // ✅ required
+        admin_id: adminId,
         first_name: this.form.first_name,
         last_name: this.form.last_name,
         email: this.form.email,
         user_type: this.form.user_type,
         Member_role: this.selectedRoles.map(
           r => this.roleOptions.find(o => o.short === r)?.full
-        )                                  // ✅ full role names
+        )
       };
 
-      // 🧪 Debug
+      // MS Teams: add access_token + team_id if Teams is selected
+      if (this.selectedCommunication === "teams") {
+        const graphToken = localStorage.getItem("microsoft_graph_token");
+        const vaptfixTeam = JSON.parse(localStorage.getItem("vaptfix_team") || "null");
+        const teamId = vaptfixTeam?.id || vaptfixTeam?.team_id;
+        if (graphToken && teamId) {
+          payload.access_token = graphToken;
+          payload.team_id = teamId;
+        }
+      }
+
+      // Slack: add slack_bot_token if Slack is selected
+      if (this.selectedCommunication === "slack") {
+        const botToken = localStorage.getItem("slack_bot_token");
+        if (botToken) {
+          payload.slack_bot_token = botToken;
+        }
+      }
+
       console.log("FINAL PAYLOAD 👉", payload);
 
-      // 3️⃣ API call
       const res = await this.authStore.createUserDetail(payload);
 
       if (res.status) {
+        const syncMsg = this.selectedCommunication === "teams"
+          ? " and added to Microsoft Teams"
+          : this.selectedCommunication === "slack"
+            ? " and invited to Slack channels"
+            : "";
+
         Swal.fire({
           icon: "success",
-          title: "User added successfully",
-          timer: 1800,
+          title: `User added successfully${syncMsg}`,
+          timer: 2000,
           showConfirmButton: false,
           allowOutsideClick: false
         });
 
-        // 🔄 reset form
+        // Reset form
         this.form.first_name = "";
         this.form.last_name = "";
         this.form.email = "";
@@ -337,18 +520,9 @@ export default {
 
       } else {
         let errorMessage = "User detail with this email already exists";
-
-        if (
-          res.details &&
-          res.details.detail &&
-          res.details.detail.email &&
-          Array.isArray(res.details.detail.email)
-        ) {
-          errorMessage = "User detail with this email already exists";
-        } else if (res.message && !res.message.includes("500")) {
+        if (res.message && !res.message.includes("500")) {
           errorMessage = res.message;
         }
-
         Swal.fire({
           icon: "warning",
           title: "User already exists",
@@ -430,11 +604,13 @@ export default {
     closeOnOutside(e) {
       const role = this.$refs.roleDropdown;
       const secondary = this.$refs.secondaryRoleDropdown;
-      if (
-        role && !role.contains(e.target) &&
-        secondary && !secondary.contains(e.target)
-      ) {
+      // Also check if click is inside teleported dropdown
+      const teleportedDropdown = document.querySelector('.loc-dropdown-list');
+      if (teleportedDropdown && teleportedDropdown.contains(e.target)) return;
+      if (role && !role.contains(e.target)) {
         this.isRoleOpen = false;
+      }
+      if (secondary && !secondary.contains(e.target)) {
         this.isSecondaryRoleOpen = false;
       }
     },
@@ -589,7 +765,12 @@ export default {
     async startMicrosoftLogin() {
   try {
     const redirectUri = `${window.location.origin}/microsoft/callback`;
-    const res = await this.authStore.getMicrosoftOAuthUrl(redirectUri);
+    const adminId = this.authStore.user?._id || this.authStore.user?.id;
+    if (!adminId) {
+      Swal.fire("Error", "Please login again", "error");
+      return;
+    }
+    const res = await this.authStore.getMicrosoftOAuthUrl(redirectUri, adminId);
     if (res.status && res.data.auth_url) {
       // ✅ Open Microsoft OAuth in NEW TAB
        window.open(res.data.auth_url, "_blank");
@@ -602,18 +783,47 @@ export default {
     Swal.fire("Error", "Microsoft login failed", "error");
   }
     },
-    onTeamsConnected(event) {
-      if (event.data?.type === "TEAMS_CONNECTED") {
-        Swal.fire({
-          icon: "success",
-          title: "Success",
-          text: "Microsoft Teams connected successfully",
-          timer: 2000,
-          showConfirmButton: false
-        });
-        this.fetchTeams();
+  async onTeamsConnected(event) {
+    if (event.data?.type === "TEAMS_CONNECTED") {
+
+      // Step 1: localStorage mein save karo
+      const graphToken = event.data.tokens?.access_token;
+      if (graphToken) {
+        localStorage.setItem("microsoft_graph_token", graphToken);
       }
-    },
+      if (event.data.vaptfix_team) {
+        localStorage.setItem("vaptfix_team", JSON.stringify(event.data.vaptfix_team));
+      }
+      if (event.data.django_access_token) {
+        localStorage.setItem("django_access_token", event.data.django_access_token);
+      }
+
+      // Step 2: Event se directly teams/channels set karo (fetchTeams() ki zaroorat nahi)
+      if (event.data.vaptfix_team) {
+        this.teams = [{
+          id: event.data.vaptfix_team.team_id,
+          displayName: event.data.vaptfix_team.team_name || "Vaptfix"
+        }];
+        this.channels = event.data.vaptfix_team.channels || [];
+        localStorage.setItem("vaptfix_channels", JSON.stringify(this.channels));
+      }
+
+      // Step 3: Success message
+      Swal.fire({
+        icon: "success",
+        title: "Success",
+        text: "Microsoft Teams connected successfully",
+        timer: 2000,
+        showConfirmButton: false
+      });
+
+      // Step 4: Webhook subscribe
+      const teamId = event.data.vaptfix_team?.team_id;
+      if (teamId) {
+        await this.authStore.subscribeTeamsWebhook(teamId);
+      }
+    }
+  },
     async fetchTeams() {
       const res = await this.authStore.fetchMicrosoftTeams();
       if (res?.status) {
@@ -671,7 +881,12 @@ export default {
     // slack start
     async startSlackLogin() {
   try {
-    const res = await this.authStore.getSlackOAuthUrl(this.backendBase);
+    const adminId = this.authStore.user?._id || this.authStore.user?.id;
+    if (!adminId) {
+      Swal.fire("Error", "Please login again", "error");
+      return;
+    }
+    const res = await this.authStore.getSlackOAuthUrl(this.backendBase, adminId);
 
     if (res.status && res.data?.auth_url) {
 
@@ -698,32 +913,37 @@ export default {
   }
     },
     handleSlackMessage(event) {
+    console.log("Message received from popup:", event);
 
-  console.log("Message received from popup:", event);
+    const allowedOrigins = [
+      window.location.origin,
+      "https://vaptbackend.secureitlab.com"
+    ];
 
-  const allowedOrigins = [
-    window.location.origin,
-    "https://vaptbackend.secureitlab.com"
-  ];
+    if (!allowedOrigins.includes(event.origin)) {
+      console.warn("Blocked message origin:", event.origin);
+      return;
+    }
 
-  if (!allowedOrigins.includes(event.origin)) {
-    console.warn("Blocked message origin:", event.origin);
-    return;
-  }
+    if (event.data?.type === "SLACK_CONNECTED") {
+      console.log("SLACK_CONNECTED event received");
 
-  if (event.data?.type === "SLACK_CONNECTED") {
+      // ✅ localStorage mein save karo
+      if (event.data.bot_token) {
+        localStorage.setItem("slack_bot_token", event.data.bot_token);
+      }
+      if (event.data.slack_user_id) {
+        localStorage.setItem("slack_user_id", event.data.slack_user_id);
+      }
+      if (event.data.django_access_token) {
+        localStorage.setItem("django_access_token", event.data.django_access_token);
+      }
 
-    console.log("SLACK_CONNECTED event received");
-
-    // 🔹 CALL VALIDATE TOKEN
-    console.log("Calling validate token API...");
-    this.checkSlackConnection();
-    // 🔹 CALL CHANNEL LIST
-    console.log("Calling list channels API...");
-    this.fetchSlackChannels();
-    this.fetchSlackUsers();
-  }
-    },
+      this.checkSlackConnection();
+      this.fetchSlackChannels();
+      this.fetchSlackUsers();
+    }
+  },
     async checkSlackConnection() {
   try {
     console.log("checkSlackConnection started");
@@ -898,7 +1118,7 @@ export default {
     "🚨 New vulnerability detected"
   );
     },
-    // slack end 
+    // slack end
 
     // ✅ Jira OAuth Login
     async startJiraLogin() {
@@ -1120,8 +1340,8 @@ export default {
   left: 0;
   right: 0;
   height: 64px;
-  background: #241447;
-  border-bottom: 1px solid #3a2b5e;
+  background: #F3F5FA;
+  border-bottom: 1px solid #e6e9f2;
   display: flex;
   align-items: center;
   padding: 0 32px;
@@ -1430,4 +1650,185 @@ export default {
   font-size: 12px;
   color: #6b7280;
 }
+/* ── LocationView New Design ── */
+.loc-main { background: #f4f5f8; min-height: 100vh; font-family: 'Inter', sans-serif; }
+
+/* Topbar */
+.loc-topbar {
+  display: flex; justify-content: space-between; align-items: center;
+  background: #241447; padding: 0 32px; height: 52px;
+  position: sticky; top: 0; z-index: 100;
+}
+.loc-topbar-left { display: flex; align-items: center; gap: 28px; }
+.loc-brand { font-size: 1rem; font-weight: 800; color: #ffffff; letter-spacing: 0.02em; }
+.loc-topnav { display: flex; gap: 20px; }
+.loc-topnav a { font-size: 0.85rem; font-weight: 600; color: rgba(255,255,255,0.55); cursor: pointer; text-decoration: none; }
+.loc-nav-active { color: #ffffff !important; border-bottom: 2px solid #ffffff; padding-bottom: 2px; }
+.loc-topbar-right { display: flex; align-items: center; gap: 14px; }
+.loc-icon-btn { font-size: 1.1rem; color: rgba(255,255,255,0.75); cursor: pointer; }
+.loc-icon-btn:hover { color: #ffffff; }
+.loc-avatar { width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,0.15); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 700; border: 1.5px solid rgba(255,255,255,0.3); }
+
+/* Page */
+.loc-page { max-width: 960px; margin: 0 auto; padding: 84px 20px 60px; }
+
+/* Stepper */
+.loc-stepper-row { display: flex; align-items: center; gap: 0; margin-bottom: 28px; }
+.loc-step { display: flex; align-items: center; gap: 10px; }
+.loc-step-num {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: #241447; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem; font-weight: 700; flex-shrink: 0;
+}
+.loc-step-num-inactive { background: #f1f5f9; color: #94a3b8; border: 1px solid #e2e8f0; }
+.loc-step-label { font-size: 0.875rem; font-weight: 600; color: #241447; }
+.loc-step-label-inactive { color: #94a3b8; }
+.loc-step-line { flex: 1; height: 1px; background: #e2e8f0; margin: 0 16px; max-width: 160px; }
+
+/* Layout */
+.loc-layout { display: grid; grid-template-columns: 1fr 260px; gap: 24px; align-items: flex-start; }
+
+/* Content */
+.loc-page-header { margin-bottom: 24px; }
+.loc-title { font-size: 1.6rem; font-weight: 800; color: #1e293b; margin: 0 0 6px; }
+.loc-subtitle { font-size: 0.875rem; color: #64748b; margin: 0; line-height: 1.5; }
+
+/* Section */
+.loc-section {
+  background: #fff; border-radius: 14px; padding: 20px 22px;
+  margin-bottom: 16px; border: 1px solid #f1f5f9;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+.loc-section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+.loc-section-icon { font-size: 1rem; color: #0f696e; }
+.loc-section-title { font-size: 0.95rem; font-weight: 700; color: #1e293b; }
+
+/* Tool Cards */
+.loc-cards-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.loc-tool-card {
+  border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 16px;
+  cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s;
+  background: #fff;
+}
+.loc-tool-card:hover { border-color: #0f696e; box-shadow: 0 2px 8px rgba(15,105,110,0.1); }
+.loc-tool-card-active { border-color: #0f696e; box-shadow: 0 0 0 2px rgba(15,105,110,0.15); }
+.loc-tool-card-add { border-style: dashed; cursor: default; }
+.loc-tool-card-add:hover { border-color: #cbd5e1; box-shadow: none; }
+.loc-tool-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.loc-tool-icon-wrap { width: 40px; height: 40px; background: #e0f2f1; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+.loc-tool-icon { width: 24px; height: 24px; object-fit: contain; }
+.loc-tool-icon-fallback { font-size: 1.2rem; color: #0f696e; }
+.loc-tool-radio {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 1.5px solid #cbd5e1; display: flex; align-items: center; justify-content: center;
+}
+.loc-tool-radio-active { border-color: #0f696e; }
+.loc-tool-radio-dot { width: 8px; height: 8px; border-radius: 50%; background: #0f696e; }
+.loc-tool-check { color: #0f696e; font-size: 1rem; }
+.loc-tool-name { font-size: 0.875rem; font-weight: 700; color: #1e293b; margin: 0 0 4px; }
+.loc-tool-desc { font-size: 0.75rem; color: #64748b; margin: 0; line-height: 1.4; }
+.loc-tool-add-icon { width: 36px; height: 36px; border-radius: 50%; background: #f1f5f9; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
+.loc-tool-add-icon i { font-size: 1.1rem; color: #94a3b8; }
+
+/* Jira connected */
+.loc-jira-user { display: flex; align-items: center; gap: 12px; background: #f8f9fc; border-radius: 10px; padding: 12px; }
+.loc-jira-avatar { width: 36px; height: 36px; border-radius: 50%; }
+.loc-jira-name { font-size: 0.85rem; font-weight: 700; color: #1e293b; }
+.loc-jira-email { font-size: 0.75rem; color: #64748b; }
+.loc-jira-badge { font-size: 0.72rem; font-weight: 700; background: #dcfce7; color: #16a34a; border-radius: 20px; padding: 3px 10px; margin-left: auto; }
+.loc-jira-resources { }
+.loc-jira-res-title { font-size: 0.82rem; font-weight: 600; color: #1e293b; }
+.loc-jira-res-list { display: flex; flex-direction: column; gap: 8px; }
+.loc-jira-res-item { display: flex; align-items: center; gap: 10px; background: #f8f9fc; border-radius: 8px; padding: 10px 12px; cursor: pointer; border: 1.5px solid transparent; }
+.loc-jira-res-item.active { border-color: #0f696e; }
+.loc-jira-res-avatar { width: 28px; height: 28px; border-radius: 4px; }
+.loc-jira-res-name { font-size: 0.82rem; font-weight: 700; color: #1e293b; }
+.loc-jira-res-url { font-size: 0.72rem; color: #64748b; }
+
+/* Form */
+.loc-form-row { display: grid; grid-template-columns: 120px 1fr 1fr 180px; gap: 12px; margin-bottom: 12px; align-items: flex-start; }
+.loc-form-group { display: flex; flex-direction: column; gap: 4px; position: relative; }
+.loc-form-type { min-width: 0; }
+.loc-form-name { min-width: 0; }
+.loc-form-role { min-width: 0; }
+.loc-form-label { font-size: 0.65rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; }
+.loc-input {
+  border: 1px solid #e2e8f0; border-radius: 8px; padding: 9px 12px;
+  font-size: 0.85rem; color: #1e293b; background: #fff; outline: none;
+  transition: border-color 0.15s;
+}
+.loc-input:focus { border-color: #0f696e; box-shadow: 0 0 0 2px rgba(15,105,110,0.1); }
+.loc-select {
+  border: 1px solid #e2e8f0; border-radius: 8px; padding: 9px 12px;
+  font-size: 0.85rem; color: #1e293b; background: #fff; outline: none;
+  appearance: none; cursor: pointer;
+}
+.loc-select:focus { border-color: #0f696e; }
+.loc-select-custom { display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; overflow: hidden; }
+.loc-select-arrow { font-size: 0.7rem; color: #94a3b8; flex-shrink: 0; margin-left: 4px; }
+.loc-role-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; font-size: 0.85rem; color: #1e293b; }
+.loc-dropdown-list {
+  position: fixed;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  z-index: 9999;
+  padding: 6px;
+  min-width: 200px;
+  width: auto;
+}
+.loc-dropdown-item { display: flex; align-items: center; padding: 8px 10px; font-size: 0.82rem; cursor: pointer; border-radius: 6px; white-space: nowrap; color: #1e293b; font-weight: 500; }
+.loc-dropdown-item:hover { background: #f0fdf9; color: #0f696e; }
+
+.loc-email-row { display: flex; align-items: center; gap: 12px; }
+.loc-email-input { flex: 1; }
+.loc-add-user-btn {
+  background: none; border: none; color: #0f696e; font-size: 0.85rem; font-weight: 700;
+  cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 4px;
+  padding: 9px 0;
+}
+.loc-add-user-btn:hover { opacity: 0.75; }
+
+/* Footer */
+.loc-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 20px; margin-top: 8px; }
+.loc-btn-back { background: none; border: none; color: #64748b; font-size: 0.875rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+.loc-btn-back:hover { color: #1e293b; }
+.loc-btn-draft { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 9px 20px; font-size: 0.875rem; font-weight: 600; color: #1e293b; cursor: pointer; }
+.loc-btn-draft:hover { background: #f8f9fc; }
+.loc-btn-continue {
+  background: #241447; color: #fff; border: none; border-radius: 8px;
+  padding: 9px 22px; font-size: 0.875rem; font-weight: 700; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; transition: opacity 0.15s;
+}
+.loc-btn-continue:hover { opacity: 0.88; }
+
+/* Sidebar */
+.loc-sidebar { display: flex; flex-direction: column; gap: 16px; }
+
+/* Integration Help */
+.loc-help-card {
+  background: #241447; border-radius: 14px; padding: 20px;
+  color: #fff;
+}
+.loc-help-header { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.loc-help-icon { color: #a1ecf2; font-size: 1rem; }
+.loc-help-title { font-size: 0.95rem; font-weight: 700; }
+.loc-help-item { display: flex; align-items: flex-start; gap: 8px; font-size: 0.78rem; line-height: 1.5; }
+.loc-help-item-icon { color: #a1ecf2; flex-shrink: 0; margin-top: 2px; }
+.loc-help-bold { font-weight: 700; color: #fff; }
+.loc-help-text { color: rgba(255,255,255,0.75); }
+.loc-help-link { display: inline-flex; align-items: center; margin-top: 16px; font-size: 0.72rem; font-weight: 700; color: #a1ecf2; text-decoration: none; letter-spacing: 0.06em; }
+.loc-help-link:hover { text-decoration: underline; color: #a1ecf2; }
+
+/* Pending Setup */
+.loc-pending-card { background: #fff; border-radius: 14px; padding: 18px; border: 1px solid #f1f5f9; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+.loc-pending-title { font-size: 0.9rem; font-weight: 700; color: #1e293b; margin: 0 0 12px; }
+.loc-pending-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; background: #f8f9fc; margin-bottom: 8px; font-size: 0.82rem; color: #1e293b; font-weight: 500; }
+.loc-pending-done { color: #1e293b; }
+.loc-pending-icon-done { color: #16a34a; font-size: 0.95rem; flex-shrink: 0; }
+.loc-pending-dot-grey { width: 10px; height: 10px; border-radius: 50%; background: #cbd5e1; flex-shrink: 0; }
+.loc-required-badge { font-size: 0.62rem; font-weight: 700; background: #fee2e2; color: #dc2626; border-radius: 4px; padding: 2px 6px; margin-left: auto; letter-spacing: 0.04em; }
+.flex-1 { flex: 1; }
 </style>

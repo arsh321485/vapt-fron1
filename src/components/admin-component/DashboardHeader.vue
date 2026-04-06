@@ -1,21 +1,21 @@
 <template>
   <main>
 
-    <div class="row fixed-browser-bar pe-0 me-0 gx-0"> 
+    <div class="row fixed-browser-bar pe-0 me-0 gx-0">
      <div class="col-12 pe-0">
   <div class="d-flex align-items-center justify-content-between gap-4 py-2 px-4">
-    
+
       <div class="browser-bar">
-        <router-link to="/admindashboardonboarding">
-          <img src="@/assets/images/vaptfix_white.png" alt="" style="cursor:pointer;">
+        <router-link to="/admindashboardonboarding" class="vaptfix-logo">
+          <span class="logo-v">V</span><span class="logo-a">A</span><span class="logo-p">P</span><span class="logo-t">T</span><span class="logo-f">F</span><span class="logo-i">i</span><span class="logo-x">X</span>
         </router-link>
       </div>
-  
+
     <!-- Right Section -->
     <div class="d-flex align-items-center gap-2">
       <NotificationPanel />
     <div class="position-relative d-inline-block">
-      <div 
+      <div
         class="circle-bottom d-flex align-items-center justify-content-center fw-bold"
         style="cursor:pointer;"
         @click="toggleDropdown"
@@ -25,8 +25,8 @@
       </div>
 
       <!-- Dropdown -->
-      <div 
-        v-if="showDropdown" 
+      <div
+        v-if="showDropdown"
         class="dropdown-box shadow-lg p-3 rounded"
       >
         <!-- Email -->
@@ -63,7 +63,7 @@
     <hr class="m-0">
       </div>
     </div>
-    
+
   </main>
 </template>
 
@@ -170,7 +170,7 @@ export default {
       }
     },
   },
-  
+
   mounted() {
   document.addEventListener("click", this.handleClickOutside);
   this.loadUserData();
@@ -204,8 +204,25 @@ body {
 }
 
 .browser-bar img {
-  height: 40px; 
+  height: 40px;
 }
+
+.vaptfix-logo {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  font-size: 1.3rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.logo-v { color: #ffffff; }
+.logo-a { color: #ef4444; }
+.logo-p { color: #ffffff; }
+.logo-t { color: #ffffff; }
+.logo-f { color: #4ade80; }
+.logo-i { color: #facc15; }
+.logo-x { color: #ffffff; }
 
 .dashboard-circle {
   width: 12px;

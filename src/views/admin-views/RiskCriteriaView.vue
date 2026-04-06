@@ -1,171 +1,172 @@
 <template>
-  <main>
+  <main class="rc-main">
+
     <!-- TOP BAR -->
-    <div class="topbar">
-      <img src="@/assets/images/logo1.png" alt="" class="h-50">
+    <div class="row gx-0 no-gutters">
+      <DashboardHeader />
     </div>
 
-    <div class="app">
+    <div class="rc-page">
+
       <!-- STEPPER -->
-      <Stepper v-if="!isEditMode" />
+      <div v-if="!isEditMode" class="rc-stepper-row">
+        <div class="rc-step rc-step-done">
+          <span class="rc-step-num"><i class="bi bi-check-lg"></i></span>
+          <span class="rc-step-label">1. Add users</span>
+        </div>
+        <div class="rc-step-line rc-line-done"></div>
+        <div class="rc-step rc-step-active">
+          <span class="rc-step-num rc-step-num-active">2</span>
+          <span class="rc-step-label rc-step-label-active">2. Risk Criteria</span>
+        </div>
+      </div>
 
-      <!-- CONTENT -->
-      <div :class="['content', { 'no-stepper': isEditMode }]">
-        <h1>Risk Criteria</h1>
-        <p>Define the governance framework for timely vulnerability mitigation and risk reduction.</p>
+      <!-- PAGE HEADER -->
+      <div class="rc-page-header">
+        <h1 class="rc-title">Configure Risk Severity</h1>
+        <p class="rc-subtitle">Define how VaptFix Pro classifies vulnerabilities across your infrastructure. Choose criteria that align with your organizational security standards.</p>
+      </div>
 
-        <div class="risk-layout">
-          <div class="risk-left">
-            <div class="risk-card area-critical risk-card-bg">
-              <div class="risk-header">
-                <span class="dot critical-bg"></span>
-                Critical
-                <!-- <span class="text-danger">*</span> -->
+      <!-- MAIN LAYOUT -->
+      <div class="rc-layout">
 
-                <span class="text-danger ms-1" data-bs-toggle="tooltip" data-bs-placement="top"
-                  title="Recommended timeline: Critical – 2 days">
-                  *
-                </span>
+        <!-- LEFT: 2x2 severity cards -->
+        <div class="rc-cards-grid">
 
-              </div>
-
-              <select class="form-select" v-model="form.critical" :disabled="isLocked">
-                <option value="" disabled>Select</option>
-                <option v-for="opt in timeOptions" :key="opt">{{ opt }}</option>
-              </select>
-
+          <!-- Critical -->
+          <div class="rc-sev-card">
+            <div class="rc-sev-header">
+              <span class="rc-sev-bar rc-bar-critical"></span>
+              <span class="rc-sev-name">Critical</span>
             </div>
-            <div class="risk-card area-high risk-card-bg">
-              <div class="risk-header">
-                <span class="dot high-bg"></span>
+            <label class="rc-field-label">IMPACT LEVEL</label>
+            <select class="rc-select" v-model="form.critical" :disabled="isLocked">
+              <option value="" disabled>Select</option>
+              <option v-for="opt in timeOptions" :key="opt">{{ opt }}</option>
+            </select>
+            <label class="rc-field-label mt-3">RESPONSE TIME</label>
+            <select class="rc-select" v-model="form.critical" :disabled="isLocked">
+              <option value="" disabled>Select</option>
+              <option v-for="opt in timeOptions" :key="opt">{{ opt }}</option>
+            </select>
+          </div>
 
-                <!-- High<span class="text-danger">*</span> -->
-                High
-                <span class="text-danger ms-1" data-bs-toggle="tooltip" data-bs-placement="top"
-                  title="Recommended timeline: High – 4 days">
-                  *
-                </span>
-
-              </div>
-
-
-
-              <select class="form-select" v-model="form.high" :disabled="isLocked">
-                <option value="" disabled>Select</option>
-
-                <option v-for="opt in timeOptions" :key="opt" :disabled="isOptionDisabled(form.critical, opt)">
-                  {{ opt }}
-                </option>
-              </select>
-
+          <!-- High -->
+          <div class="rc-sev-card">
+            <div class="rc-sev-header">
+              <span class="rc-sev-bar rc-bar-high"></span>
+              <span class="rc-sev-name">High</span>
             </div>
-            <div class="risk-card area-medium risk-card-bg">
-              <div class="risk-header">
-                <span class="dot medium-bg"></span>
-                <!-- Medium<span class="text-danger">*</span> -->
-                Medium
-                <span class="text-danger ms-1" data-bs-toggle="tooltip" data-bs-placement="top"
-                  title="Recommended timeline: Medium – 2 weeks">
-                  *
-                </span>
+            <label class="rc-field-label">IMPACT LEVEL</label>
+            <select class="rc-select" v-model="form.high" :disabled="isLocked">
+              <option value="" disabled>Select</option>
+              <option v-for="opt in timeOptions" :key="opt" :disabled="isOptionDisabled(form.critical, opt)">{{ opt }}</option>
+            </select>
+            <label class="rc-field-label mt-3">RESPONSE TIME</label>
+            <select class="rc-select" v-model="form.high" :disabled="isLocked">
+              <option value="" disabled>Select</option>
+              <option v-for="opt in timeOptions" :key="opt" :disabled="isOptionDisabled(form.critical, opt)">{{ opt }}</option>
+            </select>
+          </div>
 
-              </div>
-
-
-              <select class="form-select" v-model="form.medium" :disabled="isLocked">
-                <option value="" disabled>Select</option>
-
-                <option v-for="opt in timeOptions" :key="opt" :disabled="isOptionDisabled(form.high, opt)">
-                  {{ opt }}
-                </option>
-              </select>
-
+          <!-- Medium -->
+          <div class="rc-sev-card">
+            <div class="rc-sev-header">
+              <span class="rc-sev-bar rc-bar-medium"></span>
+              <span class="rc-sev-name">Medium</span>
             </div>
-            <div class="risk-card area-low risk-card-bg">
-              <div class="risk-header">
-                <span class="dot low-bg"></span>
-                <!-- Low<span class="text-danger">*</span> -->
-                Low
-                <span class="text-danger ms-1" data-bs-toggle="tooltip" data-bs-placement="top"
-                  title="Recommended timeline: Low – 4 weeks">
-                  *
-                </span>
+            <label class="rc-field-label">IMPACT LEVEL</label>
+            <select class="rc-select" v-model="form.medium" :disabled="isLocked">
+              <option value="" disabled>Select</option>
+              <option v-for="opt in timeOptions" :key="opt" :disabled="isOptionDisabled(form.high, opt)">{{ opt }}</option>
+            </select>
+            <label class="rc-field-label mt-3">RESPONSE TIME</label>
+            <select class="rc-select" v-model="form.medium" :disabled="isLocked">
+              <option value="" disabled>Select</option>
+              <option v-for="opt in timeOptions" :key="opt" :disabled="isOptionDisabled(form.high, opt)">{{ opt }}</option>
+            </select>
+          </div>
 
-              </div>
+          <!-- Low -->
+          <div class="rc-sev-card">
+            <div class="rc-sev-header">
+              <span class="rc-sev-bar rc-bar-low"></span>
+              <span class="rc-sev-name">Low</span>
+            </div>
+            <label class="rc-field-label">IMPACT LEVEL</label>
+            <select class="rc-select" v-model="form.low" :disabled="isLocked">
+              <option value="" disabled>Select</option>
+              <option v-for="opt in timeOptions" :key="opt" :disabled="isOptionDisabled(form.medium, opt)">{{ opt }}</option>
+            </select>
+            <label class="rc-field-label mt-3">RESPONSE TIME</label>
+            <select class="rc-select" v-model="form.low" :disabled="isLocked">
+              <option value="" disabled>Select</option>
+              <option v-for="opt in timeOptions" :key="opt" :disabled="isOptionDisabled(form.medium, opt)">{{ opt }}</option>
+            </select>
+          </div>
 
-              <select class="form-select" v-model="form.low" :disabled="isLocked">
-                <option value="" disabled>Select</option>
-                <option v-for="opt in timeOptions" :key="opt" :disabled="isOptionDisabled(form.medium, opt)">
-                  {{ opt }}
-                </option>
-              </select>
+        </div>
 
+        <!-- RIGHT: Security Level Guide -->
+        <div class="rc-guide-card">
+          <h5 class="rc-guide-title">Security Level Guide</h5>
+
+          <div class="rc-guide-item">
+            <div class="rc-guide-icon rc-icon-critical">
+              <i class="bi bi-exclamation-triangle-fill"></i>
+            </div>
+            <div>
+              <p class="rc-guide-name rc-name-critical">Critical Priority</p>
+              <p class="rc-guide-desc">Vulnerabilities that present an immediate risk to core infrastructure. Exploitation is usually trivial and requires no user interaction.</p>
             </div>
           </div>
 
-          <!-- security level -->
-          <div class="risk-card security-card area-security security-card-bg">
-            <div class="security-header-wrapper">
-              <i class="bi bi-shield-check security-icon"></i>
-              <h5 class="security-heading">Security Level</h5>
+          <div class="rc-guide-item">
+            <div class="rc-guide-icon rc-icon-high">
+              <i class="bi bi-exclamation-circle-fill"></i>
             </div>
-
-            <div class="security-grid">
-
-              <div class="security-item">
-                <div class="security-title critical">
-                  <span class="dot"></span>
-                  <strong class="critical-text">Critical</strong>
-                </div>
-                <p>
-                  Assets essential for the organisation to operate; their loss can cause
-                  severe operational, legal, or financial damage.
-                </p>
-              </div>
-
-              <div class="security-item">
-                <div class="security-title high">
-                  <span class="dot"></span>
-                  <strong class="high-text">High</strong>
-                </div>
-                <p>
-                  Important assets whose compromise would significantly disrupt operations
-                  or result in financial loss.
-                </p>
-              </div>
-
-              <div class="security-item">
-                <div class="security-title medium">
-                  <span class="dot"></span>
-                  <strong class="medium-text">Medium</strong>
-                </div>
-                <p>
-                  Assets with moderate importance that may cause inconvenience or delays if
-                  lost or exposed.
-                </p>
-              </div>
-
-              <div class="security-item">
-                <div class="security-title low">
-                  <span class="dot"></span>
-                  <strong class="low-text">Low</strong>
-                </div>
-                <p>
-                  Assets whose loss or exposure has little to no impact on business
-                  operations.
-                </p>
-              </div>
-
+            <div>
+              <p class="rc-guide-name rc-name-high">High Priority</p>
+              <p class="rc-guide-desc">Significant security risks that could lead to unauthorized access or data loss. Often requires chaining multiple smaller vulnerabilities.</p>
             </div>
+          </div>
+
+          <div class="rc-guide-item">
+            <div class="rc-guide-icon rc-icon-medium">
+              <i class="bi bi-exclamation-triangle"></i>
+            </div>
+            <div>
+              <p class="rc-guide-name rc-name-medium">Medium Priority</p>
+              <p class="rc-guide-desc">Issues that are difficult to exploit or have limited impact on overall system integrity but should still be remediated.</p>
+            </div>
+          </div>
+
+          <div class="rc-guide-item">
+            <div class="rc-guide-icon rc-icon-low">
+              <i class="bi bi-info-circle-fill"></i>
+            </div>
+            <div>
+              <p class="rc-guide-name rc-name-low">Low Priority</p>
+              <p class="rc-guide-desc">Minor issues or best-practice recommendations that don't directly compromise data but improve the overall security posture.</p>
+            </div>
+          </div>
+
+          <div class="rc-guide-note">
+            <p>These criteria will be applied to all automated scans and integrated into your real-time risk dashboard.</p>
           </div>
         </div>
 
-        <div class="cta">
-          <button class="btn btn-primary" :disabled="loading" @click="submitRiskCriteria">
-            {{ loading ? "Saving..." : (isEditMode ? "Back to Previous Page →" : "Continue to Dashboard →") }}
-          </button>
-        </div>
+      </div>
 
+      <!-- FOOTER -->
+      <div class="rc-footer">
+        <button class="rc-btn-back" @click="$router.back()">
+          <i class="bi bi-arrow-left me-1"></i> Back to Previous Page
+        </button>
+        <button class="rc-btn-continue" :disabled="loading" @click="submitRiskCriteria">
+          {{ loading ? "Saving..." : (isEditMode ? "Update" : "Continue to Dashboard") }}
+          <i v-if="!loading" class="bi bi-arrow-right ms-1"></i>
+        </button>
       </div>
 
     </div>
@@ -173,14 +174,14 @@
 </template>
 
 <script>
-import Stepper from '@/components/admin-component/Stepper.vue';
+import DashboardHeader from '@/components/admin-component/DashboardHeader.vue';
 import { useAuthStore } from "@/stores/authStore";
 import Swal from "sweetalert2";
 import { Tooltip } from 'bootstrap'
 
 export default {
   name: "RiskCriteriaView",
-  components: { Stepper },
+  components: { DashboardHeader },
 
   data() {
     return {
@@ -362,141 +363,118 @@ export default {
 
 
 <style scoped>
-.security-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
+/* ── Base ── */
+* { box-sizing: border-box; }
+.rc-main { background: #f4f5f8; min-height: 100vh; }
+
+/* ── Page ── */
+.rc-page { max-width: 960px; margin: 0 auto; padding: 84px 20px 60px; }
+
+/* ── Stepper ── */
+.rc-stepper-row { display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 28px; }
+.rc-step { display: flex; align-items: center; gap: 8px; }
+.rc-step-num {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: #0f696e; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.85rem; font-weight: 700; flex-shrink: 0;
+}
+.rc-step-num-active { background: #241447; color: #fff; }
+.rc-step-num-inactive { background: #f1f5f9; color: #94a3b8; border: 1px solid #e2e8f0; }
+.rc-step-label { font-size: 0.82rem; font-weight: 600; color: #0f696e; }
+.rc-step-label-active { color: #241447; }
+.rc-step-label-inactive { color: #94a3b8; }
+.rc-step-line { flex: 1; height: 2px; background: #e2e8f0; margin: 0 12px; max-width: 120px; }
+.rc-line-done { background: #0f696e; }
+
+/* ── Page Header ── */
+.rc-page-header { margin-bottom: 28px; }
+.rc-title { font-size: 1.6rem; font-weight: 800; color: #1e293b; margin: 0 0 6px; }
+.rc-subtitle { font-size: 0.875rem; color: #64748b; margin: 0; line-height: 1.5; max-width: 480px; }
+
+/* ── Layout ── */
+.rc-layout { display: grid; grid-template-columns: 1fr 420px; gap: 24px; align-items: stretch; margin-bottom: 32px; }
+
+/* ── Severity Cards Grid ── */
+.rc-cards-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+
+.rc-sev-card {
+  background: #fff; border-radius: 14px; padding: 20px;
+  border: 1px solid #f1f5f9; box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 
-.security-title .dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  box-shadow: 0 0 8px rgba(0, 0, 0, 0.15);
+.rc-sev-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.rc-sev-bar { width: 5px; height: 22px; border-radius: 3px; flex-shrink: 0; }
+.rc-bar-critical { background: #dc2626; }
+.rc-bar-high     { background: #f97316; }
+.rc-bar-medium   { background: #f59e0b; }
+.rc-bar-low      { background: #0f696e; }
+.rc-sev-name { font-size: 1rem; font-weight: 700; color: #1e293b; }
+
+.rc-field-label {
+  display: block; font-size: 0.65rem; font-weight: 700;
+  color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em;
+  margin-bottom: 6px;
 }
+.mt-3 { margin-top: 12px; }
 
-/* COLORS – SAME AS LEFT */
-.security-title.critical .dot {
-  background: maroon;
-  /* maroon */
+.rc-select {
+  width: 100%; border: 1px solid #e2e8f0; border-radius: 8px;
+  padding: 9px 12px; font-size: 0.875rem; color: #1e293b !important;
+  background: #ffffff; outline: none; cursor: pointer;
+  appearance: none; font-weight: 600;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
 }
+.rc-select:focus { border-color: #0f696e; box-shadow: 0 0 0 2px rgba(15,105,110,0.1); }
+.rc-select:disabled { opacity: 0.7; cursor: not-allowed; color: #1e293b !important; }
+.rc-select option { color: #1e293b; font-weight: 500; background: #ffffff; }
 
-.security-title.high .dot {
-  background: red;
-  /* red/orange */
+/* ── Guide Card ── */
+.rc-guide-card {
+  background: #241447; border-radius: 14px; padding: 22px;
+  color: #fff; display: flex; flex-direction: column; gap: 16px;
+  height: 100%;
 }
+.rc-guide-title { font-size: 1rem; font-weight: 800; color: #fff; margin: 0 0 4px; }
 
-.security-title.medium .dot {
-  background: orange;
-  /* yellow */
+.rc-guide-item { display: flex; align-items: flex-start; gap: 12px; }
+.rc-guide-icon {
+  width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 0.9rem;
 }
+.rc-icon-critical { background: rgba(220,38,38,0.2); color: #fca5a5; }
+.rc-icon-high     { background: rgba(249,115,22,0.2); color: #fdba74; }
+.rc-icon-medium   { background: rgba(245,158,11,0.2); color: #fcd34d; }
+.rc-icon-low      { background: rgba(15,105,110,0.3); color: #a1ecf2; }
 
-.security-title.low .dot {
-  background: #22c55e;
-  /* green */
+.rc-guide-name { font-size: 0.875rem; font-weight: 700; margin: 0 0 3px; }
+.rc-name-critical { color: #fca5a5; }
+.rc-name-high     { color: #fdba74; }
+.rc-name-medium   { color: #fcd34d; }
+.rc-name-low      { color: #a1ecf2; }
+
+.rc-guide-desc { font-size: 0.78rem; color: rgba(255,255,255,0.7); margin: 0; line-height: 1.5; }
+
+.rc-guide-note {
+  background: rgba(255,255,255,0.08); border-radius: 8px;
+  padding: 12px 14px; margin-top: 4px;
 }
+.rc-guide-note p { font-size: 0.75rem; color: rgba(255,255,255,0.55); margin: 0; font-style: italic; text-align: center; line-height: 1.5; }
 
-.security-item p {
-  margin-bottom: 0;
-  font-size: 13px;
-  line-height: 1.45;
-  color: #374151;
+/* ── Footer ── */
+.rc-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 8px; }
+.rc-btn-back { background: none; border: none; color: #64748b; font-size: 0.875rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+.rc-btn-back:hover { color: #1e293b; }
+.rc-btn-continue {
+  background: #241447; color: #fff; border: none; border-radius: 8px;
+  padding: 10px 28px; font-size: 0.875rem; font-weight: 700; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; transition: opacity 0.15s;
 }
-
-/* MAIN LAYOUT */
-.risk-layout {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 28px;
-  align-items: start;
-}
-
-
-/* LEFT SIDE: keeps your old grid */
-.risk-left {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 28px;
-}
-
-/* RIGHT SIDE */
-.risk-right {
-  display: flex;
-}
-
-/* Security card fills empty vertical space */
-.security-card {
-  width: 100%;
-  box-shadow: 0 4px 20px rgba(90, 68, 255, 0.18);
-  border-left: 4px solid #5a44ff;
-  background: linear-gradient(135deg, rgba(117, 100, 248, 0.12) 0%, rgba(117, 100, 248, 0.08) 100%);
-  position: relative;
-  overflow: hidden;
-}
-
-.security-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 100px;
-  height: 100px;
-  background: radial-gradient(circle, rgba(90, 68, 255, 0.08) 0%, transparent 70%);
-  border-radius: 50%;
-  transform: translate(30%, -30%);
-  pointer-events: none;
-}
-
-.security-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 14px 18px;
-}
-
-/* Each block aligns like left risk cards */
-.security-item {
-  font-size: 13px;
-  line-height: 1.5;
-  color: #374151;
-  padding: 12px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.3);
-  transition: all 0.2s ease;
-  backdrop-filter: blur(10px);
-}
-
-.security-item:hover {
-  background: rgba(255, 255, 255, 0.5);
-  transform: translateX(4px);
-}
-
-/* .security-item p {
-  margin-bottom: 0;
-  font-size: 15px;
-} */
-
-
-.security-item strong {
-  display: block;
-  margin-bottom: 4px;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-/* Text colors */
-.critical-text {
-  /* color: #dc2626; */
-  color: maroon;
-}
-
-.high-text {
-  color: red;
-}
-
-.medium-text {
-  color: orange;
-}
+.rc-btn-continue:hover:not(:disabled) { opacity: 0.88; }
+.rc-btn-continue:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .low-text {
   color: #16a34a;
