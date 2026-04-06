@@ -7,6 +7,19 @@
 
     <div class="loc-page">
 
+      <!-- STEPPER -->
+      <div class="loc-stepper-row">
+        <div class="loc-step">
+          <span class="loc-step-num loc-step-done"><i class="bi bi-check-lg"></i></span>
+          <span class="loc-step-label loc-step-label-done">1. Add users</span>
+        </div>
+        <div class="loc-step-line loc-line-done"></div>
+        <div class="loc-step">
+          <span class="loc-step-num loc-step-num-active">2</span>
+          <span class="loc-step-label loc-step-label-active">2. Risk Criteria</span>
+        </div>
+      </div>
+
       <!-- MAIN LAYOUT -->
       <div class="loc-layout">
 
@@ -16,19 +29,6 @@
           <div class="loc-page-header">
             <h1 class="loc-title">Setup Organization</h1>
             <p class="loc-subtitle">Configure your team's communication and issue tracking tools to streamline your security workflow.</p>
-          </div>
-
-          <!-- STEPPER -->
-          <div class="loc-stepper-row">
-            <div class="loc-step loc-step-active">
-              <span class="loc-step-num">1</span>
-              <span class="loc-step-label">Add users</span>
-            </div>
-            <div class="loc-step-line"></div>
-            <div class="loc-step loc-step-inactive">
-              <span class="loc-step-num loc-step-num-inactive">2</span>
-              <span class="loc-step-label loc-step-label-inactive">Risk Criteria</span>
-            </div>
           </div>
 
           <!-- Communication Platforms -->
@@ -1673,21 +1673,27 @@ export default {
 .loc-page { max-width: 960px; margin: 0 auto; padding: 84px 20px 60px; }
 
 /* Stepper */
-.loc-stepper-row { display: flex; align-items: center; gap: 0; margin-bottom: 28px; }
+.loc-stepper-row { display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 28px; }
 .loc-step { display: flex; align-items: center; gap: 10px; }
 .loc-step-num {
-  width: 28px; height: 28px; border-radius: 50%;
-  background: #241447; color: #fff;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: #0f696e; color: #fff;
   display: flex; align-items: center; justify-content: center;
-  font-size: 0.8rem; font-weight: 700; flex-shrink: 0;
+  font-size: 0.85rem; font-weight: 700; flex-shrink: 0;
 }
+.loc-step-done { background: #0f696e; color: #fff; }
+.loc-step-num-active { background: #241447; color: #fff; }
 .loc-step-num-inactive { background: #f1f5f9; color: #94a3b8; border: 1px solid #e2e8f0; }
-.loc-step-label { font-size: 0.875rem; font-weight: 600; color: #241447; }
+.loc-step-label { font-size: 0.82rem; font-weight: 600; color: #0f696e; }
+.loc-step-label-done { color: #0f696e; }
+.loc-step-label-active { color: #241447; }
 .loc-step-label-inactive { color: #94a3b8; }
-.loc-step-line { flex: 1; height: 1px; background: #e2e8f0; margin: 0 16px; max-width: 160px; }
+.loc-step-line { height: 2px; background: #e2e8f0; margin: 0 12px; width: 120px; }
+.loc-line-done { background: #0f696e; }
 
 /* Layout */
 .loc-layout { display: grid; grid-template-columns: 1fr 260px; gap: 24px; align-items: flex-start; }
+.loc-sidebar { padding-top: 100px; }
 
 /* Content */
 .loc-page-header { margin-bottom: 24px; }
