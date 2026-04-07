@@ -401,8 +401,9 @@ router.beforeEach((to) => {
     return { path: '/' };
   }
 
-  // Authenticated users should not stay on auth pages
-  if (isAuthenticated && (to.path === '/' || to.path === '/auth' || to.path === '/signin' || to.path === '/signup')) {
+  // Authenticated users should not stay on explicit auth forms
+  // Keep "/" accessible so landing page buttons (e.g. Get Started) work normally.
+  if (isAuthenticated && (to.path === '/auth' || to.path === '/signin' || to.path === '/signup')) {
     return { path: '/home' };
   }
 
