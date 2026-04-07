@@ -5,12 +5,11 @@
      <div class="col-12 pe-0">
   <div class="d-flex align-items-center justify-content-between gap-4 py-2 px-4">
 
-      <div class="browser-bar">
-        <router-link to="/admindashboardonboarding" class="vaptfix-logo">
-          <span class="logo-v">V</span><span class="logo-a">A</span><span class="logo-p">P</span><span class="logo-t">T</span><span class="logo-f">F</span><span class="logo-i">i</span><span class="logo-x">X</span>
+   <div class="browser-bar">
+    <router-link to="/admindashboardonboarding">
+        <img src="@/assets/images/vaptfix_white.png" alt="">
         </router-link>
       </div>
-
     <!-- Right Section -->
     <div class="d-flex align-items-center gap-2">
       <NotificationPanel />
