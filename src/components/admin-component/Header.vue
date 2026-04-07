@@ -66,11 +66,9 @@
               </div>
             </div>
 
-            <router-link to="/signup" class="text-decoration-none">
-              <button type="button" class="btn hero-btn text-light">
-                Get Started
-                <i class="bi bi-arrow-right-circle-fill fs-5 ms-1"></i>
-              </button>
+            <router-link to="/signup" class="btn hero-btn text-light text-decoration-none">
+              Get Started
+              <i class="bi bi-arrow-right-circle-fill fs-5 ms-1"></i>
             </router-link>
           </div>
 
