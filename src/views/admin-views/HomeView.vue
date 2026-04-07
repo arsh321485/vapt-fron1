@@ -20,10 +20,12 @@
           </div> -->
           <!-- Replace your existing hero button block with this -->
 <div class="hero-div-btn">
-  <button type="button" class="btn hero-btn" @click="handleFixNow">
+  <router-link to="/signup" class="text-decoration-none">
+  <button type="button" class="btn hero-btn">
     Get Started
     <i class="bi bi-arrow-right-circle-fill fs-5 ms-1"></i>
   </button>
+  </router-link>
   <!-- <button
   type="button"
   class="btn hero-btn"
