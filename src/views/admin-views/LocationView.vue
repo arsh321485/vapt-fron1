@@ -637,18 +637,15 @@ export default {
       // If NONE active → block others
       if (this.communicationNoneSelected) return;
       if (!this.selectedCommunication) {
-        this.selectedCommunication = value;
-
-        if (value === "slack") {
-          await this.startSlackLogin();
-        }
-
-        // ✅ ADD THIS
         if (value === "teams") {
           await this.startMicrosoftLogin();
+          // selectedCommunication = "teams" will be set after OAuth success
+        } else if (value === "slack") {
+          this.selectedCommunication = value;
+          await this.startSlackLogin();
+        } else {
+          this.selectedCommunication = value;
         }
-
-
         return;
       }
 
@@ -679,8 +676,12 @@ export default {
       });
 
       if (res.isConfirmed) {
-        this.selectedCommunication = this.pendingCommunication;
-        // ✅ VERY IMPORTANT
+        if (this.pendingCommunication === "teams") {
+          await this.startMicrosoftLogin();
+          // selectedCommunication = "teams" will be set after OAuth success
+        } else {
+          this.selectedCommunication = this.pendingCommunication;
+        }
         if (this.pendingCommunication === "slack") {
           await this.startSlackLogin();
         }
@@ -809,8 +810,12 @@ export default {
       if (event.data.django_access_token) {
         localStorage.setItem("django_access_token", event.data.django_access_token);
       }
-     
-
+      const tenantId = event.data.tokens?.tenant_id;
+      if (tenantId) {
+        localStorage.setItem("microsoft_tenant_id", tenantId);
+      }
+      // Mark Teams selected only after successful OAuth/token receive
+      this.selectedCommunication = "teams";
 
       // Step 2: Event se directly teams/channels set karo (fetchTeams() ki zaroorat nahi)
       if (event.data.vaptfix_team) {

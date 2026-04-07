@@ -103,13 +103,13 @@
             </div>
 
             <!-- ===== 6-CARD ANALYTICS GRID ===== -->
+            <!-- ROW 1: Assets + Vulnerabilities + Mitigation Timeline -->
             <div class="row g-4 mb-4 align-items-stretch">
 
-              <!-- Card 1: Total Assets + MTTR + Support Requests stacked -->
-              <div class="col-3" style="display:flex; flex-direction:column; gap:16px;">
-                <!-- Total Assets -->
-                <router-link to="/assets" class="text-decoration-none d-block">
-                  <div class="dash-card" style="padding: 22px 22px;">
+              <!-- Card 1: Total Assets -->
+              <div class="col-4">
+                <router-link to="/assets" class="text-decoration-none d-block h-100">
+                  <div class="dash-card h-100" style="padding: 22px 22px;">
                     <div class="d-flex justify-content-between align-items-start mb-2">
                       <div class="d-flex align-items-center gap-1">
                         <div class="dash-icon-wrap" style="width:32px; height:32px;">
@@ -123,102 +123,10 @@
                     </div>
                   </div>
                 </router-link>
-
-                <!-- MTTR Card (moved here, no bars) -->
-                <div class="dash-card" style="padding: 18px;">
-                  <div class="d-flex align-items-center gap-2 mb-3">
-                    <div class="dash-icon-wrap">
-                      <i class="bi bi-hourglass-split dash-icon-teal" style="font-size: 14px;"></i>
-                    </div>
-                    <span class="dash-card-label">MTTR</span>
-                    <span class="info-tooltip" data-tooltip="Average remediation time based on risk criteria."><i class="bi bi-info-circle dash-info-icon"></i></span>
-                  </div>
-                  <!-- Circular Gauge only -->
-                  <div class="d-flex justify-content-center">
-                    <div style="position:relative; width:100px; height:100px; flex-shrink:0;">
-                      <svg width="100" height="100" viewBox="0 0 110 110">
-                        <defs>
-                          <linearGradient id="mttr-grad2" x1="0%" x2="100%" y1="0%" y2="0%">
-                            <stop offset="0%" stop-color="#10b981"/>
-                            <stop offset="50%" stop-color="#f59e0b"/>
-                            <stop offset="100%" stop-color="#ef4444"/>
-                          </linearGradient>
-                        </defs>
-                        <path d="M18 92 A46 46 0 1 1 92 92" fill="none" stroke="#f1f5f9" stroke-linecap="round" stroke-width="10"/>
-                        <path d="M18 92 A46 46 0 1 1 92 92" fill="none" stroke="url(#mttr-grad2)" stroke-linecap="round" stroke-width="10"
-                          stroke-dasharray="257"
-                          :stroke-dashoffset="257 - ((Math.min((authStore.meanTimeToRemediate?.mean_time_to_remediate?.weeks ?? 0), 4) / 4) * 257)"/>
-                        <text x="55" y="68" text-anchor="middle" font-size="9" font-weight="900" fill="#1f2937">{{ meanRemediateHuman }}</text>
-                        <text x="55" y="80" text-anchor="middle" font-size="7" fill="#94a3b8">MTTR</text>
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Support Requests (moved here) -->
-                <router-link to="/supportrequests" class="text-decoration-none">
-                  <div class="dash-card" style="padding: 18px;">
-                    <div class="d-flex align-items-center gap-2 mb-3">
-                      <div class="dash-icon-wrap">
-                        <i class="bi bi-headset dash-icon-teal" style="font-size: 14px;"></i>
-                      </div>
-                      <span class="dash-card-label">Support Requests</span>
-                      <span class="info-tooltip" data-tooltip="Total support requests raised."><i class="bi bi-info-circle dash-info-icon"></i></span>
-                    </div>
-                    <div class="d-flex align-items-center gap-3">
-                      <span class="dash-big-num" style="font-size:2rem;">{{ String(supportTotal).padStart(2, '0') }}</span>
-                      <div class="d-flex gap-3">
-                        <div class="d-flex flex-column align-items-center">
-                          <span style="font-size:1rem; font-weight:700; color:#1f2937;">{{ supportPending }}</span>
-                          <div style="width:36px; height:4px; background:#f8d7da; border-radius:2px; margin:4px 0;"></div>
-                          <div class="dash-legend-item"><span class="dash-dot" style="background:#ef4444;"></span>Pending</div>
-                        </div>
-                        <div class="d-flex flex-column align-items-center">
-                          <span style="font-size:1rem; font-weight:700; color:#1f2937;">{{ supportClosed }}</span>
-                          <div style="width:36px; height:4px; background:#d1e7dd; border-radius:2px; margin:4px 0;"></div>
-                          <div class="dash-legend-item"><span class="dash-dot" style="background:#0f696e;"></span>Closed</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </router-link>
               </div>
 
-              <!-- Mitigation Timeline Extension Card -->
-              <div class="col-5">
-                <div class="dash-card" style="height:auto;">
-                  <div class="d-flex justify-content-between align-items-start mb-3">
-                    <div>
-                      <p class="mte-title">MITIGATION TIMELINE EXTENSION</p>
-                      <p class="mte-sub">Pending requests by team and severity</p>
-                    </div>
-                    <router-link to="/missingsecurityupdates" class="mte-link text-decoration-none">VIEW FULL REPORT <i class="bi bi-chevron-right"></i></router-link>
-                  </div>
-                  <table class="mte-table">
-                    <thead>
-                      <tr>
-                        <th>TEAM</th>
-                        <th class="mte-critical">CRITICAL</th>
-                        <th class="mte-high">HIGH</th>
-                        <th class="mte-medium">MEDIUM</th>
-                        <th class="mte-low">LOW</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-for="tab in mitigationTabs" :key="tab.key">
-                        <td class="mte-team-name">{{ tab.key }}</td>
-                        <td><span class="mte-badge mte-b-critical">{{ String(getTeamSevCount(tab.key,'critical')).padStart(2,'0') }}</span></td>
-                        <td><span class="mte-badge mte-b-high">{{ String(getTeamSevCount(tab.key,'high')).padStart(2,'0') }}</span></td>
-                        <td><span class="mte-badge mte-b-medium">{{ String(getTeamSevCount(tab.key,'medium')).padStart(2,'0') }}</span></td>
-                        <td><span class="mte-badge mte-b-low">{{ String(getTeamSevCount(tab.key,'low')).padStart(2,'0') }}</span></td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <!-- Card 2: Vulnerabilities Gauge + Total Vulns Fixed stacked -->
-              <div class="col-4" style="display:flex; flex-direction:column; gap:16px;">
+              <!-- Card 2: Vulnerabilities Gauge -->
+              <div class="col-4">
                 <div class="dash-card h-100">
                   <div class="d-flex align-items-center gap-2 mb-3">
                     <div class="dash-icon-wrap">
@@ -263,49 +171,6 @@
                   <div style="border-top: 2px solid #e5e7eb; margin: 0 8px;"></div>
 
                   <!-- Legend -->
-                  <div class="d-flex justify-content-around mt-2 flex-wrap px-1">
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#b91c1c;"></span>Critical</div>
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#ef4444;"></span>High</div>
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#f59e0b;"></span>Medium</div>
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#10b981;"></span>Low</div>
-                  </div>
-                </div>
-
-                <!-- Total Vulnerabilities Fixed (moved here) -->
-                <div class="dash-card">
-                  <div class="d-flex align-items-center gap-2 mb-3">
-                    <div class="dash-icon-wrap">
-                      <i class="bi bi-patch-check-fill dash-icon-teal" style="font-size: 14px;"></i>
-                    </div>
-                    <span class="dash-card-label">Total Vulnerabilities Fixed</span>
-                    <span class="info-tooltip" data-tooltip="Total vulnerabilities successfully remediated."><i class="bi bi-info-circle dash-info-icon"></i></span>
-                  </div>
-                  <div class="d-flex align-items-center gap-3 mb-2">
-                    <span class="dash-big-num" style="font-size:2rem;">{{ String(vulFixedTotal).padStart(2, '0') }}</span>
-                  </div>
-                  <div class="d-flex align-items-end justify-content-around gap-2 px-2" style="height: 70px;">
-                    <div class="d-flex flex-column align-items-center gap-1" style="width:26px;">
-                      <span style="font-size:10px; font-weight:700; color:#1f2937;">{{ vulFixedCritical }}</span>
-                      <div style="width:100%; border-radius:4px 4px 0 0; background:#b91c1c; min-height:4px;"
-                        :style="{ height: vulFixedTotal ? (vulFixedCritical / vulFixedTotal * 55) + 'px' : '4px' }"></div>
-                    </div>
-                    <div class="d-flex flex-column align-items-center gap-1" style="width:26px;">
-                      <span style="font-size:10px; font-weight:700; color:#1f2937;">{{ vulFixedHigh }}</span>
-                      <div style="width:100%; border-radius:4px 4px 0 0; background:#ef4444; min-height:4px;"
-                        :style="{ height: vulFixedTotal ? (vulFixedHigh / vulFixedTotal * 55) + 'px' : '4px' }"></div>
-                    </div>
-                    <div class="d-flex flex-column align-items-center gap-1" style="width:26px;">
-                      <span style="font-size:10px; font-weight:700; color:#1f2937;">{{ vulFixedMedium }}</span>
-                      <div style="width:100%; border-radius:4px 4px 0 0; background:#f59e0b; min-height:4px;"
-                        :style="{ height: vulFixedTotal ? (vulFixedMedium / vulFixedTotal * 55) + 'px' : '4px' }"></div>
-                    </div>
-                    <div class="d-flex flex-column align-items-center gap-1" style="width:26px;">
-                      <span style="font-size:10px; font-weight:700; color:#1f2937;">{{ vulFixedLow }}</span>
-                      <div style="width:100%; border-radius:4px 4px 0 0; background:#10b981; min-height:4px;"
-                        :style="{ height: vulFixedTotal ? (vulFixedLow / vulFixedTotal * 55) + 'px' : '4px' }"></div>
-                    </div>
-                  </div>
-                  <div style="border-top: 2px solid #e5e7eb; margin: 0 8px;"></div>
                   <div class="d-flex justify-content-around mt-2 flex-wrap px-1">
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#b91c1c;"></span>Critical</div>
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#ef4444;"></span>High</div>
@@ -406,6 +271,184 @@
                   <div class="d-flex justify-content-center gap-4 mt-4">
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#0f696e;"></span>SLA compliance</div>
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#4b5563;"></span>Non-compliance</div>
+                  </div>
+                </div>
+              </div>
+
+
+
+            </div>
+            <!-- end row 1 -->
+
+            <!-- ROW 2: MTTR col-8 + Support col-4, Total Vulns Fixed col-8 -->
+            <div class="row g-4 mb-4 align-items-stretch">
+
+              <!-- Col: MTTR (col-8) + Support (col-4) in same row, then Total Vulns Fixed -->
+              <div class="col-4" style="display:flex; flex-direction:column; gap:16px;">
+
+                <!-- Card 5: MTTR -->
+                <div class="dash-card" style="flex:1;">
+                  <div class="d-flex align-items-center gap-2 mb-3">
+                    <div class="dash-icon-wrap">
+                      <i class="bi bi-hourglass-split dash-icon-teal" style="font-size: 14px;"></i>
+                    </div>
+                    <span class="dash-card-label">Mean Time to Remediate (MTTR)</span>
+                    <span class="info-tooltip" data-tooltip="Average remediation time based on risk criteria."><i class="bi bi-info-circle dash-info-icon"></i></span>
+                  </div>
+                  <div class="d-flex justify-content-center">
+                    <div style="position:relative; width:110px; height:110px; flex-shrink:0;">
+                      <svg width="110" height="110" viewBox="0 0 110 110">
+                        <defs>
+                          <linearGradient id="mttr-grad" x1="0%" x2="100%" y1="0%" y2="0%">
+                            <stop offset="0%" stop-color="#10b981"/>
+                            <stop offset="50%" stop-color="#f59e0b"/>
+                            <stop offset="100%" stop-color="#ef4444"/>
+                          </linearGradient>
+                        </defs>
+                        <path d="M18 92 A46 46 0 1 1 92 92" fill="none" stroke="#f1f5f9" stroke-linecap="round" stroke-width="10"/>
+                        <path d="M18 92 A46 46 0 1 1 92 92" fill="none" stroke="url(#mttr-grad)" stroke-linecap="round" stroke-width="10"
+                          stroke-dasharray="257"
+                          :stroke-dashoffset="257 - ((Math.min((authStore.meanTimeToRemediate?.mean_time_to_remediate?.weeks ?? 0), 4) / 4) * 257)"/>
+                        <text x="55" y="68" text-anchor="middle" font-size="9" font-weight="900" fill="#1f2937">{{ meanRemediateHuman }}</text>
+                        <text x="55" y="80" text-anchor="middle" font-size="7" fill="#94a3b8">MTTR</text>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Card 6: Support Requests -->
+                <router-link to="/supportrequests" class="text-decoration-none">
+                  <div class="dash-card">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                      <div class="dash-icon-wrap">
+                        <i class="bi bi-headset dash-icon-teal" style="font-size: 14px;"></i>
+                      </div>
+                      <span class="dash-card-label">Support Requests</span>
+                      <span class="info-tooltip" data-tooltip="Total number of support requests raised."><i class="bi bi-info-circle dash-info-icon"></i></span>
+                    </div>
+                    <div class="d-flex align-items-center gap-4 pt-2">
+                      <span class="dash-big-num">{{ String(supportTotal).padStart(2, '0') }}</span>
+                      <div class="d-flex gap-4">
+                        <div class="d-flex flex-column align-items-center">
+                          <span style="font-size:1.25rem; font-weight:700; color:#1f2937;">{{ supportPending }}</span>
+                          <div style="width:48px; height:4px; background:#f8d7da; border-radius:2px; margin:4px 0;"></div>
+                          <div class="dash-legend-item"><span class="dash-dot" style="background:#ef4444;"></span>Pending</div>
+                        </div>
+                        <div class="d-flex flex-column align-items-center">
+                          <span style="font-size:1.25rem; font-weight:700; color:#1f2937;">{{ supportClosed }}</span>
+                          <div style="width:48px; height:4px; background:#d1e7dd; border-radius:2px; margin:4px 0;"></div>
+                          <div class="dash-legend-item"><span class="dash-dot" style="background:#0f696e;"></span>Closed</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </router-link>
+
+              </div>
+
+              <!-- Card 4 + New Card (col-8) -->
+              <div class="col-8">
+                <div class="row g-4 h-100">
+                  <div class="col-6">
+                    <div class="dash-card dash-card-compact h-100">
+                      <div class="d-flex align-items-center gap-2 mb-3">
+                        <div class="dash-icon-wrap">
+                          <i class="bi bi-patch-check-fill dash-icon-teal" style="font-size: 14px;"></i>
+                        </div>
+                        <span class="dash-card-label">Total Vulnerabilities Fixed</span>
+                        <span class="info-tooltip" data-tooltip="Total count of vulnerabilities successfully remediated."><i class="bi bi-info-circle dash-info-icon"></i></span>
+                      </div>
+                      <div class="d-flex align-items-center gap-3 mb-2">
+                        <span class="dash-big-num">{{ String(vulFixedTotal).padStart(2, '0') }}</span>
+                      </div>
+                      <div class="d-flex align-items-end justify-content-around gap-2 px-2" style="height: 74px;">
+                        <div class="d-flex flex-column align-items-center gap-1" style="width:30px;">
+                          <span style="font-size:11px; font-weight:700; color:#1f2937;">{{ vulFixedCritical }}</span>
+                          <div style="width:100%; border-radius:4px 4px 0 0; background:#b91c1c; min-height:4px;"
+                            :style="{ height: vulFixedTotal ? (vulFixedCritical / vulFixedTotal * 58) + 'px' : '4px' }"></div>
+                        </div>
+                        <div class="d-flex flex-column align-items-center gap-1" style="width:30px;">
+                          <span style="font-size:11px; font-weight:700; color:#1f2937;">{{ vulFixedHigh }}</span>
+                          <div style="width:100%; border-radius:4px 4px 0 0; background:#ef4444; min-height:4px;"
+                            :style="{ height: vulFixedTotal ? (vulFixedHigh / vulFixedTotal * 58) + 'px' : '4px' }"></div>
+                        </div>
+                        <div class="d-flex flex-column align-items-center gap-1" style="width:30px;">
+                          <span style="font-size:11px; font-weight:700; color:#1f2937;">{{ vulFixedMedium }}</span>
+                          <div style="width:100%; border-radius:4px 4px 0 0; background:#f59e0b; min-height:4px;"
+                            :style="{ height: vulFixedTotal ? (vulFixedMedium / vulFixedTotal * 58) + 'px' : '4px' }"></div>
+                        </div>
+                        <div class="d-flex flex-column align-items-center gap-1" style="width:30px;">
+                          <span style="font-size:11px; font-weight:700; color:#1f2937;">{{ vulFixedLow }}</span>
+                          <div style="width:100%; border-radius:4px 4px 0 0; background:#10b981; min-height:4px;"
+                            :style="{ height: vulFixedTotal ? (vulFixedLow / vulFixedTotal * 58) + 'px' : '4px' }"></div>
+                        </div>
+                      </div>
+                      <div style="border-top: 2px solid #e5e7eb; margin: 0 8px;"></div>
+                      <div class="d-flex justify-content-around mt-2 flex-wrap px-1">
+                        <div class="dash-legend-item"><span class="dash-dot" style="background:#b91c1c;"></span>Critical</div>
+                        <div class="dash-legend-item"><span class="dash-dot" style="background:#ef4444;"></span>High</div>
+                        <div class="dash-legend-item"><span class="dash-dot" style="background:#f59e0b;"></span>Medium</div>
+                        <div class="dash-legend-item"><span class="dash-dot" style="background:#10b981;"></span>Low</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="col-6">
+                    <div class="dash-card dash-card-compact h-100">
+                      <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                          <div class="dash-mte-title">Mitigation Timeline Extension</div>
+                          <div class="dash-mte-subtitle">Pending requests by team and severity</div>
+                        </div>
+                        <button type="button" class="dash-mte-link-btn" @click="openMitigationExtensionModal">
+                          View Full Report <i class="bi bi-chevron-right"></i>
+                        </button>
+                      </div>
+
+                      <div class="dash-mte-table-wrap">
+                        <table class="dash-mte-table">
+                          <thead>
+                            <tr>
+                              <th>Team</th>
+                              <th class="sev-critical">Critical</th>
+                              <th class="sev-high">High</th>
+                              <th class="sev-medium">Medium</th>
+                              <th class="sev-low">Low</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td>Patch Management</td>
+                              <td><span class="dash-mte-pill critical">14</span></td>
+                              <td><span class="dash-mte-pill high">38</span></td>
+                              <td><span class="dash-mte-pill medium">22</span></td>
+                              <td><span class="dash-mte-pill low">12</span></td>
+                            </tr>
+                            <tr>
+                              <td>Configuration Mgmt</td>
+                              <td><span class="dash-mte-pill critical">06</span></td>
+                              <td><span class="dash-mte-pill high">24</span></td>
+                              <td><span class="dash-mte-pill medium">84</span></td>
+                              <td><span class="dash-mte-pill low">61</span></td>
+                            </tr>
+                            <tr>
+                              <td>Network Security</td>
+                              <td><span class="dash-mte-pill critical">22</span></td>
+                              <td><span class="dash-mte-pill high">15</span></td>
+                              <td><span class="dash-mte-pill medium">09</span></td>
+                              <td><span class="dash-mte-pill low">04</span></td>
+                            </tr>
+                            <tr>
+                              <td>Architectural Flaw</td>
+                              <td><span class="dash-mte-pill critical">03</span></td>
+                              <td><span class="dash-mte-pill high">08</span></td>
+                              <td><span class="dash-mte-pill medium">14</span></td>
+                              <td><span class="dash-mte-pill low">27</span></td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -697,6 +740,115 @@
         </div>
       </div>
 
+      <!-- Mitigation Timeline Extension Modal -->
+      <div v-if="showMitigationExtensionModal" class="mte-modal-backdrop" @click.self="closeMitigationExtensionModal">
+        <div class="mte-modal-box" @click.stop>
+          <div class="mte-modal-header">
+            <div>
+              <h3 class="mte-modal-title">Mitigation timeline extension</h3>
+              <p class="mte-modal-subtitle">Review and manage pending extension requests for vulnerability fixes.</p>
+            </div>
+            <button type="button" class="mte-close-btn" @click="closeMitigationExtensionModal">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
+
+          <div class="mte-severity-card mte-critical">
+            <div class="mte-severity-head" @click="toggleMteSection('critical')">
+              <div class="mte-severity-left">
+                <i class="bi bi-exclamation-circle-fill"></i>
+                <span>Critical Severity Requests</span>
+                <span class="mte-badge critical">4 Pending</span>
+              </div>
+              <i class="bi" :class="mteOpenSection === 'critical' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+            </div>
+
+            <div v-if="mteOpenSection === 'critical'" class="mte-table-wrap">
+              <table class="mte-table">
+                <thead>
+                  <tr>
+                    <th>Asset (IP)</th>
+                    <th>OS</th>
+                    <th>Severity</th>
+                    <th>Status</th>
+                    <th>Requested By</th>
+                    <th>Request Date</th>
+                    <th>Extension</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>192.168.1.104</td>
+                    <td>Windows Server</td>
+                    <td><span class="mte-pill sev">Critical</span></td>
+                    <td><span class="mte-pill status">Pending</span></td>
+                    <td>Admin</td>
+                    <td>2026-03-20</td>
+                    <td class="mte-extension">15 Days</td>
+                  </tr>
+                  <tr>
+                    <td>10.0.4.52</td>
+                    <td>Ubuntu 22.04</td>
+                    <td><span class="mte-pill sev">Critical</span></td>
+                    <td><span class="mte-pill status">Review</span></td>
+                    <td>S. Miller</td>
+                    <td>2026-03-21</td>
+                    <td class="mte-extension">7 Days</td>
+                  </tr>
+                  <tr>
+                    <td>172.16.0.12</td>
+                    <td>RedHat EL</td>
+                    <td><span class="mte-pill sev">Critical</span></td>
+                    <td><span class="mte-pill status">Pending</span></td>
+                    <td>Admin</td>
+                    <td>2026-03-18</td>
+                    <td class="mte-extension">30 Days</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="mte-severity-card">
+            <div class="mte-severity-head" @click="toggleMteSection('high')">
+              <div class="mte-severity-left">
+                <i class="bi bi-exclamation-triangle-fill mte-high-icon"></i>
+                <span>High Severity Requests</span>
+                <span class="mte-badge high">12 Items</span>
+              </div>
+              <i class="bi" :class="mteOpenSection === 'high' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+            </div>
+          </div>
+
+          <div class="mte-severity-card">
+            <div class="mte-severity-head" @click="toggleMteSection('medium')">
+              <div class="mte-severity-left">
+                <i class="bi bi-exclamation-circle-fill mte-medium-icon"></i>
+                <span>Medium Severity Requests</span>
+                <span class="mte-badge medium">28 Items</span>
+              </div>
+              <i class="bi" :class="mteOpenSection === 'medium' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+            </div>
+          </div>
+
+          <div class="mte-severity-card">
+            <div class="mte-severity-head" @click="toggleMteSection('low')">
+              <div class="mte-severity-left">
+                <i class="bi bi-gear-fill mte-low-icon"></i>
+                <span>Low Severity Requests</span>
+                <span class="mte-badge low">8 Items</span>
+              </div>
+              <i class="bi" :class="mteOpenSection === 'low' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+            </div>
+          </div>
+
+          <div class="mte-modal-footer">
+            <button type="button" class="mte-btn-secondary">Download Report</button>
+            <button type="button" class="mte-btn-primary">Approve Selected</button>
+          </div>
+        </div>
+      </div>
+
     </section>
 </template>
 
@@ -730,6 +882,8 @@ export default {
       showYearPicker: false,
       monthNames: ["January","February","March","April","May","June","July","August","September","October","November","December"],
       showModal: false,
+      showMitigationExtensionModal: false,
+      mteOpenSection: "critical",
       riskCriteria: { critical: null, high: null, medium: null, low: null },
       modalSeverity: null,
       modalDays: null,
@@ -957,6 +1111,16 @@ export default {
   },
   watch: {},
   methods: {
+    openMitigationExtensionModal() {
+      this.showMitigationExtensionModal = true;
+      this.mteOpenSection = "critical";
+    },
+    closeMitigationExtensionModal() {
+      this.showMitigationExtensionModal = false;
+    },
+    toggleMteSection(section) {
+      this.mteOpenSection = this.mteOpenSection === section ? "" : section;
+    },
     setMitigationTab(key) {
       this.mitigationActiveTab = key;
     },
@@ -1714,81 +1878,6 @@ mounted() {
 .cv-badge-medium   { background: #fefce8; color: #ca8a04; }
 .cv-badge-low      { background: #f0fdf4; color: #16a34a; }
 
-/* ===== MITIGATION TIMELINE EXTENSION ===== */
-.mte-title {
-  font-size: 0.75rem;
-  font-weight: 800;
-  color: #1e293b;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin: 0 0 2px;
-}
-.mte-sub {
-  font-size: 0.72rem;
-  color: #94a3b8;
-  margin: 0;
-}
-.mte-link {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: #0f696e;
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.mte-link:hover { opacity: 0.75; }
-.mte-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.82rem;
-}
-.mte-table thead tr {
-  border-bottom: 1px solid #f1f5f9;
-}
-.mte-table th {
-  padding: 8px 10px;
-  font-size: 0.65rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #94a3b8;
-  text-align: center;
-}
-.mte-table th:first-child { text-align: left; color: #64748b; }
-.mte-critical { color: #dc2626 !important; }
-.mte-high     { color: #f97316 !important; }
-.mte-medium   { color: #f59e0b !important; }
-.mte-low      { color: #0f696e !important; }
-.mte-table td {
-  padding: 10px 10px;
-  text-align: center;
-  border-bottom: 1px solid #f8f9fc;
-  vertical-align: middle;
-}
-.mte-table tbody tr:last-child td { border-bottom: none; }
-.mte-table tbody tr:hover { background: #fafbfc; }
-.mte-team-name {
-  text-align: left !important;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: #1e293b;
-}
-.mte-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 26px;
-  border-radius: 6px;
-  font-size: 0.78rem;
-  font-weight: 700;
-}
-.mte-b-critical { background: #fef2f2; color: #dc2626; }
-.mte-b-high     { background: #fff7ed; color: #f97316; }
-.mte-b-medium   { background: #fefce8; color: #ca8a04; }
-.mte-b-low      { background: #f0fdf4; color: #0f696e; }
-
 /* ===== DASHBOARD REDESIGN ===== */
 .dash-card {
   background: #ffffff;
@@ -1800,6 +1889,252 @@ mounted() {
 }
 .dash-card:hover {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+.dash-card-compact {
+  padding: 18px;
+  min-height: 230px;
+}
+.dash-mte-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #1e293b;
+  text-transform: uppercase;
+}
+.dash-mte-subtitle {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #64748b;
+}
+.dash-mte-link {
+  font-size: 11px;
+  font-weight: 700;
+  color: #0f696e;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.dash-mte-link-btn {
+  border: none;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 700;
+  color: #0f696e;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.dash-mte-link-btn:hover { opacity: 0.85; }
+.dash-mte-table-wrap {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.dash-mte-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.dash-mte-table th,
+.dash-mte-table td {
+  border-right: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 10px 8px;
+  text-align: center;
+}
+.dash-mte-table th:last-child,
+.dash-mte-table td:last-child {
+  border-right: none;
+}
+.dash-mte-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.dash-mte-table th {
+  background: #f3f4f6;
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 10px;
+}
+.dash-mte-table th:first-child,
+.dash-mte-table td:first-child {
+  text-align: left;
+  width: 36%;
+  font-weight: 700;
+  color: #334155;
+  padding-left: 12px;
+}
+.dash-mte-table th.sev-critical { color: #dc2626; }
+.dash-mte-table th.sev-high { color: #f97316; }
+.dash-mte-table th.sev-medium { color: #d97706; }
+.dash-mte-table th.sev-low { color: #0f766e; }
+.dash-mte-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 20px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 800;
+}
+.dash-mte-pill.critical { background: #fee2e2; color: #dc2626; }
+.dash-mte-pill.high { background: #ffedd5; color: #f97316; }
+.dash-mte-pill.medium { background: #fef3c7; color: #d97706; }
+.dash-mte-pill.low { background: #ccfbf1; color: #0f766e; }
+
+.mte-modal-backdrop {
+  position: fixed;
+  top: 64px;
+  left: 100px;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 1200;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  padding: 0;
+}
+.mte-modal-box {
+  width: min(860px, calc(100vw - 100px));
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  background: #f8fafc;
+  border-radius: 16px 0 0 0;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.28);
+  display: flex;
+  flex-direction: column;
+}
+.mte-modal-header {
+  padding: 24px 28px 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  flex-shrink: 0;
+}
+.mte-modal-title {
+  margin: 0;
+  color: #241447;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  text-transform: capitalize;
+}
+.mte-modal-subtitle {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+.mte-close-btn {
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  color: #241447;
+}
+.mte-severity-card {
+  margin: 10px 24px 0;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  flex-shrink: 0;
+}
+.mte-critical { border-color: #f2d3d3; background: #fff8f8; }
+.mte-severity-head {
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+.mte-severity-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #1f2340;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.mte-critical .mte-severity-left { color: #c71616; }
+.mte-badge {
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+}
+.mte-badge.critical { background: #c71616; color: #fff; }
+.mte-badge.high { background: #ffedd5; color: #ea580c; }
+.mte-badge.medium { background: #fef3c7; color: #d97706; }
+.mte-badge.low { background: #ccfbf1; color: #0f766e; }
+.mte-table-wrap { overflow-x: auto; border-top: 1px solid #e2e8f0; }
+.mte-table { width: 100%; border-collapse: collapse; min-width: 760px; }
+.mte-table th,
+.mte-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 14px;
+  line-height: 1.35;
+  color: #334155;
+  vertical-align: middle;
+}
+.mte-table th {
+  background: #eef2f7;
+  text-transform: uppercase;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #475569;
+}
+.mte-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.mte-pill.sev { background: #fee2e2; color: #dc2626; }
+.mte-pill.status { background: #e5e7eb; color: #374151; }
+.mte-extension { font-weight: 800; color: #1e293b !important; }
+.mte-high-icon { color: #f59e0b; }
+.mte-medium-icon { color: #fbbf24; }
+.mte-low-icon { color: #0f766e; }
+.mte-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+  padding: 14px 24px 18px;
+  background: #fff;
+  border-top: 1px solid #e5e7eb;
+  margin-top: auto;
+  flex-shrink: 0;
+}
+.mte-btn-secondary {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+  border-radius: 999px;
+  padding: 10px 22px;
+  font-weight: 700;
+  font-size: 14px;
+}
+.mte-btn-primary {
+  border: none;
+  background: #241447;
+  color: #fff;
+  border-radius: 999px;
+  padding: 10px 22px;
+  font-weight: 700;
+  font-size: 14px;
 }
 .dash-icon-wrap {
   width: 32px;

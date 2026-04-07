@@ -39,12 +39,12 @@
               <span class="rc-sev-bar rc-bar-critical"></span>
               <span class="rc-sev-name">Critical</span>
             </div>
-            <label class="rc-field-label">IMPACT LEVEL</label>
+            <label class="rc-field-label">Existing Level</label>
             <select class="rc-select" v-model="form.critical" :disabled="isLocked">
               <option value="" disabled>Select</option>
               <option v-for="opt in timeOptions" :key="opt">{{ opt }}</option>
             </select>
-            <label class="rc-field-label mt-3">RESPONSE TIME</label>
+            <label class="rc-field-label mt-3">New Level</label>
             <select class="rc-select" v-model="form.critical" :disabled="isLocked">
               <option value="" disabled>Select</option>
               <option v-for="opt in timeOptions" :key="opt">{{ opt }}</option>

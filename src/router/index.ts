@@ -369,4 +369,44 @@ const router = createRouter({
   }
 })
 
+const publicPaths = new Set([
+  '/',
+  '/auth',
+  '/signin',
+  '/signup',
+  '/forgotpassword',
+  '/choose-account',
+  '/microsoft/callback',
+  '/jira/callback',
+  '/slack/callback',
+]);
+
+const isPasswordFlowPath = (path: string) =>
+  path.startsWith('/reset-password/') ||
+  path.startsWith('/set-password/') ||
+  path.startsWith('/user-set-password/');
+
+router.beforeEach((to) => {
+  const hasToken = !!localStorage.getItem('authorization');
+  const isAuthenticated = hasToken && localStorage.getItem('authenticated') === 'true';
+  const isPublicRoute = publicPaths.has(to.path) || isPasswordFlowPath(to.path);
+
+  // Unauthenticated users can only access auth/public routes
+  if (!isAuthenticated && !isPublicRoute) {
+    return { path: '/' };
+  }
+
+  // Keep auth page URL clean (no query params like ?mode=set-password)
+  if (to.path === '/auth' && Object.keys(to.query || {}).length > 0) {
+    return { path: '/' };
+  }
+
+  // Authenticated users should not stay on auth pages
+  if (isAuthenticated && (to.path === '/' || to.path === '/auth' || to.path === '/signin' || to.path === '/signup')) {
+    return { path: '/home' };
+  }
+
+  return true;
+});
+
 export default router
