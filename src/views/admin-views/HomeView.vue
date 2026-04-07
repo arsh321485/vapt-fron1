@@ -20,10 +20,10 @@
           </div> -->
           <!-- Replace your existing hero button block with this -->
 <div class="hero-div-btn">
-  <router-link to="/signup" class="btn hero-btn text-decoration-none">
+  <button type="button" class="btn hero-btn text-decoration-none" @click="handleFixNow">
     Get Started
     <i class="bi bi-arrow-right-circle-fill fs-5 ms-1"></i>
-  </router-link>
+  </button>
   <!-- <button
   type="button"
   class="btn hero-btn"
@@ -494,7 +494,7 @@ methods: {
   //   }
   // }
   handleFixNow() {
-    this.$router.push("/signup");
+    window.location.assign("/signup");
   }
 }
 

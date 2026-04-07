@@ -66,10 +66,10 @@
               </div>
             </div>
 
-            <router-link to="/signup" class="btn hero-btn text-light text-decoration-none">
+            <button type="button" class="btn hero-btn text-light text-decoration-none" @click="handleFixNow">
               Get Started
               <i class="bi bi-arrow-right-circle-fill fs-5 ms-1"></i>
-            </router-link>
+            </button>
           </div>
 
 
@@ -113,7 +113,7 @@ export default {
   },
   methods: {
     handleFixNow() {
-      this.$router.push("/signup");
+      window.location.assign("/signup");
     }
   },
   mounted() {
