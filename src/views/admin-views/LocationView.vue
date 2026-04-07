@@ -59,12 +59,7 @@
                   {{ platform.value === 'teams' ? 'Sync security alerts directly to your enterprise channels.' : 'Real-time collaboration for devsecops teams.' }}
                 </p>
               </div>
-              <!-- Add more tool placeholder -->
-              <div class="loc-tool-card loc-tool-card-add">
-                <div class="loc-tool-add-icon"><i class="bi bi-plus"></i></div>
-                <h6 class="loc-tool-name">Connect other tool</h6>
-                <p class="loc-tool-desc">Add more platforms</p>
-              </div>
+
             </div>
           </div>
 
@@ -94,12 +89,7 @@
                 <h6 class="loc-tool-name">{{ tool.label }}</h6>
                 <p class="loc-tool-desc">Automated ticket creation for vulnerabilities.</p>
               </div>
-              <!-- Connect other tool -->
-              <div class="loc-tool-card loc-tool-card-add">
-                <div class="loc-tool-add-icon"><i class="bi bi-plus"></i></div>
-                <h6 class="loc-tool-name">Connect other tool</h6>
-                <p class="loc-tool-desc">Asana, Trello, or Custom Webhooks</p>
-              </div>
+
             </div>
 
             <!-- Jira Connected User -->
@@ -139,56 +129,56 @@
 
           <!-- Add Team Members -->
           <div class="loc-section">
-            <div class="loc-section-header">
-              <i class="bi bi-people loc-section-icon"></i>
-              <span class="loc-section-title">Add Team Members</span>
-            </div>
+              <div class="loc-section-header">
+                <i class="bi bi-people loc-section-icon"></i>
+                <span class="loc-section-title">Add Team Members</span>
+              </div>
 
-            <div class="loc-form-row">
-              <!-- Type -->
-              <div class="loc-form-group loc-form-type">
-                <label class="loc-form-label">TYPE</label>
-                <select v-model="form.user_type" class="loc-select">
-                  <option disabled value="">Select</option>
-                  <option value="internal">Internal</option>
-                  <option value="external">External</option>
-                </select>
-              </div>
-              <!-- First Name -->
-              <div class="loc-form-group loc-form-name">
-                <label class="loc-form-label">FIRST NAME</label>
-                <input class="loc-input" placeholder="John" v-model="form.first_name" />
-              </div>
-              <!-- Last Name -->
-              <div class="loc-form-group loc-form-name">
-                <label class="loc-form-label">LAST NAME</label>
-                <input class="loc-input" placeholder="Doe" v-model="form.last_name" />
-              </div>
-              <!-- Role -->
-              <div class="loc-form-group loc-form-role" ref="roleDropdown">
-                <label class="loc-form-label">ROLE</label>
-                <div class="loc-select loc-select-custom" @click="toggleRoleDropdown" ref="roleTrigger">
-                  <span class="loc-role-text">{{ selectedRoles.length ? selectedRoles.join(', ') : 'Select Role' }}</span>
-                  <i class="bi bi-chevron-down loc-select-arrow"></i>
+              <div class="loc-form-row">
+                <!-- Type -->
+                <div class="loc-form-group loc-form-type">
+                  <label class="loc-form-label">TYPE</label>
+                  <select v-model="form.user_type" class="loc-select">
+                    <option disabled value="">Select</option>
+                    <option value="internal">Internal</option>
+                    <option value="external">External</option>
+                  </select>
                 </div>
-                <teleport to="body">
-                  <div v-if="isRoleOpen" class="loc-dropdown-list" :style="roleDropdownStyle">
-                    <label v-for="role in roleOptions" :key="role.short" class="loc-dropdown-item">
-                      <input type="checkbox" :value="role.short" v-model="selectedRoles" class="me-2" />
-                      {{ role.full }}
-                    </label>
+                <!-- First Name -->
+                <div class="loc-form-group loc-form-name">
+                  <label class="loc-form-label">FIRST NAME</label>
+                  <input class="loc-input" placeholder="John" v-model="form.first_name" />
+                </div>
+                <!-- Last Name -->
+                <div class="loc-form-group loc-form-name">
+                  <label class="loc-form-label">LAST NAME</label>
+                  <input class="loc-input" placeholder="Doe" v-model="form.last_name" />
+                </div>
+                <!-- Role -->
+                <div class="loc-form-group loc-form-role" ref="roleDropdown">
+                  <label class="loc-form-label">ROLE</label>
+                  <div class="loc-select loc-select-custom" @click="toggleRoleDropdown" ref="roleTrigger">
+                    <span class="loc-role-text">{{ selectedRoles.length ? selectedRoles.join(', ') : 'Select Role' }}</span>
+                    <i class="bi bi-chevron-down loc-select-arrow"></i>
                   </div>
-                </teleport>
+                  <teleport to="body">
+                    <div v-if="isRoleOpen" class="loc-dropdown-list" :style="roleDropdownStyle">
+                      <label v-for="role in roleOptions" :key="role.short" class="loc-dropdown-item">
+                        <input type="checkbox" :value="role.short" v-model="selectedRoles" class="me-2" />
+                        {{ role.full }}
+                      </label>
+                    </div>
+                  </teleport>
+                </div>
               </div>
-            </div>
 
-            <!-- Email row -->
-            <div class="loc-email-row">
-              <input class="loc-input loc-email-input" placeholder="email@company.com" type="email" v-model="form.email" />
-              <button class="loc-add-user-btn" @click="addUser">
-                <i class="bi bi-plus-circle me-1"></i> Add Another User
-              </button>
-            </div>
+              <!-- Email row -->
+              <div class="loc-email-row">
+                <input class="loc-input loc-email-input" placeholder="email@company.com" type="email" v-model="form.email" />
+                <button class="loc-add-user-btn" @click="addUser">
+                  <i class="bi bi-plus-circle me-1"></i> Add Another User
+                </button>
+              </div>
           </div>
 
           <!-- Footer Buttons -->
@@ -233,21 +223,21 @@
             <a href="#" class="loc-help-link">READ SETUP GUIDE <i class="bi bi-box-arrow-up-right ms-1"></i></a>
           </div>
 
-          <!-- Pending Setup -->
-          <div class="loc-pending-card">
-            <h6 class="loc-pending-title">Pending Setup</h6>
-            <div class="loc-pending-item loc-pending-done">
-              <i class="bi bi-check-circle-fill loc-pending-icon-done"></i>
-              <span>Project Space: Alpha</span>
+          <div class="loc-users-added-card">
+            <div class="loc-users-added-header">
+              <span class="loc-users-added-title"><i class="bi bi-person-check me-1"></i>User Added</span>
+              <span class="loc-users-added-count">{{ addedUsers.length }}</span>
             </div>
-            <div class="loc-pending-item">
-              <span class="loc-pending-dot-grey"></span>
-              <span class="flex-1">Team Members (0)</span>
-              <span class="loc-required-badge">REQUIRED</span>
+            <div v-if="addedUsers.length" class="loc-users-added-list">
+              <div v-for="(user, index) in addedUsers" :key="user._id || user.email || index" class="loc-users-added-item">
+                <div class="loc-users-added-initials">{{ getInitials(`${user.first_name} ${user.last_name}`) }}</div>
+                <div class="loc-users-added-meta">
+                  <p class="loc-users-added-name">{{ user.first_name }} {{ user.last_name }}</p>
+                </div>
+              </div>
             </div>
-            <div class="loc-pending-item">
-              <span class="loc-pending-dot-grey"></span>
-              <span>Risk Scoring</span>
+            <div v-else class="loc-users-added-empty">
+              No users added yet.
             </div>
           </div>
 
@@ -283,6 +273,7 @@ export default {
       externalLocation: "",
       selectedRoles: [],
       isRoleOpen: false,
+      addedUsers: [],
       selectedSecondaryRoles: [],
       isSecondaryRoleOpen: false,
       form: {
@@ -496,6 +487,13 @@ export default {
       const res = await this.authStore.createUserDetail(payload);
 
       if (res.status) {
+        this.addedUsers.unshift({
+          _id: res.data?._id || res.data?.id || null,
+          first_name: this.form.first_name.trim(),
+          last_name: this.form.last_name.trim(),
+          email: this.form.email.trim(),
+        });
+
         const syncMsg = this.selectedCommunication === "teams"
           ? " and added to Microsoft Teams"
           : this.selectedCommunication === "slack"
@@ -600,6 +598,20 @@ export default {
     getInitials(name) {
       if (!name) return "";
       return name.substring(0, 2).toUpperCase();
+    },
+    normalizeAddedUser(user) {
+      return {
+        _id: user?._id || user?.id || null,
+        first_name: user?.first_name || "",
+        last_name: user?.last_name || "",
+        email: user?.email || "",
+      };
+    },
+    async loadAddedUsers() {
+      const res = await this.authStore.fetchUsersByAdmin();
+      if (res?.status && Array.isArray(res.data)) {
+        this.addedUsers = res.data.map(this.normalizeAddedUser);
+      }
     },
     closeOnOutside(e) {
       const role = this.$refs.roleDropdown;
@@ -797,6 +809,8 @@ export default {
       if (event.data.django_access_token) {
         localStorage.setItem("django_access_token", event.data.django_access_token);
       }
+     
+
 
       // Step 2: Event se directly teams/channels set karo (fetchTeams() ki zaroorat nahi)
       if (event.data.vaptfix_team) {
@@ -824,6 +838,22 @@ export default {
       }
     }
   },
+    onStorageChange(event) {
+      if (event.key === "microsoft_graph_token" && event.newValue) {
+        const savedChannels = localStorage.getItem("vaptfix_channels");
+        if (savedChannels) {
+          this.channels = JSON.parse(savedChannels);
+        }
+        this.selectedCommunication = "teams";
+        this.fetchTeams();
+        Swal.fire({
+          icon: "success",
+          title: "Microsoft Teams Connected",
+          timer: 2000,
+          showConfirmButton: false
+        });
+      }
+    },
     async fetchTeams() {
       const res = await this.authStore.fetchMicrosoftTeams();
       if (res?.status) {
@@ -1213,6 +1243,7 @@ export default {
   },
   mounted() {
     window.addEventListener("message", this.onTeamsConnected);
+    window.addEventListener("storage", this.onStorageChange);
 
     const graphToken = localStorage.getItem("microsoft_graph_token");
     if (graphToken) {
@@ -1269,7 +1300,7 @@ export default {
       JSON.parse(localStorage.getItem("user") || "null");
     if (user) {
       this.authStore.user = user;
-      const adminId = user._id || user.id;
+      this.loadAddedUsers();
     }
   },
   beforeUnmount() {
@@ -1277,6 +1308,7 @@ export default {
      window.removeEventListener("message", this.handleSlackMessage);
     window.removeEventListener("message", this.onTeamsConnected);
     window.removeEventListener("message", this.onJiraConnected);
+    window.removeEventListener("storage", this.onStorageChange);
   },
 
 };
@@ -1758,6 +1790,36 @@ export default {
 .loc-form-type { min-width: 0; }
 .loc-form-name { min-width: 0; }
 .loc-form-role { min-width: 0; }
+.loc-users-added-card {
+  background: #241447;
+  color: #fff;
+  border-radius: 14px;
+  padding: 14px;
+  min-height: 142px;
+}
+.loc-users-added-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.loc-users-added-title { font-size: 0.88rem; font-weight: 700; }
+.loc-users-added-count { background: rgba(161, 236, 242, 0.24); color: #a1ecf2; border-radius: 999px; padding: 2px 8px; font-size: 0.74rem; font-weight: 700; }
+.loc-users-added-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+}
+.loc-users-added-list::-webkit-scrollbar { width: 5px; }
+.loc-users-added-list::-webkit-scrollbar-thumb {
+  background: rgba(161,236,242,0.45);
+  border-radius: 10px;
+}
+.loc-users-added-list::-webkit-scrollbar-track { background: transparent; }
+.loc-users-added-item { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 8px; background: rgba(255,255,255,0.09); border: 1px solid rgba(161,236,242,0.25); border-radius: 10px; padding: 8px; }
+.loc-users-added-initials { width: 30px; height: 30px; border-radius: 50%; background: #a1ecf2; color: #241447; font-size: 0.7rem; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.loc-users-added-meta { min-width: 0; }
+.loc-users-added-name { margin: 0; font-size: 0.8rem; font-weight: 700; color: #fff; line-height: 1.2; }
+.loc-users-added-empty { border: 1px dashed rgba(161,236,242,0.35); border-radius: 10px; padding: 14px 10px; text-align: center; font-size: 0.76rem; color: rgba(255,255,255,0.78); }
 .loc-form-label { font-size: 0.65rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; }
 .loc-input {
   border: 1px solid #e2e8f0; border-radius: 8px; padding: 9px 12px;
@@ -1837,4 +1899,9 @@ export default {
 .loc-pending-dot-grey { width: 10px; height: 10px; border-radius: 50%; background: #cbd5e1; flex-shrink: 0; }
 .loc-required-badge { font-size: 0.62rem; font-weight: 700; background: #fee2e2; color: #dc2626; border-radius: 4px; padding: 2px 6px; margin-left: auto; letter-spacing: 0.04em; }
 .flex-1 { flex: 1; }
+
+@media (max-width: 992px) {
+  .loc-users-added-card { min-height: auto; }
+}
+
 </style>

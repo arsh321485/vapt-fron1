@@ -105,8 +105,9 @@
             <!-- ===== 6-CARD ANALYTICS GRID ===== -->
             <div class="row g-4 mb-4 align-items-stretch">
 
-              <!-- Card 1: Total Assets -->
-              <div class="col-2">
+              <!-- Card 1: Total Assets + MTTR + Support Requests stacked -->
+              <div class="col-3" style="display:flex; flex-direction:column; gap:16px;">
+                <!-- Total Assets -->
                 <router-link to="/assets" class="text-decoration-none d-block">
                   <div class="dash-card" style="padding: 22px 22px;">
                     <div class="d-flex justify-content-between align-items-start mb-2">
@@ -116,18 +117,108 @@
                         </div>
                         <span class="dash-card-label" style="font-size:14px;">Total Assets</span>
                       </div>
-
                     </div>
                     <div class="d-flex align-items-baseline gap-2 mb-1">
                       <span class="dash-big-num" style="font-size:2.4rem;">{{ authStore.totalAssets }}</span>
-                      <!-- <span class="dash-sub-text">Avg. score: <strong class="text-dark">{{ Number(authStore.avgScore).toFixed(2) }}</strong></span> -->
+                    </div>
+                  </div>
+                </router-link>
+
+                <!-- MTTR Card (moved here, no bars) -->
+                <div class="dash-card" style="padding: 18px;">
+                  <div class="d-flex align-items-center gap-2 mb-3">
+                    <div class="dash-icon-wrap">
+                      <i class="bi bi-hourglass-split dash-icon-teal" style="font-size: 14px;"></i>
+                    </div>
+                    <span class="dash-card-label">MTTR</span>
+                    <span class="info-tooltip" data-tooltip="Average remediation time based on risk criteria."><i class="bi bi-info-circle dash-info-icon"></i></span>
+                  </div>
+                  <!-- Circular Gauge only -->
+                  <div class="d-flex justify-content-center">
+                    <div style="position:relative; width:100px; height:100px; flex-shrink:0;">
+                      <svg width="100" height="100" viewBox="0 0 110 110">
+                        <defs>
+                          <linearGradient id="mttr-grad2" x1="0%" x2="100%" y1="0%" y2="0%">
+                            <stop offset="0%" stop-color="#10b981"/>
+                            <stop offset="50%" stop-color="#f59e0b"/>
+                            <stop offset="100%" stop-color="#ef4444"/>
+                          </linearGradient>
+                        </defs>
+                        <path d="M18 92 A46 46 0 1 1 92 92" fill="none" stroke="#f1f5f9" stroke-linecap="round" stroke-width="10"/>
+                        <path d="M18 92 A46 46 0 1 1 92 92" fill="none" stroke="url(#mttr-grad2)" stroke-linecap="round" stroke-width="10"
+                          stroke-dasharray="257"
+                          :stroke-dashoffset="257 - ((Math.min((authStore.meanTimeToRemediate?.mean_time_to_remediate?.weeks ?? 0), 4) / 4) * 257)"/>
+                        <text x="55" y="68" text-anchor="middle" font-size="9" font-weight="900" fill="#1f2937">{{ meanRemediateHuman }}</text>
+                        <text x="55" y="80" text-anchor="middle" font-size="7" fill="#94a3b8">MTTR</text>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Support Requests (moved here) -->
+                <router-link to="/supportrequests" class="text-decoration-none">
+                  <div class="dash-card" style="padding: 18px;">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                      <div class="dash-icon-wrap">
+                        <i class="bi bi-headset dash-icon-teal" style="font-size: 14px;"></i>
+                      </div>
+                      <span class="dash-card-label">Support Requests</span>
+                      <span class="info-tooltip" data-tooltip="Total support requests raised."><i class="bi bi-info-circle dash-info-icon"></i></span>
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                      <span class="dash-big-num" style="font-size:2rem;">{{ String(supportTotal).padStart(2, '0') }}</span>
+                      <div class="d-flex gap-3">
+                        <div class="d-flex flex-column align-items-center">
+                          <span style="font-size:1rem; font-weight:700; color:#1f2937;">{{ supportPending }}</span>
+                          <div style="width:36px; height:4px; background:#f8d7da; border-radius:2px; margin:4px 0;"></div>
+                          <div class="dash-legend-item"><span class="dash-dot" style="background:#ef4444;"></span>Pending</div>
+                        </div>
+                        <div class="d-flex flex-column align-items-center">
+                          <span style="font-size:1rem; font-weight:700; color:#1f2937;">{{ supportClosed }}</span>
+                          <div style="width:36px; height:4px; background:#d1e7dd; border-radius:2px; margin:4px 0;"></div>
+                          <div class="dash-legend-item"><span class="dash-dot" style="background:#0f696e;"></span>Closed</div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </router-link>
               </div>
 
-              <!-- Card 2: Vulnerabilities Gauge -->
+              <!-- Mitigation Timeline Extension Card -->
               <div class="col-5">
+                <div class="dash-card" style="height:auto;">
+                  <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                      <p class="mte-title">MITIGATION TIMELINE EXTENSION</p>
+                      <p class="mte-sub">Pending requests by team and severity</p>
+                    </div>
+                    <router-link to="/missingsecurityupdates" class="mte-link text-decoration-none">VIEW FULL REPORT <i class="bi bi-chevron-right"></i></router-link>
+                  </div>
+                  <table class="mte-table">
+                    <thead>
+                      <tr>
+                        <th>TEAM</th>
+                        <th class="mte-critical">CRITICAL</th>
+                        <th class="mte-high">HIGH</th>
+                        <th class="mte-medium">MEDIUM</th>
+                        <th class="mte-low">LOW</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="tab in mitigationTabs" :key="tab.key">
+                        <td class="mte-team-name">{{ tab.key }}</td>
+                        <td><span class="mte-badge mte-b-critical">{{ String(getTeamSevCount(tab.key,'critical')).padStart(2,'0') }}</span></td>
+                        <td><span class="mte-badge mte-b-high">{{ String(getTeamSevCount(tab.key,'high')).padStart(2,'0') }}</span></td>
+                        <td><span class="mte-badge mte-b-medium">{{ String(getTeamSevCount(tab.key,'medium')).padStart(2,'0') }}</span></td>
+                        <td><span class="mte-badge mte-b-low">{{ String(getTeamSevCount(tab.key,'low')).padStart(2,'0') }}</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Card 2: Vulnerabilities Gauge + Total Vulns Fixed stacked -->
+              <div class="col-4" style="display:flex; flex-direction:column; gap:16px;">
                 <div class="dash-card h-100">
                   <div class="d-flex align-items-center gap-2 mb-3">
                     <div class="dash-icon-wrap">
@@ -179,11 +270,54 @@
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#10b981;"></span>Low</div>
                   </div>
                 </div>
+
+                <!-- Total Vulnerabilities Fixed (moved here) -->
+                <div class="dash-card">
+                  <div class="d-flex align-items-center gap-2 mb-3">
+                    <div class="dash-icon-wrap">
+                      <i class="bi bi-patch-check-fill dash-icon-teal" style="font-size: 14px;"></i>
+                    </div>
+                    <span class="dash-card-label">Total Vulnerabilities Fixed</span>
+                    <span class="info-tooltip" data-tooltip="Total vulnerabilities successfully remediated."><i class="bi bi-info-circle dash-info-icon"></i></span>
+                  </div>
+                  <div class="d-flex align-items-center gap-3 mb-2">
+                    <span class="dash-big-num" style="font-size:2rem;">{{ String(vulFixedTotal).padStart(2, '0') }}</span>
+                  </div>
+                  <div class="d-flex align-items-end justify-content-around gap-2 px-2" style="height: 70px;">
+                    <div class="d-flex flex-column align-items-center gap-1" style="width:26px;">
+                      <span style="font-size:10px; font-weight:700; color:#1f2937;">{{ vulFixedCritical }}</span>
+                      <div style="width:100%; border-radius:4px 4px 0 0; background:#b91c1c; min-height:4px;"
+                        :style="{ height: vulFixedTotal ? (vulFixedCritical / vulFixedTotal * 55) + 'px' : '4px' }"></div>
+                    </div>
+                    <div class="d-flex flex-column align-items-center gap-1" style="width:26px;">
+                      <span style="font-size:10px; font-weight:700; color:#1f2937;">{{ vulFixedHigh }}</span>
+                      <div style="width:100%; border-radius:4px 4px 0 0; background:#ef4444; min-height:4px;"
+                        :style="{ height: vulFixedTotal ? (vulFixedHigh / vulFixedTotal * 55) + 'px' : '4px' }"></div>
+                    </div>
+                    <div class="d-flex flex-column align-items-center gap-1" style="width:26px;">
+                      <span style="font-size:10px; font-weight:700; color:#1f2937;">{{ vulFixedMedium }}</span>
+                      <div style="width:100%; border-radius:4px 4px 0 0; background:#f59e0b; min-height:4px;"
+                        :style="{ height: vulFixedTotal ? (vulFixedMedium / vulFixedTotal * 55) + 'px' : '4px' }"></div>
+                    </div>
+                    <div class="d-flex flex-column align-items-center gap-1" style="width:26px;">
+                      <span style="font-size:10px; font-weight:700; color:#1f2937;">{{ vulFixedLow }}</span>
+                      <div style="width:100%; border-radius:4px 4px 0 0; background:#10b981; min-height:4px;"
+                        :style="{ height: vulFixedTotal ? (vulFixedLow / vulFixedTotal * 55) + 'px' : '4px' }"></div>
+                    </div>
+                  </div>
+                  <div style="border-top: 2px solid #e5e7eb; margin: 0 8px;"></div>
+                  <div class="d-flex justify-content-around mt-2 flex-wrap px-1">
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#b91c1c;"></span>Critical</div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#ef4444;"></span>High</div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#f59e0b;"></span>Medium</div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#10b981;"></span>Low</div>
+                  </div>
+                </div>
               </div>
 
               <!-- Card 3: Mitigation Timeline -->
-              <div class="col-5">
-                <div class="dash-card h-100">
+              <div class="col-4">
+                <div class="dash-card" style="height:auto;">
                   <div class="d-flex align-items-center gap-2 mb-4">
                     <div class="dash-icon-wrap">
                       <i class="bi bi-clock-history dash-icon-teal" style="font-size: 14px;"></i>
@@ -276,170 +410,7 @@
                 </div>
               </div>
 
-              <!-- Card 4: Total Vulnerabilities Fixed -->
-              <div class="col-4" style="display:flex; flex-direction:column;">
-                <div class="dash-card h-100">
-                  <div class="d-flex align-items-center gap-2 mb-3">
-                    <div class="dash-icon-wrap">
-                      <i class="bi bi-patch-check-fill dash-icon-teal" style="font-size: 14px;"></i>
-                    </div>
-                    <span class="dash-card-label">Total Vulnerabilities Fixed</span>
-                    <span class="info-tooltip" data-tooltip="Total count of vulnerabilities that have been successfully remediated and verified as resolved within the system."><i class="bi bi-info-circle dash-info-icon"></i></span>
-                  </div>
-                  <div class="d-flex align-items-center gap-3 mb-3">
-                    <span class="dash-big-num">{{ String(vulFixedTotal).padStart(2, '0') }}</span>
-                  </div>
-                  <!-- API Data Vertical Bar Chart -->
-                  <div class="d-flex align-items-end justify-content-around gap-2 px-2" style="height: 90px;">
-                    <!-- Critical -->
-                    <div class="d-flex flex-column align-items-center gap-1" style="width:30px;">
-                      <span style="font-size:11px; font-weight:700; color:#1f2937;">{{ vulFixedCritical }}</span>
-                      <div style="width:100%; border-radius:4px 4px 0 0; background:#b91c1c; min-height:4px;"
-                        :style="{ height: vulFixedTotal ? (vulFixedCritical / vulFixedTotal * 70) + 'px' : '4px' }">
-                      </div>
-                    </div>
-                    <!-- High -->
-                    <div class="d-flex flex-column align-items-center gap-1" style="width:30px;">
-                      <span style="font-size:11px; font-weight:700; color:#1f2937;">{{ vulFixedHigh }}</span>
-                      <div style="width:100%; border-radius:4px 4px 0 0; background:#ef4444; min-height:4px;"
-                        :style="{ height: vulFixedTotal ? (vulFixedHigh / vulFixedTotal * 70) + 'px' : '4px' }">
-                      </div>
-                    </div>
-                    <!-- Medium -->
-                    <div class="d-flex flex-column align-items-center gap-1" style="width:30px;">
-                      <span style="font-size:11px; font-weight:700; color:#1f2937;">{{ vulFixedMedium }}</span>
-                      <div style="width:100%; border-radius:4px 4px 0 0; background:#f59e0b; min-height:4px;"
-                        :style="{ height: vulFixedTotal ? (vulFixedMedium / vulFixedTotal * 70) + 'px' : '4px' }">
-                      </div>
-                    </div>
-                    <!-- Low -->
-                    <div class="d-flex flex-column align-items-center gap-1" style="width:30px;">
-                      <span style="font-size:11px; font-weight:700; color:#1f2937;">{{ vulFixedLow }}</span>
-                      <div style="width:100%; border-radius:4px 4px 0 0; background:#10b981; min-height:4px;"
-                        :style="{ height: vulFixedTotal ? (vulFixedLow / vulFixedTotal * 70) + 'px' : '4px' }">
-                      </div>
-                    </div>
-                  </div>
-                  <!-- X-axis line -->
-                  <div style="border-top: 2px solid #e5e7eb; margin: 0 8px;"></div>
-                  <!-- Legend -->
-                  <div class="d-flex justify-content-around mt-2 flex-wrap px-1">
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#b91c1c;"></span>Critical</div>
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#ef4444;"></span>High</div>
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#f59e0b;"></span>Medium</div>
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#10b981;"></span>Low</div>
-                  </div>
-                </div>
-              </div>
 
-              <!-- Card 5: MTTR -->
-              <div class="col-4" style="display:flex; flex-direction:column;">
-                <div class="dash-card h-100">
-                  <div class="d-flex align-items-center gap-2 mb-4">
-                    <div class="dash-icon-wrap">
-                      <i class="bi bi-hourglass-split dash-icon-teal" style="font-size: 14px;"></i>
-                    </div>
-                    <span class="dash-card-label">Mean Time to Remediate (MTTR)</span>
-                    <span class="info-tooltip" data-tooltip="Represents the average remediation time calculated based on the risk criteria defined for different vulnerability severity levels."><i class="bi bi-info-circle dash-info-icon"></i></span>
-                  </div>
-                  <!-- Gauge + Time side by side -->
-                  <div class="d-flex align-items-center justify-content-center gap-4">
-
-                    <!-- Circular Gradient Gauge -->
-                    <div style="position:relative; width:110px; height:110px; flex-shrink:0;">
-                      <svg width="110" height="110" viewBox="0 0 110 110">
-                        <defs>
-                          <linearGradient id="mttr-grad" x1="0%" x2="100%" y1="0%" y2="0%">
-                            <stop offset="0%" stop-color="#10b981"/>
-                            <stop offset="50%" stop-color="#f59e0b"/>
-                            <stop offset="100%" stop-color="#ef4444"/>
-                          </linearGradient>
-                        </defs>
-                        <!-- Background track -->
-                        <path d="M18 92 A46 46 0 1 1 92 92" fill="none" stroke="#f1f5f9" stroke-linecap="round" stroke-width="10"/>
-                        <!-- Filled arc -->
-                        <path d="M18 92 A46 46 0 1 1 92 92" fill="none" stroke="url(#mttr-grad)" stroke-linecap="round" stroke-width="10"
-                          stroke-dasharray="257"
-                          :stroke-dashoffset="257 - ((Math.min((authStore.meanTimeToRemediate?.mean_time_to_remediate?.weeks ?? 0), 4) / 4) * 257)"/>
-                        <!-- Center value -->
-                        <text x="55" y="68" text-anchor="middle" font-size="9" font-weight="900" fill="#1f2937">{{ meanRemediateHuman }}</text>
-                        <text x="55" y="80" text-anchor="middle" font-size="7" fill="#94a3b8">MTTR</text>
-                      </svg>
-                    </div>
-
-                    <!-- Weeks / Days / Hours breakdown -->
-                    <div class="d-flex flex-column gap-3" style="min-width:120px;">
-                      <!-- Weeks -->
-                      <div>
-                        <div class="d-flex justify-content-between mb-1">
-                          <span style="font-size:11px; color:#64748b;">Weeks</span>
-                          <strong style="font-size:11px; color:#1f2937;">{{ authStore.meanTimeToRemediate?.mean_time_to_remediate?.weeks ?? 0 }}</strong>
-                        </div>
-                        <div style="height:5px; background:#f1f5f9; border-radius:3px;">
-                          <div style="height:100%; border-radius:3px; background:#10b981; transition:width 0.4s;"
-                            :style="{ width: Math.min((authStore.meanTimeToRemediate?.mean_time_to_remediate?.weeks ?? 0), 4) / 4 * 100 + '%' }">
-                          </div>
-                        </div>
-                      </div>
-                      <!-- Days -->
-                      <div>
-                        <div class="d-flex justify-content-between mb-1">
-                          <span style="font-size:11px; color:#64748b;">Days</span>
-                          <strong style="font-size:11px; color:#1f2937;">{{ authStore.meanTimeToRemediate?.mean_time_to_remediate?.days ?? 0 }}</strong>
-                        </div>
-                        <div style="height:5px; background:#f1f5f9; border-radius:3px;">
-                          <div style="height:100%; border-radius:3px; background:#f59e0b; transition:width 0.4s;"
-                            :style="{ width: Math.min((authStore.meanTimeToRemediate?.mean_time_to_remediate?.days ?? 0), 7) / 7 * 100 + '%' }">
-                          </div>
-                        </div>
-                      </div>
-                      <!-- Hours -->
-                      <div>
-                        <div class="d-flex justify-content-between mb-1">
-                          <span style="font-size:11px; color:#64748b;">Hours</span>
-                          <strong style="font-size:11px; color:#1f2937;">{{ authStore.meanTimeToRemediate?.mean_time_to_remediate?.hours_remaining ?? 0 }}</strong>
-                        </div>
-                        <div style="height:5px; background:#f1f5f9; border-radius:3px;">
-                          <div style="height:100%; border-radius:3px; background:#ef4444; transition:width 0.4s;"
-                            :style="{ width: Math.min((authStore.meanTimeToRemediate?.mean_time_to_remediate?.hours_remaining ?? 0), 24) / 24 * 100 + '%' }">
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                  </div>
-                </div>
-              </div>
-
-              <!-- Card 6: Support Requests -->
-              <div class="col-4" style="display:flex; flex-direction:column;">
-                <router-link to="/supportrequests" class="text-decoration-none">
-                  <div class="dash-card h-100">
-                    <div class="d-flex align-items-center gap-2 mb-4">
-                      <div class="dash-icon-wrap">
-                        <i class="bi bi-headset dash-icon-teal" style="font-size: 14px;"></i>
-                      </div>
-                      <span class="dash-card-label">Support Requests</span>
-                      <span class="info-tooltip" data-tooltip="Total number of support requests raised in the system, categorized by their current status such as Pending or Closed."><i class="bi bi-info-circle dash-info-icon"></i></span>
-                    </div>
-                    <div class="d-flex align-items-center gap-4 pt-2">
-                      <span class="dash-big-num">{{ String(supportTotal).padStart(2, '0') }}</span>
-                      <div class="d-flex gap-4">
-                        <div class="d-flex flex-column align-items-center">
-                          <span style="font-size:1.25rem; font-weight:700; color:#1f2937;">{{ supportPending }}</span>
-                          <div style="width:48px; height:4px; background:#f8d7da; border-radius:2px; margin:4px 0;"></div>
-                          <div class="dash-legend-item"><span class="dash-dot" style="background:#ef4444;"></span>Pending</div>
-                        </div>
-                        <div class="d-flex flex-column align-items-center">
-                          <span style="font-size:1.25rem; font-weight:700; color:#1f2937;">{{ supportClosed }}</span>
-                          <div style="width:48px; height:4px; background:#d1e7dd; border-radius:2px; margin:4px 0;"></div>
-                          <div class="dash-legend-item"><span class="dash-dot" style="background:#0f696e;"></span>Closed</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </router-link>
-              </div>
 
             </div>
             <!-- end 6-card analytics grid -->
@@ -1742,6 +1713,81 @@ mounted() {
 .cv-badge-high     { background: #fff7ed; color: #f97316; }
 .cv-badge-medium   { background: #fefce8; color: #ca8a04; }
 .cv-badge-low      { background: #f0fdf4; color: #16a34a; }
+
+/* ===== MITIGATION TIMELINE EXTENSION ===== */
+.mte-title {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #1e293b;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 2px;
+}
+.mte-sub {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  margin: 0;
+}
+.mte-link {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #0f696e;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.mte-link:hover { opacity: 0.75; }
+.mte-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.mte-table thead tr {
+  border-bottom: 1px solid #f1f5f9;
+}
+.mte-table th {
+  padding: 8px 10px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+  text-align: center;
+}
+.mte-table th:first-child { text-align: left; color: #64748b; }
+.mte-critical { color: #dc2626 !important; }
+.mte-high     { color: #f97316 !important; }
+.mte-medium   { color: #f59e0b !important; }
+.mte-low      { color: #0f696e !important; }
+.mte-table td {
+  padding: 10px 10px;
+  text-align: center;
+  border-bottom: 1px solid #f8f9fc;
+  vertical-align: middle;
+}
+.mte-table tbody tr:last-child td { border-bottom: none; }
+.mte-table tbody tr:hover { background: #fafbfc; }
+.mte-team-name {
+  text-align: left !important;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+.mte-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 26px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.mte-b-critical { background: #fef2f2; color: #dc2626; }
+.mte-b-high     { background: #fff7ed; color: #f97316; }
+.mte-b-medium   { background: #fefce8; color: #ca8a04; }
+.mte-b-low      { background: #f0fdf4; color: #0f696e; }
 
 /* ===== DASHBOARD REDESIGN ===== */
 .dash-card {

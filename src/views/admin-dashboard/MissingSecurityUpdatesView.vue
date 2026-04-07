@@ -62,7 +62,7 @@
                       <tbody>
                         <tr v-for="vuln in group.rows" :key="vuln.id">
                           <td class="msu-td-asset">{{ vuln.host_name }}</td>
-                          <td class="msu-td-os">{{ vuln.os || '—' }}</td>
+                          <td class="msu-td-os" :title="vuln.os || '—'">{{ vuln.os || '—' }}</td>
                           <td>
                             <span class="msu-sev-chip" :class="'msu-sev-' + (vuln.risk_factor || '').toLowerCase()">
                               {{ (vuln.risk_factor || '').toUpperCase() }}
@@ -345,6 +345,11 @@ export default {
 .msu-td-os {
   color: #64748b;
   font-size: 0.82rem;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
 }
 
 /* Severity chip */

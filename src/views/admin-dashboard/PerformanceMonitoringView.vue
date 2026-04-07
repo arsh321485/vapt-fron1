@@ -170,10 +170,27 @@ export default {
   },
   async mounted() {
     const store = useAuthStore();
-    if (!store.cachedDistributionByTeam) this.loading = true;
-    const result = await store.fetchDistributionByTeamDetail();
-    if (result.status && result.data?.teams) {
-      this.teamDetail = result.data.teams;
+    this.loading = true;
+    const result = await store.fetchDistributionByTeamDetail(true);
+    console.log("📊 Performance API result:", JSON.stringify(result, null, 2));
+    if (result.status) {
+      const data = result.data;
+      console.log("📊 data keys:", Object.keys(data || {}));
+      if (data?.teams) {
+        console.log("📊 teams keys:", Object.keys(data.teams));
+        // Log each team's data
+        Object.entries(data.teams).forEach(([teamName, teamData]) => {
+          console.log(`📊 Team [${teamName}]:`, JSON.stringify(teamData, null, 2));
+        });
+        this.teamDetail = data.teams;
+      } else if (data && typeof data === 'object') {
+        Object.entries(data).forEach(([teamName, teamData]) => {
+          console.log(`📊 Team [${teamName}]:`, JSON.stringify(teamData, null, 2));
+        });
+        this.teamDetail = data;
+      }
+    } else {
+      console.error("❌ Performance API failed:", result.message);
     }
     this.loading = false;
   },
