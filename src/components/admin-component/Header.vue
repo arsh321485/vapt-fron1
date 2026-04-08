@@ -47,24 +47,9 @@
 
 
           <div class="header-cta d-flex align-items-center gap-3">
-            <!-- Sign In with hover tooltip -->
-            <div class="signin-hover-wrap">
-
-              <button class="signin-trigger">
-                <i class="bi bi-person me-1"></i> Sign In
-                <i class="bi bi-chevron-down ms-1 signin-chevron"></i>
-              </button>
-              <!-- Hover card -->
-              <div class="signin-tooltip">
-                <div class="signin-tooltip-arrow"></div>
-                <p class="signin-tooltip-label">Already have an account?</p>
-                <p class="signin-tooltip-sub">Sign in to your VaptFix dashboard and continue where you left off.</p>
-                <router-link to="/auth?mode=signin" class="signin-tooltip-btn">
-                  Sign In to Dashboard
-                  <i class="bi bi-arrow-right ms-2"></i>
-                </router-link>
-              </div>
-            </div>
+            <router-link to="/auth" class="signin-btn text-decoration-none">
+              <i class="bi bi-person me-1"></i> User Sign In
+            </router-link>
 
             <button type="button" class="btn hero-btn text-light text-decoration-none" @click="handleFixNow">
               Get Started
@@ -74,7 +59,7 @@
 
 
           <!-- <div class="d-flex justify-content-start gap-2">
-          
+
   <template v-if="!user">
     <router-link to="/signup" class="text-white text-decoration-none" tag="button">Signup /</router-link>
     <router-link to="/signin" class="text-white text-decoration-none" tag="button">Signin</router-link>
@@ -83,11 +68,11 @@
 
 <template v-else>
     <router-link to="/profile" class="text-center text-decoration-none d-flex flex-column align-items-center">
-      <img 
-        src="https://cdn-icons-png.flaticon.com/512/147/147144.png" 
-        alt="Profile" 
-        class="rounded-circle" 
-        width="25" 
+      <img
+        src="https://cdn-icons-png.flaticon.com/512/147/147144.png"
+        alt="Profile"
+        class="rounded-circle"
+        width="25"
         height="25"
       />
       <p class="text-light mb-0" style="font-size: 14px;">
@@ -148,111 +133,25 @@ export default {
   color: white;
 }
 
-/* ── Sign In hover wrap ── */
-.signin-hover-wrap {
-  position: relative;
-}
-
-.signin-trigger {
+/* ── User Sign In button ── */
+.signin-btn {
   background: transparent;
   border: 1.5px solid rgba(255, 255, 255, 0.25);
   border-radius: 999px;
   color: rgba(255, 255, 255, 0.85);
   font-size: 0.9rem;
   font-weight: 500;
-  padding: 5px 14px;
+  padding: 5px 16px;
   cursor: pointer;
   transition: all 0.2s;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   white-space: nowrap;
 }
 
-.signin-trigger:hover {
+.signin-btn:hover {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.55);
-  color: #ffffff;
-}
-
-.signin-chevron {
-  font-size: 10px;
-  transition: transform 0.2s;
-}
-
-.signin-hover-wrap:hover .signin-chevron {
-  transform: rotate(180deg);
-}
-
-/* Tooltip card — hidden by default */
-.signin-tooltip {
-  position: absolute;
-  top: calc(100% + 12px);
-  right: 0;
-  width: 260px;
-  background: #241447;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
-  padding: 18px 20px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(6px);
-  transition: opacity 0.2s ease, transform 0.2s ease;
-  z-index: 2000;
-}
-
-/* Arrow pointing up */
-.signin-tooltip-arrow {
-  position: absolute;
-  top: -7px;
-  right: 22px;
-  width: 13px;
-  height: 13px;
-  background: #241447;
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  transform: rotate(45deg);
-  border-radius: 2px;
-}
-
-.signin-hover-wrap:hover .signin-tooltip {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0);
-}
-
-.signin-tooltip-label {
-  font-size: 13px;
-  font-weight: 700;
-  color: #ffffff;
-  margin-bottom: 6px;
-}
-
-.signin-tooltip-sub {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
-  line-height: 1.6;
-  margin-bottom: 14px;
-}
-
-.signin-tooltip-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  padding: 9px 16px;
-  background: linear-gradient(135deg, #0f696e, #0a9396);
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 600;
-  border-radius: 8px;
-  text-decoration: none;
-  transition: opacity 0.2s;
-  box-shadow: 0 4px 14px rgba(15, 105, 110, 0.4);
-}
-
-.signin-tooltip-btn:hover {
-  opacity: 0.88;
   color: #ffffff;
 }
 </style>
