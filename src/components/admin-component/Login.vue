@@ -80,8 +80,12 @@ export default {
           // Save token if API provides one
           if (response.data.token) {
             localStorage.setItem("authToken", response.data.token);
+            localStorage.setItem("authorization", response.data.token);
+          } else {
+            // Set authorization key so router guard passes
+            localStorage.setItem("authorization", "true");
           }
-          this.$router.push("/home");
+          this.$router.push("/admindashboardonboarding");
         })
         .catch((error) => {
           this.message = "❌ Login failed. Please check your credentials.";
