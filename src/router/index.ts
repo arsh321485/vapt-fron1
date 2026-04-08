@@ -399,11 +399,8 @@ router.beforeEach((to) => {
     return { path: "/" };
   }
 
-  // Authenticated users should not stay on explicit auth forms or home/landing page
-  if (
-    isAuthenticated &&
-    (to.path === "/auth" || to.path === "/signin" || to.path === "/home" || to.path === "/")
-  ) {
+  // Authenticated users should not stay on explicit auth forms
+  if (isAuthenticated && (to.path === "/auth" || to.path === "/signin" || to.path === "/")) {
     return { path: "/admindashboardonboarding" };
   }
 
