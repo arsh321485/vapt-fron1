@@ -129,56 +129,56 @@
 
           <!-- Add Team Members -->
           <div class="loc-section">
-              <div class="loc-section-header">
-                <i class="bi bi-people loc-section-icon"></i>
-                <span class="loc-section-title">Add Team Members</span>
-              </div>
+                <div class="loc-section-header">
+                  <i class="bi bi-people loc-section-icon"></i>
+                  <span class="loc-section-title">Add Team Members</span>
+                </div>
 
-              <div class="loc-form-row">
-                <!-- Type -->
-                <div class="loc-form-group loc-form-type">
-                  <label class="loc-form-label">TYPE</label>
-                  <select v-model="form.user_type" class="loc-select">
-                    <option disabled value="">Select</option>
-                    <option value="internal">Internal</option>
-                    <option value="external">External</option>
-                  </select>
-                </div>
-                <!-- First Name -->
-                <div class="loc-form-group loc-form-name">
-                  <label class="loc-form-label">FIRST NAME</label>
-                  <input class="loc-input" placeholder="John" v-model="form.first_name" />
-                </div>
-                <!-- Last Name -->
-                <div class="loc-form-group loc-form-name">
-                  <label class="loc-form-label">LAST NAME</label>
-                  <input class="loc-input" placeholder="Doe" v-model="form.last_name" />
-                </div>
-                <!-- Role -->
-                <div class="loc-form-group loc-form-role" ref="roleDropdown">
-                  <label class="loc-form-label">ROLE</label>
-                  <div class="loc-select loc-select-custom" @click="toggleRoleDropdown" ref="roleTrigger">
-                    <span class="loc-role-text">{{ selectedRoles.length ? selectedRoles.join(', ') : 'Select Role' }}</span>
-                    <i class="bi bi-chevron-down loc-select-arrow"></i>
+                <div class="loc-form-row">
+                  <!-- Type -->
+                  <div class="loc-form-group loc-form-type">
+                    <label class="loc-form-label">TYPE</label>
+                    <select v-model="form.user_type" class="loc-select">
+                      <option disabled value="">Select</option>
+                      <option value="internal">Internal</option>
+                      <option value="external">External</option>
+                    </select>
                   </div>
-                  <teleport to="body">
-                    <div v-if="isRoleOpen" class="loc-dropdown-list" :style="roleDropdownStyle">
-                      <label v-for="role in roleOptions" :key="role.short" class="loc-dropdown-item">
-                        <input type="checkbox" :value="role.short" v-model="selectedRoles" class="me-2" />
-                        {{ role.full }}
-                      </label>
+                  <!-- First Name -->
+                  <div class="loc-form-group loc-form-name">
+                    <label class="loc-form-label">FIRST NAME</label>
+                    <input class="loc-input" placeholder="John" v-model="form.first_name" />
+                  </div>
+                  <!-- Last Name -->
+                  <div class="loc-form-group loc-form-name">
+                    <label class="loc-form-label">LAST NAME</label>
+                    <input class="loc-input" placeholder="Doe" v-model="form.last_name" />
+                  </div>
+                  <!-- Role -->
+                  <div class="loc-form-group loc-form-role" ref="roleDropdown">
+                    <label class="loc-form-label">ROLE</label>
+                    <div class="loc-select loc-select-custom" @click="toggleRoleDropdown" ref="roleTrigger">
+                      <span class="loc-role-text">{{ selectedRoles.length ? selectedRoles.join(', ') : 'Select Role' }}</span>
+                      <i class="bi bi-chevron-down loc-select-arrow"></i>
                     </div>
-                  </teleport>
+                    <teleport to="body">
+                      <div v-if="isRoleOpen" class="loc-dropdown-list" :style="roleDropdownStyle">
+                        <label v-for="role in roleOptions" :key="role.short" class="loc-dropdown-item">
+                          <input type="checkbox" :value="role.short" v-model="selectedRoles" class="me-2" />
+                          {{ role.full }}
+                        </label>
+                      </div>
+                    </teleport>
+                  </div>
                 </div>
-              </div>
 
-              <!-- Email row -->
-              <div class="loc-email-row">
-                <input class="loc-input loc-email-input" placeholder="email@company.com" type="email" v-model="form.email" />
-                <button class="loc-add-user-btn" @click="addUser">
-                  <i class="bi bi-plus-circle me-1"></i> Add Another User
-                </button>
-              </div>
+                <!-- Email row -->
+                <div class="loc-email-row">
+                  <input class="loc-input loc-email-input" placeholder="email@company.com" type="email" v-model="form.email" />
+                  <button class="loc-add-user-btn" @click="addUser">
+                    <i class="bi bi-plus-circle me-1"></i> Add Another User
+                  </button>
+                </div>
           </div>
 
           <!-- Footer Buttons -->
@@ -1801,6 +1801,7 @@ export default {
   border-radius: 14px;
   padding: 14px;
   min-height: 142px;
+  margin-top: 190px;
 }
 .loc-users-added-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .loc-users-added-title { font-size: 0.88rem; font-weight: 700; }
@@ -1906,7 +1907,7 @@ export default {
 .flex-1 { flex: 1; }
 
 @media (max-width: 992px) {
-  .loc-users-added-card { min-height: auto; }
+  .loc-users-added-card { min-height: auto; margin-top: 0; }
 }
 
 </style>
