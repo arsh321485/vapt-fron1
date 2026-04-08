@@ -47,7 +47,7 @@
 
 
           <div class="header-cta d-flex align-items-center gap-3">
-            <router-link to="/auth" class="signin-btn text-decoration-none">
+            <router-link to="/auth?mode=signin" class="signin-btn text-decoration-none">
               <i class="bi bi-person me-1"></i> User Sign In
             </router-link>
 

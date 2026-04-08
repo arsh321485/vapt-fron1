@@ -394,13 +394,8 @@ router.beforeEach((to) => {
     return { path: "/" };
   }
 
-  // Keep auth page URL clean (no query params like ?mode=set-password)
-  if (to.path === "/auth" && Object.keys(to.query || {}).length > 0) {
-    return { path: "/" };
-  }
-
   // Authenticated users should not stay on explicit auth forms
-  if (isAuthenticated && (to.path === "/auth" || to.path === "/signin" || to.path === "/")) {
+  if (isAuthenticated && (to.path === "/signin" || to.path === "/")) {
     return { path: "/admindashboardonboarding" };
   }
 
