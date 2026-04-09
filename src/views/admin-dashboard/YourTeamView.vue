@@ -882,7 +882,7 @@ async deleteRoleFromUser(user, roleToRemove) {
   border: none;
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .team-modal-header {
@@ -892,6 +892,7 @@ async deleteRoleFromUser(user, roleToRemove) {
   padding: 20px 24px 18px;
   background: #ffffff;
   border-bottom: 1px solid #f1f5f9;
+  border-radius: 16px 16px 0 0;
 }
 
 .team-modal-icon {
@@ -986,6 +987,7 @@ async deleteRoleFromUser(user, roleToRemove) {
   padding: 16px 24px 20px;
   background: #f8fafc;
   border-top: 1px solid #f1f5f9;
+  border-radius: 0 0 16px 16px;
 }
 
 .team-btn-cancel {

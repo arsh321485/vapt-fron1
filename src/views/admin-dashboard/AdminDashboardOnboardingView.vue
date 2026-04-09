@@ -1179,9 +1179,6 @@
           <!-- Footer -->
           <div class="mte-modal-footer">
             <button type="button" class="mte-btn-secondary" @click="closeCommonVulnModal">Close</button>
-            <button type="button" class="mte-btn-primary" @click="$router.push({ path: '/missingsecurityupdates', query: { team: mitigationActiveTab } }); closeCommonVulnModal();">
-              Full Report <i class="bi bi-arrow-right ms-1"></i>
-            </button>
           </div>
 
         </div>

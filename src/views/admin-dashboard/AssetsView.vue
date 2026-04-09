@@ -201,7 +201,7 @@
                                 'vuln-icon-medium': v.severity === 'Medium',
                                 'vuln-icon-low': v.severity === 'Low'
                               }"></i>
-                            <span class="vuln-name">{{ v.vul_name }}</span>
+                            <span class="vuln-name" :title="v.vul_name">{{ v.vul_name }}</span>
                           </div>
                           <div class="d-flex align-items-center gap-3 flex-shrink-0">
                             <span class="sev-badge" :class="'sev-' + (v.severity?.toLowerCase() || '')">{{ v.severity }}</span>
@@ -995,8 +995,11 @@ export default {
 }
 .asset-item-new:hover { background: #f2f3f6; }
 .asset-item-active {
-  background: #ffffff;
+  background: #f2f3f6;
   border-left: 4px solid #0f696e !important;
+}
+.asset-item-active:hover {
+  background: #f2f3f6;
 }
 
 .asset-ip {
@@ -1269,6 +1272,7 @@ export default {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .vuln-accordion-body {

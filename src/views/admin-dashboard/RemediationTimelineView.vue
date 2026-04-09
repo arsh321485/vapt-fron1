@@ -17,6 +17,54 @@
                 <h2 class="rt-title">Remediation Timeline</h2>
                 <p class="rt-subtitle">Track and manage vulnerability remediation progress</p>
               </div>
+              <div class="d-flex gap-2">
+                <button class="rt-btn-support" @click="openSupportModal">
+                  Support Request
+                </button>
+                <button class="rt-btn-ticket" @click="goToCreateTicket">
+                  <i class="bi bi-ticket-perforated me-1"></i>Create Ticket
+                </button>
+              </div>
+            </div>
+
+            <!-- Support Modal -->
+            <div class="modal fade" id="rtSupportModal" tabindex="-1" aria-hidden="true">
+              <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content vc-modal-content">
+                  <div class="modal-header vc-modal-header">
+                    <h5 class="modal-title vc-modal-title">Raise Support Request</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body p-4">
+                    <h6 class="vc-modal-section-label mb-3">Choose the step for which you want support</h6>
+                    <div class="row g-2 mt-1">
+                      <div class="col-4">
+                        <span class="vc-step-pill"
+                          :class="isAllSelected ? 'vc-step-pill-active' : ''"
+                          style="cursor:pointer;"
+                          @click="!isSupportAlreadyRaised && toggleAllSteps()">
+                          All Steps
+                        </span>
+                      </div>
+                      <div class="col-4" v-for="n in totalSteps" :key="n">
+                        <span class="vc-step-pill"
+                          :class="selectedSteps.includes(n) ? 'vc-step-pill-active' : ''"
+                          style="cursor:pointer;"
+                          @click="!isSupportAlreadyRaised && toggleStep(n)">
+                          Step {{ n }}
+                        </span>
+                      </div>
+                    </div>
+                    <p class="vc-modal-section-label mt-4 mb-2">Description <span class="text-danger">*</span></p>
+                    <textarea v-model="supportDescription" class="vc-textarea" rows="4"
+                      placeholder="Write your issue here..." :disabled="isSupportAlreadyRaised"></textarea>
+                  </div>
+                  <div class="modal-footer vc-modal-footer">
+                    <button v-if="!isSupportAlreadyRaised" class="vc-btn-primary" :disabled="!supportDescription" @click="submitSupport">Submit</button>
+                    <button v-else class="vc-btn-secondary" data-bs-dismiss="modal">Close</button>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- Stepper -->
@@ -230,6 +278,7 @@
 import DashboardMenu from '@/components/admin-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/admin-component/DashboardHeader.vue';
 import { useAuthStore } from '@/stores/authStore';
+import Swal from 'sweetalert2';
 
 export default {
   name: 'RemediationTimelineView',
@@ -237,11 +286,16 @@ export default {
 
   data() {
     return {
+      authStore: useAuthStore(),
       currentStep: 5,
       totalSteps: 8,
-      completedSteps: [1, 2, 3, 4],
+      completedSteps: [1,2,3,4],
       expandedTask: 0,
-
+      isSupportAlreadyRaised: false,
+      selectedSteps: [],
+      isAllSelected: false,
+      supportDescription: "",
+      supportDetail: null,
       currentVuln: {
         name: 'CVE-2023-35078: Remote Unauthenticated API Access',
         risk: 'CRITICAL RISK',
@@ -317,6 +371,96 @@ export default {
     };
   },
 
+  methods: {
+    toggleStep(step) {
+      if (this.isAllSelected) return;
+      if (this.selectedSteps.includes(step)) {
+        this.selectedSteps = this.selectedSteps.filter(s => s !== step);
+      } else {
+        this.selectedSteps.push(step);
+      }
+    },
+    toggleAllSteps() {
+      if (this.isAllSelected) {
+        this.isAllSelected = false;
+        this.selectedSteps = [];
+      } else {
+        this.isAllSelected = true;
+        this.selectedSteps = Array.from({ length: this.totalSteps }, (_, i) => i + 1);
+      }
+    },
+    async submitSupport() {
+      if (!this.supportDescription.trim()) return;
+
+      const vulnerabilityId = this.currentVuln?.id;
+      if (!vulnerabilityId) {
+        Swal.fire('Error', 'Vulnerability ID not found', 'error');
+        return;
+      }
+
+      let stepValue = 'all';
+      if (!this.isAllSelected && this.selectedSteps.length > 0) {
+        stepValue = this.selectedSteps.join(',');
+      }
+
+      const payload = { step: stepValue, description: this.supportDescription };
+      const res = await this.authStore.raiseSupportRequest(vulnerabilityId, payload);
+
+      if (res.status) {
+        this.isSupportAlreadyRaised = true;
+        this.supportDetail = res.data;
+        Swal.fire({ icon: 'success', title: 'Support Request Raised', timer: 2000, showConfirmButton: false });
+      } else {
+        Swal.fire('Error', res.message || 'Failed to raise support request', 'error');
+      }
+    },
+    async openSupportModal() {
+      this.isSupportAlreadyRaised = false;
+      this.selectedSteps = [];
+      this.isAllSelected = false;
+      this.supportDescription = "";
+      this.supportDetail = null;
+
+      const vulnerabilityId = this.currentVuln?.id;
+      if (vulnerabilityId) {
+        const res = await this.authStore.getRaiseSupportRequestByVulnerability(vulnerabilityId);
+        if (res.status && res.exists && res.data) {
+          const existing = res.data;
+          this.isSupportAlreadyRaised = true;
+          this.supportDetail = existing;
+          this.supportDescription = existing.description || "";
+          if (existing.step_requested?.toLowerCase() === 'all') {
+            this.isAllSelected = true;
+            this.selectedSteps = [];
+          } else {
+            this.isAllSelected = false;
+            this.selectedSteps = existing.step_requested
+              .split(',').map(s => Number(s.trim())).filter(n => !isNaN(n));
+          }
+        }
+      }
+
+      await this.$nextTick();
+      const modal = new bootstrap.Modal(document.getElementById('rtSupportModal'));
+      modal.show();
+    },
+    async goToCreateTicket() {
+      if (!this.currentVuln?.id || !this.currentVuln?.asset || !this.currentVuln?.report_id) {
+        Swal.fire('Error', 'Vulnerability data not available', 'error');
+        return;
+      }
+      this.$router.push({
+        name: 'CreateTicket',
+        params: {
+          reportId: this.currentVuln.report_id,
+          fixVulId: this.currentVuln.id,
+          asset: encodeURIComponent(this.currentVuln.asset),
+        },
+      });
+    },
+
+  },
+
   computed: {
     progressPercent() {
       return Math.round((this.completedSteps.length / this.totalSteps) * 100);
@@ -351,7 +495,124 @@ export default {
 .rt-page-header {
   padding: 72px 28px 20px;
   background: #ffffff;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #f1f5f9;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.rt-btn-support {
+  background: #e0f2f1;
+  color: #0f696e;
+  border: 1px solid rgba(15,105,110,0.2);
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.rt-btn-support:hover { background: #a1ecf2; }
+
+.rt-btn-ticket {
+  background: #241447;
+  color: #ffffff;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  display: inline-flex;
+  align-items: center;
+}
+.rt-btn-ticket:hover { opacity: 0.88; }
+
+/* ── Modal styles (from VulnerabilityCardView) ── */
+.vc-modal-content {
+  border-radius: 16px;
+  overflow: hidden;
+  border: none;
+}
+.vc-modal-header {
+  background: #241447;
+  color: #fff;
+  border-bottom: none;
+  padding: 18px 24px;
+}
+.vc-modal-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+.vc-modal-section-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #241447;
+}
+.vc-modal-footer {
+  border-top: 1px solid #f1f5f9;
+  padding: 14px 24px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.vc-step-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+  background: #f1f5f9;
+  border: 1.5px solid #e2e8f0;
+  cursor: pointer;
+  transition: all 0.15s;
+  width: 100%;
+  text-align: center;
+}
+.vc-step-pill-active {
+  background: #e0f2f1;
+  color: #0f696e;
+  border-color: #0f696e;
+}
+.vc-textarea {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.875rem;
+  color: #1e293b;
+  background: #f8f9fc;
+  outline: none;
+  resize: vertical;
+}
+.vc-textarea:focus { box-shadow: 0 0 0 2px rgba(15,105,110,0.2); border-color: #0f696e; }
+.vc-btn-primary {
+  background: #241447;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.vc-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.vc-btn-secondary {
+  background: white;
+  color: #241447;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .rt-title {
