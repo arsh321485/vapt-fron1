@@ -1273,6 +1273,8 @@ export default {
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+  max-width: 220px;
+  cursor: default;
 }
 
 .vuln-accordion-body {

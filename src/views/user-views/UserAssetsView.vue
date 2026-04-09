@@ -217,7 +217,7 @@
                                 'vuln-icon-medium': vuln.severity === 'Medium',
                                 'vuln-icon-low': vuln.severity === 'Low'
                               }"></i>
-                            <span class="vuln-name">{{ vuln.vul_name }}</span>
+                            <span class="vuln-name" :title="vuln.vul_name">{{ vuln.vul_name }}</span>
                           </div>
                           <div class="d-flex align-items-center gap-3 flex-shrink-0">
                             <span class="sev-badge" :class="'sev-' + (vuln.severity?.toLowerCase() || '')">{{ vuln.severity }}</span>
@@ -1080,6 +1080,8 @@ export default {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 220px;
+  cursor: default;
 }
 
 .vuln-accordion-body {
