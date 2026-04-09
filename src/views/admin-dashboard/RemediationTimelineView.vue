@@ -22,19 +22,8 @@
             <!-- Stepper -->
             <div class="rt-stepper-wrap">
               <div class="rt-stepper">
-                <div
-                  v-for="step in totalSteps"
-                  :key="step"
-                  class="rt-step-item"
-                >
-                  <!-- Connector line before each step (except first) -->
-                  <div
-                    v-if="step > 1"
-                    class="rt-step-line"
-                    :class="completedSteps.includes(step - 1) ? 'rt-line-done' : 'rt-line-pending'"
-                  ></div>
-
-                  <!-- Circle + active label -->
+                <template v-for="step in totalSteps" :key="step">
+                  <!-- Circle -->
                   <div class="rt-step-circle-wrap">
                     <div
                       class="rt-step-circle"
@@ -44,17 +33,17 @@
                         'rt-circle-pending': !completedSteps.includes(step) && step !== currentStep
                       }"
                     >
-                      <span v-if="completedSteps.includes(step)">
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                          <path d="M2.5 7L5.5 10L11.5 4" stroke="white" stroke-width="2"
-                                stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                      </span>
-                      <span v-else class="rt-step-num">{{ step }}</span>
+                      <span class="rt-step-num">{{ step }}</span>
                     </div>
                     <div v-if="step === currentStep" class="rt-active-label">UPDATE CONFIGURATION</div>
                   </div>
-                </div>
+                  <!-- Connector line after each step (except last) -->
+                  <div
+                    v-if="step < totalSteps"
+                    class="rt-step-line"
+                    :class="completedSteps.includes(step) ? 'rt-line-done' : 'rt-line-pending'"
+                  ></div>
+                </template>
               </div>
             </div>
 
@@ -66,19 +55,26 @@
 
                 <!-- Technical Insight Card -->
                 <div class="rt-tech-card">
+                  <!-- Label inside card -->
+                  <div class="rt-tech-label-wrap">
+                    <i class="bi bi-display rt-tech-label-icon"></i>
+                    <span class="rt-tech-label-text">Technical Insight</span>
+                  </div>
                   <div class="d-flex justify-content-between align-items-start">
+                    <!-- Left: Impacted Asset → Critical → CVE -->
                     <div class="rt-tech-left">
-                      <span class="rt-critical-badge">{{ currentVuln.risk }}</span>
-                      <h3 class="rt-vuln-name">{{ currentVuln.name }}</h3>
-                      <div class="d-flex align-items-center gap-2 mt-2 flex-wrap">
+                      <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
                         <span class="rt-label-text">Impacted Asset:</span>
                         <span class="rt-asset-chip">{{ currentVuln.asset }}</span>
                       </div>
+                      <span class="rt-critical-badge mb-2 d-inline-block">{{ currentVuln.risk }}</span>
+                      <h3 class="rt-vuln-name">{{ currentVuln.name }}</h3>
                     </div>
+                    <!-- Right: REMEDIATION PROGRESS -->
                     <div class="rt-tech-right">
                       <span class="rt-progress-label">REMEDIATION PROGRESS</span>
                       <div class="rt-progress-num">
-                        {{ currentVuln.progress }}<span class="rt-progress-pct">%</span>
+                        {{ progressPercent }}<span class="rt-progress-pct">%</span>
                       </div>
                     </div>
                   </div>
@@ -120,50 +116,46 @@
                       <!-- Expanded detail panel -->
                       <div v-if="expandedTask === idx && task.action" class="rt-task-expanded">
 
-                        <!-- ACTION -->
-                        <div class="rt-expand-section">
-                          <span class="rt-expand-label">ACTION</span>
-                          <p class="rt-expand-text">{{ task.action }}</p>
+                        <!-- ROW 1: ACTION + FILE PATH side by side -->
+                        <div class="rt-expand-row-2">
+                          <div class="rt-expand-section">
+                            <span class="rt-expand-label">ACTION</span>
+                            <p class="rt-expand-text">{{ task.action }}</p>
+                          </div>
+                          <div v-if="task.filePath" class="rt-expand-section">
+                            <span class="rt-expand-label">FILE PATH</span>
+                            <div class="rt-filepath-box">{{ task.filePath }}</div>
+                          </div>
                         </div>
 
-                        <!-- FILE PATH -->
-                        <div v-if="task.filePath" class="rt-expand-section">
-                          <span class="rt-expand-label">FILE PATH</span>
-                          <div class="rt-filepath-box">{{ task.filePath }}</div>
-                        </div>
-
-                        <!-- COMMAND TO RUN -->
+                        <!-- COMMAND TO RUN (full width) -->
                         <div v-if="task.command" class="rt-expand-section">
                           <span class="rt-expand-label">COMMAND TO RUN</span>
                           <div class="rt-code-block">
-                            <span class="rt-code-prompt">$ </span>{{ task.command }}
+                            {{ task.command }}
                           </div>
                         </div>
 
-                        <!-- ARTIFACTS / TOOLS USED -->
-                        <div v-if="task.tools && task.tools.length" class="rt-expand-section">
-                          <span class="rt-expand-label">ARTIFACTS / TOOLS USED</span>
-                          <div class="d-flex flex-wrap gap-2 mt-1">
-                            <span v-for="tool in task.tools" :key="tool" class="rt-tool-chip">
-                              {{ tool }}
-                            </span>
+                        <!-- ROW 2: TOOLS + CONSIDERATION side by side -->
+                        <div class="rt-expand-row-2">
+                          <div v-if="task.tools && task.tools.length" class="rt-expand-section">
+                            <span class="rt-expand-label">ARTIFACTS / TOOLS USED</span>
+                            <div class="d-flex flex-wrap gap-2 mt-1">
+                              <span v-for="tool in task.tools" :key="tool" class="rt-tool-chip">
+                                {{ tool }}
+                              </span>
+                            </div>
+                          </div>
+                          <div v-if="task.consideration" class="rt-expand-section">
+                            <span class="rt-expand-label">IMPORTANT CONSIDERATION</span>
+                            <div class="rt-consideration-box">
+                              <i class="bi bi-exclamation-triangle-fill" style="color:#f97316; flex-shrink:0;"></i>
+                              <span>{{ task.consideration }}</span>
+                            </div>
                           </div>
                         </div>
 
-                        <!-- IMPORTANT CONSIDERATION -->
-                        <div v-if="task.consideration" class="rt-expand-section">
-                          <span class="rt-expand-label">IMPORTANT CONSIDERATION</span>
-                          <div class="rt-consideration-box">
-                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"
-                                 style="flex-shrink:0; margin-top:1px;">
-                              <path d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM8 5v3.5M8 10.5v.5"
-                                    stroke="#f97316" stroke-width="1.5" stroke-linecap="round"/>
-                            </svg>
-                            <span>{{ task.consideration }}</span>
-                          </div>
-                        </div>
-
-                        <!-- SUB-TASKS -->
+                        <!-- SUB-TASKS (full width) -->
                         <div v-if="task.subTasks && task.subTasks.length" class="rt-expand-section">
                           <span class="rt-expand-label">SUB-TASKS</span>
                           <div class="rt-checklist">
@@ -219,36 +211,7 @@
                   </div>
                 </div>
 
-                <!-- Asset Statistics Card -->
-                <div class="rt-stats-card">
-                  <span class="rt-card-heading">ASSET STATISTICS</span>
 
-                  <div class="rt-stat-row">
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                      <span class="rt-stat-label">Uptime</span>
-                      <span class="rt-stat-value rt-stat-value-green">{{ uptime }}%</span>
-                    </div>
-                    <div class="rt-stat-bar">
-                      <div
-                        class="rt-stat-fill rt-stat-fill-green"
-                        :style="{ width: uptime + '%' }"
-                      ></div>
-                    </div>
-                  </div>
-
-                  <div class="rt-stat-row">
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                      <span class="rt-stat-label">Risk Score</span>
-                      <span class="rt-stat-value rt-stat-value-red">{{ riskScore }} / 10</span>
-                    </div>
-                    <div class="rt-stat-bar">
-                      <div
-                        class="rt-stat-fill rt-stat-fill-red"
-                        :style="{ width: (riskScore / 10) * 100 + '%' }"
-                      ></div>
-                    </div>
-                  </div>
-                </div>
 
               </div>
               <!-- /rt-sidebar -->
@@ -355,6 +318,9 @@ export default {
   },
 
   computed: {
+    progressPercent() {
+      return Math.round((this.completedSteps.length / this.totalSteps) * 100);
+    },
     completedSubtasksCount() {
       return this.completedSteps.length;
     },
@@ -404,7 +370,7 @@ export default {
 /* ─── Stepper ───────────────────────────────────────────────────────── */
 .rt-stepper-wrap {
   background: #ffffff;
-  padding: 20px 28px 28px;
+  padding: 24px 28px 40px;
   border-bottom: 1px solid #f1f5f9;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
@@ -412,40 +378,29 @@ export default {
 .rt-stepper {
   display: flex;
   align-items: center;
-}
-
-.rt-step-item {
-  display: flex;
-  align-items: center;
-  flex: 1;
-}
-
-.rt-step-item:last-child {
-  flex: 0 0 auto;
-}
-
-.rt-step-line {
-  flex: 1;
-  height: 2px;
-  min-width: 20px;
-  margin: 0 2px;
-}
-
-.rt-line-done {
-  background: #0f696e;
-}
-
-.rt-line-pending {
-  background: #e2e8f0;
+  justify-content: center;
+  width: 100%;
 }
 
 .rt-step-circle-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0;
   position: relative;
+  flex-shrink: 0;
 }
+
+.rt-step-line {
+  flex: 1;
+  height: 2px;
+  min-width: 24px;
+  max-width: 60px;
+  margin: 0 4px;
+  flex-shrink: 1;
+}
+
+.rt-line-done    { background: #0f696e; }
+.rt-line-pending { background: #e2e8f0; }
 
 .rt-step-circle {
   width: 32px;
@@ -481,7 +436,7 @@ export default {
 
 .rt-active-label {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 6px);
   left: 50%;
   transform: translateX(-50%);
   font-size: 0.58rem;
@@ -494,6 +449,7 @@ export default {
   border-radius: 50px;
   white-space: nowrap;
   pointer-events: none;
+  z-index: 1;
 }
 
 /* ─── Body Grid ─────────────────────────────────────────────────────── */
@@ -512,6 +468,19 @@ export default {
   min-width: 0;
 }
 
+/* ─── Technical Insight Label ───────────────────────────────────────── */
+.rt-tech-label-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f1f5f9;
+  border-radius: 6px;
+  padding: 4px 10px;
+  margin-bottom: 14px;
+}
+.rt-tech-label-icon { font-size: 0.78rem; color: #475569; }
+.rt-tech-label-text { font-size: 0.78rem; font-weight: 600; color: #475569; }
+
 /* ─── Technical Insight Card ────────────────────────────────────────── */
 .rt-tech-card {
   background: #ffffff;
@@ -519,6 +488,7 @@ export default {
   padding: 22px 24px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   border: 1px solid #f1f5f9;
+  border-left: 4px solid #dc2626;
 }
 
 .rt-tech-left {
@@ -636,6 +606,7 @@ export default {
   transition: background 0.15s;
   border-radius: 8px;
   padding: 0 8px;
+  background: #ffffff;
 }
 
 .rt-task-item:last-child {
@@ -643,7 +614,11 @@ export default {
 }
 
 .rt-task-item:hover {
-  background: #f8fafc;
+  background: #f8f9fc;
+}
+
+.rt-task-item:not(:first-child) {
+  background: #ffffff;
 }
 
 .rt-task-row {
@@ -709,6 +684,12 @@ export default {
   gap: 16px;
 }
 
+.rt-expand-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
 .rt-expand-section {
   display: flex;
   flex-direction: column;
@@ -753,11 +734,6 @@ export default {
   line-height: 1.6;
 }
 
-.rt-code-prompt {
-  color: #94a3b8;
-  user-select: none;
-}
-
 .rt-tool-chip {
   display: inline-block;
   font-size: 0.72rem;
@@ -772,14 +748,11 @@ export default {
 .rt-consideration-box {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  background: #fff7ed;
-  border: 1px solid #fed7aa;
-  border-radius: 8px;
-  padding: 10px 14px;
+  gap: 6px;
   font-size: 0.82rem;
   color: #c2410c;
   line-height: 1.55;
+  margin-top: 2px;
 }
 
 .rt-checklist {
@@ -812,6 +785,7 @@ export default {
 .rt-action-btns {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 12px;
   margin-top: 22px;
   padding-top: 18px;

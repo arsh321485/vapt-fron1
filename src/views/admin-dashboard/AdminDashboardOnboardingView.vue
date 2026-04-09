@@ -123,7 +123,6 @@
                         <div class="d-flex flex-column align-items-center justify-content-center flex-grow-1">
                           <div class="dash-big-num text-center total-assets-highlight" style="font-size:2.2rem; line-height:1;">{{ authStore.totalAssets }}</div>
                         </div>
-
                       </div>
                     </router-link>
                   </div>
@@ -327,7 +326,7 @@
 
                   </div>
 
-                  <div class="d-flex justify-content-center gap-3 mt-2" style="border-top:3px solid #f1f5f9; padding-top:10px;">
+                  <div class="d-flex justify-content-center gap-3 mt-2" style="border-top:1px solid #f1f5f9; padding-top:10px;">
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#0f696e;"></span>SLA Compliance</div>
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#d1d5db;"></span>Non-Compliance</div>
                   </div>
@@ -814,7 +813,7 @@
         <div class="mte-modal-box" @click.stop>
           <div class="mte-modal-header">
             <div>
-              <h3 class="mte-modal-title">Mitigation Timeline Extension</h3>
+              <h3 class="mte-modal-title">Mitigation timeline extension</h3>
               <p class="mte-modal-subtitle">Review and manage pending extension requests for vulnerability fixes.</p>
             </div>
             <button type="button" class="mte-close-btn" @click="closeMitigationExtensionModal">
@@ -851,7 +850,7 @@
                     <td>Admin</td>
                     <td>2026-03-20</td>
                     <td class="mte-extension">15 Days</td>
-                    <td class="mte-reason" :title="'Patch window approval pending from infra team'">{{ truncateReason('Patch window approval pending from infra team') }}</td>
+                    <td class="mte-reason" @click="openReasonDetail($event, 'Patch window approval pending from infra team')">{{ truncateReason('Patch window approval pending from infra team') }}</td>
                   </tr>
                   <tr>
                     <td>10.0.4.52</td>
@@ -859,7 +858,7 @@
                     <td>S. Miller</td>
                     <td>2026-03-21</td>
                     <td class="mte-extension">7 Days</td>
-                    <td class="mte-reason" :title="'Emergency freeze due to release cutover'">{{ truncateReason('Emergency freeze due to release cutover') }}</td>
+                    <td class="mte-reason" @click="openReasonDetail($event, 'Emergency freeze due to release cutover')">{{ truncateReason('Emergency freeze due to release cutover') }}</td>
                   </tr>
                   <tr>
                     <td>172.16.0.12</td>
@@ -867,7 +866,7 @@
                     <td>Admin</td>
                     <td>2026-03-18</td>
                     <td class="mte-extension">30 Days</td>
-                    <td class="mte-reason" :title="'Change advisory board approval not completed'">{{ truncateReason('Change advisory board approval not completed') }}</td>
+                    <td class="mte-reason" @click="openReasonDetail($event, 'Change advisory board approval not completed')">{{ truncateReason('Change advisory board approval not completed') }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -902,7 +901,7 @@
                     <td>N. Joshi</td>
                     <td>2026-03-23</td>
                     <td class="mte-extension">10 Days</td>
-                    <td class="mte-reason" :title="'Vendor patch waiting for validation in staging'">{{ truncateReason('Vendor patch waiting for validation in staging') }}</td>
+                    <td class="mte-reason" @click="openReasonDetail($event, 'Vendor patch waiting for validation in staging')">{{ truncateReason('Vendor patch waiting for validation in staging') }}</td>
                   </tr>
                   <tr>
                     <td>10.10.2.14</td>
@@ -910,7 +909,7 @@
                     <td>A. Shah</td>
                     <td>2026-03-24</td>
                     <td class="mte-extension">5 Days</td>
-                    <td class="mte-reason" :title="'Dependency conflict with auth service update'">{{ truncateReason('Dependency conflict with auth service update') }}</td>
+                    <td class="mte-reason" @click="openReasonDetail($event, 'Dependency conflict with auth service update')">{{ truncateReason('Dependency conflict with auth service update') }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -945,7 +944,7 @@
                     <td>R. Kale</td>
                     <td>2026-03-22</td>
                     <td class="mte-extension">14 Days</td>
-                    <td class="mte-reason" :title="'Maintenance window moved to next sprint cycle'">{{ truncateReason('Maintenance window moved to next sprint cycle') }}</td>
+                    <td class="mte-reason" @click="openReasonDetail($event, 'Maintenance window moved to next sprint cycle')">{{ truncateReason('Maintenance window moved to next sprint cycle') }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -980,7 +979,7 @@
                     <td>Ops Team</td>
                     <td>2026-03-25</td>
                     <td class="mte-extension">6 Days</td>
-                    <td class="mte-reason" :title="'Low-priority fix batched with monthly cycle'">{{ truncateReason('Low-priority fix batched with monthly cycle') }}</td>
+                    <td class="mte-reason" @click="openReasonDetail($event, 'Low-priority fix batched with monthly cycle')">{{ truncateReason('Low-priority fix batched with monthly cycle') }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -990,6 +989,29 @@
           <div class="mte-modal-footer">
             <button type="button" class="mte-btn-secondary">Reject</button>
             <button type="button" class="mte-btn-primary">Approve Selected</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Reason Detail Modal -->
+      <div v-if="showReasonDetailModal" class="reason-detail-overlay" @click="closeReasonDetail">
+        <div
+          class="reason-detail-box"
+          :style="{ top: reasonModalPos.top + 'px', left: reasonModalPos.left + 'px' }"
+          @click.stop
+        >
+          <div class="reason-detail-header">
+            <span class="reason-detail-title">Extension Reason</span>
+            <button type="button" class="mte-close-btn" @click="closeReasonDetail">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
+          <div class="reason-detail-body">
+            <p class="reason-detail-text">{{ selectedReasonText }}</p>
+          </div>
+          <div class="reason-detail-footer">
+            <button type="button" class="mte-btn-secondary" @click="closeReasonDetail">Reject</button>
+            <button type="button" class="mte-btn-primary" @click="closeReasonDetail">Approve</button>
           </div>
         </div>
       </div>
@@ -1049,7 +1071,8 @@
                       <td><span class="mte-pill" :class="getCvStatusPillClass(vuln.status)">{{ vuln.status || '—' }}</span></td>
                       <td>
                         <router-link :to="{ name:'VulFix', params:{ reportId: currentReportId, asset: vuln.host_name }, query:{ id: vuln.id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor } }" class="text-decoration-none" @click="closeCommonVulnModal">
-                          <button class="cv-view-btn">View <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
+                          <button v-if="(vuln.status || '').toLowerCase() === 'open'" class="cv-view-btn cv-fixnow-btn">Fix Now <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
+                          <button v-else class="cv-view-btn">View <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
                         </router-link>
                       </td>
                     </tr>
@@ -1079,7 +1102,8 @@
                       <td><span class="mte-pill" :class="getCvStatusPillClass(vuln.status)">{{ vuln.status || '—' }}</span></td>
                       <td>
                         <router-link :to="{ name:'VulFix', params:{ reportId: currentReportId, asset: vuln.host_name }, query:{ id: vuln.id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor } }" class="text-decoration-none" @click="closeCommonVulnModal">
-                          <button class="cv-view-btn">View <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
+                          <button v-if="(vuln.status || '').toLowerCase() === 'open'" class="cv-view-btn cv-fixnow-btn">Fix Now <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
+                          <button v-else class="cv-view-btn">View <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
                         </router-link>
                       </td>
                     </tr>
@@ -1109,7 +1133,8 @@
                       <td><span class="mte-pill" :class="getCvStatusPillClass(vuln.status)">{{ vuln.status || '—' }}</span></td>
                       <td>
                         <router-link :to="{ name:'VulFix', params:{ reportId: currentReportId, asset: vuln.host_name }, query:{ id: vuln.id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor } }" class="text-decoration-none" @click="closeCommonVulnModal">
-                          <button class="cv-view-btn">View <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
+                          <button v-if="(vuln.status || '').toLowerCase() === 'open'" class="cv-view-btn cv-fixnow-btn">Fix Now <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
+                          <button v-else class="cv-view-btn">View <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
                         </router-link>
                       </td>
                     </tr>
@@ -1139,7 +1164,8 @@
                       <td><span class="mte-pill" :class="getCvStatusPillClass(vuln.status)">{{ vuln.status || '—' }}</span></td>
                       <td>
                         <router-link :to="{ name:'VulFix', params:{ reportId: currentReportId, asset: vuln.host_name }, query:{ id: vuln.id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor } }" class="text-decoration-none" @click="closeCommonVulnModal">
-                          <button class="cv-view-btn">View <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
+                          <button v-if="(vuln.status || '').toLowerCase() === 'open'" class="cv-view-btn cv-fixnow-btn">Fix Now <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
+                          <button v-else class="cv-view-btn">View <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
                         </router-link>
                       </td>
                     </tr>
@@ -1153,6 +1179,9 @@
           <!-- Footer -->
           <div class="mte-modal-footer">
             <button type="button" class="mte-btn-secondary" @click="closeCommonVulnModal">Close</button>
+            <button type="button" class="mte-btn-primary" @click="$router.push({ path: '/missingsecurityupdates', query: { team: mitigationActiveTab } }); closeCommonVulnModal();">
+              Full Report <i class="bi bi-arrow-right ms-1"></i>
+            </button>
           </div>
 
         </div>
@@ -1193,6 +1222,9 @@ export default {
       showModal: false,
       showMitigationExtensionModal: false,
       mteOpenSection: "critical",
+      showReasonDetailModal: false,
+      selectedReasonText: "",
+      reasonModalPos: { top: 0, left: 0 },
       showCommonVulnModal: false,
       cvModalOpenSev: 'critical',
       riskCriteria: { critical: null, high: null, medium: null, low: null },
@@ -1454,6 +1486,26 @@ export default {
     },
     toggleMteSection(section) {
       this.mteOpenSection = this.mteOpenSection === section ? "" : section;
+    },
+    openReasonDetail(event, reason) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      const modalWidth = 300;
+      const modalHeight = 160;
+      let left = rect.left;
+      let top = rect.bottom + 6;
+      if (left + modalWidth > window.innerWidth - 12) {
+        left = window.innerWidth - modalWidth - 12;
+      }
+      if (top + modalHeight > window.innerHeight - 12) {
+        top = rect.top - modalHeight - 6;
+      }
+      this.reasonModalPos = { top, left };
+      this.selectedReasonText = reason;
+      this.showReasonDetailModal = true;
+    },
+    closeReasonDetail() {
+      this.showReasonDetailModal = false;
+      this.selectedReasonText = "";
     },
     truncateReason(reason) {
       const text = String(reason || "");
@@ -2559,6 +2611,52 @@ mounted() {
 .mte-high-icon { color: #f59e0b; }
 .mte-medium-icon { color: #fbbf24; }
 .mte-low-icon { color: #0f766e; }
+.reason-detail-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2100;
+  background: rgba(15, 23, 42, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.reason-detail-box {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(15,23,42,0.18);
+  width: 340px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.reason-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+.reason-detail-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+}
+.reason-detail-body {
+  padding: 18px 20px;
+}
+.reason-detail-text {
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.6;
+  margin: 0;
+}
+.reason-detail-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid #e5e7eb;
+}
 .mte-modal-footer {
   display: flex;
   justify-content: flex-end;
@@ -3450,6 +3548,14 @@ mounted() {
   align-items: center;
   white-space: nowrap;
   transition: background 0.15s, border-color 0.15s;
+}
+.cv-fixnow-btn {
+  border-color: #dc2626 !important;
+  color: #dc2626 !important;
+}
+.cv-fixnow-btn:hover {
+  background: rgba(220,38,38,0.07) !important;
+  border-color: #dc2626 !important;
 }
 .cv-view-btn:hover {
   background: rgba(15,105,110,0.07);
