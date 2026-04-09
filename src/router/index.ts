@@ -55,6 +55,7 @@ import ViewReportPage from "../views/admin-dashboard/ViewReportPage.vue";
 import ScopingFormView from "../views/admin-dashboard/ScopingFormView.vue";
 import ScopingFormView2 from "../views/admin-dashboard/ScopingFormView2.vue";
 import UserSetPasswordView from "../views/user-views/UserSetPasswordView.vue";
+import RemediationTimelineView from "../views/admin-dashboard/RemediationTimelineView.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -129,6 +130,11 @@ const router = createRouter({
       path: "/mitigationstrategy",
       name: "mitigationstrategy",
       component: MitigationStrategyView,
+    },
+    {
+      path: "/remediation-timeline",
+      name: "remediation-timeline",
+      component: RemediationTimelineView,
     },
     {
       path: "/missingsecurityupdates",

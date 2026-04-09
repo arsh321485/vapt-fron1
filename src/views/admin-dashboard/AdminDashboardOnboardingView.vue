@@ -123,7 +123,7 @@
                         <div class="d-flex flex-column align-items-center justify-content-center flex-grow-1">
                           <div class="dash-big-num text-center total-assets-highlight" style="font-size:2.2rem; line-height:1;">{{ authStore.totalAssets }}</div>
                         </div>
-                       
+
                       </div>
                     </router-link>
                   </div>
@@ -1153,9 +1153,6 @@
           <!-- Footer -->
           <div class="mte-modal-footer">
             <button type="button" class="mte-btn-secondary" @click="closeCommonVulnModal">Close</button>
-            <button type="button" class="mte-btn-primary" @click="$router.push({ path: '/missingsecurityupdates', query: { team: mitigationActiveTab } }); closeCommonVulnModal();">
-              Full Report <i class="bi bi-arrow-right ms-1"></i>
-            </button>
           </div>
 
         </div>
