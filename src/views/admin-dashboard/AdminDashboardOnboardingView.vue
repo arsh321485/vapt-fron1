@@ -123,7 +123,7 @@
                         <div class="d-flex flex-column align-items-center justify-content-center flex-grow-1">
                           <div class="dash-big-num text-center total-assets-highlight" style="font-size:2.2rem; line-height:1;">{{ authStore.totalAssets }}</div>
                         </div>
-                        <span class="dash-monitored-badge align-self-center" style="margin-top:8px;">All monitored</span>
+                       
                       </div>
                     </router-link>
                   </div>
@@ -251,7 +251,7 @@
                   </div>
 
                   <!-- Half-circle gauges — same logic, improved layout -->
-                  <div class="d-flex justify-content-around align-items-end" style="gap:2px; margin-top:2px;">
+                  <div class="d-flex justify-content-around align-items-end" style="gap:2px; margin-top:54px;">
 
                     <!-- Critical -->
                     <div class="d-flex flex-column align-items-center gap-1">
@@ -327,7 +327,7 @@
 
                   </div>
 
-                  <div class="d-flex justify-content-center gap-3 mt-2" style="border-top:1px solid #f1f5f9; padding-top:10px;">
+                  <div class="d-flex justify-content-center gap-3 mt-2" style="border-top:3px solid #f1f5f9; padding-top:10px;">
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#0f696e;"></span>SLA Compliance</div>
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#d1d5db;"></span>Non-Compliance</div>
                   </div>
