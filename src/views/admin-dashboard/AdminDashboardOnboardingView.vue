@@ -17,18 +17,19 @@
                 <h2 class="mb-0 fw-bold pt-5" style="font-size: 1.4rem; color: #1e293b;">Vulnerability Management Program</h2>
 
                 <!-- Calendar Button -->
-                <button class="btn border-0 p-1 pt-5" @click="toggleCalendar">
+                <!-- <button class="btn border-0 p-1 pt-5" @click="toggleCalendar">
                   <i class="bi bi-calendar3" style="color: #64748b; font-size: 1rem;"></i>
-                </button>
+                </button> -->
 
-                <!-- Outside-click backdrop -->
-                <div
+
+
+                <!-- Outside-click backdrop - CALENDAR COMMENTED OUT -->
+                <!-- <div
                   v-if="showCalendar"
                   style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:999;"
                   @click="showCalendar = false; showMonthPicker = false; showYearPicker = false;"
                 ></div>
 
-                <!-- Calendar Dropdown -->
                 <div
                   v-if="showCalendar"
                   class="border rounded p-3 shadow bg-white"
@@ -89,7 +90,7 @@
                       @click="handleDateClick(date)"
                     >{{ date }}</div>
                   </div>
-                </div>
+                </div> -->
               </div>
 
               <!-- View Report Button -->
@@ -987,8 +988,6 @@
           </div>
 
           <div class="mte-modal-footer">
-            <button type="button" class="mte-btn-secondary">Reject</button>
-            <button type="button" class="mte-btn-primary">Approve Selected</button>
           </div>
         </div>
       </div>
@@ -1010,8 +1009,6 @@
             <p class="reason-detail-text">{{ selectedReasonText }}</p>
           </div>
           <div class="reason-detail-footer">
-            <button type="button" class="mte-btn-secondary" @click="closeReasonDetail">Reject</button>
-            <button type="button" class="mte-btn-primary" @click="closeReasonDetail">Approve</button>
           </div>
         </div>
       </div>
@@ -1841,6 +1838,7 @@ export default {
       this.locationName = country;
       this.showDropdown = false;
     },
+    /* CALENDAR API - commented out
     async loadCalendarData() {
       this.calendarLoading = true;
       this.calendarError = false;
@@ -1934,6 +1932,7 @@ export default {
         this.$router.push("/assets");
       }
     },
+    */
     async openModal(severity) {
       await this.loadRiskCriteria();
       this.modalSeverity = severity;
