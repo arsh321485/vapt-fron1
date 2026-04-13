@@ -996,7 +996,6 @@
       <div v-if="showReasonDetailModal" class="reason-detail-overlay" @click="closeReasonDetail">
         <div
           class="reason-detail-box"
-          :style="{ top: reasonModalPos.top + 'px', left: reasonModalPos.left + 'px' }"
           @click.stop
         >
           <div class="reason-detail-header">
@@ -1009,6 +1008,8 @@
             <p class="reason-detail-text">{{ selectedReasonText }}</p>
           </div>
           <div class="reason-detail-footer">
+            <button type="button" class="mte-btn-secondary" @click="rejectRequest">Reject</button>
+            <button type="button" class="mte-btn-primary" @click="approveRequest">Approve</button>
           </div>
         </div>
       </div>
@@ -1500,6 +1501,12 @@ export default {
     closeReasonDetail() {
       this.showReasonDetailModal = false;
       this.selectedReasonText = "";
+    },
+    approveRequest() {
+      this.closeReasonDetail();
+    },
+    rejectRequest() {
+      this.closeReasonDetail();
     },
     truncateReason(reason) {
       const text = String(reason || "");
@@ -2471,12 +2478,12 @@ mounted() {
 
 .mte-modal-backdrop {
   position: fixed;
-  top: 64px;
-  left: 100px;
+  top: 0;
+  left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(15, 23, 42, 0.45);
-  z-index: 1200;
+  background: rgba(15, 23, 42, 0.65);
+  z-index: 9000;
   display: flex;
   align-items: stretch;
   justify-content: flex-end;
@@ -2610,8 +2617,8 @@ mounted() {
 .reason-detail-overlay {
   position: fixed;
   inset: 0;
-  z-index: 2100;
-  background: rgba(15, 23, 42, 0.35);
+  z-index: 99999;
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2620,10 +2627,15 @@ mounted() {
   background: #fff;
   border-radius: 12px;
   box-shadow: 0 6px 24px rgba(15,23,42,0.18);
-  width: 340px;
+  width: 320px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: fixed;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%);
+  z-index: 100000;
 }
 .reason-detail-header {
   display: flex;
@@ -2648,11 +2660,35 @@ mounted() {
 }
 .reason-detail-footer {
   display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 12px 20px 16px;
+  justify-content: center;
+  gap: 12px;
+  padding: 14px 20px 18px;
   border-top: 1px solid #e5e7eb;
 }
+.reason-detail-footer .mte-btn-secondary {
+  background: #ffffff;
+  color: #1e293b;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 9px 28px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.reason-detail-footer .mte-btn-secondary:hover { background: #f8f9fc; }
+.reason-detail-footer .mte-btn-primary {
+  background: #241447;
+  color: #ffffff;
+  border: none;
+  border-radius: 999px;
+  padding: 9px 28px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.reason-detail-footer .mte-btn-primary:hover { opacity: 0.88; }
 .mte-modal-footer {
   display: flex;
   justify-content: flex-end;
