@@ -14,9 +14,32 @@
 
             <!-- Top Bar -->
             <div class="cal-topbar">
-              <div class="position-relative cal-search-wrap">
-                <i class="bi bi-search cal-search-icon"></i>
-                <input v-model="searchQuery" type="text" class="cal-search" placeholder="Search events..." />
+              <div class="d-flex align-items-center gap-3 flex-wrap">
+                <div class="position-relative cal-search-wrap">
+                  <i class="bi bi-search cal-search-icon"></i>
+                  <input v-model="searchQuery" type="text" class="cal-search" placeholder="Search events..." />
+                </div>
+                <div class="cal-filter-select-wrap">
+                  <select v-model="criticalityFilter" class="cal-filter-select">
+                    <option value="All Types">All Types</option>
+                    <option value="Critical">Critical</option>
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                  </select>
+                  <i class="bi bi-chevron-down cal-filter-arrow"></i>
+                </div>
+                <div class="cal-filter-select-wrap">
+                  <select v-model="teamsFilter" class="cal-filter-select">
+                    <option value="All Units">All Units</option>
+                    <option value="Network Security">Network Security</option>
+                    <option value="Patch Management">Patch Management</option>
+                    <option value="Configuration Management">Configuration Management</option>
+                    <option value="Architectural Flaws">Architectural Flaws</option>
+                  </select>
+                  <i class="bi bi-chevron-down cal-filter-arrow"></i>
+                </div>
+                <button class="cal-filter-icon-btn"><i class="bi bi-sliders"></i></button>
               </div>
 
               <div class="cal-view-tabs">
@@ -28,8 +51,6 @@
               <div class="d-flex align-items-center gap-3">
                 <button class="cal-icon-btn"><i class="bi bi-bell"></i></button>
                 <button class="cal-icon-btn"><i class="bi bi-clock-history"></i></button>
-                <button class="cal-export-btn"><i class="bi bi-download me-1"></i>Export</button>
-                <div class="cal-avatar">D</div>
               </div>
             </div>
 
@@ -137,6 +158,8 @@ export default {
       activeView: 'Week',
       views: ['Month', 'Week', 'Day', 'List'],
       searchQuery: '',
+      criticalityFilter: 'All Types',
+      teamsFilter: 'All Units',
       selectedEvent: null,
       showPopup: false,
       popupPos: { top: 0, left: 0 },
@@ -208,13 +231,14 @@ export default {
       this.showPopup = true;
       const rect = $event.currentTarget.closest('.cal-day-cell').getBoundingClientRect();
       let left = rect.right + 8;
-      let top  = rect.top + window.scrollY - 20;
-      if (left + 310 > window.innerWidth - 20) {
-        left = rect.left - 318;
+      let top  = rect.top;
+      if (left + 290 > window.innerWidth - 20) {
+        left = rect.left - 298;
       }
-      if (top + 320 > window.scrollY + window.innerHeight) {
-        top = window.scrollY + window.innerHeight - 340;
+      if (top + 300 > window.innerHeight) {
+        top = window.innerHeight - 310;
       }
+      if (top < 70) top = 70;
       this.popupPos = { top, left };
     },
     closePopup() {
@@ -267,6 +291,49 @@ export default {
   outline: none;
 }
 .cal-search:focus { box-shadow: 0 0 0 2px rgba(15,105,110,0.15); }
+
+/* Filter selects */
+.cal-filter-select-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.cal-filter-select {
+  appearance: none;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 7px 32px 7px 12px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #1e293b;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.cal-filter-select:focus { border-color: #0f696e; }
+.cal-filter-arrow {
+  position: absolute;
+  right: 10px;
+  color: #94a3b8;
+  font-size: 0.65rem;
+  pointer-events: none;
+}
+.cal-filter-icon-btn {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #475569;
+  font-size: 1rem;
+  transition: background 0.15s;
+}
+.cal-filter-icon-btn:hover { background: #f1f5f9; }
 
 .cal-view-tabs { display: flex; gap: 4px; }
 .cal-tab {
@@ -429,7 +496,7 @@ export default {
   background: transparent;
 }
 .cal-popup {
-  position: absolute;
+  position: fixed;
   background: #ffffff;
   border-radius: 14px;
   padding: 20px;

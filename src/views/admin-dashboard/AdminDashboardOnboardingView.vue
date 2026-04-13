@@ -811,7 +811,25 @@
 
       <!-- Mitigation Timeline Extension Modal -->
       <div v-if="showMitigationExtensionModal" class="mte-modal-backdrop" @click.self="closeMitigationExtensionModal">
-        <div class="mte-modal-box" @click.stop>
+        <div class="mte-modal-box" @click.stop style="position:relative;">
+          <!-- Reason Detail Popup (inside modal) -->
+          <div v-if="showReasonDetailModal" class="reason-detail-overlay-inner" @click="closeReasonDetail">
+            <div class="reason-detail-box" @click.stop>
+              <div class="reason-detail-header">
+                <span class="reason-detail-title">Extension Reason</span>
+                <button type="button" class="mte-close-btn" @click="closeReasonDetail">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </div>
+              <div class="reason-detail-body">
+                <p class="reason-detail-text">{{ selectedReasonText }}</p>
+              </div>
+              <div class="reason-detail-footer">
+                <button type="button" class="mte-btn-secondary" @click="rejectRequest">Reject</button>
+                <button type="button" class="mte-btn-primary" @click="approveRequest">Approve</button>
+              </div>
+            </div>
+          </div>
           <div class="mte-modal-header">
             <div>
               <h3 class="mte-modal-title">Mitigation timeline extension</h3>
@@ -992,27 +1010,7 @@
         </div>
       </div>
 
-      <!-- Reason Detail Modal -->
-      <div v-if="showReasonDetailModal" class="reason-detail-overlay" @click="closeReasonDetail">
-        <div
-          class="reason-detail-box"
-          @click.stop
-        >
-          <div class="reason-detail-header">
-            <span class="reason-detail-title">Extension Reason</span>
-            <button type="button" class="mte-close-btn" @click="closeReasonDetail">
-              <i class="bi bi-x-lg"></i>
-            </button>
-          </div>
-          <div class="reason-detail-body">
-            <p class="reason-detail-text">{{ selectedReasonText }}</p>
-          </div>
-          <div class="reason-detail-footer">
-            <button type="button" class="mte-btn-secondary" @click="rejectRequest">Reject</button>
-            <button type="button" class="mte-btn-primary" @click="approveRequest">Approve</button>
-          </div>
-        </div>
-      </div>
+
 
       <!-- Common Vulnerabilities Modal -->
       <div v-if="showCommonVulnModal" class="mte-modal-backdrop" @click.self="closeCommonVulnModal">
@@ -2616,14 +2614,15 @@ mounted() {
 .mte-high-icon { color: #f59e0b; }
 .mte-medium-icon { color: #fbbf24; }
 .mte-low-icon { color: #0f766e; }
-.reason-detail-overlay {
-  position: fixed;
+.reason-detail-overlay-inner {
+  position: absolute;
   inset: 0;
-  z-index: 99999;
-  background: transparent;
+  z-index: 999;
+  background: rgba(15, 23, 42, 0.25);
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 16px;
 }
 .reason-detail-box {
   background: #fff;
@@ -2633,11 +2632,8 @@ mounted() {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  position: fixed;
-  top: 50% !important;
-  left: 50% !important;
-  transform: translate(-50%, -50%);
-  z-index: 100000;
+  position: relative;
+  z-index: 1000;
 }
 .reason-detail-header {
   display: flex;
