@@ -751,11 +751,8 @@ export default {
       this.pendingProject = null;
     },
     handleContinue() {
-      // 🟢 CASE 1: Came from dashboard / assets / tickets / etc
-  if (this.returnTo) {
-    this.$router.push(this.returnTo);
-    return;
-  }
+      // 🟢 Always go to /riskcriteria in onboarding flow
+      // returnTo is only used when explicitly navigating from dashboard settings
       // Check if at least 1 location exists
       // if (!this.authStore.locations || this.authStore.locations.length === 0) {
       //   Swal.fire({
