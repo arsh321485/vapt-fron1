@@ -2501,11 +2501,13 @@ mounted() {
   flex-direction: column;
 }
 .mte-modal-header {
-  padding: 24px 28px 14px;
+  padding: 20px 28px 14px;
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 14px;
   flex-shrink: 0;
+  margin-top: 60px;
 }
 .mte-modal-title {
   margin: 0;
