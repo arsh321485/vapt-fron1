@@ -628,6 +628,14 @@ function startPolling() {
       if (res.file_uploaded === true) {
         stopPolling()
         localStorage.removeItem(getUserCacheKey('scoping_submitted'))
+        // Auth clear karo taaki admin re-login kare
+        // SignInView ka checkAndRedirect() proper routing handle karega
+        localStorage.removeItem('authorization')
+        localStorage.removeItem('refreshToken')
+        localStorage.removeItem('user')
+        localStorage.removeItem('authenticated')
+        localStorage.removeItem('google_id_token')
+        localStorage.removeItem('isNewUser')
         router.push('/signin')
       } else if (res.cards_generating === true) {
         cardsGenerating.value = true

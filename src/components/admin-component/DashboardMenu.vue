@@ -88,6 +88,14 @@
           </button>
         </div>
 
+        <!-- CALENDAR -->
+        <div>
+          <button class="btn border-0" :class="{ activeBtn: isActive('/calendar') }" @click="navigateTo('/calendar')">
+            <i class="bi bi-calendar3 nav-menu"></i>
+            <p class="menu-heading">Calendar</p>
+          </button>
+        </div>
+
 
 
       </div>
