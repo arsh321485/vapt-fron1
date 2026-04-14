@@ -228,7 +228,7 @@ export default {
   data() {
     return {
       activeView: 'Week',
-      views: ['Month', 'Week', 'Day', 'List'],
+      views: ['Month', 'Week', 'Day'],
       searchQuery: '',
       criticalityFilter: 'All Types',
       teamsFilter: 'All Units',
