@@ -56,31 +56,45 @@
 
             <!-- Page Header -->
             <div class="cal-page-header">
-              <div>
+              <div v-if="activeView === 'Week'">
+                <h1 class="cal-month-title">Weekly View</h1>
+                <p class="cal-month-sub"><i class="bi bi-calendar3 me-1"></i>{{ weekRangeLabel }}</p>
+              </div>
+              <div v-else-if="activeView === 'Day'">
+                <h1 class="cal-month-title">Daily View</h1>
+              </div>
+              <div v-else>
                 <h1 class="cal-month-title">April 2026</h1>
                 <p class="cal-month-sub">12 Critical Deadlines Remaining</p>
               </div>
-              <div class="cal-legend">
-                <div class="cal-legend-item">
-                  <span class="cal-legend-dot" style="background:#241447;"></span> Scheduled Scan
+              <div class="d-flex align-items-center gap-3">
+                <!-- Week nav -->
+                <div v-if="activeView === 'Week'" class="d-flex align-items-center gap-2">
+                  <button class="cal-nav-btn" @click="prevWeek"><i class="bi bi-chevron-left"></i></button>
+                  <button class="cal-today-btn" @click="goToToday">Today</button>
+                  <button class="cal-nav-btn" @click="nextWeek"><i class="bi bi-chevron-right"></i></button>
                 </div>
-                <div class="cal-legend-item">
-                  <span class="cal-legend-dot" style="background:#dc2626;"></span> Deadline
-                </div>
-                <div class="cal-legend-item">
-                  <span class="cal-legend-dot" style="background:#0f696e;"></span> Discovery
+                <!-- Legend (month view) -->
+                <div v-else-if="activeView !== 'Day'" class="cal-legend">
+                  <div class="cal-legend-item"><span class="cal-legend-dot" style="background:#241447;"></span> Scheduled Scan</div>
+                  <div class="cal-legend-item"><span class="cal-legend-dot" style="background:#dc2626;"></span> Deadline</div>
+                  <div class="cal-legend-item"><span class="cal-legend-dot" style="background:#0f696e;"></span> Discovery</div>
                 </div>
               </div>
             </div>
 
-            <!-- Calendar Grid -->
-            <div class="cal-grid-wrap">
-              <!-- Weekday headers -->
+            <!-- Day View Date Navigation Bar -->
+            <div v-if="activeView === 'Day'" class="cal-day-nav-bar">
+              <button class="cal-nav-btn" @click="prevDay"><i class="bi bi-chevron-left"></i></button>
+              <span class="cal-day-nav-label">{{ currentDayLabel }}</span>
+              <button class="cal-nav-btn" @click="nextDay"><i class="bi bi-chevron-right"></i></button>
+            </div>
+
+            <!-- MONTH Calendar Grid -->
+            <div v-if="activeView === 'Month' || activeView === 'List'" class="cal-grid-wrap">
               <div class="cal-weekdays">
                 <div class="cal-weekday" v-for="day in weekDays" :key="day">{{ day }}</div>
               </div>
-
-              <!-- Days grid -->
               <div class="cal-days-grid">
                 <div
                   v-for="(dayObj, idx) in calendarDays"
@@ -97,6 +111,64 @@
                     >
                       {{ evt.title }}
                     </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- WEEK View -->
+            <div v-if="activeView === 'Week'" class="cal-week-wrap">
+              <div class="cal-week-grid">
+                <div
+                  v-for="(dayObj, idx) in currentWeekDays"
+                  :key="idx"
+                  :class="['cal-week-col', dayObj.isToday ? 'cal-week-col-today' : '']"
+                >
+                  <!-- Day header -->
+                  <div class="cal-week-day-header">
+                    <span class="cal-week-day-name">{{ weekDays[idx] }}</span>
+                    <span :class="['cal-week-day-num', dayObj.isToday ? 'cal-week-day-num-active' : '']">{{ dayObj.day }}</span>
+                  </div>
+                  <!-- Events -->
+                  <div class="cal-week-events">
+                    <div
+                      v-for="evt in getWeekEventsForDay(dayObj.day)"
+                      :key="evt.id"
+                      :class="['cal-week-event-card', 'cal-week-card-' + evt.color]"
+                      @click="openEventPopup(evt, dayObj, $event)"
+                    >
+                      <span :class="['cal-week-type-badge', 'cal-badge-' + evt.color]">{{ evt.type.toUpperCase() }}</span>
+                      <p class="cal-week-event-title">{{ evt.title }}</p>
+                      <p v-if="evt.team" class="cal-week-event-team">Team: {{ evt.team }}</p>
+                    </div>
+                    <p v-if="getWeekEventsForDay(dayObj.day).length === 0" class="cal-no-events">No events</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- DAY View -->
+            <div v-if="activeView === 'Day'" class="cal-day-wrap">
+
+              <div class="cal-day-inner">
+                <div v-for="hour in dayHours" :key="hour" class="cal-day-slot">
+                  <span class="cal-slot-time">{{ hour }}</span>
+                  <div class="cal-slot-area">
+                    <div class="cal-slot-line"></div>
+                    <div v-if="hour === '11:00 AM'" class="cal-current-time-row">
+                      <span class="cal-current-dot"></span>
+                      <span class="cal-current-line"></span>
+                    </div>
+                    <div v-for="evt in getDayEventsForHour(hour)" :key="evt.id" :class="['cal-day-event-card', 'cal-day-card-' + evt.color]">
+                      <div class="cal-day-event-top">
+                        <span :class="['cal-day-type-badge', 'cal-badge-' + evt.color]">{{ evt.type }}</span>
+                        <span class="cal-day-time-range">{{ evt.timeRange }}</span>
+                      </div>
+                      <p class="cal-day-event-title">{{ evt.title }}</p>
+                      <div v-if="evt.team" class="cal-day-event-team">
+                        <i class="bi bi-people-fill me-1"></i>Team: {{ evt.team }}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -164,6 +236,25 @@ export default {
       showPopup: false,
       popupPos: { top: 0, left: 0 },
       weekDays: ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'],
+      currentWeekStart: 12,
+      currentDayLabel: 'Wednesday, April 15, 2026',
+      dayHours: [
+        '08:00 AM','09:00 AM','10:00 AM','11:00 AM',
+        '12:00 PM','01:00 PM','02:00 PM','03:00 PM','04:00 PM',
+      ],
+      dayEvents: [
+        { id: 1, type: 'CRITICAL',   color: 'red',  title: 'Critical Patch: OpenSSL Vulnerability',   timeRange: '10:00 AM - 12:00 PM', team: 'Network Security',  startHour: '10:00 AM', topPx: 140, heightPx: 130 },
+        { id: 2, type: 'DISCOVERY',  color: 'teal', title: 'Asset Discovery: New Cloud Instance Scan', timeRange: '2:00 PM - 3:30 PM',   team: 'Patch Management',  startHour: '02:00 PM', topPx: 410, heightPx: 110 },
+      ],
+      weekEventsData: [
+        { id: 1,  day: 12, title: 'Routine Asset Scan',       type: 'DISCOVERY', color: 'teal',   team: null },
+        { id: 2,  day: 13, title: 'Log4j Remediation',        type: 'CRITICAL',  color: 'red',    team: null },
+        { id: 3,  day: 14, title: 'Internal Compliance',      type: 'AUDIT',     color: 'purple', team: null },
+        { id: 4,  day: 15, title: 'OpenSSL Vulnerability',    type: 'CRITICAL PATCH', color: 'red',  team: 'Network Security' },
+        { id: 5,  day: 15, title: 'New Cloud Instance Scan',  type: 'ASSET DISCOVERY', color: 'teal', team: 'Patch Management' },
+        { id: 6,  day: 16, title: 'Quarterly Review',         type: 'PENDING',   color: 'grey',   team: null },
+        { id: 7,  day: 17, title: 'Firewall Rule Audit',      type: 'NETWORK',   color: 'teal',   team: null },
+      ],
       events: [
         { id: 1,  day: 1,  title: 'CVE-2026-1029',   type: 'discovery', color: 'teal'   },
         { id: 2,  day: 3,  title: 'Weekly Audit',     type: 'scan',      color: 'purple' },
@@ -226,6 +317,23 @@ export default {
       if (!currentMonth) return [];
       return this.events.filter(e => e.day === day);
     },
+    getDayEventsForHour(hour) {
+      return this.dayEvents.filter(e => e.startHour === hour);
+    },
+    prevDay() { this.currentDayLabel = 'Tuesday, April 14, 2026'; },
+    nextDay() { this.currentDayLabel = 'Thursday, April 16, 2026'; },
+    getWeekEventsForDay(day) {
+      return this.weekEventsData.filter(e => e.day === day);
+    },
+    prevWeek() {
+      this.currentWeekStart -= 7;
+    },
+    nextWeek() {
+      this.currentWeekStart += 7;
+    },
+    goToToday() {
+      this.currentWeekStart = 12;
+    },
     openEventPopup(evt, dayObj, $event) {
       this.selectedEvent = evt;
       this.showPopup = true;
@@ -244,6 +352,22 @@ export default {
     closePopup() {
       this.showPopup = false;
       this.selectedEvent = null;
+    },
+  },
+  computed: {
+    dayViewTitle() {
+      return this.currentDayLabel;
+    },
+    currentWeekDays() {
+      return Array.from({ length: 7 }, (_, i) => {
+        const day = this.currentWeekStart + i;
+        return { day, currentMonth: true, isToday: day === 12 };
+      });
+    },
+    weekRangeLabel() {
+      const start = this.currentWeekStart;
+      const end = start + 6;
+      return `April ${start} - ${end}, 2026`;
     },
   },
 };
@@ -578,6 +702,295 @@ export default {
   transition: background 0.15s;
 }
 .cal-popup-dismiss:hover { background: #f8f9fc; }
+
+/* ── Week View ── */
+.cal-week-wrap {
+  margin: 0 28px 24px;
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #f1f5f9;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+.cal-week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  min-height: 500px;
+  border-bottom: 1px solid #e2e8f0;
+}
+.cal-week-col {
+  border-right: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid #e2e8f0;
+}
+.cal-week-col:last-child { border-right: none; }
+.cal-week-col-today { background: #fafbff; border-top: 3px solid #0f696e; }
+
+.cal-week-day-header {
+  padding: 14px 10px 10px;
+  border-bottom: 2px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: #f8f9fc;
+}
+.cal-week-day-name {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.cal-week-day-num {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+.cal-week-day-num-active {
+  background: #241447;
+  color: #fff;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+}
+
+.cal-week-events {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.cal-week-event-card {
+  border-radius: 8px;
+  padding: 10px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.cal-week-event-card:hover { opacity: 0.85; }
+.cal-week-card-red    { background: #fff0f0; border-left: 3px solid #dc2626; }
+.cal-week-card-teal   { background: #f0fdf9; border-left: 3px solid #0f696e; }
+.cal-week-card-purple { background: #f3f0ff; border-left: 3px solid #241447; }
+.cal-week-card-grey   { background: #f8f9fc; border-left: 3px solid #94a3b8; }
+
+.cal-week-type-badge {
+  display: inline-block;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+}
+.cal-badge-red    { background: #fee2e2; color: #dc2626; }
+.cal-badge-teal   { background: #ccfbf1; color: #0f696e; }
+.cal-badge-purple { background: #ede9fe; color: #241447; }
+.cal-badge-grey   { background: #f1f5f9; color: #64748b; }
+
+.cal-week-event-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 4px;
+  line-height: 1.3;
+}
+.cal-week-event-team {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  margin: 0;
+}
+.cal-no-events {
+  font-size: 0.75rem;
+  color: #cbd5e1;
+  text-align: center;
+  margin-top: 20px;
+}
+
+/* Nav buttons */
+.cal-nav-btn {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #475569;
+  font-size: 0.82rem;
+  transition: background 0.15s;
+}
+.cal-nav-btn:hover { background: #f1f5f9; }
+.cal-today-btn {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #1e293b;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.cal-today-btn:hover { background: #f1f5f9; }
+
+/* Day nav bar */
+.cal-day-nav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 10px 28px;
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
+  margin: 0 28px 0;
+  border-radius: 12px 12px 0 0;
+  border: 1px solid #e2e8f0;
+  border-bottom: none;
+}
+.cal-day-nav-label {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e293b;
+  min-width: 220px;
+  text-align: center;
+}
+
+/* ── Day View ── */
+.cal-day-wrap {
+  margin: 0 28px 24px;
+  background: #ffffff;
+  border-radius: 0 0 16px 16px;
+  border: 1px solid #e2e8f0;
+  border-top: none;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+.cal-day-subheader {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-bottom: 1px solid #f1f5f9;
+  background: #f8f9fc;
+}
+.cal-day-label {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+.cal-day-inner {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  background: #ffffff;
+}
+.cal-day-slot {
+  display: flex;
+  align-items: flex-start;
+  min-height: 70px;
+  border-bottom: 1px solid #e2e8f0;
+}
+.cal-slot-time {
+  width: 100px;
+  flex-shrink: 0;
+  padding: 10px 16px 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-align: right;
+  background: #ffffff;
+}
+.cal-slot-area {
+  flex: 1;
+  position: relative;
+  padding: 8px 16px 8px 20px;
+  border-left: 1px solid #cbd5e1;
+  min-height: 70px;
+  background: #ffffff;
+}
+.cal-slot-line {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: #e2e8f0;
+}
+.cal-current-time-row {
+  display: flex;
+  align-items: center;
+  position: absolute;
+  top: 35px;
+  left: 0;
+  right: 0;
+  z-index: 2;
+}
+.cal-current-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #dc2626;
+  flex-shrink: 0;
+  margin-left: -5px;
+}
+.cal-current-line {
+  flex: 1;
+  height: 2px;
+  background: #dc2626;
+}
+.cal-day-event-card {
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  width: 100%;
+}
+.cal-day-event-card:hover { opacity: 0.85; }
+.cal-day-card-red  { background: #fef2f2; border-left: 4px solid #dc2626; }
+.cal-day-card-teal { background: #f0fdf9; border-left: 4px solid #0f696e; }
+.cal-day-event-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.cal-day-type-badge {
+  display: inline-block;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+.cal-day-time-range {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+.cal-day-event-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 8px;
+}
+.cal-day-event-team {
+  font-size: 0.78rem;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
 
 /* ── Bottom Stats ── */
 .cal-stats-row {

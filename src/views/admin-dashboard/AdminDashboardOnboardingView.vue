@@ -491,28 +491,28 @@
                       </thead>
                       <tbody>
                         <tr>
-                          <td>Patch Mgmt</td>
+                          <td>Patch Management</td>
                           <td><span class="dash-mte-pill critical">14</span></td>
                           <td><span class="dash-mte-pill high">38</span></td>
                           <td><span class="dash-mte-pill medium">22</span></td>
                           <td><span class="dash-mte-pill low">12</span></td>
                         </tr>
                         <tr>
-                          <td>Config Mgmt</td>
+                          <td>Configuration Management</td>
                           <td><span class="dash-mte-pill critical">06</span></td>
                           <td><span class="dash-mte-pill high">24</span></td>
                           <td><span class="dash-mte-pill medium">84</span></td>
                           <td><span class="dash-mte-pill low">61</span></td>
                         </tr>
                         <tr>
-                          <td>Network Sec</td>
+                          <td>Network Security</td>
                           <td><span class="dash-mte-pill critical">22</span></td>
                           <td><span class="dash-mte-pill high">15</span></td>
                           <td><span class="dash-mte-pill medium">09</span></td>
                           <td><span class="dash-mte-pill low">04</span></td>
                         </tr>
                         <tr>
-                          <td>Arch Flaws</td>
+                          <td>Architectural Flaws</td>
                           <td><span class="dash-mte-pill critical">03</span></td>
                           <td><span class="dash-mte-pill high">08</span></td>
                           <td><span class="dash-mte-pill medium">14</span></td>

@@ -9,270 +9,257 @@
           <div class="col-1 ps-0 menubar-col1">
             <DashboardMenu />
           </div>
+          <div class="col-11 exc-content">
 
-          <div class="col-11 pt-5 pb-3 px-4 pe-5">
-            <div class="d-flex justify-content-between">
+            <!-- Page Header -->
+            <div class="exc-page-header">
               <div>
-                <h2 class="ticket-head mt-4">Support Requests</h2>
+                <h2 class="exc-title">Support Requests</h2>
+                <p class="exc-subtitle">Streamlining the resolution of critical infrastructure vulnerabilities.</p>
               </div>
-            </div>
-
-            <div class="row mt-3">
-              <div class="d-flex justify-content-start gap-3">
-              
-                <button class="btn btn-sm py-1 px-2" style="border-radius: 20px;border-color: rgba(0, 0, 0, 0.12);" @click="toggleSort">
-                  <i class="bi bi-arrow-down-up me-1"></i>Sort by Date
-                  <i :class="sortOrder === 'desc' ? 'bi bi-arrow-down ms-1' : 'bi bi-arrow-up ms-1'"></i>
-                </button>
-               
-                    <div class="">
-                    <form>
-                      <select  v-model="selectedTeam" class="form-select" style="width: auto; border-radius: 20px; display: inline-block;">
-                        
-                         <option value="all">All</option>
-  <option value="Patch Management">Patch Management</option>
-  <option value="Configuration Management">Configuration Management</option>
-  <option value="Network Management">Network Management</option>
-  <option value="Architectural Management">Architectural Management</option>
-                      </select>
-                    </form>
-                    </div>
-            
-              </div>
-            </div>
-
-            <div class="row mt-5">
-
-              <div class="table-responsive">
-                <table class="table align-middle table-hover">
-                  <thead class="table-light">
-                    <tr>
-                      <th>S.NO.</th>
-                      <th scope="col">Vul. name</th>
-                      <th scope="col">Asset</th>
-                      <th scope="col">Description</th>
-                      <th scope="col">Requested by</th>
-                      <th scope="col">Date requested</th>
-                      <th scope="col"></th>
-                    </tr>
-                  </thead>
-                  <tbody class="raised-tbody">
-                    <tr v-for="(req, index) in finalSupportRequests" :key="req._id">
-                      <!-- SR NO -->
-                      <td>{{ index + 1 }}</td>
-
-                      <!-- Vulnerability Name -->
-                      <td class="text-truncate" style="max-width: 200px;" data-bs-toggle="tooltip"
-    data-bs-placement="top" :title="req.vul_name">
-                        {{ req.vul_name }}
-                      </td>
-
-                      <!-- Host -->
-                      <td>{{ req.host_name }}</td>
-
-                      <!-- Description / Status -->
-                      <td
-    class="text-truncate"
-    style="cursor:pointer; max-width:220px;"
-    :title="req.description"
-    data-bs-toggle="modal"
-    data-bs-target="#viewRequestsModal"
-    @click="openViewRequestModal(req)">
-  {{ req.description }}
-</td>
-
-                      <!-- Requested By -->
-                      <td>{{ req.requested_by }}</td>
-
-                      <!-- Requested At -->
-                      
-                      <td>
-  {{ req.requested_at ? new Date(req.requested_at).toLocaleDateString() : "-" }}
-</td>
-
-                      <!-- Action -->
-                      <td></td>
-                    </tr>
-
-                    <!-- Empty State -->
-                     <tr v-if="!finalSupportRequests.length && !loadingRequests">
-  <td colspan="7" class="text-center text-muted py-4">
-    No support requests found
-  </td>
-</tr>
-                    
-                  </tbody>
-                </table>
-                <!-- view Support Requests Modal -->
-                <div class="modal fade" id="viewRequestsModal" tabindex="-1" aria-labelledby="viewRequestsModalLabel"
-                  aria-hidden="true">
-                  <div class="modal-dialog modal-dialog-centered">
-                    <div class="modal-content">
-
-                      <!-- Modal Header -->
-                      <div class="modal-header">
-                        <h5 class="modal-title" id="viewRequestsModalLabel">Issues Raised for Support Requests</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                      </div>
-
-                      <!-- Modal Body -->
-                      <div class="modal-body" v-if="selectedSupportRequest">
-                        <div class="row g-2">
-  <div
-    class="col-4"
-    v-for="(step, index) in selectedStepsArray"
-    :key="index"
-  >
-    <span
-      class="badge rounded-pill w-100 py-2 text-center bg-primary"
-      style="font-size: 12px;"
-    >
-      {{ step }}: Code review
-    </span>
-  </div>
-</div>
-
-
-                        <h6 class="mt-3 fw-semibold">Description</h6>
-                        <textarea class="form-control rounded-0" rows="4" readonly>{{ selectedSupportRequest.description }}
-                              </textarea>
-                      </div>
-
-                      <!-- Modal Footer -->
-                      <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                      </div>
-
-                    </div>
-                  </div>
+              <div class="exc-stat-card" style="cursor:pointer;" @click="openSlideOver(finalSupportRequests[0], 0)">
+                <div class="text-end">
+                  <p class="exc-stat-label">Active Tickets</p>
+                  <p class="exc-stat-value">{{ finalSupportRequests.length }}</p>
+                </div>
+                <div class="exc-stat-icon">
+                  <i class="bi bi-ticket-perforated-fill"></i>
                 </div>
               </div>
+            </div>
 
-              <!-- Chat Box -->
-              <div v-if="showChat" class="chat-box">
-                <div class="chat-middle">
-                  <div class="chat-header d-flex justify-content-between align-items-center px-4 py-3">
-                    <div class="d-flex flex-row">
-                      <h6 class="mb-0 fw-semibold">VMware ESXi 7.0/8.0 Sandbox Escape (CVE - 2025-22225)</h6>
+            <!-- Table Card -->
+            <div class="exc-table-card">
+              <!-- Controls -->
+              <div class="exc-table-controls">
+                <div class="d-flex gap-3">
+                  <button class="exc-btn-filter">
+                    <i class="bi bi-funnel me-1"></i> Filter View
+                  </button>
+                  <button class="exc-btn-sort" @click="toggleSort">
+                    <i class="bi bi-sort-down me-1"></i> Sort by Date
+                  </button>
+                  <select v-model="selectedTeam" class="exc-select">
+                    <option value="all">All Teams</option>
+                    <option value="Patch Management">Patch Management</option>
+                    <option value="Configuration Management">Configuration Management</option>
+                    <option value="Network Management">Network Management</option>
+                    <option value="Architectural Management">Architectural Management</option>
+                  </select>
+                </div>
+                <span class="exc-showing-badge">Showing {{ finalSupportRequests.length }} requests</span>
+              </div>
 
-                      <div class="position-relative d-inline-block">
-                        <!-- Question Icon -->
-                        <i class="bi bi-question-circle" @mouseenter="showBox = true" @mouseleave="showBox = false"
-                          style="cursor: pointer; font-size: 18px;"></i>
+              <!-- Table -->
+              <div class="table-responsive">
+                <table class="exc-table">
+                  <thead>
+                    <tr>
+                      <th>Asset</th>
+                      <th>Vulnerability Name</th>
+                      <th class="text-center">Criticality</th>
+                      <th>Requested By</th>
+                      <th>Support Raised</th>
+                      <th>Ticket #</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-if="loadingRequests">
+                      <td colspan="7" class="text-center py-5 text-muted">Loading...</td>
+                    </tr>
+                    <tr v-else-if="!finalSupportRequests.length">
+                      <td colspan="7" class="text-center py-5 text-muted">No support requests found</td>
+                    </tr>
+                    <tr v-else v-for="(req, index) in finalSupportRequests" :key="req._id">
+                      <td>
+                        <div class="exc-asset-cell">
+                          <span class="exc-asset-ip">{{ req.host_name }}</span>
+                          <span class="exc-asset-sub">{{ req.requested_by }}</span>
+                        </div>
+                      </td>
+                      <td class="exc-vuln-name" :title="req.vul_name">{{ req.vul_name }}</td>
+                      <td class="text-center">
+                        <span class="exc-badge exc-badge-critical">CRITICAL</span>
+                      </td>
+                      <td>
+                        <div class="d-flex align-items-center gap-2">
+                          <div class="exc-avatar">{{ (req.requested_by || 'U').charAt(0).toUpperCase() }}</div>
+                          <span class="exc-person-name">{{ req.requested_by }}</span>
+                        </div>
+                      </td>
+                      <td class="exc-date">{{ req.requested_at ? new Date(req.requested_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-' }}</td>
+                      <td class="exc-ticket">SR-{{ String(index + 90000).padStart(5,'0') }}</td>
+                      <td>
+                        <span class="exc-status exc-status-open">
+                          <span class="exc-status-dot"></span> Open
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
 
-                        <!-- Hover Box -->
-                        <div v-if="showBox" class="hover-box p-3">
-                          <!-- Vulnerability Name -->
-                          <h6 class="text-center fw-semibold mb-3" style="color: rgba(49, 33, 177, 1);">
-                            VMware ESXi 7.0/8.0 Sandbox Escape (CVE - 2025-22225)
-                          </h6>
+              <!-- Pagination -->
+              <div class="exc-pagination">
+                <button class="exc-page-btn"><i class="bi bi-chevron-left"></i></button>
+                <button class="exc-page-btn exc-page-active">1</button>
+                <button class="exc-page-btn">2</button>
+                <button class="exc-page-btn">3</button>
+                <button class="exc-page-btn"><i class="bi bi-chevron-right"></i></button>
+              </div>
+            </div>
 
-                          <!-- Asset Info Card -->
+            <!-- Insight Cards -->
+            <div class="exc-insights">
+              <div class="exc-insight-card">
+                <div class="exc-insight-bg"></div>
+                <p class="exc-insight-label">Resolution Speed</p>
+                <p class="exc-insight-num">4.2 Days</p>
+                <p class="exc-insight-sub">Average time to close 'High' tickets. <span style="color:#0f696e;">↓ 12% from last month.</span></p>
+              </div>
+              <div class="exc-insight-card">
+                <div class="exc-insight-bg exc-insight-bg-teal"></div>
+                <p class="exc-insight-label">Coverage Gap</p>
+                <p class="exc-insight-num">18 Assets</p>
+                <p class="exc-insight-sub">Critical assets without active support tickets assigned.</p>
+              </div>
+              <div class="exc-insight-card exc-insight-dark">
+                <p class="exc-insight-label" style="color:rgba(165,146,206,0.7);">System Health</p>
+                <div class="d-flex align-items-end gap-2">
+                  <p class="exc-insight-num" style="color:#fff;">94%</p>
+                  <i class="bi bi-trending-up" style="color:#0f696e; margin-bottom:8px;"></i>
+                </div>
+                <div class="exc-health-bar">
+                  <div class="exc-health-fill" style="width:94%;"></div>
+                </div>
+              </div>
+            </div>
 
-                          <!-- First row -->
-                          <div class="d-flex justify-content-between mb-3">
-                            <div class="text-center flex-fill pe-2">
-                              <p class="mb-1 fw-semibold text-secondary" style="font-size: 14px;">Asset:</p>
-                              <p class="mb-0" style="font-size: 14px;">192.68.1.42</p>
-                            </div>
-                            <div class="text-center flex-fill ps-2">
-                              <p class="mb-1 fw-semibold text-secondary" style="font-size: 14px;">CVSS Score:</p>
-                              <p class="mb-0" style="font-size: 14px;">8.1</p>
-                            </div>
+            <!-- Ticket Detail Slide-over -->
+            <div v-if="showSlideOver" class="exc-slideover-backdrop" @click.self="closeSlideOver">
+              <div class="exc-slideover">
+
+                <!-- Header -->
+                <div class="exc-so-header">
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="d-flex align-items-center gap-2">
+                      <button class="exc-so-close-btn" @click="closeSlideOver"><i class="bi bi-x-lg"></i></button>
+                      <span class="exc-so-label">TICKET DETAIL</span>
+                    </div>
+                    <div class="d-flex gap-2">
+                      <button class="exc-so-icon-btn"><i class="bi bi-share"></i></button>
+                      <button class="exc-so-icon-btn"><i class="bi bi-three-dots-vertical"></i></button>
+                    </div>
+                  </div>
+                  <h2 class="exc-so-title">SR-{{ String(slideOverIndex + 90000).padStart(5,'0') }}: {{ selectedSupportRequest?.vul_name }}</h2>
+                  <div class="d-flex flex-wrap gap-2 mt-3">
+                    <span class="exc-so-badge exc-so-badge-open"><span class="exc-so-dot bg-success"></span> STATUS: OPEN</span>
+                    <span class="exc-so-badge exc-so-badge-critical"><span class="exc-so-dot bg-danger"></span> CRITICALITY: CRITICAL</span>
+                  </div>
+                </div>
+
+                <!-- Content -->
+                <div class="exc-so-body">
+
+                  <!-- Summary -->
+                  <div class="exc-so-summary">
+                    <div>
+                      <p class="exc-so-meta-label">DATE RAISED</p>
+                      <p class="exc-so-meta-val">{{ selectedSupportRequest?.requested_at ? new Date(selectedSupportRequest.requested_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-' }}</p>
+                    </div>
+                    <div>
+                      <p class="exc-so-meta-label">ASSET</p>
+                      <p class="exc-so-meta-val">{{ selectedSupportRequest?.host_name }}</p>
+                    </div>
+                    <div>
+                      <p class="exc-so-meta-label">ASSIGNED TO</p>
+                      <div class="d-flex align-items-center gap-2">
+                        <div class="exc-so-avatar">{{ (selectedSupportRequest?.requested_by || 'U').charAt(0).toUpperCase() }}</div>
+                        <p class="exc-so-meta-val mb-0">{{ selectedSupportRequest?.requested_by }}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Lifecycle Timeline -->
+                  <div class="exc-so-section">
+                    <h3 class="exc-so-section-title"><i class="bi bi-clock-history me-2"></i>Lifecycle Timeline</h3>
+                    <div class="exc-so-timeline">
+                      <div class="exc-so-tl-line"></div>
+
+                      <div class="exc-so-tl-item">
+                        <div class="exc-so-tl-dot exc-so-dot-done"><i class="bi bi-check-lg"></i></div>
+                        <div class="exc-so-tl-content">
+                          <div class="d-flex justify-content-between">
+                            <p class="exc-so-tl-title">Ticket Raised</p>
+                            <span class="exc-so-tl-time">{{ selectedSupportRequest?.requested_at ? new Date(selectedSupportRequest.requested_at).toLocaleString() : '-' }}</span>
                           </div>
-
-                          <div class="asset-card p-2 mb-3">
-                            <p class="mb-1" style="font-size: 14px;"><strong> <i
-                                  class="bi bi-check-circle-fill text-success me-1"></i> Vendor Fix Available:
-                              </strong>Yes</p>
-                          </div>
-
-                          <!-- <div class="asset-card p-2 mb-3">
-            <p class="mb-1" style="font-size: 14px;"><i class="bi bi-check-circle-fill text-success me-1"></i> <strong>Hostname: </strong>fra-sto-shr-uat-lda9-evt-mgr-dbmigration</p>
-        </div> -->
-
-
-                          <!-- Description Card -->
-                          <div class="card border rounded p-2" style="background: #e0f7f4; border-color: #97dfd5;">
-                            <h6 class="fw-semibold text-center mb-2">Description</h6>
-                            <p class="small text-muted mb-0 text-center">
-                              Applications that use UriComponentsBuilder in Spring Framework
-                              to parse an externally provided URL (e.g. through a query parameter)
-                              AND perform validation checks on the host of the parsed URL may be vulnerable.
-                            </p>
-                          </div>
+                          <p class="exc-so-tl-desc">Support request submitted by {{ selectedSupportRequest?.requested_by }}.</p>
                         </div>
                       </div>
 
-
-                    </div>
-                    <div class="text-end gap-2" style="margin-top: -10px;">
-                      <button class="btn btn-sm text-dark border-0" @click="closeChat"><i
-                          class="bi bi-x-lg fs-5"></i></button>
-                    </div>
-                  </div>
-                  <div class="chat-messages flex-grow-1">
-                    <p class="text-center"><small class="text-muted">Today 10:30 AM</small></p>
-                    <div v-for="(msg, index) in messages" :key="index"
-                      :class="['chat-bubble', msg.sender === 'user' ? 'user-bubble ms-auto' : 'bot-bubble']">
-                      <span>{{ msg.text }}</span>
-                      <div class="chat-time">{{ msg.time }}</div>
-                    </div>
-                  </div>
-                  <div class="chat-input d-flex align-items-center gap-2 p-3">
-                    <input type="file" ref="fileInput" style="display: none" @change="handleFileUpload" />
-                    <button class="btn btn-light rounded-circle" @click="$refs.fileInput.click()">
-                      <i class="bi bi-paperclip"></i>
-                    </button>
-                    <input v-model="newMessage" type="text" class="form-control rounded-pill"
-                      placeholder="Type a message" @keydown.enter.exact.prevent="sendMessage" />
-                  </div>
-                  <div class="text-end me-3 mb-3">
-                    <button class="btn text-light" @click="sendMessage" style="background-color:rgba(49, 33, 177, 1);;">
-                      <i class="bi bi-send-fill"></i> Send Message
-                    </button>
-                  </div>
-                </div>
-
-                <div class="chat-right">
-                  <div class="text-center mb-4">
-                    <img src="@/assets/images/smaller-logo.png" alt="" class="mt-2" />
-                    <div class="d-flex justify-content-end me-4">
-                      <div class="avatar-container">
-                        <div class="avatar ava-green" ref="germany">PM</div>
+                      <div class="exc-so-tl-item">
+                        <div class="exc-so-tl-dot exc-so-dot-done"><i class="bi bi-check-lg"></i></div>
+                        <div class="exc-so-tl-content">
+                          <div class="d-flex justify-content-between">
+                            <p class="exc-so-tl-title">Acknowledged</p>
+                            <span class="exc-so-tl-time">Pending review</span>
+                          </div>
+                          <p class="exc-so-tl-desc">Ticket assigned and under triage.</p>
+                        </div>
                       </div>
+
+                      <div class="exc-so-tl-item">
+                        <div class="exc-so-tl-dot exc-so-dot-active"></div>
+                        <div class="exc-so-tl-content exc-so-tl-active-card">
+                          <div class="d-flex justify-content-between">
+                            <p class="exc-so-tl-title">Investigation Started</p>
+                            <span class="exc-so-tl-time">In progress</span>
+                          </div>
+                          <p class="exc-so-tl-desc-italic">"{{ selectedSupportRequest?.description }}"</p>
+                          <span class="exc-so-tl-author">— {{ (selectedSupportRequest?.requested_by || '').toUpperCase() }}</span>
+                        </div>
+                      </div>
+
+                      <div class="exc-so-tl-item">
+                        <div class="exc-so-tl-dot exc-so-dot-comment"><i class="bi bi-chat-left-text"></i></div>
+                        <div class="exc-so-tl-content exc-so-tl-comment-card">
+                          <div class="d-flex justify-content-between">
+                            <p class="exc-so-tl-title">Steps Requested</p>
+                            <span class="exc-so-tl-time">Awaiting</span>
+                          </div>
+                          <p class="exc-so-tl-desc">"Steps: {{ selectedSupportRequest?.step_requested }}. Verify patch availability and escalate if unresolved."</p>
+                        </div>
+                      </div>
+
                     </div>
-                  </div>
-                  <!-- <div class="d-flex justify-content-center gap-5">
-      <img src="@/assets/images/smaller-logo.png" alt="" class="mt-2" />
-      <p>PM</p>
-    </div> -->
-                  <div class="text-center mt-4">
-                    <div class="d-flex justify-content-between small text-dark">
-                      <span><strong class="text-secondary">Asset:</strong> 192.68.1.42</span>
-                      <span><strong class="text-secondary">Date requested:</strong> 23/06/25</span>
-                    </div>
-                  </div>
-                  <div class="issue text-center mt-5 mb-4">
-                    <i class="bi bi-exclamation-circle text-success me-2"></i>
-                    <span class="text-success fw-semibold">Issues Raised for Support</span>
-                    <button class="btn btn-primary btn-sm rounded-pill my-2">Step 2:Code review</button>
-                    <button class="btn btn-primary btn-sm rounded-pill">Step 2:Code review</button>
-                  </div>
-                  <div class="right-section-item text-center">
-                    <h6 class="fw-semibold mb-2">Issue Description</h6>
-                    <p class="small text-muted mb-1">The issue has been reviewed, but the current explanation is not
-                      sufficient. Please provide additional justification to proceed further.</p>
                   </div>
                 </div>
-              </div>
 
+                <!-- Footer -->
+                <div class="exc-so-footer">
+                  <div class="exc-so-textarea-wrap">
+                    <textarea v-model="slideOverNote" class="exc-so-textarea" placeholder="Type your response or internal note..." rows="3"></textarea>
+                    <div class="exc-so-textarea-actions">
+                      <button class="exc-so-icon-btn"><i class="bi bi-paperclip"></i></button>
+                      <button class="exc-so-icon-btn"><i class="bi bi-at"></i></button>
+                    </div>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center mt-3">
+                    <div class="d-flex gap-3">
+                      <button class="exc-so-note-btn"><span class="exc-so-dot-sm bg-success me-1"></span>Internal Note</button>
+                      <button class="exc-so-visible-btn"><i class="bi bi-globe2 me-1"></i>Customer Visible</button>
+                    </div>
+                    <button class="exc-so-send-btn">Send Update <i class="bi bi-send ms-1"></i></button>
+                  </div>
+                </div>
+
+              </div>
             </div>
 
           </div>
         </div>
       </div>
-
     </section>
   </main>
 </template>
@@ -293,7 +280,10 @@ export default {
       authStore: useAuthStore(),
       supportRequests: [],
       loadingRequests: false,
-      selectedSupportRequest: null ,
+      selectedSupportRequest: null,
+      showSlideOver: false,
+      slideOverIndex: 0,
+      slideOverNote: '',
       showChat: false,
       minimized: false,
       messages: [
@@ -395,7 +385,16 @@ export default {
 
   openViewRequestModal(req) {
     this.selectedSupportRequest = req;
-  }
+  },
+  openSlideOver(req, index) {
+    this.selectedSupportRequest = req;
+    this.slideOverIndex = index;
+    this.showSlideOver = true;
+    this.slideOverNote = '';
+  },
+  closeSlideOver() {
+    this.showSlideOver = false;
+  },
   },
   mounted() {
   // Bootstrap tooltip init
@@ -443,263 +442,272 @@ export default {
 </script>
 
 <style scoped>
-.hover-box {
-  position: absolute;
-  top: 40px;
-  right: -50px;
-  width: 400px;
-  background: white;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  z-index: 100;
-  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+.exc-content { padding: 0; background: #f8f9fc; min-height: 100vh; }
+
+.exc-page-header {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  padding: 80px 32px 28px;
+}
+.exc-title { font-size: 2rem; font-weight: 800; color: #241447; margin: 0 0 6px; font-family: 'Manrope', sans-serif; }
+.exc-subtitle { font-size: 0.875rem; color: #49454f; margin: 0; }
+
+.exc-stat-card {
+  display: flex; align-items: center; gap: 16px;
+  background: #f2f3f6; border-radius: 12px; padding: 16px 20px;
+}
+.exc-stat-label { font-size: 0.6rem; font-weight: 700; color: #49454f; text-transform: uppercase; letter-spacing: 0.1em; margin: 0 0 4px; }
+.exc-stat-value { font-size: 1.6rem; font-weight: 800; color: #241447; margin: 0; line-height: 1; }
+.exc-stat-icon {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: #a1ecf2; color: #176d72;
+  display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
 }
 
-.asset-card {
-  background: #ccebe7;
-  border: 1px solid #97dfd5;
-  border-radius: 8px;
+.exc-table-card {
+  margin: 0 32px 24px;
+  background: #ffffff;
+  border-radius: 24px;
+  box-shadow: 0 8px 32px rgba(25,28,30,0.06);
+  overflow: hidden;
+  border: 1px solid rgba(203,196,208,0.15);
 }
 
-.chat-box {
-  border-radius: 12px;
-  display: flex;
-  height: 90vh;
-  max-width: 900px;
-  top: 54%;
-  left: 65%;
-  transform: translate(-50%, -50%);
-  position: fixed;
-  overflow: visible !important;
+.exc-table-controls {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 20px 24px;
+  background: rgba(255,255,255,0.5);
+  border-bottom: 1px solid rgba(203,196,208,0.15);
+}
+.exc-btn-filter {
+  background: #eaddff; color: #241447; border: none; border-radius: 8px;
+  padding: 8px 14px; font-size: 0.75rem; font-weight: 700; cursor: pointer;
+  display: inline-flex; align-items: center;
+}
+.exc-btn-sort {
+  background: transparent; color: #49454f; border: none; border-radius: 8px;
+  padding: 8px 14px; font-size: 0.75rem; font-weight: 700; cursor: pointer;
+  display: inline-flex; align-items: center; transition: background 0.15s;
+}
+.exc-btn-sort:hover { background: #f2f3f6; }
+.exc-select {
+  border: 1px solid #e2e8f0; border-radius: 8px; padding: 7px 12px;
+  font-size: 0.82rem; color: #1e293b; background: #f2f3f6; outline: none; cursor: pointer;
+}
+.exc-showing-badge {
+  font-size: 0.72rem; font-weight: 600; color: #49454f;
+  background: #edeef1; border-radius: 999px; padding: 5px 14px;
 }
 
-/* The left column (chat history) is removed, so chat-middle now takes its place */
-.chat-middle {
-  flex: 3;
-  /* Main chat area takes up more space */
-  display: flex;
-  flex-direction: column;
-  background: #f7f7f7;
-  border-top-left-radius: 12px;
-  /* Add radius for the new left edge */
-  border-bottom-left-radius: 12px;
+.exc-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.exc-table thead { background: #f2f3f6; }
+.exc-table th {
+  padding: 14px 24px; font-size: 0.68rem; font-weight: 700;
+  color: #49454f; text-transform: uppercase; letter-spacing: 0.07em; border: none;
+}
+.exc-table tbody tr { border-top: 1px solid rgba(203,196,208,0.1); transition: background 0.15s; }
+.exc-table tbody tr:hover { background: #f2f3f6; }
+.exc-table td { padding: 20px 24px; border: none; vertical-align: middle; }
+
+.exc-asset-cell { display: flex; flex-direction: column; gap: 2px; }
+.exc-asset-ip { font-size: 0.875rem; font-weight: 700; color: #241447; }
+.exc-asset-sub { font-size: 0.68rem; color: #49454f; }
+.exc-vuln-name { font-size: 0.875rem; color: #1e1f1f; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.exc-badge { display: inline-flex; padding: 4px 10px; border-radius: 4px; font-size: 0.68rem; font-weight: 700; }
+.exc-badge-critical { background: #ffdad6; color: #ba1a1a; }
+.exc-badge-high { background: #ffe0c8; color: #f2994a; }
+.exc-badge-medium { background: #fff4cc; color: #f2c94c; }
+.exc-badge-low { background: #a1ecf2; color: #002022; }
+
+.exc-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: #a1ecf2; color: #002022;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.72rem; font-weight: 700; flex-shrink: 0;
+}
+.exc-person-name { font-size: 0.875rem; font-weight: 500; color: #191c1e; }
+.exc-date { font-size: 0.875rem; color: #49454f; font-weight: 500; }
+.exc-ticket { font-size: 0.875rem; font-weight: 700; color: #0f696e; font-family: monospace; }
+
+.exc-status { display: inline-flex; align-items: center; gap: 5px; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; }
+.exc-status-dot { width: 6px; height: 6px; border-radius: 50%; }
+.exc-status-open { color: #ba1a1a; } .exc-status-open .exc-status-dot { background: #ba1a1a; }
+.exc-status-progress { color: #f2994a; } .exc-status-progress .exc-status-dot { background: #f2994a; }
+.exc-status-resolved { color: #0f696e; } .exc-status-resolved .exc-status-dot { background: #0f696e; }
+
+.exc-pagination {
+  display: flex; justify-content: center; align-items: center; gap: 6px;
+  padding: 20px; border-top: 1px solid rgba(203,196,208,0.1);
+  background: #f2f3f6;
+}
+.exc-page-btn {
+  width: 38px; height: 38px; border-radius: 50%; border: none;
+  background: transparent; font-size: 0.875rem; font-weight: 700;
+  color: #191c1e; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.exc-page-btn:hover { background: #e7e8eb; }
+.exc-page-active { background: #0f696e !important; color: #ffffff !important; }
+
+.exc-insights {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 24px; margin: 0 32px 40px;
+}
+.exc-insight-card {
+  background: #f2f3f6; border-radius: 12px; padding: 24px;
+  position: relative; overflow: hidden;
+}
+.exc-insight-dark { background: #241447; }
+.exc-insight-bg {
+  position: absolute; top: -32px; right: -32px;
+  width: 100px; height: 100px; border-radius: 50%;
+  background: rgba(36,20,71,0.05);
+}
+.exc-insight-bg-teal { background: rgba(15,105,110,0.05); }
+.exc-insight-label { font-size: 0.65rem; font-weight: 700; color: #191c1e; text-transform: uppercase; letter-spacing: 0.1em; margin: 0 0 8px; }
+.exc-insight-num { font-size: 1.8rem; font-weight: 800; color: #241447; margin: 0 0 6px; font-family: 'Manrope', sans-serif; }
+.exc-insight-sub { font-size: 0.72rem; color: #49454f; margin: 0; line-height: 1.5; }
+.exc-health-bar { width: 100%; height: 4px; background: #3a2a5e; border-radius: 999px; margin-top: 16px; overflow: hidden; }
+.exc-health-fill { height: 100%; background: #0f696e; border-radius: 999px; }
+
+/* ── Slide-over ── */
+.exc-slideover-backdrop {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(36,20,71,0.4);
+  backdrop-filter: blur(4px);
+  display: flex; justify-content: flex-end;
+}
+.exc-slideover {
+  width: min(680px, 100vw);
+  height: 100vh;
+  background: #ffffff;
+  display: flex; flex-direction: column;
+  box-shadow: -8px 0 40px rgba(0,0,0,0.18);
+  overflow: hidden;
+}
+.exc-so-header {
+  padding: 28px 32px 24px;
+  background: #f2f3f6;
+  border-bottom: 1px solid rgba(203,196,208,0.2);
+  flex-shrink: 0;
+}
+.exc-so-label { font-size: 0.72rem; font-weight: 700; color: #49454f; letter-spacing: 0.1em; text-transform: uppercase; }
+.exc-so-close-btn {
+  background: none; border: none; cursor: pointer;
+  color: #49454f; font-size: 1rem; padding: 4px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; transition: background 0.15s;
+}
+.exc-so-close-btn:hover { background: #e2e8f0; color: #241447; }
+.exc-so-icon-btn {
+  background: none; border: none; cursor: pointer;
+  color: #49454f; font-size: 1rem; padding: 6px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; width: 32px; height: 32px; transition: background 0.15s;
+}
+.exc-so-icon-btn:hover { background: #e2e8f0; }
+.exc-so-title { font-size: 1.6rem; font-weight: 800; color: #241447; margin: 0; font-family: 'Manrope', sans-serif; line-height: 1.2; }
+.exc-so-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: 999px;
+  font-size: 0.65rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.exc-so-badge-open { background: #a1ecf2; color: #002022; }
+.exc-so-badge-critical { background: #ffdad6; color: #ba1a1a; }
+.exc-so-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+.exc-so-body { flex: 1; overflow-y: auto; padding: 28px 32px; }
+.exc-so-summary {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 16px; background: #f2f3f6; border-radius: 12px;
+  padding: 20px 24px; margin-bottom: 28px;
+}
+.exc-so-meta-label { font-size: 0.6rem; font-weight: 700; color: #49454f; text-transform: uppercase; letter-spacing: 0.1em; margin: 0 0 4px; }
+.exc-so-meta-val { font-size: 0.875rem; font-weight: 600; color: #241447; margin: 0; }
+.exc-so-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: #3a2a5e; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.7rem; font-weight: 700; flex-shrink: 0;
 }
 
-.chat-right {
-  flex: 1.5;
-  /* Right sidebar remains the same */
-  background: #f7f7f7;
-  border-left: 1px solid #e0e0e0;
-  border-top-right-radius: 12px;
-  border-bottom-right-radius: 12px;
-  padding: 1.5rem;
+.exc-so-section { margin-bottom: 24px; }
+.exc-so-section-title { font-size: 1rem; font-weight: 700; color: #241447; margin: 0 0 20px; display: flex; align-items: center; }
+
+.exc-so-timeline { position: relative; padding-left: 32px; display: flex; flex-direction: column; gap: 24px; }
+.exc-so-tl-line {
+  position: absolute; left: 11px; top: 8px; bottom: 8px;
+  width: 2px; background: rgba(203,196,208,0.3);
+}
+.exc-so-tl-item { display: flex; align-items: flex-start; gap: 12px; position: relative; }
+.exc-so-tl-dot {
+  width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.72rem; flex-shrink: 0;
+  position: absolute; left: -32px; z-index: 1;
+}
+.exc-so-dot-done { background: #0f696e; color: #fff; }
+.exc-so-dot-active {
+  background: #241447; border: 4px solid #fff;
+  box-shadow: 0 0 0 2px #241447; width: 16px; height: 16px;
+  left: -26px; top: 4px;
+}
+.exc-so-dot-comment { background: #e2e8f0; color: #49454f; }
+
+.exc-so-tl-content { flex: 1; min-width: 0; }
+.exc-so-tl-title { font-size: 0.875rem; font-weight: 700; color: #241447; margin: 0 0 4px; }
+.exc-so-tl-time { font-size: 0.65rem; font-weight: 700; color: #49454f; white-space: nowrap; }
+.exc-so-tl-desc { font-size: 0.82rem; color: #49454f; margin: 0; line-height: 1.5; }
+.exc-so-tl-desc-italic { font-size: 0.82rem; color: #191c1e; font-style: italic; margin: 0 0 6px; line-height: 1.5; }
+.exc-so-tl-author { font-size: 0.68rem; font-weight: 700; color: #0f696e; text-transform: uppercase; }
+.exc-so-tl-active-card {
+  background: #f2f3f6; border-radius: 8px; padding: 14px 16px;
+}
+.exc-so-tl-comment-card {
+  background: rgba(36,20,71,0.03); border-left: 4px solid #0f696e;
+  border-radius: 0 8px 8px 0; padding: 14px 16px;
 }
 
-/* Chat Header */
-.chat-header {
-  background: #fff;
-  border-bottom: 1px solid #e0e0e0;
-  padding: 1rem 1.5rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-top-left-radius: 12px;
-  /* Apply to the new top-left */
+.exc-so-footer {
+  padding: 20px 32px 24px;
+  background: #ffffff;
+  border-top: 1px solid rgba(203,196,208,0.15);
+  flex-shrink: 0;
 }
-
-/* Chat Messages */
-.chat-messages {
-  flex-grow: 1;
-  overflow-y: auto;
-  padding: 1rem;
-  background: #f7f7f7;
+.exc-so-textarea-wrap { position: relative; }
+.exc-so-textarea {
+  width: 100%; background: #f2f3f6; border: none;
+  border-radius: 12px; padding: 14px 50px 14px 16px;
+  font-size: 0.875rem; color: #191c1e; resize: none; outline: none;
+  transition: box-shadow 0.15s;
 }
-
-.chat-bubble {
-  max-width: 70%;
-  /* Increased max-width for bubbles */
-  padding: 0.75rem 1rem;
-  border-radius: 18px;
-  margin-bottom: 1rem;
-  font-size: 0.95rem;
-  line-height: 1.4;
-  word-wrap: break-word;
+.exc-so-textarea:focus { box-shadow: 0 0 0 2px #0f696e; }
+.exc-so-textarea-actions {
+  position: absolute; bottom: 10px; right: 10px;
+  display: flex; gap: 4px;
 }
-
-.user-bubble {
-  background: #e9e9f9;
-  /* Light purple for user messages */
-  color: #333;
-  margin-left: auto;
-  border-bottom-right-radius: 4px;
+.exc-so-note-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 0.75rem; font-weight: 700; color: #49454f;
+  display: inline-flex; align-items: center; padding: 6px 10px;
+  border-radius: 8px; transition: background 0.15s;
 }
-
-.bot-bubble {
-  background: #fff;
-  border: 1px solid #e0e0e0;
-  margin-right: auto;
-  border-bottom-left-radius: 4px;
+.exc-so-note-btn:hover { background: #f2f3f6; }
+.exc-so-visible-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 0.75rem; font-weight: 700; color: #0f696e;
+  display: inline-flex; align-items: center; padding: 6px 10px;
+  border-radius: 8px; transition: background 0.15s;
 }
-
-.chat-time {
-  font-size: 0.75rem;
-  color: #999;
-  margin-top: 0.25rem;
-  text-align: right;
+.exc-so-visible-btn:hover { background: rgba(15,105,110,0.08); }
+.exc-so-dot-sm { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.exc-so-send-btn {
+  background: #241447; color: #fff; border: none;
+  border-radius: 999px; padding: 10px 24px;
+  font-size: 0.875rem; font-weight: 700; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  box-shadow: 0 4px 14px rgba(36,20,71,0.25);
+  transition: opacity 0.15s;
 }
-
-/* Chat Input */
-.chat-input {
-  background: #fff;
-  border-top: 1px solid #e0e0e0;
-  padding: 1rem 1.5rem;
-  border-bottom-left-radius: 12px;
-  /* Apply to the new bottom-left */
-}
-
-.chat-input .form-control {
-  background: #f7f7f7;
-  border-radius: 25px;
-  border: 1px solid #e0e0e0;
-  padding: 0.75rem 1.5rem;
-}
-
-.chat-input .btn-success {
-  background: rgba(49, 33, 177, 1);
-  border: none;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Right Sidebar */
-.details-card {
-  background: #fff;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 1.5rem;
-  width: 100%;
-  margin-bottom: 1.5rem;
-}
-
-.details-card h6 {
-  color: #8e80e9;
-  /* Purple for heading */
-}
-
-.details-card p strong {
-  color: #555;
-}
-
-.issue {
-  background: #ccebe7;
-  border: 1px solid #97dfd5;
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-}
-
-.right-section-item {
-  background: #fff;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-}
-
-.send-btn {
-  background-color: #5c47e2;
-}
-
-/* .details-card p {
-  margin-bottom: 12px;
-  font-size: 15px;
-}
-.details-card {
-  background: #fff;
-} */
-
-.ticket-head {
-  color: rgba(0, 0, 0, 1);
-  font-weight: 500;
-  font-size: 36px;
-}
-
-.raised-table tr th {
-  color: rgba(0, 0, 0, 0.6);
-  font-weight: 500;
-}
-
-.raised-tbody tr td {
-  color: rgba(0, 0, 0, 1);
-  font-weight: 500;
-}
-
-.fixes-btn {
-  color: rgba(49, 33, 177, 1);
-  font-weight: 600;
-}
-
-.fixes-red-btn {
-  color: rgba(170, 0, 0, 1);
-  font-weight: 600;
-}
-
-.dropdown {
-  position: relative;
-  display: inline-block;
-  width: 200px;
-}
-
-.dropdown-btn {
-  background-color: white;
-  border: 1px solid rgba(0, 0, 0, 0.16);
-  border-radius: 50px;
-  padding: 8px 20px 8px 12px;
-  /* extra right padding for the arrow */
-  cursor: pointer;
-  position: relative;
-}
-
-.dropdown-btn::after {
-  content: "▼";
-  /* arrow symbol */
-  font-size: 12px;
-  color: #333;
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  pointer-events: none;
-}
-
-.dropdown-content {
-  display: none;
-  position: absolute;
-  background-color: white;
-  min-width: 100%;
-  border-radius: 12px;
-  box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.2);
-  z-index: 1;
-  margin-top: 4px;
-}
-
-.dropdown-content a {
-  padding: 8px 12px;
-  display: block;
-  text-decoration: none;
-  color: black;
-  border-radius: 8px;
-}
-
-.dropdown-content a:hover {
-  background-color: #f1f1f1;
-}
-
-.dropdown.show .dropdown-content {
-  display: block;
-}
+.exc-so-send-btn:hover { opacity: 0.88; }
 </style>

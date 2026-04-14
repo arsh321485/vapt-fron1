@@ -21,9 +21,9 @@
                 <button class="rt-btn-support" @click="openSupportModal">
                   Support Request
                 </button>
-                <button class="rt-btn-ticket" @click="goToCreateTicket">
+                <!-- <button class="rt-btn-ticket" @click="goToCreateTicket">
                   <i class="bi bi-ticket-perforated me-1"></i>Create Ticket
-                </button>
+                </button> -->
               </div>
             </div>
 
@@ -162,13 +162,28 @@
                       </div>
 
                       <!-- Expanded detail panel -->
-                      <div v-if="expandedTask === idx && task.action" class="rt-task-expanded">
+                      <div v-if="expandedTask === idx" class="rt-task-expanded">
 
                         <!-- ROW 1: ACTION + FILE PATH side by side -->
                         <div class="rt-expand-row-2">
                           <div class="rt-expand-section">
                             <span class="rt-expand-label">ACTION</span>
                             <p class="rt-expand-text">{{ task.action }}</p>
+                            <!-- SUB-TASKS under ACTION -->
+                            <div v-if="task.subTasks && task.subTasks.length" class="mt-3">
+                              <span class="rt-expand-label">SUB-TASKS</span>
+                              <div class="rt-checklist mt-1">
+                                <label
+                                  v-for="(sub, si) in task.subTasks"
+                                  :key="si"
+                                  class="rt-check-item"
+                                  @click.stop
+                                >
+                                  <input type="checkbox" class="rt-checkbox" />
+                                  <span>{{ sub }}</span>
+                                </label>
+                              </div>
+                            </div>
                           </div>
                           <div v-if="task.filePath" class="rt-expand-section">
                             <span class="rt-expand-label">FILE PATH</span>
@@ -203,21 +218,7 @@
                           </div>
                         </div>
 
-                        <!-- SUB-TASKS (full width) -->
-                        <div v-if="task.subTasks && task.subTasks.length" class="rt-expand-section">
-                          <span class="rt-expand-label">SUB-TASKS</span>
-                          <div class="rt-checklist">
-                            <label
-                              v-for="(sub, si) in task.subTasks"
-                              :key="si"
-                              class="rt-check-item"
-                              @click.stop
-                            >
-                              <input type="checkbox" class="rt-checkbox" />
-                              <span>{{ sub }}</span>
-                            </label>
-                          </div>
-                        </div>
+
 
                       </div>
                     </div>
@@ -290,7 +291,7 @@ export default {
       currentStep: 5,
       totalSteps: 8,
       completedSteps: [1,2,3,4],
-      expandedTask: 0,
+      expandedTask: null,
       isSupportAlreadyRaised: false,
       selectedSteps: [],
       isAllSelected: false,

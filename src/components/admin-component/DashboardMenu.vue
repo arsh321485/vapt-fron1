@@ -12,6 +12,15 @@
           <p class="menu-heading">Home</p></button>
           </router-link>
          </div>
+          <!-- CALENDAR -->
+        <div>
+          <button class="btn border-0" :class="{ activeBtn: isActive('/calendar') }" @click="navigateTo('/calendar')">
+            <i class="bi bi-calendar3 nav-menu"></i>
+            <p class="menu-heading">Calendar</p>
+          </button>
+        </div>
+
+
 
          <!-- SCOPE - Always allowed -->
          <!-- <div>
@@ -59,11 +68,11 @@
         </div>
 
         <!-- PENDING - Restricted during testing -->
-        <div>
+       <!--  <div>
           <button class="btn border-0" :class="{ activeBtn: isActive('/pending') }" @click="navigateTo('/pending')">
           <i class="bi bi-dash-circle-dotted nav-menu"></i>
           <p class="menu-heading">Pending</p></button>
-        </div>
+        </div> -->
 
          <!-- MITIGATION STRATEGY - Restricted during testing -->
          <!-- <div>
@@ -81,22 +90,14 @@
         </div>
 
         <!-- TICKETS - Restricted during testing -->
-        <div>
+       <!--  <div>
           <button class="btn border-0" :class="{ activeBtn: isActive('/supportticket') }" @click="navigateToTickets()">
             <i class="bi bi-question-circle nav-menu"></i>
             <p class="menu-heading">Tickets</p>
           </button>
-        </div>
+        </div> -->
 
-        <!-- CALENDAR -->
-        <div>
-          <button class="btn border-0" :class="{ activeBtn: isActive('/calendar') }" @click="navigateTo('/calendar')">
-            <i class="bi bi-calendar3 nav-menu"></i>
-            <p class="menu-heading">Calendar</p>
-          </button>
-        </div>
-
-
+       
 
       </div>
 
