@@ -43,6 +43,7 @@
           </router-link>
         </div>
 
+        <!--
         <div>
           <router-link to="/pendingvulnerabilities">
           <button class="btn border-0" :class="{ activeBtn: isActive('/pendingvulnerabilities') }">
@@ -58,6 +59,7 @@
           <p class="menu-heading">Tickets</p></button>
           </router-link>
         </div>
+        -->
       </div>
       
     </div>

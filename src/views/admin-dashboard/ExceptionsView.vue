@@ -17,7 +17,7 @@
                 <h2 class="exc-title">Support Requests</h2>
                 <p class="exc-subtitle">Streamlining the resolution of critical infrastructure vulnerabilities.</p>
               </div>
-              <div class="exc-stat-card" style="cursor:pointer;" @click="openSlideOver(finalSupportRequests[0], 0)">
+              <div class="exc-stat-card">
                 <div class="text-end">
                   <p class="exc-stat-label">Active Tickets</p>
                   <p class="exc-stat-value">{{ finalSupportRequests.length }}</p>
@@ -62,14 +62,15 @@
                       <th>Support Raised</th>
                       <th>Ticket #</th>
                       <th>Status</th>
+                    <th>Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr v-if="loadingRequests">
-                      <td colspan="7" class="text-center py-5 text-muted">Loading...</td>
+                      <td colspan="8" class="text-center py-5 text-muted">Loading...</td>
                     </tr>
                     <tr v-else-if="!finalSupportRequests.length">
-                      <td colspan="7" class="text-center py-5 text-muted">No support requests found</td>
+                      <td colspan="8" class="text-center py-5 text-muted">No support requests found</td>
                     </tr>
                     <tr v-else v-for="(req, index) in finalSupportRequests" :key="req._id">
                       <td>
@@ -94,6 +95,9 @@
                         <span class="exc-status exc-status-open">
                           <span class="exc-status-dot"></span> Open
                         </span>
+                      </td>
+                      <td>
+                        <button type="button" class="exc-row-view-btn" @click.stop.prevent="openSlideOver(req, index)">View</button>
                       </td>
                     </tr>
                   </tbody>
@@ -147,10 +151,10 @@
                       <button class="exc-so-close-btn" @click="closeSlideOver"><i class="bi bi-x-lg"></i></button>
                       <span class="exc-so-label">TICKET DETAIL</span>
                     </div>
-                    <div class="d-flex gap-2">
+                    <!-- <div class="d-flex gap-2">
                       <button class="exc-so-icon-btn"><i class="bi bi-share"></i></button>
                       <button class="exc-so-icon-btn"><i class="bi bi-three-dots-vertical"></i></button>
-                    </div>
+                    </div> -->
                   </div>
                   <h2 class="exc-so-title">SR-{{ String(slideOverIndex + 90000).padStart(5,'0') }}: {{ selectedSupportRequest?.vul_name }}</h2>
                   <div class="d-flex flex-wrap gap-2 mt-3">
@@ -210,7 +214,12 @@
                       </div>
 
                       <div class="exc-so-tl-item">
-                        <div class="exc-so-tl-dot exc-so-dot-active"></div>
+                        <div class="exc-so-tl-dot exc-so-dot-active">
+                          <svg class="exc-eye-icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 5C6.8 5 2.7 8.1 1 12c1.7 3.9 5.8 7 11 7s9.3-3.1 11-7c-1.7-3.9-5.8-7-11-7Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <circle cx="12" cy="12" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/>
+                          </svg>
+                        </div>
                         <div class="exc-so-tl-content exc-so-tl-active-card">
                           <div class="d-flex justify-content-between">
                             <p class="exc-so-tl-title">Investigation Started</p>
@@ -534,6 +543,16 @@ export default {
 .exc-status-open { color: #ba1a1a; } .exc-status-open .exc-status-dot { background: #ba1a1a; }
 .exc-status-progress { color: #f2994a; } .exc-status-progress .exc-status-dot { background: #f2994a; }
 .exc-status-resolved { color: #0f696e; } .exc-status-resolved .exc-status-dot { background: #0f696e; }
+.exc-row-view-btn {
+  border: none;
+  background: none;
+  color: #0f696e;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+.exc-row-view-btn:hover { opacity: 0.75; text-decoration: underline; }
 
 .exc-pagination {
   display: flex; justify-content: center; align-items: center; gap: 6px;
@@ -648,10 +667,16 @@ export default {
 }
 .exc-so-dot-done { background: #0f696e; color: #fff; }
 .exc-so-dot-active {
-  background: #241447; border: 4px solid #fff;
-  box-shadow: 0 0 0 2px #241447; width: 16px; height: 16px;
-  left: -26px; top: 4px;
+  background: #ffffff;
+  border: 2px solid #241447;
+  color: #241447;
+  box-shadow: none;
+  width: 24px;
+  height: 24px;
+  left: -32px;
+  top: 0;
 }
+.exc-eye-icon { width: 14px; height: 14px; display: block; }
 .exc-so-dot-comment { background: #e2e8f0; color: #49454f; }
 
 .exc-so-tl-content { flex: 1; min-width: 0; }

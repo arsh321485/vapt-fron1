@@ -74,12 +74,7 @@
                   <button class="cal-today-btn" @click="goToToday">Today</button>
                   <button class="cal-nav-btn" @click="nextWeek"><i class="bi bi-chevron-right"></i></button>
                 </div>
-                <!-- Legend (month view) -->
-                <div v-else-if="activeView !== 'Day'" class="cal-legend">
-                  <div class="cal-legend-item"><span class="cal-legend-dot" style="background:#241447;"></span> Scheduled Scan</div>
-                  <div class="cal-legend-item"><span class="cal-legend-dot" style="background:#dc2626;"></span> Deadline</div>
-                  <div class="cal-legend-item"><span class="cal-legend-dot" style="background:#0f696e;"></span> Discovery</div>
-                </div>
+
               </div>
             </div>
 
@@ -174,25 +169,109 @@
               </div>
             </div>
 
+            <!-- Detail Modal -->
+            <div v-if="showDetailModal && selectedEvent" class="cal-detail-backdrop" @click.self="closeDetailModal">
+              <div class="cal-detail-modal">
+                <div class="cal-detail-header">
+                  <div>
+                    <span class="cal-popup-badge">{{ selectedEvent.type }}</span>
+                    <h4 class="cal-detail-title mt-2">{{ selectedEvent.title }}</h4>
+                  </div>
+                  <button class="cal-popup-close" @click="closeDetailModal"><i class="bi bi-x-lg"></i></button>
+                </div>
+
+                <div class="cal-detail-body">
+
+                  <!-- Assigned Team -->
+                  <div class="cal-detail-section">
+                    <p class="cal-detail-label">ASSIGNED TO TEAM</p>
+                    <div class="cal-detail-team-row">
+                      <div class="cal-detail-team-icon"><i class="bi bi-people-fill"></i></div>
+                      <span class="cal-detail-val">{{ selectedEvent.team || 'Network Security' }}</span>
+                    </div>
+                  </div>
+
+                  <!-- Historical Detail -->
+                  <div class="cal-detail-section">
+                    <p class="cal-detail-label">HISTORICAL DETAIL</p>
+                    <div class="cal-detail-history">
+                      <div class="cal-detail-history-item">
+                        <span class="cal-detail-dot cal-dot-done"></span>
+                        <div>
+                          <p class="cal-detail-history-title">Vulnerability Identified</p>
+                          <p class="cal-detail-history-sub">First detected on March 15, 2026 during routine scan.</p>
+                        </div>
+                      </div>
+                      <div class="cal-detail-history-item">
+                        <span class="cal-detail-dot cal-dot-done"></span>
+                        <div>
+                          <p class="cal-detail-history-title">Assigned to Team</p>
+                          <p class="cal-detail-history-sub">Assigned to {{ selectedEvent.team || 'Network Security' }} on March 16, 2026.</p>
+                        </div>
+                      </div>
+                      <div class="cal-detail-history-item">
+                        <span class="cal-detail-dot cal-dot-active"></span>
+                        <div>
+                          <p class="cal-detail-history-title">Remediation In Progress</p>
+                          <p class="cal-detail-history-sub">Fix steps initiated. Deadline: {{ selectedEvent.deadline || 'April 12, 5:00 PM' }}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Extension Requested -->
+                  <div class="cal-detail-section">
+                    <p class="cal-detail-label">EXTENSION REQUESTED</p>
+                    <div class="cal-detail-ext-row">
+                      <i class="bi bi-arrow-repeat cal-detail-ext-icon"></i>
+                      <div>
+                        <p class="cal-detail-val">{{ selectedEvent.extended ? selectedEvent.extended + ' extension granted' : 'No extension requested' }}</p>
+                        <p class="cal-detail-sub">Original deadline extended due to team workload.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Support Requests -->
+                  <div class="cal-detail-section">
+                    <p class="cal-detail-label">TOTAL SUPPORT REQUESTS</p>
+                    <div class="cal-detail-sr-row">
+                      <div class="cal-detail-sr-num">3</div>
+                      <div>
+                        <p class="cal-detail-val">Support Tickets Raised</p>
+                        <p class="cal-detail-sub">2 Open &nbsp;•&nbsp; 1 Resolved</p>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                <div class="cal-detail-footer">
+                  <button class="cal-popup-dismiss" @click="closeDetailModal">Close</button>
+                </div>
+              </div>
+            </div>
+
             <!-- Event Popup -->
             <div v-if="showPopup && selectedEvent" class="cal-popup-overlay" @click="closePopup">
               <div class="cal-popup" :style="{ top: popupPos.top + 'px', left: popupPos.left + 'px' }" @click.stop>
                 <button class="cal-popup-close" @click="closePopup"><i class="bi bi-x-lg"></i></button>
-                <span class="cal-popup-badge">CRITICAL</span>
-                <h5 class="cal-popup-title">Critical Patch Deadline</h5>
-                <div class="cal-popup-row">
+                <span class="cal-popup-badge">{{ selectedEvent.type ? selectedEvent.type.toUpperCase() : 'EVENT' }}</span>
+                <h5 class="cal-popup-title">{{ selectedEvent.title }}</h5>
+                <div v-if="selectedEvent.asset" class="cal-popup-row">
                   <i class="bi bi-hdd-network" style="color:#0f696e;"></i>
-                  <span>Asset: 192.168.1.104</span>
+                  <span>Asset: {{ selectedEvent.asset }}</span>
                 </div>
-                <div class="cal-popup-row">
+                <div v-if="selectedEvent.deadline" class="cal-popup-row">
                   <i class="bi bi-clock" style="color:#64748b;"></i>
-                  <span>Due: April 12, 5:00 PM</span>
+                  <span>Due: {{ selectedEvent.deadline }}</span>
                 </div>
-                <p class="cal-popup-desc">
-                  Unpatched Buffer Overflow vulnerability in core firmware. Exploitation confirmed in external environments.
-                </p>
+                <div v-if="selectedEvent.extended" class="cal-popup-row">
+                  <i class="bi bi-arrow-repeat" style="color:#f97316;"></i>
+                  <span>Extended by: {{ selectedEvent.extended }}</span>
+                </div>
+                <p v-if="selectedEvent.desc" class="cal-popup-desc">{{ selectedEvent.desc }}</p>
                 <div class="cal-popup-btns">
-                  <button class="cal-popup-manage">Manage</button>
+                  <button class="cal-popup-manage" @click="openDetailModal">View</button>
                   <button class="cal-popup-dismiss" @click="closePopup">Dismiss</button>
                 </div>
               </div>
@@ -234,6 +313,7 @@ export default {
       teamsFilter: 'All Units',
       selectedEvent: null,
       showPopup: false,
+      showDetailModal: false,
       popupPos: { top: 0, left: 0 },
       weekDays: ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'],
       currentWeekStart: 12,
@@ -250,23 +330,19 @@ export default {
         { id: 1,  day: 12, title: 'Routine Asset Scan',       type: 'DISCOVERY', color: 'teal',   team: null },
         { id: 2,  day: 13, title: 'Log4j Remediation',        type: 'CRITICAL',  color: 'red',    team: null },
         { id: 3,  day: 14, title: 'Internal Compliance',      type: 'AUDIT',     color: 'purple', team: null },
-        { id: 4,  day: 15, title: 'OpenSSL Vulnerability',    type: 'CRITICAL PATCH', color: 'red',  team: 'Network Security' },
+        { id: 4,  day: 15, title: 'OpenSSL Vulnerability',    type: 'CRITICAL VULNERABILITY', color: 'red',  team: 'Network Security' },
         { id: 5,  day: 15, title: 'New Cloud Instance Scan',  type: 'ASSET DISCOVERY', color: 'teal', team: 'Patch Management' },
         { id: 6,  day: 16, title: 'Quarterly Review',         type: 'PENDING',   color: 'grey',   team: null },
         { id: 7,  day: 17, title: 'Firewall Rule Audit',      type: 'NETWORK',   color: 'teal',   team: null },
       ],
       events: [
-        { id: 1,  day: 1,  title: 'CVE-2026-1029',   type: 'discovery', color: 'teal'   },
-        { id: 2,  day: 3,  title: 'Weekly Audit',     type: 'scan',      color: 'purple' },
-        { id: 3,  day: 8,  title: 'Critical Patch',   type: 'deadline',  color: 'red'    },
-        { id: 4,  day: 10, title: 'External Scan',    type: 'scan',      color: 'purple' },
-        { id: 5,  day: 12, title: 'Critical Patch',   type: 'deadline',  color: 'red'    },
-        { id: 6,  day: 12, title: '3 New Vulns',      type: 'discovery', color: 'teal'   },
-        { id: 7,  day: 15, title: 'Asset Discovery',  type: 'discovery', color: 'teal'   },
-        { id: 8,  day: 17, title: 'Monthly Report',   type: 'scan',      color: 'purple' },
-        { id: 9,  day: 22, title: 'CVE Discovery',    type: 'discovery', color: 'teal'   },
-        { id: 10, day: 24, title: 'Internal Audit',   type: 'scan',      color: 'purple' },
-        { id: 11, day: 29, title: 'Deadline: HQ-X2',  type: 'deadline',  color: 'red'    },
+        { id: 3,  day: 8,  title: 'Critical Patch Deadline', type: 'CRITICAL', color: 'red', team: 'Network Security', deadline: 'April 8, 5:00 PM', asset: '192.168.1.104', desc: 'Unpatched Buffer Overflow vulnerability in core firmware. Exploitation confirmed in external environments.' },
+        { id: 5,  day: 12, title: 'Critical Patch Deadline', type: 'CRITICAL', color: 'red', team: 'Patch Management', deadline: 'April 12, 5:00 PM', asset: '192.168.1.104', desc: 'Unpatched Buffer Overflow vulnerability in core firmware. Exploitation confirmed in external environments.' },
+        { id: 6,  day: 12, title: '3 New Vulns',             type: 'discovery', color: 'teal'   },
+        { id: 7,  day: 14, title: 'Deadline: Network Sec',   type: 'deadline',  color: 'blue',   team: 'Network Security',         deadline: 'April 14, 5:00 PM', extended: '7 Days' },
+        { id: 10, day: 18, title: 'Deadline: Patch Management',    type: 'deadline',  color: 'green',  team: 'Patch Management',          deadline: 'April 18, 5:00 PM', extended: '14 Days' },
+        { id: 11, day: 20, title: 'Deadline: Configuration Management',   type: 'deadline',  color: 'orange', team: 'Configuration Management',  deadline: 'April 20, 5:00 PM', extended: '10 Days' },
+        { id: 14, day: 25, title: 'Deadline: Architectural Flaws',    type: 'deadline',  color: 'crimson', team: 'Architectural Flaws',      deadline: 'April 25, 5:00 PM', extended: '5 Days' },
       ],
       calendarDays: [
         { day: 29, currentMonth: false },
@@ -352,6 +428,12 @@ export default {
     closePopup() {
       this.showPopup = false;
       this.selectedEvent = null;
+    },
+    openDetailModal() {
+      this.showDetailModal = true;
+    },
+    closeDetailModal() {
+      this.showDetailModal = false;
     },
   },
   computed: {
@@ -611,6 +693,10 @@ export default {
 .cal-event-red    { background: #fee2e2; color: #dc2626; }
 .cal-event-teal   { background: #ccfbf1; color: #0f696e; }
 .cal-event-purple { background: #241447; color: #ffffff; }
+.cal-event-blue   { background: #dbeafe; color: #1d4ed8; }
+.cal-event-green  { background: #dcfce7; color: #15803d; }
+.cal-event-orange { background: #fff7ed; color: #ea580c; }
+.cal-event-crimson{ background: #fee2e2; color: #b91c1c; }
 
 /* ── Event Popup ── */
 .cal-popup-overlay {
@@ -702,6 +788,50 @@ export default {
   transition: background 0.15s;
 }
 .cal-popup-dismiss:hover { background: #f8f9fc; }
+
+/* ── Detail Modal ── */
+.cal-detail-backdrop {
+  position: fixed; inset: 0; z-index: 10001;
+  background: rgba(36,20,71,0.45);
+  display: flex; align-items: center; justify-content: center;
+}
+.cal-detail-modal {
+  background: #ffffff; border-radius: 18px;
+  width: min(520px, 95vw); max-height: 85vh;
+  display: flex; flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  overflow: hidden;
+}
+.cal-detail-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  padding: 22px 24px 16px; border-bottom: 1px solid #f1f5f9;
+  background: #f8f9fc;
+}
+.cal-detail-title { font-size: 1.05rem; font-weight: 800; color: #1e293b; margin: 0; }
+.cal-detail-body { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 20px; }
+.cal-detail-footer { padding: 14px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; }
+
+.cal-detail-section { display: flex; flex-direction: column; gap: 8px; }
+.cal-detail-label { font-size: 0.62rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin: 0; }
+.cal-detail-val { font-size: 0.875rem; font-weight: 600; color: #1e293b; margin: 0; }
+.cal-detail-sub { font-size: 0.75rem; color: #64748b; margin: 2px 0 0; }
+
+.cal-detail-team-row { display: flex; align-items: center; gap: 10px; background: #f8f9fc; border-radius: 10px; padding: 12px 14px; }
+.cal-detail-team-icon { width: 36px; height: 36px; border-radius: 50%; background: #e0f2f1; color: #0f696e; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+
+.cal-detail-history { display: flex; flex-direction: column; gap: 12px; padding-left: 8px; }
+.cal-detail-history-item { display: flex; align-items: flex-start; gap: 10px; }
+.cal-detail-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+.cal-dot-done { background: #0f696e; }
+.cal-dot-active { background: #241447; }
+.cal-detail-history-title { font-size: 0.82rem; font-weight: 700; color: #1e293b; margin: 0 0 2px; }
+.cal-detail-history-sub { font-size: 0.75rem; color: #64748b; margin: 0; }
+
+.cal-detail-ext-row { display: flex; align-items: flex-start; gap: 10px; background: #fff7ed; border-radius: 10px; padding: 12px 14px; }
+.cal-detail-ext-icon { color: #f97316; font-size: 1.1rem; margin-top: 2px; }
+
+.cal-detail-sr-row { display: flex; align-items: center; gap: 14px; background: #f8f9fc; border-radius: 10px; padding: 12px 14px; }
+.cal-detail-sr-num { width: 44px; height: 44px; border-radius: 50%; background: #241447; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 800; flex-shrink: 0; }
 
 /* ── Week View ── */
 .cal-week-wrap {
