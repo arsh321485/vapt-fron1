@@ -215,10 +215,7 @@
 
                       <div class="exc-so-tl-item">
                         <div class="exc-so-tl-dot exc-so-dot-active">
-                          <svg class="exc-eye-icon" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M12 5C6.8 5 2.7 8.1 1 12c1.7 3.9 5.8 7 11 7s9.3-3.1 11-7c-1.7-3.9-5.8-7-11-7Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <circle cx="12" cy="12" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/>
-                          </svg>
+                          <img src="@/assets/images/3-removebg-preview.png" class="exc-eye-icon" alt="investigation" />
                         </div>
                         <div class="exc-so-tl-content exc-so-tl-active-card">
                           <div class="d-flex justify-content-between">
@@ -676,7 +673,7 @@ export default {
   left: -32px;
   top: 0;
 }
-.exc-eye-icon { width: 14px; height: 14px; display: block; }
+.exc-eye-icon { width: 56px; height: 180px; padding-top: 10px; display: block; object-fit: contain; }
 .exc-so-dot-comment { background: #e2e8f0; color: #49454f; }
 
 .exc-so-tl-content { flex: 1; min-width: 0; }

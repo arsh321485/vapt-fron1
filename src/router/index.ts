@@ -56,6 +56,7 @@ import ScopingFormView from "../views/admin-dashboard/ScopingFormView.vue";
 import ScopingFormView2 from "../views/admin-dashboard/ScopingFormView2.vue";
 import UserSetPasswordView from "../views/user-views/UserSetPasswordView.vue";
 import RemediationTimelineView from "../views/admin-dashboard/RemediationTimelineView.vue";
+import UserRemediationTimelineView from "../views/user-views/UserRemediationTimelineView.vue";
 import CalendarView from "../views/admin-dashboard/CalendarView.vue";
 
 const router = createRouter({
@@ -133,9 +134,10 @@ const router = createRouter({
       component: MitigationStrategyView,
     },
     {
-      path: "/remediation-timeline",
+      path: "/remediation-timeline/:reportId/:asset",
       name: "remediation-timeline",
       component: RemediationTimelineView,
+      props: true,
     },
     {
       path: "/calendar",
@@ -367,6 +369,12 @@ const router = createRouter({
       path: "/user-tickets",
       name: "UserTickets",
       component: UserTicketsView,
+    },
+    {
+      path: "/user-remediation-timeline/:reportId/:asset",
+      name: "user-remediation-timeline",
+      component: UserRemediationTimelineView,
+      props: true,
     },
   ],
   scrollBehavior(to, from, savedPosition) {

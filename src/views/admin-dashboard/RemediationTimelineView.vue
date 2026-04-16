@@ -67,8 +67,16 @@
               </div>
             </div>
 
+            <!-- Loading overlay -->
+            <div v-if="isLoading" class="rt-loading-overlay">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+              <p class="mt-3 text-muted">Creating fix vulnerability...</p>
+            </div>
+
             <!-- Stepper -->
-            <div class="rt-stepper-wrap">
+            <div v-if="!isLoading" class="rt-stepper-wrap">
               <div class="rt-stepper">
                 <template v-for="step in totalSteps" :key="step">
                   <!-- Circle -->
@@ -96,7 +104,7 @@
             </div>
 
             <!-- Body: 2-column grid -->
-            <div class="rt-body">
+            <div v-if="!isLoading" class="rt-body">
 
               <!-- ── LEFT COLUMN ── -->
               <div class="rt-main-col">
@@ -109,7 +117,7 @@
                     <span class="rt-tech-label-text">Technical Insight</span>
                   </div>
                   <div class="d-flex justify-content-between align-items-start">
-                    <!-- Left: Impacted Asset → Critical → CVE -->
+                    <!-- Left: Impacted Asset → Severity → Vuln Name -->
                     <div class="rt-tech-left">
                       <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
                         <span class="rt-label-text">Impacted Asset:</span>
@@ -124,6 +132,25 @@
                       <div class="rt-progress-num">
                         {{ progressPercent }}<span class="rt-progress-pct">%</span>
                       </div>
+                    </div>
+                  </div>
+                  <!-- Meta row: Team / Deadline / OS / Tools -->
+                  <div class="rt-tech-meta-row mt-3">
+                    <div v-if="currentVuln.assignedTeam" class="rt-tech-meta-item">
+                      <span class="rt-tech-meta-label">ASSIGNED TEAM</span>
+                      <span class="rt-tech-meta-val">{{ currentVuln.assignedTeam }}</span>
+                    </div>
+                    <div v-if="currentVuln.deadline" class="rt-tech-meta-item">
+                      <span class="rt-tech-meta-label">DEADLINE</span>
+                      <span class="rt-tech-meta-val">{{ currentVuln.deadline }}</span>
+                    </div>
+                    <div v-if="currentVuln.operatingSystem" class="rt-tech-meta-item">
+                      <span class="rt-tech-meta-label">OS</span>
+                      <span class="rt-tech-meta-val">{{ currentVuln.operatingSystem }}</span>
+                    </div>
+                    <div v-if="currentVuln.artifactsTools" class="rt-tech-meta-item">
+                      <span class="rt-tech-meta-label">ARTIFACTS / TOOLS</span>
+                      <span class="rt-tech-meta-val">{{ currentVuln.artifactsTools }}</span>
                     </div>
                   </div>
                 </div>
@@ -142,27 +169,60 @@
                       v-for="(task, idx) in subtasks"
                       :key="task.id"
                       class="rt-task-item"
+                      :class="{ 'rt-task-completed': task.status === 'completed' }"
                       @click="toggleTask(idx)"
                     >
                       <!-- Task summary row -->
                       <div class="rt-task-row">
                         <div class="rt-task-left">
-                          <div class="rt-task-circle">{{ task.id }}</div>
+                          <div
+                            class="rt-task-circle"
+                            :class="{ 'rt-circle-task-done': task.status === 'completed' }"
+                          >
+                            <i v-if="task.status === 'completed'" class="bi bi-check-lg"></i>
+                            <span v-else>{{ task.id }}</span>
+                          </div>
                           <div class="rt-task-info">
                             <span class="rt-task-name">{{ task.name }}</span>
-                            <span class="rt-task-assignee">{{ task.assignee }}</span>
+                            <span class="rt-task-assignee">{{ task.assignedTeam }}</span>
                           </div>
                         </div>
-                        <div class="rt-task-chevron" :class="{ 'rt-chevron-open': expandedTask === idx }">
-                          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                            <path d="M4 6L8 10L12 6" stroke="#94a3b8" stroke-width="1.5"
-                                  stroke-linecap="round" stroke-linejoin="round"/>
-                          </svg>
+                        <div class="d-flex align-items-center gap-2">
+                          <span v-if="task.status === 'completed'" class="rt-step-status-badge rt-status-done">Completed</span>
+                          <span v-else class="rt-step-status-badge rt-status-pending-red">Pending</span>
+                          <div class="rt-task-chevron" :class="{ 'rt-chevron-open': expandedTask === idx }">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                              <path d="M4 6L8 10L12 6" stroke="#94a3b8" stroke-width="1.5"
+                                    stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                          </div>
                         </div>
                       </div>
 
                       <!-- Expanded detail panel -->
                       <div v-if="expandedTask === idx" class="rt-task-expanded">
+
+                        <!-- Meta: Deadline + Criticality + Effort -->
+                        <div class="rt-expand-meta-row">
+                          <div v-if="task.deadline" class="rt-expand-meta-item">
+                            <i class="bi bi-calendar3 me-1"></i>
+                            <span class="rt-expand-label">Deadline:</span>
+                            <span class="rt-expand-meta-val">{{ task.deadline }}</span>
+                          </div>
+                          <div v-if="task.criticality" class="rt-expand-meta-item">
+                            <i class="bi bi-exclamation-circle me-1"></i>
+                            <span class="rt-expand-label">Criticality:</span>
+                            <span class="rt-expand-meta-val" :class="{
+                              'text-danger': task.criticality === 'Critical',
+                              'text-warning': task.criticality === 'High',
+                            }">{{ task.criticality }}</span>
+                          </div>
+                          <div v-if="task.effortEstimate" class="rt-expand-meta-item">
+                            <i class="bi bi-clock me-1"></i>
+                            <span class="rt-expand-label">Effort:</span>
+                            <span class="rt-expand-meta-val">{{ task.effortEstimate }}</span>
+                          </div>
+                        </div>
 
                         <!-- ROW 1: ACTION + FILE PATH side by side -->
                         <div class="rt-expand-row-2">
@@ -172,31 +232,39 @@
                             <!-- SUB-TASKS under ACTION -->
                             <div v-if="task.subTasks && task.subTasks.length" class="mt-3">
                               <span class="rt-expand-label">SUB-TASKS</span>
-                              <div class="rt-checklist mt-1">
-                                <label
+                              <div class="rt-subtask-list mt-1">
+                                <div
                                   v-for="(sub, si) in task.subTasks"
                                   :key="si"
-                                  class="rt-check-item"
+                                  class="rt-subtask-entry"
                                   @click.stop
                                 >
-                                  <input type="checkbox" class="rt-checkbox" />
-                                  <span>{{ sub }}</span>
-                                </label>
+                                  <span class="rt-subtask-desc">{{ sub.description }}</span>
+                                  <div v-if="!sub.items || sub.items.length === 0" class="rt-subtask-dash"> - </div>
+                                  <div v-else class="rt-checklist mt-1">
+                                    <label
+                                      v-for="(item, ii) in sub.items"
+                                      :key="ii"
+                                      class="rt-check-item"
+                                    >
+                                      <input type="checkbox" class="rt-checkbox" />
+                                      <span>{{ item }}</span>
+                                    </label>
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           </div>
-                          <div v-if="task.filePath" class="rt-expand-section">
+                          <div v-if="task.filePath && task.filePath !== 'N/A'" class="rt-expand-section">
                             <span class="rt-expand-label">FILE PATH</span>
                             <div class="rt-filepath-box">{{ task.filePath }}</div>
                           </div>
                         </div>
 
                         <!-- COMMAND TO RUN (full width) -->
-                        <div v-if="task.command" class="rt-expand-section">
+                        <div v-if="task.command && task.command !== 'N/A'" class="rt-expand-section">
                           <span class="rt-expand-label">COMMAND TO RUN</span>
-                          <div class="rt-code-block">
-                            {{ task.command }}
-                          </div>
+                          <div class="rt-code-block">{{ task.command }}</div>
                         </div>
 
                         <!-- ROW 2: TOOLS + CONSIDERATION side by side -->
@@ -204,9 +272,7 @@
                           <div v-if="task.tools && task.tools.length" class="rt-expand-section">
                             <span class="rt-expand-label">ARTIFACTS / TOOLS USED</span>
                             <div class="d-flex flex-wrap gap-2 mt-1">
-                              <span v-for="tool in task.tools" :key="tool" class="rt-tool-chip">
-                                {{ tool }}
-                              </span>
+                              <span v-for="tool in task.tools" :key="tool" class="rt-tool-chip">{{ tool }}</span>
                             </div>
                           </div>
                           <div v-if="task.consideration" class="rt-expand-section">
@@ -218,7 +284,15 @@
                           </div>
                         </div>
 
-
+                        <!-- Assigned Members -->
+                        <div v-if="task.members && task.members.length" class="rt-expand-section">
+                          <span class="rt-expand-label">ASSIGNED MEMBERS</span>
+                          <div class="d-flex flex-wrap gap-2 mt-1">
+                            <span v-for="m in task.members" :key="m.user_id" class="rt-member-chip">
+                              <i class="bi bi-person-fill me-1"></i>{{ m.name }}
+                            </span>
+                          </div>
+                        </div>
 
                       </div>
                     </div>
@@ -226,8 +300,57 @@
 
                   <!-- Bottom action buttons -->
                   <div class="rt-action-btns">
-                    <button class="btn-save">Save Progress</button>
-                    <button class="btn-complete">Complete Step {{ currentStep }}</button>
+                    <span class="rt-admin-note">
+                      <i class="bi bi-info-circle me-1"></i>
+                      Step completion is performed by assigned users only.
+                    </span>
+                    <button class="btn-complete" disabled title="Step completion is done by users only">
+                      Complete Step {{ currentStep }}
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Final Feedback Card (shown when all steps completed) -->
+                <div v-if="showFeedback" class="rt-feedback-card">
+                  <div class="rt-feedback-header">
+                    <span class="rt-feedback-emoji">🎉</span>
+                    <h5 class="rt-feedback-title mb-0">Vulnerability Closed</h5>
+                    <span class="rt-admin-readonly-badge">
+                      <i class="bi bi-lock-fill me-1"></i>Read-Only
+                    </span>
+                  </div>
+
+                  <!-- Loading -->
+                  <div v-if="loadingFeedback" class="text-muted small py-2">
+                    <span class="spinner-border spinner-border-sm me-2"></span>Loading feedback...
+                  </div>
+
+                  <!-- Feedback available -->
+                  <div v-else-if="finalFeedbackData">
+                    <div class="rt-feedback-row">
+                      <div class="rt-feedback-field">
+                        <p class="rt-fb-label">RESULT</p>
+                        <span class="rt-fb-result-badge">{{ finalFeedbackData.fix_result }}</span>
+                      </div>
+                      <div class="rt-feedback-field" v-if="finalFeedbackData.submitted_at">
+                        <p class="rt-fb-label">SUBMITTED AT</p>
+                        <p class="rt-fb-value">{{ new Date(finalFeedbackData.submitted_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }}</p>
+                      </div>
+                      <div class="rt-feedback-field" v-if="currentVuln.closed_at">
+                        <p class="rt-fb-label">CLOSED AT</p>
+                        <p class="rt-fb-value">{{ new Date(currentVuln.closed_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }}</p>
+                      </div>
+                    </div>
+                    <div v-if="finalFeedbackData.feedback_comment" class="mt-3">
+                      <p class="rt-fb-label">FEEDBACK COMMENT</p>
+                      <p class="rt-fb-value">{{ finalFeedbackData.feedback_comment }}</p>
+                    </div>
+                  </div>
+
+                  <!-- No feedback yet -->
+                  <div v-else class="rt-feedback-empty">
+                    <i class="bi bi-hourglass-split me-2"></i>
+                    Awaiting user feedback submission.
                   </div>
                 </div>
 
@@ -240,7 +363,19 @@
                 <!-- Activity Timeline Card -->
                 <div class="rt-timeline-card">
                   <span class="rt-card-heading">ACTIVITY TIMELINE</span>
-                  <div class="rt-tl-list">
+
+                  <!-- Loading -->
+                  <div v-if="timelineLoading" class="text-muted small py-3 text-center">
+                    <span class="spinner-border spinner-border-sm me-1"></span> Loading...
+                  </div>
+
+                  <!-- Empty -->
+                  <div v-else-if="!timeline.length" class="text-muted small py-3 text-center">
+                    No timeline events yet.
+                  </div>
+
+                  <!-- Timeline list -->
+                  <div v-else class="rt-tl-list">
                     <div
                       v-for="(item, idx) in timeline"
                       :key="idx"
@@ -254,7 +389,7 @@
                       <div class="rt-tl-content">
                         <span class="rt-tl-time">{{ item.time }}</span>
                         <span class="rt-tl-event">{{ item.event }}</span>
-                        <span class="rt-tl-desc">{{ item.desc }}</span>
+                        <span v-if="item.desc" class="rt-tl-desc">{{ item.desc }}</span>
                       </div>
                     </div>
                   </div>
@@ -285,88 +420,44 @@ export default {
   name: 'RemediationTimelineView',
   components: { DashboardMenu, DashboardHeader },
 
+  props: {
+    reportId: { type: String, required: true },
+    asset: { type: String, required: true },
+  },
+
   data() {
     return {
       authStore: useAuthStore(),
-      currentStep: 5,
+      currentStep: 1,
       totalSteps: 8,
-      completedSteps: [1,2,3,4],
+      completedSteps: [],
       expandedTask: null,
       isSupportAlreadyRaised: false,
       selectedSteps: [],
       isAllSelected: false,
       supportDescription: "",
       supportDetail: null,
+      isLoading: false,
+      createError: null,
+      finalFeedbackData: null,
+      loadingFeedback: false,
+      timelineLoading: false,
       currentVuln: {
-        name: 'CVE-2023-35078: Remote Unauthenticated API Access',
-        risk: 'CRITICAL RISK',
-        asset: '192.168.1.185 (Primary Gateway)',
-        progress: 42,
+        id: null,
+        name: '',
+        risk: '',
+        asset: '',
+        report_id: null,
+        progress: 0,
+        assignedTeam: '',
+        deadline: '',
+        artifactsTools: '',
+        operatingSystem: '',
+        status: '',
+        closed_at: null,
       },
-
-      subtasks: [
-        {
-          id: 1,
-          name: 'Identify Vulnerable Endpoint',
-          assignee: 'Rahul Sharma',
-          action: 'Review logs to identify endpoints where user input is executed.',
-          filePath: '/var/log/apache2/access.log, /var/log/nginx/access.log',
-          command: 'grep -i "cmd|exec|system" /var/log/apache2/access.log',
-          tools: ['grep', 'wss', 'terminal'],
-          consideration: 'Ensure logs are intact and not rotated.',
-          subTasks: ['Review apache logs', 'Review nginx logs'],
-        },
-        {
-          id: 2,
-          name: 'Backup Application Files',
-          assignee: 'Rahul Sharma',
-          action: '',
-          filePath: '',
-          command: '',
-          tools: [],
-          consideration: '',
-          subTasks: [],
-        },
-        {
-          id: 3,
-          name: 'Locate Unsafe Functions',
-          assignee: 'Rahul Sharma',
-          action: '',
-          filePath: '',
-          command: '',
-          tools: [],
-          consideration: '',
-          subTasks: [],
-        },
-      ],
-
-      timeline: [
-        {
-          time: 'TODAY, 10:45 AM',
-          event: 'Task Completed',
-          desc: '"Revoke old SSH keys" by Alex Rivera.',
-          color: '#0f696e',
-        },
-        {
-          time: 'TODAY, 09:12 AM',
-          event: 'Credential Reset',
-          desc: 'System-wide admin password rotation successful.',
-          color: '#0f696e',
-        },
-        {
-          time: 'YESTERDAY, 4:30 PM',
-          event: 'Workflow Initiated',
-          desc: 'Remediation process for CVE-2023-35078 started by SecOps Automator.',
-          color: '#241447',
-        },
-        {
-          time: 'OCT 24, 11:20 AM',
-          event: 'Vulnerability Detected',
-          desc: 'Critical API access exploit identified during routine edge scan.',
-          color: '#94a3b8',
-        },
-      ],
-
+      subtasks: [],
+      timeline: [],
       uptime: 99.98,
       riskScore: 8.2,
     };
@@ -459,7 +550,51 @@ export default {
         },
       });
     },
-
+    toggleTask(idx) {
+      this.expandedTask = this.expandedTask === idx ? null : idx;
+    },
+    formatTimelineDate(dateStr) {
+      if (!dateStr) return '';
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleString('en-GB', {
+        day: 'numeric', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      });
+    },
+    timelineIconColor(icon) {
+      if (icon === 'check') return '#16a34a';
+      if (icon === 'arrow') return '#0f696e';
+      return '#94a3b8';
+    },
+    async fetchTimeline(fixVulId) {
+      this.timelineLoading = true;
+      const res = await this.authStore.fetchVulnerabilityTimeline(fixVulId);
+      this.timelineLoading = false;
+      if (res.status && res.data?.timeline) {
+        this.timeline = res.data.timeline.map(item => ({
+          time: this.formatTimelineDate(item.date),
+          event: item.event,
+          desc: item.assigned_team || (item.type === 'deadline' ? 'Scheduled deadline' : ''),
+          color: this.timelineIconColor(item.icon),
+          icon: item.icon,
+          status: item.status,
+        }));
+      }
+    },
+    async fetchFinalFeedback(fixVulId) {
+      this.loadingFeedback = true;
+      const res = await this.authStore.getFixFinalFeedback(fixVulId);
+      this.loadingFeedback = false;
+      if (res.status && res.data?.final_feedback) {
+        this.finalFeedbackData = res.data.final_feedback;
+        // Also update currentVuln status/closed_at from response
+        if (res.data.status) {
+          this.currentVuln.status = res.data.status;
+          this.currentVuln.closed_at = res.data.closed_at || null;
+        }
+      }
+    },
   },
 
   computed: {
@@ -469,22 +604,232 @@ export default {
     completedSubtasksCount() {
       return this.completedSteps.length;
     },
-  },
-
-  methods: {
-    toggleTask(idx) {
-      this.expandedTask = this.expandedTask === idx ? null : idx;
+    showFeedback() {
+      return this.totalSteps > 0 && this.completedSteps.length >= this.totalSteps;
     },
   },
 
-  mounted() {
-    // Auth store available for future API integration
-    const store = useAuthStore(); // eslint-disable-line no-unused-vars
+  async mounted() {
+    const id = this.$route.query.id;
+    const plugin_name = this.$route.query.plugin_name;
+    const risk_factor = this.$route.query.risk_factor;
+
+    if (!this.reportId || !this.asset || !id || !plugin_name || !risk_factor) {
+      Swal.fire('Error', 'Missing vulnerability data. Please go back and try again.', 'error');
+      return;
+    }
+
+    this.isLoading = true;
+
+    // Step 1: Create fix vulnerability
+    const createRes = await this.authStore.createFixVulnerability(
+      this.reportId,
+      this.asset,
+      {
+        id: String(id),
+        plugin_name: String(plugin_name),
+        risk_factor: String(risk_factor),
+      }
+    );
+
+    if (!createRes.status) {
+      this.isLoading = false;
+      Swal.fire('Error', createRes.message || 'Failed to create fix vulnerability', 'error');
+      return;
+    }
+
+    const created = createRes.data;
+    this.currentVuln = {
+      id: created._id,
+      name: created.vulnerability_name,
+      risk: `${(created.severity || '').toUpperCase()} RISK`,
+      asset: created.asset,
+      report_id: created.report_id,
+      progress: 0,
+    };
+
+    // Build initial timeline from creation
+    const createdAt = created.created_at
+      ? new Date(created.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : 'Just now';
+    this.timeline = [
+      {
+        time: createdAt.toUpperCase(),
+        event: 'Fix Vulnerability Created',
+        desc: `"${created.vulnerability_name}" assigned to ${created.assigned_team || 'team'}.`,
+        color: '#0f696e',
+      },
+      {
+        time: createdAt.toUpperCase(),
+        event: 'Vulnerability Detected',
+        desc: `Asset: ${created.asset} — ${created.vulnerability_type || 'Security Issue'}.`,
+        color: '#94a3b8',
+      },
+    ];
+
+    // Step 2: Fetch steps using the new fix vulnerability _id
+    const stepsRes = await this.authStore.getFixVulnerabilitySteps(created._id);
+
+    this.isLoading = false;
+
+    if (stepsRes.status) {
+      const s = stepsRes.data;
+
+      // Update stepper
+      this.totalSteps = s.total_steps || 0;
+      this.currentStep = s.next_step || 1;
+      this.completedSteps = Array.from({ length: s.completed_steps || 0 }, (_, i) => i + 1);
+
+      // Map steps to subtasks
+      const os = (s.operating_system || 'windows').toLowerCase();
+      this.subtasks = (s.steps || []).map(step => {
+        const detail = step[os] || step['windows'] || {};
+        return {
+          id: step.step_number,
+          name: step.step_name,
+          assignedTeam: step.assigned_team || s.assigned_team || 'Unassigned',
+          members: step.assigned_team_members || [],
+          status: step.status,
+          deadline: step.deadline || s.deadline || '',
+          criticality: step.criticality || '',
+          effortEstimate: step.effort_estimate || '',
+          action: detail.action || '',
+          filePath: detail.system_file_path || '',
+          command: detail.commands_for_action || '',
+          tools: detail.artifacts_tools_used || [],
+          consideration: detail.precautions || '',
+          subTasks: (detail.sub_tasks || []).map(st => ({
+            description: st.description || '',
+            items: st.items || [],
+          })),
+        };
+      });
+
+      // Enrich currentVuln with steps response data
+      this.currentVuln.assignedTeam   = s.assigned_team || '';
+      this.currentVuln.deadline       = s.deadline || '';
+      this.currentVuln.artifactsTools = s.artifacts_tools || '';
+      this.currentVuln.operatingSystem = s.operating_system || '';
+      this.currentVuln.status         = s.vulnerability_status || '';
+
+      // Update progress
+      this.currentVuln.progress = this.totalSteps > 0
+        ? Math.round((s.completed_steps / s.total_steps) * 100)
+        : 0;
+
+      // Fetch activity timeline
+      await this.fetchTimeline(created._id);
+
+      // If all steps completed, fetch final feedback
+      if (s.completed_steps > 0 && s.completed_steps >= s.total_steps) {
+        await this.fetchFinalFeedback(created._id);
+      }
+    } else {
+      Swal.fire('Warning', 'Fix vulnerability created but could not load steps.', 'warning');
+    }
   },
 };
 </script>
 
 <style scoped>
+/* ─── Final Feedback Card ───────────────────────────────────────────── */
+.rt-feedback-card {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-left: 4px solid #16a34a;
+  border-radius: 14px;
+  padding: 20px 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.rt-feedback-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.rt-feedback-emoji {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.rt-feedback-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #1e293b;
+  flex: 1;
+}
+
+.rt-admin-readonly-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 50px;
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.rt-feedback-row {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.rt-feedback-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rt-fb-label {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.rt-fb-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+}
+
+.rt-fb-result-badge {
+  display: inline-block;
+  background: #dcfce7;
+  color: #166534;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 4px 14px;
+  border-radius: 50px;
+}
+
+.rt-feedback-empty {
+  font-size: 0.84rem;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+}
+
+/* ─── Loading Overlay ───────────────────────────────────────────────── */
+.rt-loading-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}
+
 /* ─── Shell ─────────────────────────────────────────────────────────── */
 .rt-content {
   background: #f4f5f8;
@@ -826,6 +1171,33 @@ export default {
   color: #64748b;
 }
 
+/* Tech card meta row */
+.rt-tech-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #f1f5f9;
+}
+.rt-tech-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 120px;
+}
+.rt-tech-meta-label {
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+.rt-tech-meta-val {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
 /* ─── Subtasks Card ─────────────────────────────────────────────────── */
 .rt-subtasks-card {
   background: #ffffff;
@@ -1017,6 +1389,11 @@ export default {
   margin-top: 2px;
 }
 
+.rt-subtask-list { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.rt-subtask-entry { display: flex; flex-direction: column; gap: 4px; }
+.rt-subtask-desc { font-size: 0.84rem; font-weight: 600; color: #334155; }
+.rt-subtask-dash { font-size: 0.84rem; color: #94a3b8; padding-left: 4px; }
+
 .rt-checklist {
   display: flex;
   flex-direction: column;
@@ -1041,6 +1418,71 @@ export default {
   accent-color: #0f696e;
   cursor: pointer;
   flex-shrink: 0;
+}
+
+/* Step status badges */
+.rt-step-status-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 50px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.rt-status-done        { background: #d1fae5; color: #065f46; }
+.rt-status-pending-red { background: #fee2e2; color: #dc2626; }
+
+/* Completed task row */
+.rt-task-completed {
+  background: #f0fdf4;
+}
+
+/* Task circle variants */
+.rt-circle-task-done { background: #0f696e !important; }
+
+/* Meta row in expanded panel */
+.rt-expand-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: #f8f9fc;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 4px;
+}
+.rt-expand-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: #475569;
+}
+.rt-expand-meta-val {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+/* Member chip */
+.rt-member-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: #e0f2f1;
+  color: #0f696e;
+  padding: 3px 10px;
+  border-radius: 50px;
+  border: 1px solid rgba(15,105,110,0.2);
+}
+
+/* Admin note */
+.rt-admin-note {
+  font-size: 0.78rem;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  flex: 1;
 }
 
 /* Action buttons */
@@ -1089,6 +1531,12 @@ export default {
 
 .btn-complete:active {
   transform: scale(0.97);
+}
+
+.btn-complete:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* ─── Right Sidebar ─────────────────────────────────────────────────── */
