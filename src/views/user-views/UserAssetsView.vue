@@ -18,7 +18,7 @@
                 <!-- Header -->
                 <div class="left-panel-header">
                   <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h2 class="assets-title">All Assets</h2>
+                    <h2 class="assets-title">All Assets </h2>
                     <span class="assets-count-badge">{{ totalAssets }} Assets</span>
                   </div>
                   <div class="d-flex gap-3 mb-3">

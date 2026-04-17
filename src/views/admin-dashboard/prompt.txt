@@ -1,1 +1,9 @@
+<<<<<<< HEAD
 Extended Timeline ke modal se Asset (IP) ke drop down me select assets shi hai samne aure piche jo dash - aa rha hai hta do and icon jo hai usko koi color se hightlight kro same as Vulnerability Name me bhi krdo
+=======
+<<<<<<< HEAD
+Extended Timeline ke modal se Asset (IP) ke drop down me select assets shi hai samne aure piche jo dash - aa rha hai hta do and icon jo hai usko koi color se hightlight kro same as Vulnerability Name me bhi krdo
+=======
+.exc-eye-icon  is class par admin side me jo height with adding sb dala hai same user side me userexception me bhi DAL DO
+>>>>>>> 9beae46471f64c07b9e6f8fd8a1f9492adcf2876
+>>>>>>> 4768cfdc145c3c420c08d3d2da7baa4ccd683b99
