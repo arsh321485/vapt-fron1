@@ -640,15 +640,11 @@ export default {
   },
 
   async mounted() {
-<<<<<<< HEAD
     const fixVulId = this.$route.query.fix_vul_id;
-=======
->>>>>>> 9beae46471f64c07b9e6f8fd8a1f9492adcf2876
     const id = this.$route.query.id;
     const plugin_name = this.$route.query.plugin_name;
     const risk_factor = this.$route.query.risk_factor;
 
-<<<<<<< HEAD
     if (fixVulId) {
       this.isLoading = true;
       const stepsRes = await this.authStore.getFixVulnerabilitySteps(String(fixVulId));
@@ -715,8 +711,6 @@ export default {
       return;
     }
 
-=======
->>>>>>> 9beae46471f64c07b9e6f8fd8a1f9492adcf2876
     if (!this.reportId || !this.asset || !id || !plugin_name || !risk_factor) {
       Swal.fire('Error', 'Missing vulnerability data. Please go back and try again.', 'error');
       return;
@@ -822,10 +816,7 @@ export default {
 
       // Fetch activity timeline
       await this.fetchTimeline(created._id);
-<<<<<<< HEAD
       await this.fetchSupportRequestMeta(created._id, created.asset);
-=======
->>>>>>> 9beae46471f64c07b9e6f8fd8a1f9492adcf2876
 
       // If all steps completed, fetch final feedback
       if (s.completed_steps > 0 && s.completed_steps >= s.total_steps) {

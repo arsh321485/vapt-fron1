@@ -35,7 +35,6 @@
                   <div class="modal-body p-4">
                     <h6 class="vc-modal-section-label mb-3">Choose the step for which you want support</h6>
                     <div class="row g-2 mt-1">
-<<<<<<< HEAD
                       <div class="col-4" v-for="n in totalSteps" :key="n">
                         <span
                           class="vc-step-pill"
@@ -45,22 +44,6 @@
                           ]"
                           style="cursor:pointer;"
                           @click="toggleStep(n)"
-=======
-                      <div class="col-4">
-                        <span
-                          class="vc-step-pill"
-                          :class="isAllSelected ? 'vc-step-pill-active' : ''"
-                          style="cursor:pointer;"
-                          @click="!isSupportAlreadyRaised && toggleAllSteps()"
-                        >All Steps</span>
-                      </div>
-                      <div class="col-4" v-for="n in totalSteps" :key="n">
-                        <span
-                          class="vc-step-pill"
-                          :class="selectedSteps.includes(n) ? 'vc-step-pill-active' : ''"
-                          style="cursor:pointer;"
-                          @click="!isSupportAlreadyRaised && toggleStep(n)"
->>>>>>> 9beae46471f64c07b9e6f8fd8a1f9492adcf2876
                         >Step {{ n }}</span>
                       </div>
                     </div>
@@ -81,11 +64,7 @@
                     <button
                       v-if="!isSupportAlreadyRaised"
                       class="vc-btn-primary"
-<<<<<<< HEAD
                       :disabled="!supportDescription.trim() || !selectedSteps.length || submittingSupport"
-=======
-                      :disabled="!supportDescription.trim() || submittingSupport"
->>>>>>> 9beae46471f64c07b9e6f8fd8a1f9492adcf2876
                       @click="submitSupport"
                     >
                       <span v-if="submittingSupport">
@@ -505,13 +484,9 @@ export default {
       },
       isSupportAlreadyRaised: false,
       selectedSteps: [],
-<<<<<<< HEAD
       raisedSupportSteps: [],
       supportRequestsByStep: {},
       supportRequestCount: 0,
-=======
-      isAllSelected: false,
->>>>>>> 9beae46471f64c07b9e6f8fd8a1f9492adcf2876
       supportDescription: '',
       supportDetail: null,
       submittingSupport: false,
@@ -554,7 +529,6 @@ export default {
       this.expandedTask = this.expandedTask === idx ? null : idx;
     },
     toggleStep(step) {
-<<<<<<< HEAD
       if (this.selectedSteps.includes(step)) {
         this.selectedSteps = [];
         this.isSupportAlreadyRaised = false;
@@ -593,28 +567,10 @@ export default {
       }
       const res = await this.authStore.fetchUserSupportRequestsByReport(reportId, true);
       this.supportRequestCount = res?.status ? (res.count || 0) : 0;
-=======
-      if (this.isAllSelected) return;
-      if (this.selectedSteps.includes(step)) {
-        this.selectedSteps = this.selectedSteps.filter(s => s !== step);
-      } else {
-        this.selectedSteps.push(step);
-      }
-    },
-    toggleAllSteps() {
-      if (this.isAllSelected) {
-        this.isAllSelected = false;
-        this.selectedSteps = [];
-      } else {
-        this.isAllSelected = true;
-        this.selectedSteps = Array.from({ length: this.totalSteps }, (_, i) => i + 1);
-      }
->>>>>>> 9beae46471f64c07b9e6f8fd8a1f9492adcf2876
     },
     async openSupportModal() {
       this.isSupportAlreadyRaised = false;
       this.selectedSteps = [];
-<<<<<<< HEAD
       this.supportDescription = '';
       this.supportDetail = null;
       this.raisedSupportSteps = [];
@@ -631,11 +587,6 @@ export default {
         this.supportDescription = existingRequest?.description || '';
         this.supportDetail = existingRequest || null;
       }
-=======
-      this.isAllSelected = false;
-      this.supportDescription = '';
-      this.supportDetail = null;
->>>>>>> 9beae46471f64c07b9e6f8fd8a1f9492adcf2876
       await this.$nextTick();
       const modal = new bootstrap.Modal(document.getElementById('rtUserSupportModal'));
       modal.show();
@@ -647,7 +598,6 @@ export default {
         Swal.fire('Error', 'Vulnerability ID not found', 'error');
         return;
       }
-<<<<<<< HEAD
       if (!this.selectedSteps.length) {
         Swal.fire('Error', 'Please select a step number', 'error');
         return;
@@ -655,28 +605,14 @@ export default {
       this.submittingSupport = true;
       const res = await this.authStore.raiseUserSupportRequest(vulnerabilityId, {
         step_number: this.selectedSteps[0],
-=======
-      let stepValue = 'all';
-      if (!this.isAllSelected && this.selectedSteps.length > 0) {
-        stepValue = this.selectedSteps.join(',');
-      }
-      this.submittingSupport = true;
-      const res = await this.authStore.raiseUserSupportRequest(vulnerabilityId, {
-        step: stepValue,
->>>>>>> 9beae46471f64c07b9e6f8fd8a1f9492adcf2876
         description: this.supportDescription,
       });
       this.submittingSupport = false;
       if (res.status) {
-<<<<<<< HEAD
         this.supportDetail = res.data;
         await this.fetchSupportRequestStatus(vulnerabilityId);
         await this.fetchSupportRequestCountByReport(this.currentVuln?.report_id);
         this.isSupportAlreadyRaised = true;
-=======
-        this.isSupportAlreadyRaised = true;
-        this.supportDetail = res.data;
->>>>>>> 9beae46471f64c07b9e6f8fd8a1f9492adcf2876
         Swal.fire({ icon: 'success', title: 'Support Request Raised', timer: 2000, showConfirmButton: false });
       } else {
         Swal.fire('Error', res.message || 'Failed to raise support request', 'error');
@@ -837,15 +773,11 @@ export default {
   },
 
   async mounted() {
-<<<<<<< HEAD
     const fixVulId = this.$route.query.fix_vul_id;
-=======
->>>>>>> 9beae46471f64c07b9e6f8fd8a1f9492adcf2876
     const id = this.$route.query.id;
     const plugin_name = this.$route.query.plugin_name;
     const risk_factor = this.$route.query.risk_factor;
 
-<<<<<<< HEAD
     if (fixVulId) {
       this.isLoading = true;
       const stepsRes = await this.authStore.getUserFixVulnerabilitySteps(String(fixVulId));
@@ -910,8 +842,6 @@ export default {
       return;
     }
 
-=======
->>>>>>> 9beae46471f64c07b9e6f8fd8a1f9492adcf2876
     if (!this.reportId || !this.asset || !id || !plugin_name || !risk_factor) {
       Swal.fire('Error', 'Missing vulnerability data. Please go back and try again.', 'error');
       return;
@@ -951,10 +881,7 @@ export default {
       status: created.status || '',
       closed_at: null,
     };
-<<<<<<< HEAD
     await this.fetchSupportRequestCountByReport(created.report_id);
-=======
->>>>>>> 9beae46471f64c07b9e6f8fd8a1f9492adcf2876
 
     // Step 2: Fetch steps (user API)
     const stepsRes = await this.authStore.getUserFixVulnerabilitySteps(created._id);
@@ -1081,10 +1008,7 @@ export default {
   cursor: pointer; transition: all 0.15s; width: 100%; text-align: center;
 }
 .vc-step-pill-active { background: #e0f2f1; color: #0f696e; border-color: #0f696e; }
-<<<<<<< HEAD
 .vc-step-pill-raised { background: #fff7ed; color: #c2410c; border-color: #fdba74; }
-=======
->>>>>>> 9beae46471f64c07b9e6f8fd8a1f9492adcf2876
 .vc-textarea {
   width: 100%; border: 1px solid #e2e8f0; border-radius: 10px;
   padding: 10px 14px; font-size: 0.875rem; color: #1e293b;
