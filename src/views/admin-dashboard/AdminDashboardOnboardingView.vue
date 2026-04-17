@@ -835,9 +835,18 @@
               <h3 class="mte-modal-title">Mitigation timeline extension</h3>
               <p class="mte-modal-subtitle">Review and manage pending extension requests for vulnerability fixes.</p>
             </div>
-            <button type="button" class="mte-close-btn" @click="closeMitigationExtensionModal">
-              <i class="bi bi-x-lg"></i>
-            </button>
+            <div class="mte-header-actions">
+              <select class="mte-team-dropdown" v-model="mteSelectedTeam">
+                <option value="All">All Teams</option>
+                <option value="Patch Management">Patch Management</option>
+                <option value="Configuration Management">Configuration Management</option>
+                <option value="Network Security">Network Security</option>
+                <option value="Architectural Flaws">Architectural Flaws</option>
+              </select>
+              <button type="button" class="mte-close-btn" @click="closeMitigationExtensionModal">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
           </div>
 
           <div class="mte-severity-card mte-critical">
@@ -845,16 +854,19 @@
               <div class="mte-severity-left">
                 <i class="bi bi-exclamation-circle-fill"></i>
                 <span>Critical Severity Requests</span>
-                <span class="mte-badge critical">4 Pending</span>
+                <span class="mte-badge critical">{{ mteFilteredData.critical.length }} Items</span>
               </div>
-              <i class="bi" :class="mteOpenSection === 'critical' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+              <div class="mte-head-right">
+                <i class="bi" :class="mteOpenSection === 'critical' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+              </div>
             </div>
-
             <div v-if="mteOpenSection === 'critical'" class="mte-table-wrap">
-              <table class="mte-table">
+              <div v-if="mteFilteredData.critical.length === 0" class="mte-no-data">No requests for selected team.</div>
+              <table v-else class="mte-table">
                 <thead>
                   <tr>
                     <th>Asset (IP)</th>
+                    <th>Vul Name</th>
                     <th>Status</th>
                     <th>Requested By</th>
                     <th>Request Date</th>
@@ -863,29 +875,14 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td>192.168.1.104</td>
-                    <td><span class="mte-pill status">Pending</span></td>
-                    <td>Admin</td>
-                    <td>2026-03-20</td>
-                    <td class="mte-extension">15 Days</td>
-                    <td class="mte-reason" @click="openReasonDetail($event, 'Patch window approval pending from infra team')">{{ truncateReason('Patch window approval pending from infra team') }}</td>
-                  </tr>
-                  <tr>
-                    <td>10.0.4.52</td>
-                    <td><span class="mte-pill status">Review</span></td>
-                    <td>S. Miller</td>
-                    <td>2026-03-21</td>
-                    <td class="mte-extension">7 Days</td>
-                    <td class="mte-reason" @click="openReasonDetail($event, 'Emergency freeze due to release cutover')">{{ truncateReason('Emergency freeze due to release cutover') }}</td>
-                  </tr>
-                  <tr>
-                    <td>172.16.0.12</td>
-                    <td><span class="mte-pill status">Pending</span></td>
-                    <td>Admin</td>
-                    <td>2026-03-18</td>
-                    <td class="mte-extension">30 Days</td>
-                    <td class="mte-reason" @click="openReasonDetail($event, 'Change advisory board approval not completed')">{{ truncateReason('Change advisory board approval not completed') }}</td>
+                  <tr v-for="row in mteFilteredData.critical" :key="row.ip">
+                    <td>{{ row.ip }}</td>
+                    <td class="mte-vulname" :title="row.vulName">{{ row.vulName }}</td>
+                    <td><span class="mte-pill" :class="getMteStatusClass(row.status)">{{ row.status }}</span></td>
+                    <td>{{ row.by }}</td>
+                    <td>{{ row.date }}</td>
+                    <td class="mte-extension">{{ row.ext }}</td>
+                    <td class="mte-reason" @click="openReasonDetail($event, row.reason)">{{ truncateReason(row.reason) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -897,15 +894,19 @@
               <div class="mte-severity-left">
                 <i class="bi bi-exclamation-triangle-fill mte-high-icon"></i>
                 <span>High Severity Requests</span>
-                <span class="mte-badge high">12 Items</span>
+                <span class="mte-badge high">{{ mteFilteredData.high.length }} Items</span>
               </div>
-              <i class="bi" :class="mteOpenSection === 'high' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+              <div class="mte-head-right">
+                <i class="bi" :class="mteOpenSection === 'high' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+              </div>
             </div>
             <div v-if="mteOpenSection === 'high'" class="mte-table-wrap">
-              <table class="mte-table">
+              <div v-if="mteFilteredData.high.length === 0" class="mte-no-data">No requests for selected team.</div>
+              <table v-else class="mte-table">
                 <thead>
                   <tr>
                     <th>Asset (IP)</th>
+                    <th>Vul Name</th>
                     <th>Status</th>
                     <th>Requested By</th>
                     <th>Request Date</th>
@@ -914,21 +915,14 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td>10.10.2.11</td>
-                    <td><span class="mte-pill status">Pending</span></td>
-                    <td>N. Joshi</td>
-                    <td>2026-03-23</td>
-                    <td class="mte-extension">10 Days</td>
-                    <td class="mte-reason" @click="openReasonDetail($event, 'Vendor patch waiting for validation in staging')">{{ truncateReason('Vendor patch waiting for validation in staging') }}</td>
-                  </tr>
-                  <tr>
-                    <td>10.10.2.14</td>
-                    <td><span class="mte-pill status">Review</span></td>
-                    <td>A. Shah</td>
-                    <td>2026-03-24</td>
-                    <td class="mte-extension">5 Days</td>
-                    <td class="mte-reason" @click="openReasonDetail($event, 'Dependency conflict with auth service update')">{{ truncateReason('Dependency conflict with auth service update') }}</td>
+                  <tr v-for="row in mteFilteredData.high" :key="row.ip">
+                    <td>{{ row.ip }}</td>
+                    <td class="mte-vulname" :title="row.vulName">{{ row.vulName }}</td>
+                    <td><span class="mte-pill" :class="getMteStatusClass(row.status)">{{ row.status }}</span></td>
+                    <td>{{ row.by }}</td>
+                    <td>{{ row.date }}</td>
+                    <td class="mte-extension">{{ row.ext }}</td>
+                    <td class="mte-reason" @click="openReasonDetail($event, row.reason)">{{ truncateReason(row.reason) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -940,15 +934,19 @@
               <div class="mte-severity-left">
                 <i class="bi bi-exclamation-circle-fill mte-medium-icon"></i>
                 <span>Medium Severity Requests</span>
-                <span class="mte-badge medium">28 Items</span>
+                <span class="mte-badge medium">{{ mteFilteredData.medium.length }} Items</span>
               </div>
-              <i class="bi" :class="mteOpenSection === 'medium' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+              <div class="mte-head-right">
+                <i class="bi" :class="mteOpenSection === 'medium' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+              </div>
             </div>
             <div v-if="mteOpenSection === 'medium'" class="mte-table-wrap">
-              <table class="mte-table">
+              <div v-if="mteFilteredData.medium.length === 0" class="mte-no-data">No requests for selected team.</div>
+              <table v-else class="mte-table">
                 <thead>
                   <tr>
                     <th>Asset (IP)</th>
+                    <th>Vul Name</th>
                     <th>Status</th>
                     <th>Requested By</th>
                     <th>Request Date</th>
@@ -957,13 +955,14 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td>192.168.20.44</td>
-                    <td><span class="mte-pill status">Pending</span></td>
-                    <td>R. Kale</td>
-                    <td>2026-03-22</td>
-                    <td class="mte-extension">14 Days</td>
-                    <td class="mte-reason" @click="openReasonDetail($event, 'Maintenance window moved to next sprint cycle')">{{ truncateReason('Maintenance window moved to next sprint cycle') }}</td>
+                  <tr v-for="row in mteFilteredData.medium" :key="row.ip">
+                    <td>{{ row.ip }}</td>
+                    <td class="mte-vulname" :title="row.vulName">{{ row.vulName }}</td>
+                    <td><span class="mte-pill" :class="getMteStatusClass(row.status)">{{ row.status }}</span></td>
+                    <td>{{ row.by }}</td>
+                    <td>{{ row.date }}</td>
+                    <td class="mte-extension">{{ row.ext }}</td>
+                    <td class="mte-reason" @click="openReasonDetail($event, row.reason)">{{ truncateReason(row.reason) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -975,15 +974,19 @@
               <div class="mte-severity-left">
                 <i class="bi bi-gear-fill mte-low-icon"></i>
                 <span>Low Severity Requests</span>
-                <span class="mte-badge low">8 Items</span>
+                <span class="mte-badge low">{{ mteFilteredData.low.length }} Items</span>
               </div>
-              <i class="bi" :class="mteOpenSection === 'low' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+              <div class="mte-head-right">
+                <i class="bi" :class="mteOpenSection === 'low' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+              </div>
             </div>
             <div v-if="mteOpenSection === 'low'" class="mte-table-wrap">
-              <table class="mte-table">
+              <div v-if="mteFilteredData.low.length === 0" class="mte-no-data">No requests for selected team.</div>
+              <table v-else class="mte-table">
                 <thead>
                   <tr>
                     <th>Asset (IP)</th>
+                    <th>Vul Name</th>
                     <th>Status</th>
                     <th>Requested By</th>
                     <th>Request Date</th>
@@ -992,18 +995,21 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td>172.31.11.09</td>
-                    <td><span class="mte-pill status">Pending</span></td>
-                    <td>Ops Team</td>
-                    <td>2026-03-25</td>
-                    <td class="mte-extension">6 Days</td>
-                    <td class="mte-reason" @click="openReasonDetail($event, 'Low-priority fix batched with monthly cycle')">{{ truncateReason('Low-priority fix batched with monthly cycle') }}</td>
+                  <tr v-for="row in mteFilteredData.low" :key="row.ip">
+                    <td>{{ row.ip }}</td>
+                    <td class="mte-vulname" :title="row.vulName">{{ row.vulName }}</td>
+                    <td><span class="mte-pill" :class="getMteStatusClass(row.status)">{{ row.status }}</span></td>
+                    <td>{{ row.by }}</td>
+                    <td>{{ row.date }}</td>
+                    <td class="mte-extension">{{ row.ext }}</td>
+                    <td class="mte-reason" @click="openReasonDetail($event, row.reason)">{{ truncateReason(row.reason) }}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
           </div>
+
+
 
           <div class="mte-modal-footer">
           </div>
@@ -1215,6 +1221,25 @@ export default {
       showModal: false,
       showMitigationExtensionModal: false,
       mteOpenSection: "critical",
+      mteSelectedTeam: "All",
+      mteStaticData: {
+        critical: [
+          { ip: "192.168.1.104", vulName: "MS17-010 EternalBlue",       status: "Review",   by: "Admin",    date: "2026-03-20", ext: "15 Days", reason: "Patch window approval pending from infra team",    team: "Patch Management" },
+          { ip: "10.0.4.52",     vulName: "CVE-2021-44228 Log4Shell",   status: "Approved", by: "S. Miller",date: "2026-03-21", ext: "7 Days",  reason: "Emergency freeze due to release cutover",          team: "Configuration Management" },
+          { ip: "172.16.0.12",   vulName: "CVE-2023-23397 Outlook RCE", status: "Rejected", by: "Admin",    date: "2026-03-18", ext: "30 Days", reason: "Change advisory board approval not completed",      team: "Network Security" },
+        ],
+        high: [
+          { ip: "10.10.2.11",    vulName: "CVE-2022-30190 Follina",     status: "Review",   by: "N. Joshi", date: "2026-03-23", ext: "10 Days", reason: "Vendor patch waiting for validation in staging",    team: "Patch Management" },
+          { ip: "10.10.2.14",    vulName: "CVE-2021-34527 PrintNightmare",status:"Approved", by: "A. Shah",  date: "2026-03-24", ext: "5 Days",  reason: "Dependency conflict with auth service update",      team: "Architectural Flaws" },
+        ],
+        medium: [
+          { ip: "192.168.20.44", vulName: "CVE-2020-1472 Zerologon",    status: "Review",   by: "R. Kale",  date: "2026-03-22", ext: "14 Days", reason: "Maintenance window moved to next sprint cycle",     team: "Configuration Management" },
+        ],
+        low: [
+          { ip: "172.31.11.09",  vulName: "CVE-2019-0708 BlueKeep",     status: "Rejected", by: "Ops Team", date: "2026-03-25", ext: "6 Days",  reason: "Low-priority fix batched with monthly cycle",       team: "Network Security" },
+        ],
+      },
+
       showReasonDetailModal: false,
       selectedReasonText: "",
       reasonModalPos: { top: 0, left: 0 },
@@ -1280,6 +1305,19 @@ export default {
     authStore() {
       return useAuthStore();
     },
+    mteFilteredData() {
+      const filter = (rows) =>
+        this.mteSelectedTeam === "All"
+          ? rows
+          : rows.filter(r => r.team === this.mteSelectedTeam);
+      return {
+        critical: filter(this.mteStaticData.critical),
+        high:     filter(this.mteStaticData.high),
+        medium:   filter(this.mteStaticData.medium),
+        low:      filter(this.mteStaticData.low),
+      };
+    },
+
     mitigationActiveTeamData() {
       if (!this.mitigationByTeamData) return { count: 0, vulnerabilities: [] };
       const teams = this.mitigationByTeamData.teams || this.mitigationByTeamData;
@@ -1470,9 +1508,16 @@ export default {
         this.vulFixedLow = res.data.low_fixed || 0;
       }
     },
+    getMteStatusClass(status) {
+      if (status === 'Approved') return 'mte-status-approved';
+      if (status === 'Rejected') return 'mte-status-rejected';
+      return 'mte-status-review';
+    },
+
     openMitigationExtensionModal() {
       this.showMitigationExtensionModal = true;
       this.mteOpenSection = "critical";
+      this.mteSelectedTeam = "All";
     },
     closeMitigationExtensionModal() {
       this.showMitigationExtensionModal = false;
@@ -2523,12 +2568,60 @@ mounted() {
   font-weight: 500;
   line-height: 1.45;
 }
+.mte-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.mte-team-dropdown {
+  appearance: none;
+  -webkit-appearance: none;
+  background: #f8fafc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23475569' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 7px 32px 7px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  outline: none;
+  min-width: 190px;
+  transition: border-color 0.15s;
+}
+.mte-team-dropdown:focus {
+  border-color: #0f696e;
+}
 .mte-close-btn {
   border: none;
   background: transparent;
   font-size: 20px;
   color: #241447;
 }
+.mte-status-review   { background: #e0f2fe; color: #0369a1; }
+.mte-status-approved { background: #dcfce7; color: #15803d; }
+.mte-status-rejected { background: #fee2e2; color: #dc2626; }
+.mte-no-data {
+  padding: 18px 20px;
+  font-size: 13px;
+  color: #94a3b8;
+  text-align: center;
+}
+.mte-head-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mte-vulname {
+  max-width: 160px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #334155;
+  font-weight: 600;
+}
+
 .mte-severity-card {
   margin: 10px 24px 0;
   border-radius: 14px;

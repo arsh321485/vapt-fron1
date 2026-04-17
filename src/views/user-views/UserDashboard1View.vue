@@ -457,33 +457,15 @@
                         </tr>
                       </thead>
                       <tbody>
-                        <tr>
-                          <td>Patch Mgmt</td>
-                          <td><span class="dash-mte-pill critical">14</span></td>
-                          <td><span class="dash-mte-pill high">38</span></td>
-                          <td><span class="dash-mte-pill medium">22</span></td>
-                          <td><span class="dash-mte-pill low">12</span></td>
+                        <tr v-if="mteCardRows.length === 0">
+                          <td colspan="5" style="text-align:center;color:#94a3b8;font-size:12px;padding:10px 0;">No teams assigned.</td>
                         </tr>
-                        <tr>
-                          <td>Config Mgmt</td>
-                          <td><span class="dash-mte-pill critical">06</span></td>
-                          <td><span class="dash-mte-pill high">24</span></td>
-                          <td><span class="dash-mte-pill medium">84</span></td>
-                          <td><span class="dash-mte-pill low">61</span></td>
-                        </tr>
-                        <tr>
-                          <td>Network Sec</td>
-                          <td><span class="dash-mte-pill critical">22</span></td>
-                          <td><span class="dash-mte-pill high">15</span></td>
-                          <td><span class="dash-mte-pill medium">09</span></td>
-                          <td><span class="dash-mte-pill low">04</span></td>
-                        </tr>
-                        <tr>
-                          <td>Arch Flaws</td>
-                          <td><span class="dash-mte-pill critical">03</span></td>
-                          <td><span class="dash-mte-pill high">08</span></td>
-                          <td><span class="dash-mte-pill medium">14</span></td>
-                          <td><span class="dash-mte-pill low">27</span></td>
+                        <tr v-for="row in mteCardRows" :key="row.key">
+                          <td>{{ row.short }}</td>
+                          <td><span class="dash-mte-pill critical">{{ String(row.critical).padStart(2,'0') }}</span></td>
+                          <td><span class="dash-mte-pill high">{{ String(row.high).padStart(2,'0') }}</span></td>
+                          <td><span class="dash-mte-pill medium">{{ String(row.medium).padStart(2,'0') }}</span></td>
+                          <td><span class="dash-mte-pill low">{{ String(row.low).padStart(2,'0') }}</span></td>
                         </tr>
                       </tbody>
                     </table>
@@ -599,9 +581,15 @@
               <h3 class="mte-modal-title">Mitigation timeline extension</h3>
               <p class="mte-modal-subtitle">Review and manage pending extension requests for vulnerability fixes.</p>
             </div>
-            <button type="button" class="mte-close-btn" @click="closeMitigationExtensionModal">
-              <i class="bi bi-x-lg"></i>
-            </button>
+            <div class="mte-header-actions">
+              <select class="mte-team-dropdown" v-model="mteSelectedTeam">
+                <option value="All">All Teams</option>
+                <option v-for="team in assignedTeamKeys" :key="team" :value="team">{{ team }}</option>
+              </select>
+              <button type="button" class="mte-close-btn" @click="closeMitigationExtensionModal">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
           </div>
 
           <div class="mte-severity-card mte-critical">
@@ -609,15 +597,20 @@
               <div class="mte-severity-left">
                 <i class="bi bi-exclamation-circle-fill"></i>
                 <span>Critical Severity Requests</span>
-                <span class="mte-badge critical">4 Pending</span>
+                <span class="mte-badge critical">{{ mteFilteredData.critical.length }} Items</span>
               </div>
-              <i class="bi" :class="mteOpenSection === 'critical' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+              <div class="mte-head-right">
+                <button type="button" class="mte-ext-btn" @click.stop="openExtPopup('critical')">Extended Timeline</button>
+                <i class="bi" :class="mteOpenSection === 'critical' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+              </div>
             </div>
             <div v-if="mteOpenSection === 'critical'" class="mte-table-wrap">
-              <table class="mte-table">
+              <div v-if="mteFilteredData.critical.length === 0" class="mte-no-data">No requests for selected team.</div>
+              <table v-else class="mte-table">
                 <thead>
                   <tr>
                     <th>Asset (IP)</th>
+                    <th>Vul Name</th>
                     <th>Status</th>
                     <th>Requested By</th>
                     <th>Request Date</th>
@@ -626,18 +619,260 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td>192.168.1.104</td>
-                    <td><span class="mte-pill status">Pending</span></td>
-                    <td>dev-team</td>
-                    <td>2024-12-01</td>
-                    <td class="mte-extension">+14 days</td>
-                    <td><span class="mte-reason">Awaiting vendor patch availability</span></td>
+                  <tr v-for="row in mteFilteredData.critical" :key="row.ip">
+                    <td>{{ row.ip }}</td>
+                    <td class="mte-vulname" :title="row.vulName">{{ row.vulName }}</td>
+                    <td><span class="mte-pill" :class="getMteStatusClass(row.status)">{{ row.status }}</span></td>
+                    <td>{{ row.by }}</td>
+                    <td>{{ row.date }}</td>
+                    <td class="mte-extension">{{ row.ext }}</td>
+                    <td class="mte-reason">{{ row.reason }}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
           </div>
+
+          <div class="mte-severity-card">
+            <div class="mte-severity-head" @click="toggleMteSection('high')">
+              <div class="mte-severity-left">
+                <i class="bi bi-exclamation-triangle-fill mte-high-icon"></i>
+                <span>High Severity Requests</span>
+                <span class="mte-badge high">{{ mteFilteredData.high.length }} Items</span>
+              </div>
+              <div class="mte-head-right">
+                <button type="button" class="mte-ext-btn" @click.stop="openExtPopup('high')">Extended Timeline</button>
+                <i class="bi" :class="mteOpenSection === 'high' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+              </div>
+            </div>
+            <div v-if="mteOpenSection === 'high'" class="mte-table-wrap">
+              <div v-if="mteFilteredData.high.length === 0" class="mte-no-data">No requests for selected team.</div>
+              <table v-else class="mte-table">
+                <thead>
+                  <tr>
+                    <th>Asset (IP)</th>
+                    <th>Vul Name</th>
+                    <th>Status</th>
+                    <th>Requested By</th>
+                    <th>Request Date</th>
+                    <th>Extension</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="row in mteFilteredData.high" :key="row.ip">
+                    <td>{{ row.ip }}</td>
+                    <td class="mte-vulname" :title="row.vulName">{{ row.vulName }}</td>
+                    <td><span class="mte-pill" :class="getMteStatusClass(row.status)">{{ row.status }}</span></td>
+                    <td>{{ row.by }}</td>
+                    <td>{{ row.date }}</td>
+                    <td class="mte-extension">{{ row.ext }}</td>
+                    <td class="mte-reason">{{ row.reason }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="mte-severity-card">
+            <div class="mte-severity-head" @click="toggleMteSection('medium')">
+              <div class="mte-severity-left">
+                <i class="bi bi-exclamation-circle-fill mte-medium-icon"></i>
+                <span>Medium Severity Requests</span>
+                <span class="mte-badge medium">{{ mteFilteredData.medium.length }} Items</span>
+              </div>
+              <div class="mte-head-right">
+                <button type="button" class="mte-ext-btn" @click.stop="openExtPopup('medium')">Extended Timeline</button>
+                <i class="bi" :class="mteOpenSection === 'medium' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+              </div>
+            </div>
+            <div v-if="mteOpenSection === 'medium'" class="mte-table-wrap">
+              <div v-if="mteFilteredData.medium.length === 0" class="mte-no-data">No requests for selected team.</div>
+              <table v-else class="mte-table">
+                <thead>
+                  <tr>
+                    <th>Asset (IP)</th>
+                    <th>Vul Name</th>
+                    <th>Status</th>
+                    <th>Requested By</th>
+                    <th>Request Date</th>
+                    <th>Extension</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="row in mteFilteredData.medium" :key="row.ip">
+                    <td>{{ row.ip }}</td>
+                    <td class="mte-vulname" :title="row.vulName">{{ row.vulName }}</td>
+                    <td><span class="mte-pill" :class="getMteStatusClass(row.status)">{{ row.status }}</span></td>
+                    <td>{{ row.by }}</td>
+                    <td>{{ row.date }}</td>
+                    <td class="mte-extension">{{ row.ext }}</td>
+                    <td class="mte-reason">{{ row.reason }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="mte-severity-card">
+            <div class="mte-severity-head" @click="toggleMteSection('low')">
+              <div class="mte-severity-left">
+                <i class="bi bi-gear-fill mte-low-icon"></i>
+                <span>Low Severity Requests</span>
+                <span class="mte-badge low">{{ mteFilteredData.low.length }} Items</span>
+              </div>
+              <div class="mte-head-right">
+                <button type="button" class="mte-ext-btn" @click.stop="openExtPopup('low')">Extended Timeline</button>
+                <i class="bi" :class="mteOpenSection === 'low' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+              </div>
+            </div>
+            <div v-if="mteOpenSection === 'low'" class="mte-table-wrap">
+              <div v-if="mteFilteredData.low.length === 0" class="mte-no-data">No requests for selected team.</div>
+              <table v-else class="mte-table">
+                <thead>
+                  <tr>
+                    <th>Asset (IP)</th>
+                    <th>Vul Name</th>
+                    <th>Status</th>
+                    <th>Requested By</th>
+                    <th>Request Date</th>
+                    <th>Extension</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="row in mteFilteredData.low" :key="row.ip">
+                    <td>{{ row.ip }}</td>
+                    <td class="mte-vulname" :title="row.vulName">{{ row.vulName }}</td>
+                    <td><span class="mte-pill" :class="getMteStatusClass(row.status)">{{ row.status }}</span></td>
+                    <td>{{ row.by }}</td>
+                    <td>{{ row.date }}</td>
+                    <td class="mte-extension">{{ row.ext }}</td>
+                    <td class="mte-reason">{{ row.reason }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Extended Timeline Drawer -->
+          <transition name="ext-drawer">
+            <div v-if="showExtPopup" class="ext-popup-backdrop" @click.self="closeExtPopup">
+              <div class="ext-popup-box" @click.stop>
+                <!-- Severity accent bar -->
+                <div class="ext-drawer-accent" :class="'ext-accent-' + extPopupSeverity"></div>
+
+                <div class="ext-popup-header">
+                  <div class="ext-header-left">
+                    <div class="ext-header-icon" :class="'ext-icon-' + extPopupSeverity">
+                      <i class="bi" :class="{
+                        'bi-exclamation-circle-fill': extPopupSeverity === 'critical',
+                        'bi-exclamation-triangle-fill': extPopupSeverity === 'high',
+                        'bi-exclamation-circle': extPopupSeverity === 'medium',
+                        'bi-gear-fill': extPopupSeverity === 'low'
+                      }"></i>
+                    </div>
+                    <div>
+                      <h4 class="ext-popup-title">Extended Timeline</h4>
+                      <span class="ext-popup-subtitle">
+                        <span class="ext-sev-pill" :class="'ext-sev-' + extPopupSeverity">{{ extPopupSeverity }}</span>
+                        Severity Request
+                      </span>
+                    </div>
+                  </div>
+                  <button type="button" class="ext-header-close" @click="closeExtPopup"><i class="bi bi-x-lg"></i></button>
+                </div>
+
+                <div class="ext-popup-body">
+                  <!-- Info banner -->
+                  <div class="ext-info-banner">
+                    <i class="bi bi-info-circle-fill"></i>
+                    <span>Submit a request to extend the remediation deadline for a specific vulnerability on an asset.</span>
+                  </div>
+
+                  <div class="ext-section-title"><i class="bi bi-hdd-network"></i> Asset & Vulnerability</div>
+
+                  <div class="ext-popup-field">
+                    <label class="ext-popup-label">Asset (IP)</label>
+                    <div class="ext-select-wrap">
+                      <i class="bi bi-hdd-fill ext-select-icon ext-icon-asset"></i>
+                      <select class="ext-popup-select ext-has-icon" v-model="extPopupAsset" @change="extPopupVulName = ''">
+                        <option value="">Select Asset</option>
+                        <option v-for="ip in extPopupAssetList" :key="ip" :value="ip">{{ ip }}</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="ext-popup-field">
+                    <label class="ext-popup-label">Vulnerability Name</label>
+                    <div class="ext-select-wrap">
+                      <i class="bi bi-shield-exclamation ext-select-icon ext-icon-vuln"></i>
+                      <select class="ext-popup-select ext-has-icon" v-model="extPopupVulName" :disabled="!extPopupAsset">
+                        <option value="">Select Vulnerability</option>
+                        <option v-for="vn in extPopupVulList" :key="vn" :value="vn">{{ vn }}</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="ext-drawer-divider" style="margin: 4px 0 12px;"></div>
+                  <div class="ext-section-title"><i class="bi bi-calendar3"></i> Timeline Details</div>
+
+                  <div class="ext-popup-row">
+                    <div class="ext-popup-field">
+                      <label class="ext-popup-label">Original Deadline</label>
+                      <div class="ext-deadline-chip ext-deadline-original">
+                        <i class="bi bi-clock-history"></i>
+                        <span>{{ extOriginalDeadlines[extPopupSeverity] }}</span>
+                      </div>
+                    </div>
+                    <div class="ext-popup-field">
+                      <label class="ext-popup-label">Extended Deadline</label>
+                      <div class="ext-select-wrap">
+                        <i class="bi bi-clock-fill ext-select-icon"></i>
+                        <select class="ext-popup-select ext-has-icon" v-model="extPopupExtension">
+                          <option value="">— Select Extension —</option>
+                          <optgroup label="Days">
+                            <option value="7 Days">7 Days</option>
+                            <option value="14 Days">14 Days</option>
+                            <option value="21 Days">21 Days</option>
+                            <option value="30 Days">30 Days</option>
+                            <option value="60 Days">60 Days</option>
+                            <option value="90 Days">90 Days</option>
+                          </optgroup>
+                          <optgroup label="Weeks">
+                            <option value="1 Week">1 Week</option>
+                            <option value="2 Weeks">2 Weeks</option>
+                            <option value="4 Weeks">4 Weeks</option>
+                            <option value="8 Weeks">8 Weeks</option>
+                            <option value="12 Weeks">12 Weeks</option>
+                          </optgroup>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="ext-drawer-divider" style="margin: 4px 0 12px;"></div>
+                  <div class="ext-section-title"><i class="bi bi-chat-left-text"></i> Justification</div>
+
+                  <div class="ext-popup-field">
+                    <label class="ext-popup-label">Reason</label>
+                    <textarea class="ext-popup-textarea" v-model="extPopupReason" rows="4" placeholder="Describe why an extension is needed — include any dependencies, blockers, or risk context..."></textarea>
+                    <span class="ext-char-hint">{{ extPopupReason.trim().length > 0 ? extPopupReason.trim().length + ' chars' : 'Required' }}</span>
+                  </div>
+                </div>
+
+                <div class="ext-popup-footer">
+                  <button type="button" class="mte-btn-secondary" @click="closeExtPopup">
+                    Cancel
+                  </button>
+                  <button type="button" class="mte-btn-primary ext-submit-btn" @click="submitExtPopup" :disabled="!extPopupAsset || !extPopupVulName || !extPopupExtension || !extPopupReason.trim()">
+                    <i class="bi bi-send-fill"></i> <span style="color:#fff;">Submit Request</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </transition>
 
           <div class="mte-modal-footer">
             <button type="button" class="mte-btn-secondary" @click="closeMitigationExtensionModal">Close</button>
@@ -778,6 +1013,37 @@ export default {
       riskUpdating: false,
       showMitigationExtensionModal: false,
       mteOpenSection: null,
+      mteSelectedTeam: "All",
+      mteTeamMap: {
+        "Patch Management":        { short: "Patch Mgmt",   critical: 14, high: 38, medium: 22, low: 12 },
+        "Configuration Management":{ short: "Config Mgmt",  critical:  6, high: 24, medium: 84, low: 61 },
+        "Network Security":        { short: "Network Sec",  critical: 22, high: 15, medium:  9, low:  4 },
+        "Architectural Flaws":     { short: "Arch Flaws",   critical:  3, high:  8, medium: 14, low: 27 },
+      },
+      mteStaticData: {
+        critical: [
+          { ip: "192.168.1.104", vulName: "MS17-010 EternalBlue",       status: "Review",   by: "dev-team", date: "2026-03-20", ext: "15 Days", reason: "Patch window approval pending from infra team",    team: "Patch Management" },
+          { ip: "10.0.4.52",     vulName: "CVE-2021-44228 Log4Shell",   status: "Approved", by: "S. Miller",date: "2026-03-21", ext: "7 Days",  reason: "Emergency freeze due to release cutover",          team: "Configuration Management" },
+          { ip: "172.16.0.12",   vulName: "CVE-2023-23397 Outlook RCE", status: "Rejected", by: "dev-team", date: "2026-03-18", ext: "30 Days", reason: "Change advisory board approval not completed",      team: "Network Security" },
+        ],
+        high: [
+          { ip: "10.10.2.11",    vulName: "CVE-2022-30190 Follina",       status: "Review",   by: "N. Joshi", date: "2026-03-23", ext: "10 Days", reason: "Vendor patch waiting for validation in staging",    team: "Patch Management" },
+          { ip: "10.10.2.14",    vulName: "CVE-2021-34527 PrintNightmare", status: "Approved", by: "A. Shah",  date: "2026-03-24", ext: "5 Days",  reason: "Dependency conflict with auth service update",      team: "Architectural Flaws" },
+        ],
+        medium: [
+          { ip: "192.168.20.44", vulName: "CVE-2020-1472 Zerologon",    status: "Review",   by: "R. Kale",  date: "2026-03-22", ext: "14 Days", reason: "Maintenance window moved to next sprint cycle",     team: "Configuration Management" },
+        ],
+        low: [
+          { ip: "172.31.11.09",  vulName: "CVE-2019-0708 BlueKeep",     status: "Rejected", by: "Ops Team", date: "2026-03-25", ext: "6 Days",  reason: "Low-priority fix batched with monthly cycle",       team: "Network Security" },
+        ],
+      },
+      showExtPopup: false,
+      extPopupSeverity: null,
+      extPopupAsset: "",
+      extPopupVulName: "",
+      extPopupExtension: "",
+      extPopupReason: "",
+      extOriginalDeadlines: { critical: "30 Days", high: "60 Days", medium: "90 Days", low: "180 Days" },
       showMsuModal: false,
       msuReportId: null,
     };
@@ -785,6 +1051,38 @@ export default {
   computed: {
     authStore() {
       return useAuthStore();
+    },
+    // Teams assigned to this user that also exist in our team map
+    assignedTeamKeys() {
+      return this.userTeams.filter(t => this.mteTeamMap[t]);
+    },
+    // Card table rows — only show assigned teams
+    mteCardRows() {
+      return this.assignedTeamKeys.map(t => ({ key: t, ...this.mteTeamMap[t] }));
+    },
+    // Modal data filtered by selected team (within assigned teams only)
+    mteFilteredData() {
+      const allowed = new Set(this.assignedTeamKeys);
+      const filter = (rows) => {
+        const byTeam = rows.filter(r => allowed.has(r.team));
+        return this.mteSelectedTeam === "All" ? byTeam : byTeam.filter(r => r.team === this.mteSelectedTeam);
+      };
+      return {
+        critical: filter(this.mteStaticData.critical),
+        high:     filter(this.mteStaticData.high),
+        medium:   filter(this.mteStaticData.medium),
+        low:      filter(this.mteStaticData.low),
+      };
+    },
+    extPopupAssetList() {
+      if (!this.extPopupSeverity) return [];
+      return [...new Set(this.mteStaticData[this.extPopupSeverity].map(r => r.ip))];
+    },
+    extPopupVulList() {
+      if (!this.extPopupSeverity || !this.extPopupAsset) return [];
+      return this.mteStaticData[this.extPopupSeverity]
+        .filter(r => r.ip === this.extPopupAsset)
+        .map(r => r.vulName);
     },
     mitigationActiveTeamData() {
       if (!this.mitigationByTeamData) return { count: 0, vulnerabilities: [] };
@@ -1221,7 +1519,38 @@ export default {
       if (!allowed) return { compliancePct: 50 };
       return { compliancePct: Math.min(Math.max((remaining / allowed) * 100, 0), 100) };
     },
-    openMitigationExtensionModal() { this.showMitigationExtensionModal = true; },
+    getMteStatusClass(status) {
+      if (status === 'Approved') return 'mte-status-approved';
+      if (status === 'Rejected') return 'mte-status-rejected';
+      return 'mte-status-review';
+    },
+    openExtPopup(severity) {
+      this.extPopupSeverity = severity;
+      this.extPopupAsset = "";
+      this.extPopupVulName = "";
+      this.extPopupExtension = "";
+      this.extPopupReason = "";
+      this.showExtPopup = true;
+    },
+    closeExtPopup() {
+      this.showExtPopup = false;
+      this.extPopupSeverity = null;
+    },
+    submitExtPopup() {
+      if (!this.extPopupAsset || !this.extPopupVulName || !this.extPopupExtension || !this.extPopupReason.trim()) return;
+      const rows = this.mteStaticData[this.extPopupSeverity];
+      const row = rows.find(r => r.ip === this.extPopupAsset && r.vulName === this.extPopupVulName);
+      if (row) {
+        row.ext = this.extPopupExtension;
+        row.reason = this.extPopupReason.trim();
+      }
+      this.closeExtPopup();
+    },
+    openMitigationExtensionModal() {
+      this.showMitigationExtensionModal = true;
+      this.mteOpenSection = 'critical';
+      this.mteSelectedTeam = 'All';
+    },
     closeMitigationExtensionModal() { this.showMitigationExtensionModal = false; this.mteOpenSection = null; },
     toggleMteSection(sec) { this.mteOpenSection = this.mteOpenSection === sec ? null : sec; },
     openMsuModal() { this.showMsuModal = true; },
@@ -1971,7 +2300,167 @@ export default {
 }
 .mte-modal-title { margin: 0; color: #241447; font-size: 22px; font-weight: 700; line-height: 1.2; text-transform: capitalize; }
 .mte-modal-subtitle { margin: 4px 0 0; color: #64748b; font-size: 13px; font-weight: 500; }
+.mte-header-actions { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.mte-team-dropdown {
+  appearance: none;
+  -webkit-appearance: none;
+  background: #f8fafc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23475569' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 7px 32px 7px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  outline: none;
+  min-width: 190px;
+  transition: border-color 0.15s;
+}
+.mte-team-dropdown:focus { border-color: #0f696e; }
 .mte-close-btn { border: none; background: transparent; font-size: 20px; color: #241447; cursor: pointer; }
+.mte-status-review   { background: #e0f2fe; color: #0369a1; }
+.mte-status-approved { background: #dcfce7; color: #15803d; }
+.mte-status-rejected { background: #fee2e2; color: #dc2626; }
+.mte-no-data { padding: 18px 20px; font-size: 13px; color: #94a3b8; text-align: center; }
+.mte-head-right { display: flex; align-items: center; gap: 10px; }
+.mte-ext-btn {
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  color: #15803d;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 7px;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.mte-ext-btn:hover { background: #dcfce7; border-color: #4ade80; }
+.mte-vulname { max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #334155; font-weight: 600; }
+/* Extended Timeline Drawer */
+.ext-popup-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 25, 50, 0.38);
+  z-index: 2100;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+}
+.ext-popup-box {
+  background: #fff;
+  width: 460px;
+  max-width: 100vw;
+  height: 100%;
+  box-shadow: -8px 0 40px rgba(0,0,0,0.18);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+/* Severity accent bar at top */
+.ext-drawer-accent { height: 5px; width: 100%; flex-shrink: 0; }
+.ext-accent-critical { background: linear-gradient(90deg, #c71616, #ef4444); }
+.ext-accent-high     { background: linear-gradient(90deg, #d97706, #f59e0b); }
+.ext-accent-medium   { background: linear-gradient(90deg, #b45309, #fbbf24); }
+.ext-accent-low      { background: linear-gradient(90deg, #0f696e, #14b8a6); }
+/* Drawer slide animation */
+.ext-drawer-enter-active .ext-popup-box { animation: extDrawerIn 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
+.ext-drawer-leave-active .ext-popup-box { animation: extDrawerOut 0.22s cubic-bezier(0.55, 0, 1, 0.45); }
+.ext-drawer-enter-active { animation: extFadeIn 0.28s ease; }
+.ext-drawer-leave-active { animation: extFadeOut 0.22s ease; }
+@keyframes extDrawerIn  { from { transform: translateX(100%); } to { transform: translateX(0); } }
+@keyframes extDrawerOut { from { transform: translateX(0); } to { transform: translateX(100%); } }
+@keyframes extFadeIn    { from { opacity: 0; } to { opacity: 1; } }
+@keyframes extFadeOut   { from { opacity: 1; } to { opacity: 0; } }
+.ext-popup-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 20px 22px;
+  background: linear-gradient(135deg, #241447 0%, #0f696e 100%);
+  flex-shrink: 0;
+  margin-top: 54px;
+}
+.ext-header-left { display: flex; align-items: center; gap: 12px; }
+.ext-header-icon {
+  width: 42px; height: 42px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0; color: #fff;
+}
+.ext-icon-critical { background: rgba(239,68,68,0.25); border: 1.5px solid rgba(239,68,68,0.4); color: #fca5a5; }
+.ext-icon-high     { background: rgba(245,158,11,0.25); border: 1.5px solid rgba(245,158,11,0.4); color: #fcd34d; }
+.ext-icon-medium   { background: rgba(251,191,36,0.2);  border: 1.5px solid rgba(251,191,36,0.35); color: #fde68a; }
+.ext-icon-low      { background: rgba(20,184,166,0.25); border: 1.5px solid rgba(20,184,166,0.4); color: #5eead4; }
+.ext-popup-title { font-size: 17px; font-weight: 700; color: #fff; margin: 0 0 3px; line-height: 1.2; }
+.ext-popup-subtitle { font-size: 12px; color: rgba(255,255,255,0.65); display: flex; align-items: center; gap: 6px; }
+.ext-header-close {
+  background: rgba(255,255,255,0.12);
+  border: 1.5px solid rgba(255,255,255,0.2);
+  color: #fff;
+  width: 34px; height: 34px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; cursor: pointer;
+  transition: background 0.15s, border-color 0.15s; flex-shrink: 0;
+}
+.ext-header-close:hover { background: rgba(255,255,255,0.22); border-color: rgba(255,255,255,0.35); }
+.ext-sev-pill {
+  display: inline-block; border-radius: 20px; font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 8px;
+}
+.ext-sev-critical { background: #fee2e2; color: #b91c1c; }
+.ext-sev-high     { background: #fef3c7; color: #b45309; }
+.ext-sev-medium   { background: #fefce8; color: #92400e; }
+.ext-sev-low      { background: #ccfbf1; color: #0f766e; }
+.ext-drawer-divider { height: 1px; background: #e2e8f0; margin: 0; flex-shrink: 0; }
+.ext-section-title {
+  font-size: 11px; font-weight: 700; color: #0f696e;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  display: flex; align-items: center; gap: 6px; margin-bottom: 2px;
+}
+.ext-info-banner {
+  background: #f0fdf9; border: 1px solid #99f6e4; border-radius: 8px;
+  padding: 10px 14px; font-size: 12px; color: #0f696e;
+  display: flex; align-items: flex-start; gap: 8px; line-height: 1.5;
+}
+.ext-info-banner i { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+.ext-select-wrap { position: relative; display: flex; align-items: center; }
+.ext-select-icon { position: absolute; left: 11px; color: #94a3b8; font-size: 13px; pointer-events: none; z-index: 1; }
+.ext-icon-asset { color: #0f696e; }
+.ext-icon-vuln  { color: #7c3aed; }
+.ext-popup-select.ext-has-icon { padding-left: 32px; }
+.ext-deadline-chip {
+  display: flex; align-items: center; gap: 7px; border-radius: 8px;
+  padding: 9px 14px; font-size: 13px; font-weight: 600; border: 1.5px solid #e2e8f0;
+}
+.ext-deadline-original { background: #f1f5f9; color: #475569; }
+.ext-char-hint { font-size: 11px; color: #94a3b8; text-align: right; margin-top: 2px; }
+.ext-popup-body { padding: 16px 20px; display: flex; flex-direction: column; gap: 14px; flex: 1; overflow-y: auto; background: #f8fafc; }
+.ext-popup-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.ext-popup-field { display: flex; flex-direction: column; gap: 5px; }
+.ext-popup-label { font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; }
+.ext-popup-select,
+.ext-popup-textarea {
+  border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 9px 12px;
+  font-size: 13px; color: #1e293b; background: #f8fafc; outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s; width: 100%;
+}
+.ext-popup-select:focus,
+.ext-popup-textarea:focus { border-color: #0f696e; box-shadow: 0 0 0 3px rgba(15,105,110,0.1); }
+.ext-popup-textarea { resize: vertical; min-height: 90px; }
+.ext-popup-footer {
+  display: flex; justify-content: flex-end; gap: 10px;
+  padding: 14px 20px 18px; border-top: 1px solid #e2e8f0;
+  flex-shrink: 0; background: #fff;
+}
+.ext-submit-btn {
+  background: #241447 !important;
+  border-color: #241447 !important;
+  border-radius: 999px !important;
+  padding-left: 22px !important;
+  padding-right: 22px !important;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 .mte-severity-card {
   margin: 10px 24px 0;
   border-radius: 14px;
