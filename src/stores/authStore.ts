@@ -2016,12 +2016,16 @@ async getSlackOAuthUrl(baseUrl: string, adminId: string) {
 
     // 🔹 USER VULNERABILITIES FIXED
     async fetchUserVulnerabilitiesFixed(team?: string, force = false) {
-      const key = team || '__all__';
+      const normalizedTeam = (team || '').trim();
+      const effectiveTeam = normalizedTeam && normalizedTeam !== 'All' && normalizedTeam !== 'both'
+        ? normalizedTeam
+        : undefined;
+      const key = effectiveTeam || '__all__';
       if (!force && this.cachedUserVulnerabilitiesFixed[key]) {
         return { status: true, data: this.cachedUserVulnerabilitiesFixed[key] };
       }
       try {
-        const params = team ? { team } : {};
+        const params = effectiveTeam ? { team: effectiveTeam, _ts: Date.now() } : { _ts: Date.now() };
         const res = await endpoint.get("/api/user/dashboard/vulnerabilities-fixed/", { params });
         this.cachedUserVulnerabilitiesFixed[key] = res.data;
         return { status: true, data: res.data };
@@ -2763,7 +2767,8 @@ async getSlackOAuthUrl(baseUrl: string, adminId: string) {
     reportId: string,
     vulnerabilityId: string,
     payload: {
-      step: string;
+      step?: string;
+      step_number?: number;
       description: string;
     }
   ) {
@@ -2795,11 +2800,15 @@ async getSlackOAuthUrl(baseUrl: string, adminId: string) {
       const res = await endpoint.get(
         `/api/admin/adminregister/raise-support-requests/vulnerability/${vulnerabilityId}/`
       );
+      const results = res.data.results || [];
 
       return {
         status: true,
-        exists: res.data.exists,
-        data: res.data.data,
+        exists: Boolean(res.data.exists),
+        count: typeof res.data.count === 'number' ? res.data.count : results.length,
+        results,
+        // backward compatibility for old consumers expecting single object in data
+        data: res.data.data || results[0] || null,
         message: res.data.message
       };
 
@@ -2811,6 +2820,8 @@ async getSlackOAuthUrl(baseUrl: string, adminId: string) {
         return {
           status: true,
           exists: false,
+          count: 0,
+          results: [],
           data: null
         };
       }
@@ -2838,6 +2849,30 @@ async getSlackOAuthUrl(baseUrl: string, adminId: string) {
     } catch (error) {
       const err = error as AxiosError<any>;
       return { status: false, data: [], message: err.response?.data?.message || "Failed to fetch support requests" };
+    }
+  },
+
+  // User: Get support requests by host name
+  async getUserSupportRequestsByHost(host: string) {
+    try {
+      const safeHost = encodeURIComponent(host);
+      const res = await endpoint.get(
+        `/api/user/register/support-requests/host/${safeHost}/`
+      );
+      return {
+        status: true,
+        data: res.data.results || [],
+        count: res.data.count || 0,
+        message: res.data.message
+      };
+    } catch (error) {
+      const err = error as AxiosError<any>;
+      return {
+        status: false,
+        data: [],
+        count: 0,
+        message: err.response?.data?.message || "Failed to fetch support requests"
+      };
     }
   },
 
@@ -2914,7 +2949,7 @@ async getSlackOAuthUrl(baseUrl: string, adminId: string) {
   async raiseUserSupportRequest(
     vulnerabilityId: string,
     payload: {
-      step: string;
+      step_number: number;
       description: string;
     }
   ) {
@@ -2933,6 +2968,42 @@ async getSlackOAuthUrl(baseUrl: string, adminId: string) {
       return {
         status: false,
         message: err.response?.data?.message || "Failed to raise support request",
+        details: err.response?.data || null
+      };
+    }
+  },
+
+  // User: Check support request status by vulnerability
+  async getUserSupportRequestStatus(vulnerabilityId: string) {
+    try {
+      const res = await endpoint.get(
+        `/api/user/register/fix-vulnerability/${vulnerabilityId}/support-request-status/`
+      );
+      const results = res.data.results || [];
+      return {
+        status: true,
+        exists: Boolean(res.data.exists),
+        count: typeof res.data.count === "number" ? res.data.count : results.length,
+        results,
+        message: res.data.message
+      };
+    } catch (error) {
+      const err = error as AxiosError<any>;
+      if (err.response?.status === 404) {
+        return {
+          status: true,
+          exists: false,
+          count: 0,
+          results: [],
+          message: "No support requests found"
+        };
+      }
+      return {
+        status: false,
+        exists: false,
+        count: 0,
+        results: [],
+        message: err.response?.data?.message || "Failed to fetch support request status",
         details: err.response?.data || null
       };
     }
@@ -3311,8 +3382,9 @@ async getSlackOAuthUrl(baseUrl: string, adminId: string) {
   // ✅ Get support requests by host_name
   async getSupportRequestsByHost(host: string) {
     try {
+      const safeHost = encodeURIComponent(host);
       const res = await endpoint.get(
-        `/api/admin/adminregister/support-requests/host/${host}/`
+        `/api/admin/adminregister/support-requests/host/${safeHost}/`
       );
 
       return {
@@ -3627,10 +3699,11 @@ async getSlackOAuthUrl(baseUrl: string, adminId: string) {
   },
 
   // Get dashboard vulnerabilities fixed summary
-  async getDashboardVulnerabilitiesFixed() {
+  async getDashboardVulnerabilitiesFixed(force = false) {
     try {
       const res = await endpoint.get(
-        `/api/admin/admindashboard/dashboard/vulnerabilities-fixed/`
+        `/api/admin/admindashboard/dashboard/vulnerabilities-fixed/`,
+        { params: force ? { _ts: Date.now() } : {} }
       );
       return {
         status: true,
@@ -3660,6 +3733,44 @@ async getSlackOAuthUrl(baseUrl: string, adminId: string) {
       return {
         status: false,
         message: err.response?.data?.message || "Failed to fetch support requests",
+      };
+    }
+  },
+
+  // Get admin remediation timeline in-process summary
+  async getDashboardRemediationInProcess() {
+    try {
+      const res = await endpoint.get(
+        `/api/admin/admindashboard/dashboard/remediation-timeline/in-process/`
+      );
+      return {
+        status: true,
+        data: res.data
+      };
+    } catch (error) {
+      const err = error as AxiosError<any>;
+      return {
+        status: false,
+        message: err.response?.data?.message || "Failed to fetch in-process remediation timeline",
+      };
+    }
+  },
+
+  // Get user remediation timeline in-process summary
+  async getUserDashboardRemediationInProcess() {
+    try {
+      const res = await endpoint.get(
+        `/api/user/dashboard/remediation-timeline/in-process/`
+      );
+      return {
+        status: true,
+        data: res.data
+      };
+    } catch (error) {
+      const err = error as AxiosError<any>;
+      return {
+        status: false,
+        message: err.response?.data?.message || "Failed to fetch user in-process remediation timeline",
       };
     }
   },

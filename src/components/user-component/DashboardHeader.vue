@@ -5,7 +5,9 @@
   <div class="d-flex align-items-center justify-content-between gap-4 py-2 px-4">
     
       <div class="browser-bar">
-        <img src="@/assets/images/logo1.png" alt="">
+        <router-link to="/userdashboard">
+          <img src="@/assets/images/vaptfix_white.png" alt="">
+        </router-link>
       </div>
   
     <!-- Right Section -->
@@ -97,7 +99,7 @@ export default {
           timer: 3000,
           showConfirmButton: false,
         });
-        router.push("/signin");
+        router.push("/auth?mode=signin");
       } else {
         Swal.fire({
           icon: "error",

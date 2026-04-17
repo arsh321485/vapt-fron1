@@ -298,7 +298,7 @@
                       </div>
 
                       <div class="st-so-tl-item">
-                        <div class="st-so-tl-dot st-so-dot-eye"><i class="bi bi-eye"></i></div>
+                        <div class="st-so-tl-dot st-so-dot-eye"><img src="@/assets/images/3-removebg-preview.png" class="st-eye-img" alt="investigation" /></div>
                         <div class="st-so-tl-content st-so-tl-active-card">
                           <div class="d-flex justify-content-between">
                             <p class="st-so-tl-title">Investigation Started</p>
@@ -1203,6 +1203,16 @@ export default {
   color: #241447;
   box-shadow: 0 0 0 2px #ffffff;
   font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.st-eye-img {
+  width: 56px;
+  height: 180px;
+  padding-top: 10px;
+  display: block;
+  object-fit: contain;
 }
 
 .st-so-dot-comment {

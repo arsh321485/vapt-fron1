@@ -179,11 +179,11 @@
                     <button class="detail-tab" :class="{ 'detail-tab-active': activeTab === 'vulnerabilities' }" @click="activeTab = 'vulnerabilities'">
                       Vulnerabilities ({{ filteredVulnerabilities.length }})
                     </button>
-                    <button class="detail-tab" :class="{ 'detail-tab-active': activeTab === 'exceptions' }" @click="activeTab = 'exceptions'">
+                    <button class="detail-tab" :class="{ 'detail-tab-active': activeTab === 'exceptions' }" @click="onSupportRequestsTabClick">
                       Support Requests
-                      <span v-if="assetSupportRequests.length > 0" class="badge rounded-circle bg-danger ms-1"
+                      <span v-if="supportRequestCount > 0" class="badge rounded-circle bg-danger ms-1"
                         style="font-size:11px;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;">
-                        {{ assetSupportRequests.length }}
+                        {{ supportRequestCount }}
                       </span>
                     </button>
                     <button class="detail-tab" disabled style="opacity:0.4;cursor:not-allowed;">Related Assets</button>
@@ -330,13 +330,17 @@
 
                             <p class="sr-section-label mb-2">Steps Requested</p>
                             <div class="d-flex flex-wrap gap-2 mb-4">
-                              <template v-if="selectedSupportRequest.step_requested === 'all'">
+                              <template v-if="selectedSupportRequest.step_number">
+                                <span class="sr-step-pill">Step {{ selectedSupportRequest.step_number }}</span>
+                              </template>
+                              <template v-else-if="selectedSupportRequest.step_requested === 'all'">
                                 <span class="sr-step-pill">All Steps</span>
                               </template>
+                              <template v-else-if="selectedSupportRequest.step_requested">
+                                <span v-for="step in selectedSupportRequest.step_requested?.split(',')" :key="step" class="sr-step-pill">Step {{ step.trim() }}</span>
+                              </template>
                               <template v-else>
-                                <span v-for="step in selectedSupportRequest.step_requested?.split(',')" :key="step" class="sr-step-pill">
-                                  Step {{ step.trim() }}
-                                </span>
+                                <span class="text-muted small">No step specified</span>
                               </template>
                             </div>
 
@@ -407,6 +411,7 @@ export default {
       loadingClosedFix: false,
       supportRequests: [],
       loadingSupportRequests: false,
+      supportRequestCount: 0,
       selectedSupportRequest: null,
     };
   },
@@ -441,26 +446,32 @@ export default {
       return this.assets.find(a => a.asset === this.activeIndex) || null;
     },
     assetSupportRequests() {
-      if (!this.activeIndex) return [];
-      return this.supportRequests.filter(r => r.host_name === this.activeIndex);
+      return this.supportRequests;
     },
   },
   methods: {
+    async onSupportRequestsTabClick() {
+      this.activeTab = "exceptions";
+      await this.loadSupportRequestsByHost(this.activeIndex);
+    },
     setSeverity(sev) {
       this.activeSeverity = sev;
     },
-    async loadSupportRequests() {
-      let reportId = this.authStore.userLatestReportId;
-      if (!reportId) {
-        await this.authStore.fetchUserVulnerabilityRegister();
-        reportId = this.authStore.userLatestReportId;
+    async loadSupportRequestsByHost(host) {
+      if (!host) {
+        this.supportRequests = [];
+        this.supportRequestCount = 0;
+        return;
       }
-      if (!reportId) return;
       this.loadingSupportRequests = true;
-      const res = await this.authStore.fetchUserSupportRequestsByReport(reportId);
+      const res = await this.authStore.getUserSupportRequestsByHost(host);
       this.loadingSupportRequests = false;
       if (res.status && Array.isArray(res.data)) {
         this.supportRequests = res.data;
+        this.supportRequestCount = res.count || 0;
+      } else {
+        this.supportRequests = [];
+        this.supportRequestCount = 0;
       }
     },
     formatRequestDate(dateStr) {
@@ -504,6 +515,7 @@ export default {
       if (!asset?.asset) return;
       this.activeIndex = asset.asset;
       this.authStore.fetchUserSingleAssetVulnerabilities(asset.asset);
+      await this.loadSupportRequestsByHost(asset.asset);
       this.loadingClosedFix = true;
       const res = await this.authStore.getUserClosedVulnerabilities(asset.asset);
       this.loadingClosedFix = false;
@@ -693,7 +705,6 @@ export default {
     [...tooltipTriggerList].map(el => new bootstrap.Tooltip(el));
     await this.loadAssets();
     await this.loadHeldAssets();
-    await this.loadSupportRequests();
   },
 };
 </script>
