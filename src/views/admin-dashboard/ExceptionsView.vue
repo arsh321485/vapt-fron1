@@ -81,7 +81,9 @@
                       </td>
                       <td class="exc-vuln-name" :title="req.vul_name">{{ req.vul_name }}</td>
                       <td class="text-center">
-                        <span class="exc-badge exc-badge-critical">CRITICAL</span>
+                        <span class="exc-badge" :class="getSeverityBadgeClass(req)">
+                          {{ getSeverityLabel(req) }}
+                        </span>
                       </td>
                       <td>
                         <div class="d-flex align-items-center gap-2">
@@ -159,7 +161,10 @@
                   <h2 class="exc-so-title">SR-{{ String(slideOverIndex + 90000).padStart(5,'0') }}: {{ selectedSupportRequest?.vul_name }}</h2>
                   <div class="d-flex flex-wrap gap-2 mt-3">
                     <span class="exc-so-badge exc-so-badge-open"><span class="exc-so-dot bg-success"></span> STATUS: OPEN</span>
-                    <span class="exc-so-badge exc-so-badge-critical"><span class="exc-so-dot bg-danger"></span> CRITICALITY: CRITICAL</span>
+                    <span class="exc-so-badge" :class="getSeveritySlideBadgeClass(selectedSupportRequest)">
+                      <span class="exc-so-dot" :class="getSeverityDotClass(selectedSupportRequest)"></span>
+                      CRITICALITY: {{ getSeverityLabel(selectedSupportRequest) }}
+                    </span>
                   </div>
                 </div>
 
@@ -215,10 +220,7 @@
 
                       <div class="exc-so-tl-item">
                         <div class="exc-so-tl-dot exc-so-dot-active">
-                          <svg class="exc-eye-icon" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M12 5C6.8 5 2.7 8.1 1 12c1.7 3.9 5.8 7 11 7s9.3-3.1 11-7c-1.7-3.9-5.8-7-11-7Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <circle cx="12" cy="12" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/>
-                          </svg>
+                          <img src="@/assets/images/3-removebg-preview.png" class="exc-eye-icon" alt="investigation" />
                         </div>
                         <div class="exc-so-tl-content exc-so-tl-active-card">
                           <div class="d-flex justify-content-between">
@@ -347,6 +349,39 @@ export default {
 
   },
   methods: {
+    getSeverityRaw(req) {
+      if (!req) return "";
+      return String(req.risk_factor || req.severity || req.criticality || "").trim().toLowerCase();
+    },
+    getSeverityLabel(req) {
+      const sev = this.getSeverityRaw(req);
+      if (!sev) return "CRITICAL";
+      if (sev === "high") return "HIGH";
+      if (sev === "medium") return "MEDIUM";
+      if (sev === "low") return "LOW";
+      return "CRITICAL";
+    },
+    getSeverityBadgeClass(req) {
+      const sev = this.getSeverityRaw(req);
+      if (sev === "high") return "exc-badge-high";
+      if (sev === "medium") return "exc-badge-medium";
+      if (sev === "low") return "exc-badge-low";
+      return "exc-badge-critical";
+    },
+    getSeveritySlideBadgeClass(req) {
+      const sev = this.getSeverityRaw(req);
+      if (sev === "high") return "exc-so-badge-high";
+      if (sev === "medium") return "exc-so-badge-medium";
+      if (sev === "low") return "exc-so-badge-low";
+      return "exc-so-badge-critical";
+    },
+    getSeverityDotClass(req) {
+      const sev = this.getSeverityRaw(req);
+      if (sev === "high") return "exc-so-dot-high";
+      if (sev === "medium") return "exc-so-dot-medium";
+      if (sev === "low") return "exc-so-dot-low";
+      return "exc-so-dot-critical";
+    },
     toggleSort() {
   this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
 },
@@ -633,7 +668,14 @@ export default {
 }
 .exc-so-badge-open { background: #a1ecf2; color: #002022; }
 .exc-so-badge-critical { background: #ffdad6; color: #ba1a1a; }
+.exc-so-badge-high { background: #ffe0c8; color: #9a3412; }
+.exc-so-badge-medium { background: #fff4cc; color: #a16207; }
+.exc-so-badge-low { background: #d1fae5; color: #166534; }
 .exc-so-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.exc-so-dot-critical { background: #ba1a1a; }
+.exc-so-dot-high { background: #f2994a; }
+.exc-so-dot-medium { background: #f2c94c; }
+.exc-so-dot-low { background: #0f696e; }
 
 .exc-so-body { flex: 1; overflow-y: auto; padding: 28px 32px; }
 .exc-so-summary {
@@ -676,7 +718,7 @@ export default {
   left: -32px;
   top: 0;
 }
-.exc-eye-icon { width: 14px; height: 14px; display: block; }
+.exc-eye-icon { width: 56px; height: 180px; padding-top: 10px; display: block; object-fit: contain; }
 .exc-so-dot-comment { background: #e2e8f0; color: #49454f; }
 
 .exc-so-tl-content { flex: 1; min-width: 0; }

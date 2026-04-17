@@ -163,7 +163,7 @@
                     <button class="detail-tab" :class="{ 'detail-tab-active': activeTab === 'vulnerabilities' }" @click="activeTab = 'vulnerabilities'">
                       Vulnerabilities ({{ filteredVulnerabilities.length }})
                     </button>
-                    <button class="detail-tab" :class="{ 'detail-tab-active': activeTab === 'exceptions' }" @click="activeTab = 'exceptions'">
+                    <button class="detail-tab" :class="{ 'detail-tab-active': activeTab === 'exceptions' }" @click="onSupportRequestsTabClick">
                       Support Requests
                       <span v-if="supportRequestCount > 0" class="badge rounded-circle bg-danger ms-1"
                         style="font-size:11px;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;">
@@ -479,6 +479,29 @@ export default {
     },
   },
   methods: {
+    async refreshSupportRequestsForHost(host) {
+      if (!host) {
+        this.supportRequestsByHost = [];
+        this.supportRequestCount = 0;
+        return;
+      }
+
+      this.loadingSupportRequests = true;
+      const res = await this.authStore.getSupportRequestsByHost(host);
+      this.loadingSupportRequests = false;
+
+      if (res.status) {
+        this.supportRequestsByHost = res.data || [];
+        this.supportRequestCount = res.count || 0;
+      } else {
+        this.supportRequestsByHost = [];
+        this.supportRequestCount = 0;
+      }
+    },
+    async onSupportRequestsTabClick() {
+      this.activeTab = "exceptions";
+      await this.refreshSupportRequestsForHost(this.activeIndex);
+    },
     getVulRegisterId(v) {
       const asset = this.authStore.selectedAssetDetail?.asset;
 
@@ -571,18 +594,7 @@ export default {
       if (!asset?.asset) return;
       this.activeIndex = asset.asset;
       await this.authStore.fetchSingleAssetVulnerabilities(asset.asset);
-
-      this.loadingSupportRequests = true;
-      const res = await this.authStore.getSupportRequestsByHost(asset.asset);
-      this.loadingSupportRequests = false;
-
-      if (res.status) {
-        this.supportRequestsByHost = res.data;
-        this.supportRequestCount = res.count;
-      } else {
-        this.supportRequestsByHost = [];
-        this.supportRequestCount = 0;
-      }
+      await this.refreshSupportRequestsForHost(asset.asset);
 
       this.loadingClosedFix = true;
       const reportId = this.authStore.latestReportId;

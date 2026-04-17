@@ -39,6 +39,16 @@
                   </select>
                   <i class="bi bi-chevron-down cal-filter-arrow"></i>
                 </div>
+                <div class="cal-filter-select-wrap">
+                  <select v-model="extendedFilter" class="cal-filter-select">
+                    <option value="All">Extended Deadlines</option>
+                    <option value="Network Security">Network</option>
+                    <option value="Patch Management">Patch</option>
+                    <option value="Configuration Management">Configuration</option>
+                    <option value="Architectural Flaws">Architectural</option>
+                  </select>
+                  <i class="bi bi-chevron-down cal-filter-arrow"></i>
+                </div>
                 <button class="cal-filter-icon-btn"><i class="bi bi-sliders"></i></button>
               </div>
 
@@ -94,7 +104,7 @@
                 <div
                   v-for="(dayObj, idx) in calendarDays"
                   :key="idx"
-                  :class="['cal-day-cell', dayObj.isToday ? 'cal-day-today' : '']"
+                  :class="['cal-day-cell', dayObj.isToday ? 'cal-day-today' : '', dayObj.isGrey ? 'cal-day-grey' : '']"
                 >
                   <span :class="['cal-day-num', !dayObj.currentMonth ? 'cal-day-num-grey' : '']">
                     {{ dayObj.day }}
@@ -236,10 +246,11 @@
                     <p class="cal-detail-label">TOTAL SUPPORT REQUESTS</p>
                     <div class="cal-detail-sr-row">
                       <div class="cal-detail-sr-num">3</div>
-                      <div>
+                      <div class="cal-detail-sr-info">
                         <p class="cal-detail-val">Support Tickets Raised</p>
                         <p class="cal-detail-sub">2 Open &nbsp;•&nbsp; 1 Resolved</p>
                       </div>
+                      <button class="cal-detail-sr-view-btn" @click="goToSupportRequests">View</button>
                     </div>
                   </div>
 
@@ -306,11 +317,12 @@ export default {
   components: { DashboardMenu, DashboardHeader },
   data() {
     return {
-      activeView: 'Week',
+      activeView: 'Month',
       views: ['Month', 'Week', 'Day'],
       searchQuery: '',
       criticalityFilter: 'All Types',
       teamsFilter: 'All Units',
+      extendedFilter: 'All',
       selectedEvent: null,
       showPopup: false,
       showDetailModal: false,
@@ -336,13 +348,11 @@ export default {
         { id: 7,  day: 17, title: 'Firewall Rule Audit',      type: 'NETWORK',   color: 'teal',   team: null },
       ],
       events: [
-        { id: 3,  day: 8,  title: 'Critical Patch Deadline', type: 'CRITICAL', color: 'red', team: 'Network Security', deadline: 'April 8, 5:00 PM', asset: '192.168.1.104', desc: 'Unpatched Buffer Overflow vulnerability in core firmware. Exploitation confirmed in external environments.' },
-        { id: 5,  day: 12, title: 'Critical Patch Deadline', type: 'CRITICAL', color: 'red', team: 'Patch Management', deadline: 'April 12, 5:00 PM', asset: '192.168.1.104', desc: 'Unpatched Buffer Overflow vulnerability in core firmware. Exploitation confirmed in external environments.' },
-        { id: 6,  day: 12, title: '3 New Vulns',             type: 'discovery', color: 'teal'   },
-        { id: 7,  day: 14, title: 'Deadline: Network Sec',   type: 'deadline',  color: 'blue',   team: 'Network Security',         deadline: 'April 14, 5:00 PM', extended: '7 Days' },
-        { id: 10, day: 18, title: 'Deadline: Patch Management',    type: 'deadline',  color: 'green',  team: 'Patch Management',          deadline: 'April 18, 5:00 PM', extended: '14 Days' },
-        { id: 11, day: 20, title: 'Deadline: Configuration Management',   type: 'deadline',  color: 'orange', team: 'Configuration Management',  deadline: 'April 20, 5:00 PM', extended: '10 Days' },
-        { id: 14, day: 25, title: 'Deadline: Architectural Flaws',    type: 'deadline',  color: 'crimson', team: 'Architectural Flaws',      deadline: 'April 25, 5:00 PM', extended: '5 Days' },
+        { id: 5,  day: 12, title: 'Critical Level Deadline', type: 'CRITICAL', color: 'maroon', team: 'Patch Management', deadline: 'April 12, 5:00 PM', asset: '192.168.1.104', desc: 'Unpatched Buffer Overflow vulnerability in core firmware. Exploitation confirmed in external environments.', alwaysShow: true },
+        { id: 7,  day: 14, title: 'Critical Level Deadline - Network',        type: 'deadline', color: 'dl-blue',   team: 'Network Security',         deadline: 'April 14, 5:00 PM', extended: '7 Days' },
+        { id: 10, day: 18, title: 'Critical Level Deadline - Patch',           type: 'deadline', color: 'dl-green',  team: 'Patch Management',          deadline: 'April 18, 5:00 PM', extended: '14 Days' },
+        { id: 11, day: 20, title: 'Critical Level Deadline - Configuration',   type: 'deadline', color: 'dl-orange', team: 'Configuration Management',  deadline: 'April 20, 5:00 PM', extended: '10 Days' },
+        { id: 14, day: 25, title: 'Critical Level Deadline - Architectural',   type: 'deadline', color: 'dl-red',    team: 'Architectural Flaws',        deadline: 'April 25, 5:00 PM', extended: '5 Days' },
       ],
       calendarDays: [
         { day: 29, currentMonth: false },
@@ -359,7 +369,7 @@ export default {
         { day: 9,  currentMonth: true  },
         { day: 10, currentMonth: true  },
         { day: 11, currentMonth: true  },
-        { day: 12, currentMonth: true, isToday: true },
+        { day: 12, currentMonth: true, isToday: true, isGrey: true },
         { day: 13, currentMonth: true  },
         { day: 14, currentMonth: true  },
         { day: 15, currentMonth: true  },
@@ -391,7 +401,11 @@ export default {
   methods: {
     getEventsForDay(day, currentMonth) {
       if (!currentMonth) return [];
-      return this.events.filter(e => e.day === day);
+      let evts = this.events.filter(e => e.day === day);
+      if (this.extendedFilter !== 'All') {
+        evts = evts.filter(e => e.alwaysShow || e.team === this.extendedFilter);
+      }
+      return evts;
     },
     getDayEventsForHour(hour) {
       return this.dayEvents.filter(e => e.startHour === hour);
@@ -434,6 +448,10 @@ export default {
     },
     closeDetailModal() {
       this.showDetailModal = false;
+    },
+    goToSupportRequests() {
+      this.showDetailModal = false;
+      this.$router.push({ name: 'exceptions' });
     },
   },
   computed: {
@@ -666,6 +684,9 @@ export default {
 .cal-day-today {
   border: 2px solid #1e293b !important;
 }
+.cal-day-grey {
+  background: #f7f8fa;
+}
 
 .cal-day-num {
   font-size: 0.82rem;
@@ -697,6 +718,11 @@ export default {
 .cal-event-green  { background: #dcfce7; color: #15803d; }
 .cal-event-orange { background: #fff7ed; color: #ea580c; }
 .cal-event-crimson{ background: #fee2e2; color: #b91c1c; }
+.cal-event-maroon   { background: #f9e8ea; color: #800020; }
+.cal-event-dl-blue  { background: #eff6ff; color: rgb(59, 130, 246); }
+.cal-event-dl-green { background: #ecfdf5; color: rgb(16, 185, 129); }
+.cal-event-dl-orange{ background: #fff7ed; color: rgb(249, 115, 22); }
+.cal-event-dl-red   { background: #fef2f2; color: rgb(220, 38, 38); }
 
 /* ── Event Popup ── */
 .cal-popup-overlay {
@@ -832,6 +858,20 @@ export default {
 
 .cal-detail-sr-row { display: flex; align-items: center; gap: 14px; background: #f8f9fc; border-radius: 10px; padding: 12px 14px; }
 .cal-detail-sr-num { width: 44px; height: 44px; border-radius: 50%; background: #241447; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 800; flex-shrink: 0; }
+.cal-detail-sr-info { flex: 1; }
+.cal-detail-sr-view-btn {
+  background: #241447;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 16px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+.cal-detail-sr-view-btn:hover { opacity: 0.85; }
 
 /* ── Week View ── */
 .cal-week-wrap {
