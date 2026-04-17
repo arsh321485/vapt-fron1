@@ -18,9 +18,7 @@
                 <h2 class="ud-title">
                   Vulnerability Management Program
                   <span class="ud-cal-wrap">
-                    <button class="ud-cal-btn" @click="toggleCalendar">
-                      <i class="bi bi-calendar3"></i>
-                    </button>
+                   
                     <!-- Outside-click backdrop -->
                     <div
                       v-if="showCalendar"
@@ -2052,15 +2050,9 @@ export default {
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  white-space: normal;
-  margin: 6px 0 4px;
-  line-height: 1.4;
-}
-.cv-affected-label { font-size: 11px; color: #64748b; font-weight: 500; }
-
-.cv-sev-badge {
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   font-size: 9px;
   font-weight: 800;
   padding: 2px 7px;
