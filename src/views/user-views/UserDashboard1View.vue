@@ -18,9 +18,7 @@
                 <h2 class="ud-title">
                   Vulnerability Management Program
                   <span class="ud-cal-wrap">
-                    <button class="ud-cal-btn" @click="toggleCalendar">
-                      <i class="bi bi-calendar3"></i>
-                    </button>
+                   
                     <!-- Outside-click backdrop -->
                     <div
                       v-if="showCalendar"
