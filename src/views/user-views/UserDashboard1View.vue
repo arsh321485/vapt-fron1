@@ -1615,6 +1615,9 @@ export default {
     },
     async selectTeam(team) {
       this.selectedTeam = team;
+      if (this.$refs.teamDropdown) {
+        this.$refs.teamDropdown.classList.remove('show');
+      }
       const t = team === 'both' ? undefined : team;
       await Promise.all([
         this.fetchAssets(team),

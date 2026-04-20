@@ -191,27 +191,74 @@
 
             <!-- DAY View -->
             <div v-if="activeView === 'Day'" class="cal-day-wrap">
-
-              <div class="cal-day-inner">
-                <div v-for="hour in dayHours" :key="hour" class="cal-day-slot">
+              <div v-if="dayLoading" class="text-center py-4 text-muted">
+                <span class="spinner-border spinner-border-sm me-2"></span> Loading day...
+              </div>
+              <div v-else class="cal-day-inner">
+                <div v-for="hour in dayHourSlots" :key="hour" class="cal-day-slot">
                   <span class="cal-slot-time">{{ hour }}</span>
                   <div class="cal-slot-area">
                     <div class="cal-slot-line"></div>
-                    <div v-if="hour === '11:00 AM'" class="cal-current-time-row">
+                    <!-- Current time indicator -->
+                    <div v-if="isCurrentHour(hour)" class="cal-current-time-row">
                       <span class="cal-current-dot"></span>
                       <span class="cal-current-line"></span>
                     </div>
-                    <div v-for="evt in getDayEventsForHour(hour)" :key="evt.id" :class="['cal-day-event-card', 'cal-day-card-' + evt.color]">
+                    <!-- Deadline events in this slot -->
+                    <div
+                      v-for="evt in getApiEventsForHour(hour, 'deadline')"
+                      :key="evt.id"
+                      :class="['cal-day-event-card', 'cal-day-card-' + evt.color]"
+                      @click="openEventPopup(evt, {}, $event)"
+                    >
                       <div class="cal-day-event-top">
-                        <span :class="['cal-day-type-badge', 'cal-badge-' + evt.color]">{{ evt.type }}</span>
-                        <span class="cal-day-time-range">{{ evt.timeRange }}</span>
+                        <span :class="['cal-day-type-badge', 'cal-badge-' + evt.color]">
+                          {{ evt.severityLabel ? evt.severityLabel.toUpperCase() : 'DEADLINE' }}
+                        </span>
+                        <span class="cal-day-time-range">Due: {{ evt.deadline }}</span>
                       </div>
                       <p class="cal-day-event-title">{{ evt.title }}</p>
-                      <div v-if="evt.team" class="cal-day-event-team">
-                        <i class="bi bi-people-fill me-1"></i>Team: {{ evt.team }}
+                      <div class="d-flex justify-content-between align-items-center mt-1">
+                        <div class="cal-day-event-team">
+                          <i class="bi bi-hourglass-split me-1"></i>{{ evt.remainingLabel }} remaining
+                        </div>
+                        <span class="cal-day-event-status">{{ evt.status }}</span>
+                      </div>
+                    </div>
+                    <!-- Extension events in this slot -->
+                    <div
+                      v-for="evt in getApiEventsForHour(hour, 'extension')"
+                      :key="evt.id"
+                      :class="['cal-day-event-card', 'cal-day-card-' + evt.color]"
+                      @click="openEventPopup(evt, {}, $event)"
+                    >
+                      <div class="cal-day-event-top">
+                        <span :class="['cal-day-type-badge', 'cal-badge-' + evt.color]">
+                          {{ evt.severityLabel ? evt.severityLabel.toUpperCase() : 'EXT' }}
+                        </span>
+                        <span class="cal-day-time-range">Due: {{ evt.deadline }}</span>
+                      </div>
+                      <p class="cal-day-event-title">{{ evt.vulnerabilityName || evt.title }}</p>
+                      <div class="d-flex justify-content-between align-items-center mt-1">
+                        <div v-if="evt.team" class="cal-day-event-team">
+                          <i class="bi bi-people-fill me-1"></i>{{ evt.team }}
+                        </div>
+                        <span
+                          v-if="evt.status"
+                          class="cal-day-event-status"
+                          :style="{ color: evt.status === 'approved' ? '#16a34a' : evt.status === 'rejected' ? '#dc2626' : '#f97316' }"
+                        >{{ evt.status }}</span>
+                      </div>
+                      <div v-if="evt.asset || evt.extended" class="cal-day-event-team mt-1">
+                        <span v-if="evt.asset"><i class="bi bi-hdd-network me-1"></i>{{ evt.asset }}</span>
+                        <span v-if="evt.extended" class="ms-2"><i class="bi bi-arrow-repeat me-1"></i>+{{ evt.extended }}</span>
                       </div>
                     </div>
                   </div>
+                </div>
+                <!-- No events message -->
+                <div v-if="dayEvents.length === 0 && dayExtensionEvents.length === 0" class="cal-day-no-events">
+                  <i class="bi bi-calendar-check me-2"></i>No events for this day.
                 </div>
               </div>
             </div>
@@ -289,11 +336,14 @@
                   <!-- Support Requests -->
                   <div class="cal-detail-section">
                     <p class="cal-detail-label">TOTAL SUPPORT REQUESTS</p>
-                    <div class="cal-detail-sr-row">
-                      <div class="cal-detail-sr-num">3</div>
+                    <div v-if="supportLoading" class="text-muted small py-2">
+                      <span class="spinner-border spinner-border-sm me-1"></span> Loading...
+                    </div>
+                    <div v-else class="cal-detail-sr-row">
+                      <div class="cal-detail-sr-num">{{ supportTotal }}</div>
                       <div class="cal-detail-sr-info">
                         <p class="cal-detail-val">Support Tickets Raised</p>
-                        <p class="cal-detail-sub">2 Open &nbsp;•&nbsp; 1 Resolved</p>
+                        <p class="cal-detail-sub">{{ supportPending }} Open &nbsp;•&nbsp; {{ supportClosed }} Resolved</p>
                       </div>
                       <button class="cal-detail-sr-view-btn" @click="goToSupportRequests">View</button>
                     </div>
@@ -437,7 +487,21 @@ export default {
       showPopup: false,
       showDetailModal: false,
       popupPos: { top: 0, left: 0 },
+      supportLoading: false,
+      supportTotal: 0,
+      supportPending: 0,
+      supportClosed: 0,
       calendarLoading: false,
+      dayLoading: false,
+      dayApiData: null,
+      dayEvents: [],
+      dayExtensionEvents: [],
+      currentDayDate: new Date().toISOString().split('T')[0],
+      dayHourSlots: [
+        '08:00 AM','09:00 AM','10:00 AM','11:00 AM',
+        '12:00 PM','01:00 PM','02:00 PM','03:00 PM',
+        '04:00 PM','05:00 PM','06:00 PM',
+      ],
       apiCalendarData: null,
       apiEvents: [],
       currentYear: new Date().getFullYear(),
@@ -631,10 +695,107 @@ export default {
     getDayEventsForHour(hour) {
       return this.dayEvents.filter(e => e.startHour === hour);
     },
-    prevDay() { this.currentDayLabel = 'Tuesday, April 14, 2026'; },
-    nextDay() { this.currentDayLabel = 'Thursday, April 16, 2026'; },
+    isCurrentHour(hour) {
+      const now = new Date();
+      const nowHour = now.getHours();
+      const slotHour = parseInt(hour);
+      const isPM = hour.includes('PM') && slotHour !== 12;
+      const is12PM = hour === '12:00 PM';
+      const slotH = isPM ? slotHour + 12 : (is12PM ? 12 : slotHour);
+      return slotH === nowHour && this.currentDayDate === new Date().toISOString().split('T')[0];
+    },
+    getApiEventsForHour(hour, type) {
+      // Show all deadline events in first slot (08:00 AM)
+      if (type === 'deadline') {
+        const firstSlot = this.dayHourSlots[0];
+        if (hour === firstSlot) return this.dayEvents;
+        return [];
+      }
+      // Show all extension events in second slot (09:00 AM)
+      if (type === 'extension') {
+        const secondSlot = this.dayHourSlots[1];
+        if (hour === secondSlot) return this.dayExtensionEvents;
+        return [];
+      }
+      return [];
+    },
+
     getWeekEventsForDay(day) {
       return this.weekEventsData.filter(e => e.day === day);
+    },
+    async loadDayData() {
+      this.dayLoading = true;
+      const store = useAuthStore();
+      const res = await store.fetchRiskCriteriaCalendarDay(this.currentDayDate);
+      this.dayLoading = false;
+
+      // Always update label from currentDayDate
+      const parts = this.currentDayDate.split('-');
+      const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      this.currentDayLabel = d.toLocaleDateString('en-US', {
+        weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
+      });
+
+      if (res.status && res.data) {
+        this.dayApiData = res.data;
+        const deadlineEvts = [];
+        const extensionEvts = [];
+
+        // Use the exact date from API response day object
+        const dayDate = res.data.day?.date || this.currentDayDate;
+
+        // 1️⃣ Deadline events — show only if deadline_date === this day
+        const deadlines = res.data.deadlines || {};
+        Object.keys(deadlines).forEach(sev => {
+          const dl = deadlines[sev];
+          if (!dl?.deadline_date) return;
+          if (dl.deadline_date === dayDate) {
+            const sevLabel = sev.charAt(0).toUpperCase() + sev.slice(1);
+            deadlineEvts.push({
+              id: `day-deadline-${sev}`,
+              title: `${sevLabel} Level Deadline`,
+              type: 'deadline',
+              color: this.severityColor(sev),
+              severityLabel: sevLabel,
+              deadline: dl.deadline_date,
+              remainingDays: dl.remaining_days,
+              remainingLabel: dl.remaining_days + ' day' + (dl.remaining_days !== 1 ? 's' : ''),
+              status: dl.status,
+              isDeadlineEvent: true,
+              fromApi: true,
+            });
+          }
+        });
+
+        // 2️⃣ Extension events — only from day.events (this specific day)
+        const dayEvents = res.data.day?.events || [];
+        dayEvents.forEach((evt, i) => {
+          extensionEvts.push({
+            id: evt.request_id || `day-ext-${i}`,
+            title: evt.title,
+            type: 'deadline',
+            color: this.teamColor(evt.assigned_to_team),
+            severityLabel: evt.severity ? evt.severity.charAt(0).toUpperCase() + evt.severity.slice(1) : '',
+            team: evt.assigned_to_team,
+            deadline: evt.due,
+            extended: evt.extended_by_days ? `${evt.extended_by_days} Days` : null,
+            asset: evt.asset,
+            vulnerabilityName: evt.vulnerability_name,
+            status: evt.status,
+            historicalDetail: evt.historical_detail,
+            extensionRequested: evt.extension_requested,
+            isExtensionEvent: true,
+            fromApi: true,
+          });
+        });
+
+        this.dayEvents = deadlineEvts;
+        this.dayExtensionEvents = extensionEvts;
+      } else {
+        // Clear events on error
+        this.dayEvents = [];
+        this.dayExtensionEvents = [];
+      }
     },
     getWeekApiEventsForDate(fullDate) {
       if (!fullDate) return [];
@@ -734,13 +895,35 @@ export default {
       this.currentWeekDate = d.toISOString().split('T')[0];
       this.loadWeekData();
     },
+    prevDay() {
+      const parts = this.currentDayDate.split('-');
+      const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      d.setDate(d.getDate() - 1);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      this.currentDayDate = `${y}-${m}-${day}`;
+      this.loadDayData();
+    },
+    nextDay() {
+      const parts = this.currentDayDate.split('-');
+      const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      d.setDate(d.getDate() + 1);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      this.currentDayDate = `${y}-${m}-${day}`;
+      this.loadDayData();
+    },
     goToToday() {
       const today = new Date();
       this.currentYear = today.getFullYear();
       this.currentMonth = today.getMonth() + 1;
       this.currentWeekStart = today.getDate();
       this.currentWeekDate = today.toISOString().split('T')[0];
+      this.currentDayDate = today.toISOString().split('T')[0];
       if (this.activeView === 'Week') this.loadWeekData();
+      else if (this.activeView === 'Day') this.loadDayData();
       else this.loadCalendarData();
     },
     openEventPopup(evt, dayObj, $event) {
@@ -764,6 +947,30 @@ export default {
     },
     openDetailModal() {
       this.showDetailModal = true;
+      this.supportTotal = 0;
+      this.supportPending = 0;
+      this.supportClosed = 0;
+      this.fetchSupportRequests();
+    },
+    async fetchSupportRequests() {
+      if (!this.selectedEvent) return;
+      this.supportLoading = true;
+      const store = useAuthStore();
+      const reportId = localStorage.getItem('reportId');
+      if (reportId) {
+        const res = await store.getSupportRequestsByReport(reportId, true);
+        if (res.status) {
+          const all = res.data || [];
+          const team = this.selectedEvent.team || '';
+          const filtered = team
+            ? all.filter(r => (r.assigned_team || r.team || '').toLowerCase().includes(team.toLowerCase()))
+            : all;
+          this.supportTotal = filtered.length;
+          this.supportPending = filtered.filter(r => ['pending','open','review'].includes((r.status||'').toLowerCase())).length;
+          this.supportClosed = filtered.filter(r => ['closed','resolved','approved','rejected'].includes((r.status||'').toLowerCase())).length;
+        }
+      }
+      this.supportLoading = false;
     },
     closeDetailModal() {
       this.showDetailModal = false;
@@ -781,6 +988,7 @@ export default {
     activeView(val) {
       if (val === 'Week') this.loadWeekData();
       else if (val === 'Month') this.loadCalendarData();
+      else if (val === 'Day') this.loadDayData();
     },
   },
   async mounted() {
@@ -1520,8 +1728,54 @@ export default {
   width: 100%;
 }
 .cal-day-event-card:hover { opacity: 0.85; }
+.cal-day-event-status {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: capitalize;
+  letter-spacing: 0.04em;
+}
+.cal-day-no-events {
+  text-align: center;
+  color: #94a3b8;
+  font-size: 14px;
+  padding: 40px 0;
+}
 .cal-day-card-red  { background: #fef2f2; border-left: 4px solid #dc2626; }
 .cal-day-card-teal { background: #f0fdf9; border-left: 4px solid #0f696e; }
+/* Severity deadline day colors */
+.cal-day-card-maroon    { background: #f9e8ea; border-left: 4px solid #800020; }
+.cal-day-card-dl-blue   { background: #fff7ed; border-left: 4px solid #f97316; }
+.cal-day-card-dl-orange { background: #fefce8; border-left: 4px solid #ca8a04; }
+.cal-day-card-dl-green  { background: #f0fdf4; border-left: 4px solid #16a34a; }
+.cal-day-card-dl-red    { background: #fef2f2; border-left: 4px solid #dc2626; }
+/* Team-based day event colors */
+.cal-day-card-team-network { background: rgb(239, 246, 255); border-left: 4px solid rgb(59, 130, 246); }
+.cal-day-card-team-patch   { background: rgb(236, 253, 245); border-left: 4px solid rgb(16, 185, 129); }
+.cal-day-card-team-config  { background: rgb(255, 247, 237); border-left: 4px solid rgb(249, 115, 22); }
+.cal-day-card-team-arch    { background: rgb(254, 242, 242); border-left: 4px solid rgb(220, 38, 38); }
+/* Day API event card */
+.cal-day-api-event {
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.cal-day-api-event:hover { opacity: 0.85; }
+.cal-day-event-meta {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.cal-day-status-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: capitalize;
+  letter-spacing: 0.04em;
+}
 .cal-day-event-top {
   display: flex;
   align-items: center;

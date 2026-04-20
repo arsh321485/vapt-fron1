@@ -929,7 +929,7 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-    // ✅ GET Risk Criteria Calendar (User side)
+    // ✅ GET Risk Criteria Calendar (User side) — legacy, kept for compatibility
     async fetchUserRiskCriteriaCalendar(year: number, month: number) {
       try {
         const riskCriteriaId =
@@ -945,6 +945,72 @@ export const useAuthStore = defineStore("auth", {
         return {
           status: false,
           message: error?.response?.data?.message || "Failed to fetch calendar",
+        };
+      }
+    },
+
+    // ✅ User: Fetch Risk Criteria Calendar with team and severity filters
+    async fetchUserRiskCriteriaCalendarWithFilters(
+      year: number,
+      month: number,
+      team?: string,
+      severity?: string,
+    ) {
+      try {
+        const riskCriteriaId =
+          localStorage.getItem("riskCriteriaId") || localStorage.getItem("riskId");
+        if (!riskCriteriaId) return { status: false, message: "Risk criteria ID not found" };
+        const monthStr = `${year}-${String(month).padStart(2, "0")}`;
+        const params: Record<string, string> = { month: monthStr };
+        if (team) params.team = team;
+        if (severity) params.severity = severity;
+        const res = await endpoint.get(
+          `/api/user/risk_criteria/risks/${riskCriteriaId}/calendar/`,
+          { params },
+        );
+        return { status: true, data: res.data };
+      } catch (error: any) {
+        return {
+          status: false,
+          message: error?.response?.data?.message || "Failed to fetch user calendar",
+        };
+      }
+    },
+
+    // ✅ User: Fetch Risk Criteria Calendar Week View
+    async fetchUserRiskCriteriaCalendarWeek(date: string) {
+      try {
+        const riskCriteriaId =
+          localStorage.getItem("riskCriteriaId") || localStorage.getItem("riskId");
+        if (!riskCriteriaId) return { status: false, message: "Risk criteria ID not found" };
+        const res = await endpoint.get(
+          `/api/user/risk_criteria/risks/${riskCriteriaId}/calendar/week/`,
+          { params: { date } },
+        );
+        return { status: true, data: res.data };
+      } catch (error: any) {
+        return {
+          status: false,
+          message: error?.response?.data?.message || "Failed to fetch user week calendar",
+        };
+      }
+    },
+
+    // ✅ User: Fetch Risk Criteria Calendar Day View
+    async fetchUserRiskCriteriaCalendarDay(date: string) {
+      try {
+        const riskCriteriaId =
+          localStorage.getItem("riskCriteriaId") || localStorage.getItem("riskId");
+        if (!riskCriteriaId) return { status: false, message: "Risk criteria ID not found" };
+        const res = await endpoint.get(
+          `/api/user/risk_criteria/risks/${riskCriteriaId}/calendar/day/`,
+          { params: { date } },
+        );
+        return { status: true, data: res.data };
+      } catch (error: any) {
+        return {
+          status: false,
+          message: error?.response?.data?.message || "Failed to fetch user day calendar",
         };
       }
     },
@@ -3815,6 +3881,25 @@ export const useAuthStore = defineStore("auth", {
             error.response?.data?.detail ||
             error.message ||
             "Failed to resync Slack",
+        };
+      }
+    },
+
+    // ✅ Admin: Fetch Risk Criteria Calendar Day View
+    async fetchRiskCriteriaCalendarDay(date: string) {
+      try {
+        const riskCriteriaId =
+          localStorage.getItem("riskCriteriaId") || localStorage.getItem("riskId");
+        if (!riskCriteriaId) return { status: false, message: "Risk criteria ID not found" };
+        const res = await endpoint.get(
+          `/api/admin/risk_criteria/risks/${riskCriteriaId}/calendar/day/`,
+          { params: { date } },
+        );
+        return { status: true, data: res.data };
+      } catch (error: any) {
+        return {
+          status: false,
+          message: error?.response?.data?.message || "Failed to fetch day calendar",
         };
       }
     },
