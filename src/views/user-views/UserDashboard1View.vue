@@ -18,7 +18,7 @@
                 <h2 class="ud-title">
                   Vulnerability Management Program
                   <span class="ud-cal-wrap">
-                   
+
                     <!-- Outside-click backdrop -->
                     <div
                       v-if="showCalendar"
@@ -950,7 +950,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="(vuln, index) in group.rows" :key="index">
+                    <tr v-for="(vuln, index) in group.rows" :key="index" @click="console.log('VULN OBJECT:', JSON.stringify(vuln))">
                       <td>
                         <span class="msu-modal-vuln-name" :title="vuln.plugin_name">{{ vuln.plugin_name }}</span>
                       </td>
@@ -975,9 +975,9 @@
                       </td>
                       <td>
                         <router-link :to="{
-                          name: 'UserVulFix',
+                          name: 'user-remediation-timeline',
                           params: { reportId: msuReportId, asset: vuln.host_name },
-                          query: { plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor }
+                          query: { id: vuln.plugin_id || vuln.id || vuln.nessus_plugin_id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor }
                         }">
                           <button class="msu-modal-view-btn">
                             View <i class="bi bi-arrow-right-circle-fill ms-1"></i>

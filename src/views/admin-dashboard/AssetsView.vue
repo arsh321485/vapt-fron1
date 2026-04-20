@@ -240,7 +240,7 @@
                               <router-link
                                 v-if="authStore.latestReportId"
                                 :to="{
-                                  name: 'VulFix',
+                                  name: 'remediation-timeline',
                                   params: { reportId: authStore.latestReportId, asset: authStore.selectedAssetDetail?.asset },
                                   query: { id: getVulRegisterId(v), plugin_name: v.vul_name, risk_factor: v.severity }
                                 }"
@@ -837,7 +837,7 @@ export default {
       }
 
       this.$router.push({
-        name: 'VulFix',
+        name: 'remediation-timeline',
         params: {
           reportId: reportId,
           asset: item.asset,

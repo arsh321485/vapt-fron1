@@ -79,7 +79,7 @@
                           </td>
                           <td>
                             <router-link :to="{
-                              name: 'UserVulFix',
+                              name: 'user-remediation-timeline',
                               params: { reportId: reportId, asset: vuln.host_name },
                               query: { plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor }
                             }">

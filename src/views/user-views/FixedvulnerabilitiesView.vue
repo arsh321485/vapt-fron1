@@ -111,7 +111,7 @@
                       <td class="fv-td">
                         <router-link
                           :to="{
-                            name: 'UserVulFix',
+                            name: 'user-remediation-timeline',
                             params: { reportId: reportId, asset: item.host_name },
                             query: { plugin_name: item.plugin_name, risk_factor: item.risk_factor }
                           }"

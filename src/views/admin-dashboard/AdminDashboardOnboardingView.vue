@@ -763,7 +763,7 @@
                                   <div class="d-flex gap-3">
                                     <router-link
                                       v-if="authStore.latestReportId"
-                                      :to="{ name: 'VulFix', params: { reportId: authStore.latestReportId, asset: authStore.selectedAssetDetail?.asset }, query: { id: getOverlayVulRegisterId(v), plugin_name: v.vul_name, risk_factor: v.severity } }"
+                                      :to="{ name: 'remediation-timeline', params: { reportId: authStore.latestReportId, asset: authStore.selectedAssetDetail?.asset }, query: { id: getOverlayVulRegisterId(v), plugin_name: v.vul_name, risk_factor: v.severity } }"
                                       class="btn-fix-now text-decoration-none"
                                       @click="showAssetsOverlay = false">
                                       Fix Now
@@ -1224,7 +1224,7 @@
                       <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#334155;" :title="vuln.plugin_name">{{ vuln.plugin_name }}</td>
                       <td><span class="mte-pill" :class="getCvStatusPillClass(vuln.status)">{{ vuln.status || '—' }}</span></td>
                       <td>
-                        <router-link :to="{ name:'VulFix', params:{ reportId: currentReportId, asset: vuln.host_name }, query:{ id: vuln.id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor } }" class="text-decoration-none" @click="closeCommonVulnModal">
+                        <router-link :to="{ name:'remediation-timeline', params:{ reportId: currentReportId, asset: vuln.host_name }, query:{ id: vuln.id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor } }" class="text-decoration-none" @click="closeCommonVulnModal">
                           <button v-if="(vuln.status || '').toLowerCase() === 'open'" class="cv-view-btn cv-fixnow-btn">Fix Now <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
                           <button v-else class="cv-view-btn">View <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
                         </router-link>
@@ -1255,7 +1255,7 @@
                       <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#334155;" :title="vuln.plugin_name">{{ vuln.plugin_name }}</td>
                       <td><span class="mte-pill" :class="getCvStatusPillClass(vuln.status)">{{ vuln.status || '—' }}</span></td>
                       <td>
-                        <router-link :to="{ name:'VulFix', params:{ reportId: currentReportId, asset: vuln.host_name }, query:{ id: vuln.id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor } }" class="text-decoration-none" @click="closeCommonVulnModal">
+                        <router-link :to="{ name:'remediation-timeline', params:{ reportId: currentReportId, asset: vuln.host_name }, query:{ id: vuln.id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor } }" class="text-decoration-none" @click="closeCommonVulnModal">
                           <button v-if="(vuln.status || '').toLowerCase() === 'open'" class="cv-view-btn cv-fixnow-btn">Fix Now <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
                           <button v-else class="cv-view-btn">View <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
                         </router-link>
@@ -1286,7 +1286,7 @@
                       <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#334155;" :title="vuln.plugin_name">{{ vuln.plugin_name }}</td>
                       <td><span class="mte-pill" :class="getCvStatusPillClass(vuln.status)">{{ vuln.status || '—' }}</span></td>
                       <td>
-                        <router-link :to="{ name:'VulFix', params:{ reportId: currentReportId, asset: vuln.host_name }, query:{ id: vuln.id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor } }" class="text-decoration-none" @click="closeCommonVulnModal">
+                        <router-link :to="{ name:'remediation-timeline', params:{ reportId: currentReportId, asset: vuln.host_name }, query:{ id: vuln.id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor } }" class="text-decoration-none" @click="closeCommonVulnModal">
                           <button v-if="(vuln.status || '').toLowerCase() === 'open'" class="cv-view-btn cv-fixnow-btn">Fix Now <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
                           <button v-else class="cv-view-btn">View <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
                         </router-link>
@@ -1317,7 +1317,7 @@
                       <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#334155;" :title="vuln.plugin_name">{{ vuln.plugin_name }}</td>
                       <td><span class="mte-pill" :class="getCvStatusPillClass(vuln.status)">{{ vuln.status || '—' }}</span></td>
                       <td>
-                        <router-link :to="{ name:'VulFix', params:{ reportId: currentReportId, asset: vuln.host_name }, query:{ id: vuln.id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor } }" class="text-decoration-none" @click="closeCommonVulnModal">
+                        <router-link :to="{ name:'remediation-timeline', params:{ reportId: currentReportId, asset: vuln.host_name }, query:{ id: vuln.id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor } }" class="text-decoration-none" @click="closeCommonVulnModal">
                           <button v-if="(vuln.status || '').toLowerCase() === 'open'" class="cv-view-btn cv-fixnow-btn">Fix Now <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
                           <button v-else class="cv-view-btn">View <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
                         </router-link>

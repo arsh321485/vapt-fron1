@@ -256,7 +256,7 @@
                               <router-link
                                 v-if="authStore.userLatestReportId && activeIndex"
                                 :to="{
-                                  name: 'UserVulFix',
+                                  name: 'user-remediation-timeline',
                                   params: { reportId: authStore.userLatestReportId, asset: activeIndex },
                                   query: { plugin_name: vuln.vul_name, risk_factor: vuln.severity }
                                 }"
@@ -529,7 +529,7 @@ export default {
       const reportId = this.authStore.userLatestReportId;
       if (!reportId) return;
       this.$router.push({
-        name: 'UserVulFix',
+        name: 'user-remediation-timeline',
         params: { reportId, asset: item.host_name || this.activeIndex },
         query: {
           id: item.fix_vulnerability_id,
