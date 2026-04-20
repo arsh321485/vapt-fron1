@@ -494,19 +494,32 @@ export default {
           email: this.form.email.trim(),
         });
 
-        const syncMsg = this.selectedCommunication === "teams"
-          ? " and added to Microsoft Teams"
-          : this.selectedCommunication === "slack"
-            ? " and invited to Slack channels"
-            : "";
+        // slack_sync status-based message
+        const slackSync = res.slack_sync || res.data?.slack_sync;
+        let msg = "User added successfully";
+
+        if (this.selectedCommunication === "teams") {
+          msg = "User added and added to Microsoft Teams";
+        } else if (slackSync?.status === "success") {
+          msg = "User added and invited to Slack channels";
+        } else if (slackSync?.status === "pending_workspace_join") {
+          msg = "User created. Slack workspace invite sent; channel mapping pending.";
+        } else if (slackSync?.status === "failed") {
+          msg = `User created, Slack sync failed: ${slackSync.error || "unknown"}`;
+        } else if (slackSync?.status === "skipped") {
+          msg = `User created, Slack sync skipped: ${slackSync.error || "config missing"}`;
+        }
 
         Swal.fire({
           icon: "success",
-          title: `User added successfully${syncMsg}`,
-          timer: 2000,
+          title: msg,
+          timer: 2500,
           showConfirmButton: false,
           allowOutsideClick: false
         });
+
+        // Refresh user list from source of truth
+        await this.loadAddedUsers();
 
         // Reset form
         this.form.first_name = "";

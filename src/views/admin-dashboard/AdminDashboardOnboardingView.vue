@@ -866,7 +866,6 @@
             </div>
             <div class="mte-header-actions">
               <select class="mte-team-dropdown" v-model="mteSelectedTeam">
-                <option value="All">All Teams</option>
                 <option value="Patch Management">Patch Management</option>
                 <option value="Configuration Management">Configuration Management</option>
                 <option value="Network Security">Network Security</option>
@@ -1343,24 +1342,29 @@ export default {
       const apiL = this.adminMteReportData.low      || [];
       const hasApi = apiC.length > 0 || apiH.length > 0 || apiM.length > 0 || apiL.length > 0;
 
-      const filter = (rows) =>
-        this.mteSelectedTeam === "All"
-          ? rows
-          : rows.filter(r => r.team === this.mteSelectedTeam);
+      const normalize = (s) => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+      const filterByTeam = (rows) => {
+        if (!this.mteSelectedTeam) return rows;
+        return rows.filter(r =>
+          normalize(r.team) === normalize(this.mteSelectedTeam) ||
+          normalize(r.by) === normalize(this.mteSelectedTeam)
+        );
+      };
 
       if (hasApi) {
         return {
-          critical: filter(apiC),
-          high:     filter(apiH),
-          medium:   filter(apiM),
-          low:      filter(apiL),
+          critical: filterByTeam(apiC),
+          high:     filterByTeam(apiH),
+          medium:   filterByTeam(apiM),
+          low:      filterByTeam(apiL),
         };
       }
       return {
-        critical: filter(this.mteStaticData.critical),
-        high:     filter(this.mteStaticData.high),
-        medium:   filter(this.mteStaticData.medium),
-        low:      filter(this.mteStaticData.low),
+        critical: filterByTeam(this.mteStaticData.critical),
+        high:     filterByTeam(this.mteStaticData.high),
+        medium:   filterByTeam(this.mteStaticData.medium),
+        low:      filterByTeam(this.mteStaticData.low),
       };
     },
     extPopupAssetList() {
@@ -1642,7 +1646,7 @@ export default {
     async openMitigationExtensionModal() {
       this.showMitigationExtensionModal = true;
       this.mteOpenSection = "critical";
-      this.mteSelectedTeam = "All";
+      this.mteSelectedTeam = "Patch Management";
       await this.loadAdminMteReportData();
     },
     closeMitigationExtensionModal() {

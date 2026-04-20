@@ -3838,6 +3838,7 @@ export const useAuthStore = defineStore("auth", {
       vulnerability_name: string;
       requested_extension_days: number;
       reason: string;
+      team?: string;
     }) {
       try {
         const res = await endpoint.post(
@@ -3864,10 +3865,15 @@ export const useAuthStore = defineStore("auth", {
     },
 
     // ✅ User: Mitigation Timeline Extension Options (assets, vulnerabilities, deadline)
-    async fetchUserMitigationTimelineExtensionOptions(severity: string, asset?: string) {
+    async fetchUserMitigationTimelineExtensionOptions(
+      severity: string,
+      asset?: string,
+      team?: string,
+    ) {
       try {
         const params: Record<string, string> = { severity };
         if (asset) params.asset = asset;
+        if (team) params.team = team;
         const res = await endpoint.get(
           `/api/user/dashboard/mitigation-timeline-extension/options/`,
           { params },

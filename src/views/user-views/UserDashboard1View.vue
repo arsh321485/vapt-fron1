@@ -620,7 +620,6 @@
             </div>
             <div class="mte-header-actions">
               <select class="mte-team-dropdown" v-model="mteSelectedTeam">
-                <option value="All">All Teams</option>
                 <option v-for="team in assignedTeamKeys" :key="team" :value="team">{{ team }}</option>
               </select>
               <button type="button" class="mte-close-btn" @click="closeMitigationExtensionModal">
@@ -1095,10 +1094,15 @@ export default {
     assignedTeamKeys() {
       return this.userTeams.filter(t => this.mteTeamMap[t]);
     },
-    // Card table rows — from API data directly
+    // Card table rows — from API data directly, filtered by user's assigned teams
     mteCardRows() {
       if (this.mteApiTeams.length > 0) {
-        return this.mteApiTeams.map(t => ({
+        const normalize = (s) => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+        const assigned = this.userTeams.map(t => normalize(t));
+        const filtered = assigned.length > 0
+          ? this.mteApiTeams.filter(t => assigned.includes(normalize(t.team)))
+          : this.mteApiTeams;
+        return filtered.map(t => ({
           key: t.team,
           short: t.team,
           critical: t.critical || 0,
@@ -1119,17 +1123,20 @@ export default {
 
       const hasApiData = apiCritical.length > 0 || apiHigh.length > 0 || apiMedium.length > 0 || apiLow.length > 0;
 
+      const normalize = (s) => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+      const filterByTeam = (rows) => {
+        if (!this.mteSelectedTeam) return rows;
+        return rows.filter(r => normalize(r.team) === normalize(this.mteSelectedTeam) ||
+          normalize(r.by) === normalize(this.mteSelectedTeam));
+      };
+
       if (hasApiData) {
-        const filter = (rows) => {
-          return this.mteSelectedTeam === "All"
-            ? rows
-            : rows.filter(r => r.team === this.mteSelectedTeam);
-        };
         return {
-          critical: filter(apiCritical),
-          high:     filter(apiHigh),
-          medium:   filter(apiMedium),
-          low:      filter(apiLow),
+          critical: filterByTeam(apiCritical),
+          high:     filterByTeam(apiHigh),
+          medium:   filterByTeam(apiMedium),
+          low:      filterByTeam(apiLow),
         };
       }
 
@@ -1137,7 +1144,8 @@ export default {
       const allowed = new Set(this.assignedTeamKeys);
       const filter = (rows) => {
         const byTeam = rows.filter(r => allowed.has(r.team));
-        return this.mteSelectedTeam === "All" ? byTeam : byTeam.filter(r => r.team === this.mteSelectedTeam);
+        if (!this.mteSelectedTeam) return byTeam;
+        return byTeam.filter(r => normalize(r.team) === normalize(this.mteSelectedTeam));
       };
       return {
         critical: filter(this.mteStaticData.critical),
@@ -1658,13 +1666,17 @@ export default {
       this.extPopupVulListApi = [];
       this.extPopupOriginalDeadlineDays = null;
       this.showExtPopup = true;
-      // Fetch assets for this severity
-      await this.fetchExtPopupOptions(severity, null);
+      // Fetch assets for this severity with team
+      await this.fetchExtPopupOptions(severity, null, this.mteSelectedTeam);
     },
-    async fetchExtPopupOptions(severity, asset) {
+    async fetchExtPopupOptions(severity, asset, team) {
       if (!severity) return;
       this.extPopupOptionsLoading = true;
-      const res = await this.authStore.fetchUserMitigationTimelineExtensionOptions(severity, asset || undefined);
+      const res = await this.authStore.fetchUserMitigationTimelineExtensionOptions(
+        severity,
+        asset || undefined,
+        team && team !== 'All' ? team : undefined,
+      );
       this.extPopupOptionsLoading = false;
       if (res.status && res.data) {
         this.extPopupAssetListApi = res.data.assets || [];
@@ -1677,7 +1689,7 @@ export default {
       this.extPopupVulListApi = [];
       this.extPopupOriginalDeadlineDays = null;
       if (this.extPopupAsset && this.extPopupSeverity) {
-        await this.fetchExtPopupOptions(this.extPopupSeverity, this.extPopupAsset);
+        await this.fetchExtPopupOptions(this.extPopupSeverity, this.extPopupAsset, this.mteSelectedTeam);
       }
     },
     closeExtPopup() {
@@ -1701,6 +1713,7 @@ export default {
         vulnerability_name: this.extPopupVulName,
         requested_extension_days: this.parseExtensionDays(this.extPopupExtension),
         reason: this.extPopupReason.trim(),
+        team: this.mteSelectedTeam || undefined,
       };
 
       console.log('🔥 Extension Request Payload:', JSON.stringify(payload));
@@ -1726,7 +1739,7 @@ export default {
     async openMitigationExtensionModal() {
       this.showMitigationExtensionModal = true;
       this.mteOpenSection = 'critical';
-      this.mteSelectedTeam = 'All';
+      this.mteSelectedTeam = this.assignedTeamKeys[0] || '';
       await Promise.all([
         this.loadMteExtensionData(),
         this.loadMteReportData(),
