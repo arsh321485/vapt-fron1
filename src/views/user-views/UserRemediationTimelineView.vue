@@ -842,7 +842,7 @@ export default {
       return;
     }
 
-    if (!this.reportId || !this.asset || !id || !plugin_name || !risk_factor) {
+    if (!this.reportId || !this.asset || !plugin_name || !risk_factor) {
       Swal.fire('Error', 'Missing vulnerability data. Please go back and try again.', 'error');
       return;
     }

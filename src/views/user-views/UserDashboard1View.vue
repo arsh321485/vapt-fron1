@@ -526,9 +526,6 @@
                     <p class="cv-team-name">{{ team.key }}</p>
                     <h2 class="cv-team-count">{{ team.total }}</h2>
                     <p class="cv-team-assigned">{{ team.assigned }}</p>
-                    <div class="d-flex gap-1 flex-wrap mb-2">
-                      <span v-for="tag in team.tags" :key="tag.label" class="cv-tag" :class="tag.cls">{{ tag.label }}</span>
-                    </div>
                     <div class="cv-team-stats">
                       <div v-if="team.critical != null" class="cv-stat-row">
                         <span class="cv-stat-dot cv-dot-critical"></span>
@@ -539,6 +536,16 @@
                         <span class="cv-stat-dot cv-dot-high"></span>
                         <span class="cv-stat-label">High</span>
                         <span class="cv-stat-val">{{ team.high }}</span>
+                      </div>
+                      <div v-if="team.medium != null" class="cv-stat-row">
+                        <span class="cv-stat-dot cv-dot-medium"></span>
+                        <span class="cv-stat-label">Medium</span>
+                        <span class="cv-stat-val">{{ team.medium }}</span>
+                      </div>
+                      <div v-if="team.low != null" class="cv-stat-row">
+                        <span class="cv-stat-dot cv-dot-low"></span>
+                        <span class="cv-stat-label">Low</span>
+                        <span class="cv-stat-val">{{ team.low }}</span>
                       </div>
                     </div>
                     <div class="cv-affected-row">
@@ -627,7 +634,7 @@
               <div class="mte-severity-left">
                 <i class="bi bi-exclamation-circle-fill"></i>
                 <span>Critical Severity Requests</span>
-                <span class="mte-badge critical">{{ mteFilteredData.critical.length }} Items</span>
+                <span class="mte-badge critical">{{ mteFilteredData.critical.length }} ITEMS</span>
               </div>
               <div class="mte-head-right">
                 <button type="button" class="mte-ext-btn" @click.stop="openExtPopup('critical')">Extended Timeline</button>
@@ -668,7 +675,7 @@
               <div class="mte-severity-left">
                 <i class="bi bi-exclamation-triangle-fill mte-high-icon"></i>
                 <span>High Severity Requests</span>
-                <span class="mte-badge high">{{ mteFilteredData.high.length }} Items</span>
+                <span class="mte-badge high">{{ mteFilteredData.high.length }} ITEMS</span>
               </div>
               <div class="mte-head-right">
                 <button type="button" class="mte-ext-btn" @click.stop="openExtPopup('high')">Extended Timeline</button>
@@ -709,7 +716,7 @@
               <div class="mte-severity-left">
                 <i class="bi bi-exclamation-circle-fill mte-medium-icon"></i>
                 <span>Medium Severity Requests</span>
-                <span class="mte-badge medium">{{ mteFilteredData.medium.length }} Items</span>
+                <span class="mte-badge medium">{{ mteFilteredData.medium.length }} ITEMS</span>
               </div>
               <div class="mte-head-right">
                 <button type="button" class="mte-ext-btn" @click.stop="openExtPopup('medium')">Extended Timeline</button>
@@ -750,7 +757,7 @@
               <div class="mte-severity-left">
                 <i class="bi bi-gear-fill mte-low-icon"></i>
                 <span>Low Severity Requests</span>
-                <span class="mte-badge low">{{ mteFilteredData.low.length }} Items</span>
+                <span class="mte-badge low">{{ mteFilteredData.low.length }} ITEMS</span>
               </div>
               <div class="mte-head-right">
                 <button type="button" class="mte-ext-btn" @click.stop="openExtPopup('low')">Extended Timeline</button>
@@ -790,9 +797,7 @@
           <transition name="ext-drawer">
             <div v-if="showExtPopup" class="ext-popup-backdrop" @click.self="closeExtPopup">
               <div class="ext-popup-box" @click.stop>
-                <!-- Severity accent bar -->
                 <div class="ext-drawer-accent" :class="'ext-accent-' + extPopupSeverity"></div>
-
                 <div class="ext-popup-header">
                   <div class="ext-header-left">
                     <div class="ext-header-icon" :class="'ext-icon-' + extPopupSeverity">
@@ -813,47 +818,40 @@
                   </div>
                   <button type="button" class="ext-header-close" @click="closeExtPopup"><i class="bi bi-x-lg"></i></button>
                 </div>
-
                 <div class="ext-popup-body">
-                  <!-- Info banner -->
                   <div class="ext-info-banner">
                     <i class="bi bi-info-circle-fill"></i>
                     <span>Submit a request to extend the remediation deadline for a specific vulnerability on an asset.</span>
                   </div>
-
                   <div class="ext-section-title"><i class="bi bi-hdd-network"></i> Asset & Vulnerability</div>
-
                   <div class="ext-popup-field">
                     <label class="ext-popup-label">Asset (IP)</label>
                     <div class="ext-select-wrap">
                       <i class="bi bi-hdd-fill ext-select-icon ext-icon-asset"></i>
-                      <select class="ext-popup-select ext-has-icon" v-model="extPopupAsset" @change="extPopupVulName = ''">
-                        <option value="">Select Asset</option>
+                      <select class="ext-popup-select ext-has-icon" v-model="extPopupAsset" @change="onExtPopupAssetChange">
+                        <option value="">{{ extPopupOptionsLoading ? 'Loading...' : 'Select Asset' }}</option>
                         <option v-for="ip in extPopupAssetList" :key="ip" :value="ip">{{ ip }}</option>
                       </select>
                     </div>
                   </div>
-
                   <div class="ext-popup-field">
                     <label class="ext-popup-label">Vulnerability Name</label>
                     <div class="ext-select-wrap">
                       <i class="bi bi-shield-exclamation ext-select-icon ext-icon-vuln"></i>
-                      <select class="ext-popup-select ext-has-icon" v-model="extPopupVulName" :disabled="!extPopupAsset">
-                        <option value="">Select Vulnerability</option>
+                      <select class="ext-popup-select ext-has-icon" v-model="extPopupVulName" :disabled="!extPopupAsset || extPopupOptionsLoading">
+                        <option value="">{{ extPopupOptionsLoading ? 'Loading...' : 'Select Vulnerability' }}</option>
                         <option v-for="vn in extPopupVulList" :key="vn" :value="vn">{{ vn }}</option>
                       </select>
                     </div>
                   </div>
-
                   <div class="ext-drawer-divider" style="margin: 4px 0 12px;"></div>
                   <div class="ext-section-title"><i class="bi bi-calendar3"></i> Timeline Details</div>
-
                   <div class="ext-popup-row">
                     <div class="ext-popup-field">
                       <label class="ext-popup-label">Original Deadline</label>
                       <div class="ext-deadline-chip ext-deadline-original">
                         <i class="bi bi-clock-history"></i>
-                        <span>{{ extOriginalDeadlines[extPopupSeverity] }}</span>
+                        <span>{{ extOriginalDeadlineDisplay }}</span>
                       </div>
                     </div>
                     <div class="ext-popup-field">
@@ -863,39 +861,35 @@
                         <select class="ext-popup-select ext-has-icon" v-model="extPopupExtension">
                           <option value="">— Select Extension —</option>
                           <optgroup label="Days">
-                            <option value="7 Days">7 Days</option>
-                            <option value="14 Days">14 Days</option>
-                            <option value="21 Days">21 Days</option>
-                            <option value="30 Days">30 Days</option>
-                            <option value="60 Days">60 Days</option>
-                            <option value="90 Days">90 Days</option>
+                            <option value="1 Day">1 Day</option>
+                            <option value="2 Days">2 Days</option>
+                            <option value="3 Days">3 Days</option>
+                            <option value="4 Days">4 Days</option>
+                            <option value="5 Days">5 Days</option>
+                            <option value="6 Days">6 Days</option>
                           </optgroup>
                           <optgroup label="Weeks">
                             <option value="1 Week">1 Week</option>
                             <option value="2 Weeks">2 Weeks</option>
+                            <option value="3 Weeks">3 Weeks</option>
                             <option value="4 Weeks">4 Weeks</option>
-                            <option value="8 Weeks">8 Weeks</option>
-                            <option value="12 Weeks">12 Weeks</option>
+                            <option value="5 Weeks">5 Weeks</option>
+                            <option value="6 Weeks">6 Weeks</option>
                           </optgroup>
                         </select>
                       </div>
                     </div>
                   </div>
-
                   <div class="ext-drawer-divider" style="margin: 4px 0 12px;"></div>
                   <div class="ext-section-title"><i class="bi bi-chat-left-text"></i> Justification</div>
-
                   <div class="ext-popup-field">
                     <label class="ext-popup-label">Reason</label>
                     <textarea class="ext-popup-textarea" v-model="extPopupReason" rows="4" placeholder="Describe why an extension is needed — include any dependencies, blockers, or risk context..."></textarea>
                     <span class="ext-char-hint">{{ extPopupReason.trim().length > 0 ? extPopupReason.trim().length + ' chars' : 'Required' }}</span>
                   </div>
                 </div>
-
                 <div class="ext-popup-footer">
-                  <button type="button" class="mte-btn-secondary" @click="closeExtPopup">
-                    Cancel
-                  </button>
+                  <button type="button" class="mte-btn-secondary" @click="closeExtPopup">Cancel</button>
                   <button type="button" class="mte-btn-primary ext-submit-btn" @click="submitExtPopup" :disabled="!extPopupAsset || !extPopupVulName || !extPopupExtension || !extPopupReason.trim()">
                     <i class="bi bi-send-fill"></i> <span style="color:#fff;">Submit Request</span>
                   </button>
@@ -914,7 +908,7 @@
         <div class="mte-modal-box" @click.stop>
           <div class="mte-modal-header">
             <div class="d-flex align-items-baseline gap-3">
-              <h3 class="mte-modal-title">Missing Security Updates</h3>
+              <h3 class="mte-modal-title">Common Vulnerabilities</h3>
               <span v-if="selectedTeam" class="msu-team-badge">{{ selectedTeam }}</span>
             </div>
             <button type="button" class="mte-close-btn" @click="closeMsuModal">
@@ -950,7 +944,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="(vuln, index) in group.rows" :key="index" @click="console.log('VULN OBJECT:', JSON.stringify(vuln))">
+                    <tr v-for="(vuln, index) in group.rows" :key="index">
                       <td>
                         <span class="msu-modal-vuln-name" :title="vuln.plugin_name">{{ vuln.plugin_name }}</span>
                       </td>
@@ -974,13 +968,20 @@
                         </span>
                       </td>
                       <td>
-                        <router-link :to="{
+                        <router-link :to="vuln.fix_vulnerability_id ? {
                           name: 'user-remediation-timeline',
-                          params: { reportId: msuReportId, asset: vuln.host_name },
+                          params: { reportId: msuReportId || authStore.userLatestReportId, asset: vuln.host_name },
+                          query: { fix_vul_id: vuln.fix_vulnerability_id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor }
+                        } : {
+                          name: 'user-remediation-timeline',
+                          params: { reportId: msuReportId || authStore.userLatestReportId, asset: vuln.host_name },
                           query: { id: vuln.plugin_id || vuln.id || vuln.nessus_plugin_id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor }
-                        }">
-                          <button class="msu-modal-view-btn">
+                        }" class="text-decoration-none">
+                          <button v-if="['closed', 'fixed', 'completed'].includes((vuln.status || '').toLowerCase())" class="msu-modal-view-btn">
                             View <i class="bi bi-arrow-right-circle-fill ms-1"></i>
+                          </button>
+                          <button v-else class="msu-modal-fixnow-btn">
+                            Fix Now <i class="bi bi-arrow-right-circle-fill ms-1"></i>
                           </button>
                         </router-link>
                       </td>
@@ -1004,6 +1005,7 @@
 import DashboardMenu from '@/components/user-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/user-component/DashboardHeader.vue';
 import { useAuthStore } from '@/stores/authStore';
+import Swal from 'sweetalert2';
 
 export default {
   name: 'UserDashboard1View',
@@ -1044,12 +1046,11 @@ export default {
       showMitigationExtensionModal: false,
       mteOpenSection: null,
       mteSelectedTeam: "All",
-      mteTeamMap: {
-        "Patch Management":        { short: "Patch Mgmt",   critical: 14, high: 38, medium: 22, low: 12 },
-        "Configuration Management":{ short: "Config Mgmt",  critical:  6, high: 24, medium: 84, low: 61 },
-        "Network Security":        { short: "Network Sec",  critical: 22, high: 15, medium:  9, low:  4 },
-        "Architectural Flaws":     { short: "Arch Flaws",   critical:  3, high:  8, medium: 14, low: 27 },
-      },
+      mteTeamMap: {},
+      mteExtensionLoading: false,
+      mteApiTeams: [],
+      mteReportData: { critical: [], high: [], medium: [], low: [] },
+      mteReportLoading: false,
       mteStaticData: {
         critical: [
           { ip: "192.168.1.104", vulName: "MS17-010 EternalBlue",       status: "Review",   by: "dev-team", date: "2026-03-20", ext: "15 Days", reason: "Patch window approval pending from infra team",    team: "Patch Management" },
@@ -1067,6 +1068,7 @@ export default {
           { ip: "172.31.11.09",  vulName: "CVE-2019-0708 BlueKeep",     status: "Rejected", by: "Ops Team", date: "2026-03-25", ext: "6 Days",  reason: "Low-priority fix batched with monthly cycle",       team: "Network Security" },
         ],
       },
+
       showExtPopup: false,
       extPopupSeverity: null,
       extPopupAsset: "",
@@ -1074,6 +1076,10 @@ export default {
       extPopupExtension: "",
       extPopupReason: "",
       extOriginalDeadlines: { critical: "30 Days", high: "60 Days", medium: "90 Days", low: "180 Days" },
+      extPopupAssetListApi: [],
+      extPopupVulListApi: [],
+      extPopupOriginalDeadlineDays: null,
+      extPopupOptionsLoading: false,
       showMsuModal: false,
       msuReportId: null,
       inProcessCount: 0,
@@ -1089,12 +1095,45 @@ export default {
     assignedTeamKeys() {
       return this.userTeams.filter(t => this.mteTeamMap[t]);
     },
-    // Card table rows — only show assigned teams
+    // Card table rows — from API data directly
     mteCardRows() {
+      if (this.mteApiTeams.length > 0) {
+        return this.mteApiTeams.map(t => ({
+          key: t.team,
+          short: t.team,
+          critical: t.critical || 0,
+          high: t.high || 0,
+          medium: t.medium || 0,
+          low: t.low || 0,
+        }));
+      }
       return this.assignedTeamKeys.map(t => ({ key: t, ...this.mteTeamMap[t] }));
     },
     // Modal data filtered by selected team (within assigned teams only)
     mteFilteredData() {
+      // Use API report data if available
+      const apiCritical = this.mteReportData.critical || [];
+      const apiHigh     = this.mteReportData.high     || [];
+      const apiMedium   = this.mteReportData.medium   || [];
+      const apiLow      = this.mteReportData.low      || [];
+
+      const hasApiData = apiCritical.length > 0 || apiHigh.length > 0 || apiMedium.length > 0 || apiLow.length > 0;
+
+      if (hasApiData) {
+        const filter = (rows) => {
+          return this.mteSelectedTeam === "All"
+            ? rows
+            : rows.filter(r => r.team === this.mteSelectedTeam);
+        };
+        return {
+          critical: filter(apiCritical),
+          high:     filter(apiHigh),
+          medium:   filter(apiMedium),
+          low:      filter(apiLow),
+        };
+      }
+
+      // Fallback to static data
       const allowed = new Set(this.assignedTeamKeys);
       const filter = (rows) => {
         const byTeam = rows.filter(r => allowed.has(r.team));
@@ -1108,15 +1147,24 @@ export default {
       };
     },
     extPopupAssetList() {
+      if (this.extPopupAssetListApi.length > 0) return this.extPopupAssetListApi;
       if (!this.extPopupSeverity) return [];
       return [...new Set(this.mteStaticData[this.extPopupSeverity].map(r => r.ip))];
     },
     extPopupVulList() {
+      if (this.extPopupVulListApi.length > 0) return this.extPopupVulListApi;
       if (!this.extPopupSeverity || !this.extPopupAsset) return [];
       return this.mteStaticData[this.extPopupSeverity]
         .filter(r => r.ip === this.extPopupAsset)
         .map(r => r.vulName);
     },
+    extOriginalDeadlineDisplay() {
+      if (this.extPopupOriginalDeadlineDays !== null) {
+        return `${this.extPopupOriginalDeadlineDays} Days`;
+      }
+      return this.extPopupSeverity ? (this.extOriginalDeadlines[this.extPopupSeverity] || '—') : '—';
+    },
+
     mitigationActiveTeamData() {
       if (!this.mitigationByTeamData) return { count: 0, vulnerabilities: [] };
       const teams = this.mitigationByTeamData.teams || this.mitigationByTeamData;
@@ -1153,10 +1201,12 @@ export default {
         const vulns = teamData?.vulnerabilities || [];
         const total = vulns.length;
         const critical = vulns.filter(v => (v.risk_factor || '').toLowerCase() === 'critical').length;
-        const high = vulns.filter(v => (v.risk_factor || '').toLowerCase() === 'high').length;
+        const high     = vulns.filter(v => (v.risk_factor || '').toLowerCase() === 'high').length;
+        const medium   = vulns.filter(v => (v.risk_factor || '').toLowerCase() === 'medium').length;
+        const low      = vulns.filter(v => (v.risk_factor || '').toLowerCase() === 'low').length;
         const assetsSet = new Set();
         vulns.forEach(v => { if (Array.isArray(v.assets)) v.assets.forEach(a => assetsSet.add(a)); else if (v.host_name) assetsSet.add(v.host_name); });
-        return { ...cfg, total, critical, high, affectedAssets: assetsSet.size || 0 };
+        return { ...cfg, total, critical, high, medium, low, affectedAssets: assetsSet.size || 0 };
       });
     },
     uniqueVulns() {
@@ -1597,32 +1647,133 @@ export default {
       if (status === 'Rejected') return 'mte-status-rejected';
       return 'mte-status-review';
     },
-    openExtPopup(severity) {
+
+    async openExtPopup(severity) {
       this.extPopupSeverity = severity;
       this.extPopupAsset = "";
       this.extPopupVulName = "";
       this.extPopupExtension = "";
       this.extPopupReason = "";
+      this.extPopupAssetListApi = [];
+      this.extPopupVulListApi = [];
+      this.extPopupOriginalDeadlineDays = null;
       this.showExtPopup = true;
+      // Fetch assets for this severity
+      await this.fetchExtPopupOptions(severity, null);
+    },
+    async fetchExtPopupOptions(severity, asset) {
+      if (!severity) return;
+      this.extPopupOptionsLoading = true;
+      const res = await this.authStore.fetchUserMitigationTimelineExtensionOptions(severity, asset || undefined);
+      this.extPopupOptionsLoading = false;
+      if (res.status && res.data) {
+        this.extPopupAssetListApi = res.data.assets || [];
+        this.extPopupVulListApi = res.data.vulnerabilities || [];
+        this.extPopupOriginalDeadlineDays = res.data.original_deadline_days ?? null;
+      }
+    },
+    async onExtPopupAssetChange() {
+      this.extPopupVulName = "";
+      this.extPopupVulListApi = [];
+      this.extPopupOriginalDeadlineDays = null;
+      if (this.extPopupAsset && this.extPopupSeverity) {
+        await this.fetchExtPopupOptions(this.extPopupSeverity, this.extPopupAsset);
+      }
     },
     closeExtPopup() {
       this.showExtPopup = false;
       this.extPopupSeverity = null;
     },
-    submitExtPopup() {
-      if (!this.extPopupAsset || !this.extPopupVulName || !this.extPopupExtension || !this.extPopupReason.trim()) return;
-      const rows = this.mteStaticData[this.extPopupSeverity];
-      const row = rows.find(r => r.ip === this.extPopupAsset && r.vulName === this.extPopupVulName);
-      if (row) {
-        row.ext = this.extPopupExtension;
-        row.reason = this.extPopupReason.trim();
-      }
-      this.closeExtPopup();
+    parseExtensionDays(extensionStr) {
+      const map = {
+        '1 Day': 1, '2 Days': 2, '3 Days': 3, '4 Days': 4, '5 Days': 5, '6 Days': 6,
+        '1 Week': 7, '2 Weeks': 14, '3 Weeks': 21, '4 Weeks': 28,
+        '5 Weeks': 35, '6 Weeks': 42,
+      };
+      return map[extensionStr] || 1;
     },
-    openMitigationExtensionModal() {
+    async submitExtPopup() {
+      if (!this.extPopupAsset || !this.extPopupVulName || !this.extPopupExtension || !this.extPopupReason.trim()) return;
+
+      const payload = {
+        severity: this.extPopupSeverity,
+        asset: this.extPopupAsset,
+        vulnerability_name: this.extPopupVulName,
+        requested_extension_days: this.parseExtensionDays(this.extPopupExtension),
+        reason: this.extPopupReason.trim(),
+      };
+
+      console.log('🔥 Extension Request Payload:', JSON.stringify(payload));
+
+      const res = await this.authStore.submitUserMitigationTimelineExtensionRequest(payload);
+      console.log('🔥 Extension Request Response:', JSON.stringify(res));
+
+      if (res.status) {
+        this.closeExtPopup();
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Request Failed',
+          text: res.message || 'Failed to submit extension request.',
+          customClass: { container: 'swal-above-drawer' },
+          didOpen: () => {
+            const container = document.querySelector('.swal-above-drawer');
+            if (container) container.style.zIndex = '99999';
+          },
+        });
+      }
+    },
+    async openMitigationExtensionModal() {
       this.showMitigationExtensionModal = true;
       this.mteOpenSection = 'critical';
       this.mteSelectedTeam = 'All';
+      await Promise.all([
+        this.loadMteExtensionData(),
+        this.loadMteReportData(),
+      ]);
+    },
+    async loadMteReportData() {
+      this.mteReportLoading = true;
+      const res = await this.authStore.fetchUserMitigationTimelineExtensionReport();
+      this.mteReportLoading = false;
+      if (res.status && res.data?.results) {
+        const grouped = { critical: [], high: [], medium: [], low: [] };
+        res.data.results.forEach(item => {
+          const sev = (item.severity || '').toLowerCase();
+          if (grouped[sev]) {
+            grouped[sev].push({
+              ip:     item.asset,
+              vulName: item.vul_name,
+              status: item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : '—',
+              by:     item.requested_by || '—',
+              date:   item.request_date ? item.request_date.split('T')[0] : '—',
+              ext:    item.extension_days ? `${item.extension_days} Days` : '—',
+              reason: item.reason || '—',
+              team:   item.requested_by || '',
+            });
+          }
+        });
+        this.mteReportData = grouped;
+      }
+    },
+    async loadMteExtensionData() {
+      this.mteExtensionLoading = true;
+      const res = await this.authStore.fetchUserMitigationTimelineExtension();
+      this.mteExtensionLoading = false;
+      if (res.status && res.data?.teams) {
+        this.mteApiTeams = res.data.teams;
+        const teamMap = {};
+        res.data.teams.forEach(t => {
+          teamMap[t.team] = {
+            short: t.team,
+            critical: t.critical || 0,
+            high: t.high || 0,
+            medium: t.medium || 0,
+            low: t.low || 0,
+          };
+        });
+        this.mteTeamMap = teamMap;
+      }
     },
     closeMitigationExtensionModal() { this.showMitigationExtensionModal = false; this.mteOpenSection = null; },
     toggleMteSection(sec) { this.mteOpenSection = this.mteOpenSection === sec ? null : sec; },
@@ -1651,6 +1802,7 @@ export default {
       this.fetchVulnAssetCount(),
       this.refreshInProcessCount(),
       this.loadRiskCriteria(),
+      this.loadMteExtensionData(),
     ]);
 
     // Close dropdown when clicking outside
@@ -1971,7 +2123,7 @@ export default {
   letter-spacing: 0.06em;
 }
 .cv-team-name {
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 700;
   color: #475569;
   margin: 10px 0 2px;
@@ -2008,8 +2160,10 @@ export default {
 .cv-stat-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .cv-dot-critical { background: #dc2626; }
 .cv-dot-high     { background: #f97316; }
+.cv-dot-medium   { background: #d97706; }
+.cv-dot-low      { background: #16a34a; }
 .cv-stat-label { font-size: 11px; color: #64748b; flex: 1; }
-.cv-stat-val   { font-size: 12px; font-weight: 700; color: #1e293b; }
+.cv-stat-val { font-size: 12px; font-weight: 700; color: #1e293b; }
 
 .cv-affected-row {
   display: flex;
@@ -2053,6 +2207,11 @@ export default {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
+  white-space: normal;
+  margin: 6px 0 4px;
+  line-height: 1.4;
+}
+.cv-sev-badge {
   font-size: 9px;
   font-weight: 800;
   padding: 2px 7px;
@@ -2417,7 +2576,7 @@ export default {
 }
 .ext-popup-box {
   background: #fff;
-  width: 460px;
+  width: 560px;
   max-width: 100vw;
   height: 100%;
   box-shadow: -8px 0 40px rgba(0,0,0,0.18);
@@ -2426,13 +2585,11 @@ export default {
   overflow: hidden;
   position: relative;
 }
-/* Severity accent bar at top */
 .ext-drawer-accent { height: 5px; width: 100%; flex-shrink: 0; }
 .ext-accent-critical { background: linear-gradient(90deg, #c71616, #ef4444); }
 .ext-accent-high     { background: linear-gradient(90deg, #d97706, #f59e0b); }
 .ext-accent-medium   { background: linear-gradient(90deg, #b45309, #fbbf24); }
 .ext-accent-low      { background: linear-gradient(90deg, #0f696e, #14b8a6); }
-/* Drawer slide animation */
 .ext-drawer-enter-active .ext-popup-box { animation: extDrawerIn 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
 .ext-drawer-leave-active .ext-popup-box { animation: extDrawerOut 0.22s cubic-bezier(0.55, 0, 1, 0.45); }
 .ext-drawer-enter-active { animation: extFadeIn 0.28s ease; }
@@ -2443,31 +2600,30 @@ export default {
 @keyframes extFadeOut   { from { opacity: 1; } to { opacity: 0; } }
 .ext-popup-header {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 20px 22px;
+  padding: 16px 22px;
   background: linear-gradient(135deg, #241447 0%, #0f696e 100%);
   flex-shrink: 0;
-  margin-top: 54px;
+  margin-top: 52px;
 }
 .ext-header-left { display: flex; align-items: center; gap: 12px; }
 .ext-header-icon {
   width: 42px; height: 42px; border-radius: 10px;
+  background: rgba(255,255,255,0.15);
+  border: 1.5px solid rgba(255,255,255,0.25);
   display: flex; align-items: center; justify-content: center;
   font-size: 18px; flex-shrink: 0; color: #fff;
 }
-.ext-icon-critical { background: rgba(239,68,68,0.25); border: 1.5px solid rgba(239,68,68,0.4); color: #fca5a5; }
-.ext-icon-high     { background: rgba(245,158,11,0.25); border: 1.5px solid rgba(245,158,11,0.4); color: #fcd34d; }
-.ext-icon-medium   { background: rgba(251,191,36,0.2);  border: 1.5px solid rgba(251,191,36,0.35); color: #fde68a; }
-.ext-icon-low      { background: rgba(20,184,166,0.25); border: 1.5px solid rgba(20,184,166,0.4); color: #5eead4; }
+.ext-icon-critical { background: rgba(239,68,68,0.25); border-color: rgba(239,68,68,0.4); color: #fca5a5; }
+.ext-icon-high     { background: rgba(245,158,11,0.25); border-color: rgba(245,158,11,0.4); color: #fcd34d; }
+.ext-icon-medium   { background: rgba(251,191,36,0.2);  border-color: rgba(251,191,36,0.35); color: #fde68a; }
+.ext-icon-low      { background: rgba(20,184,166,0.25); border-color: rgba(20,184,166,0.4); color: #5eead4; }
 .ext-popup-title { font-size: 17px; font-weight: 700; color: #fff; margin: 0 0 3px; line-height: 1.2; }
 .ext-popup-subtitle { font-size: 12px; color: rgba(255,255,255,0.65); display: flex; align-items: center; gap: 6px; }
 .ext-header-close {
-  background: rgba(255,255,255,0.12);
-  border: 1.5px solid rgba(255,255,255,0.2);
-  color: #fff;
-  width: 34px; height: 34px; border-radius: 8px;
+  background: rgba(255,255,255,0.12); border: 1.5px solid rgba(255,255,255,0.2);
+  color: #fff; width: 34px; height: 34px; border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 16px; cursor: pointer;
-  transition: background 0.15s, border-color 0.15s; flex-shrink: 0;
+  font-size: 16px; cursor: pointer; transition: background 0.15s, border-color 0.15s; flex-shrink: 0;
 }
 .ext-header-close:hover { background: rgba(255,255,255,0.22); border-color: rgba(255,255,255,0.35); }
 .ext-sev-pill {
@@ -2501,7 +2657,7 @@ export default {
 }
 .ext-deadline-original { background: #f1f5f9; color: #475569; }
 .ext-char-hint { font-size: 11px; color: #94a3b8; text-align: right; margin-top: 2px; }
-.ext-popup-body { padding: 16px 20px; display: flex; flex-direction: column; gap: 14px; flex: 1; overflow-y: auto; background: #f8fafc; }
+.ext-popup-body { padding: 14px 22px; display: flex; flex-direction: column; gap: 12px; flex: 1; overflow-y: auto; background: #f8fafc; }
 .ext-popup-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .ext-popup-field { display: flex; flex-direction: column; gap: 5px; }
 .ext-popup-label { font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; }
@@ -2516,18 +2672,13 @@ export default {
 .ext-popup-textarea { resize: vertical; min-height: 90px; }
 .ext-popup-footer {
   display: flex; justify-content: flex-end; gap: 10px;
-  padding: 14px 20px 18px; border-top: 1px solid #e2e8f0;
+  padding: 12px 22px 16px; border-top: 1px solid #e2e8f0;
   flex-shrink: 0; background: #fff;
 }
 .ext-submit-btn {
-  background: #241447 !important;
-  border-color: #241447 !important;
-  border-radius: 999px !important;
-  padding-left: 22px !important;
-  padding-right: 22px !important;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  background: #241447 !important; border-color: #241447 !important;
+  border-radius: 999px !important; padding-left: 22px !important;
+  padding-right: 22px !important; display: flex; align-items: center; gap: 6px;
 }
 .mte-severity-card {
   margin: 10px 24px 0;
@@ -2769,6 +2920,25 @@ export default {
 .msu-modal-view-btn:hover {
   background: rgba(15, 105, 110, 0.07);
   border-color: #0f696e;
+}
+.msu-modal-fixnow-btn {
+  background: none;
+  border: 1.5px solid #dc2626;
+  border-radius: 8px;
+  padding: 5px 14px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #dc2626;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.msu-modal-fixnow-btn:hover {
+  background: rgba(220, 38, 38, 0.07);
+  border-color: #dc2626;
 }
 
 .in-process-count-btn {

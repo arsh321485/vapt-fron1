@@ -2,12 +2,19 @@
   <main>
     <div class=" d-flex mt-5">
     <div class="sidebar d-flex flex-column align-items-center pt-4">
-      
+
       <div class="flex-grow-1 d-flex flex-column align-items-center text-center mb-3 gap-2">
          <div>
           <router-link to="/userdashboard">
           <button class="btn border-0" :class="{ activeBtn: isActive('/userdashboard') }"><i class="bi bi-house-door nav-menu"></i>
           <p class="menu-heading">Home</p></button>
+          </router-link>
+         </div>
+
+         <div>
+          <router-link to="/user-calendar">
+          <button class="btn border-0" :class="{ activeBtn: isActive('/user-calendar') }"><i class="bi bi-calendar3 nav-menu"></i>
+          <p class="menu-heading">Calendar</p></button>
           </router-link>
          </div>
 
@@ -61,10 +68,10 @@
         </div>
         -->
       </div>
-      
+
     </div>
 
-    
+
     </div>
   </main>
 </template>
@@ -100,7 +107,7 @@ export default {
         cancelButtonText: "No, stay"
       }).then((result) => {
         if (result.isConfirmed) {
-          this.$router.push("/home"); 
+          this.$router.push("/home");
         }
       });
     }

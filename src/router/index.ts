@@ -58,6 +58,7 @@ import UserSetPasswordView from "../views/user-views/UserSetPasswordView.vue";
 import RemediationTimelineView from "../views/admin-dashboard/RemediationTimelineView.vue";
 import UserRemediationTimelineView from "../views/user-views/UserRemediationTimelineView.vue";
 import CalendarView from "../views/admin-dashboard/CalendarView.vue";
+import UserCalendarView from "../views/user-views/UserCalendarView.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -375,6 +376,11 @@ const router = createRouter({
       name: "user-remediation-timeline",
       component: UserRemediationTimelineView,
       props: true,
+    },
+    {
+      path: "/user-calendar",
+      name: "user-calendar",
+      component: UserCalendarView,
     },
   ],
   scrollBehavior(to, from, savedPosition) {
