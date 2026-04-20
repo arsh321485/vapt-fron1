@@ -233,7 +233,29 @@
                 <div class="loc-users-added-initials">{{ getInitials(`${user.first_name} ${user.last_name}`) }}</div>
                 <div class="loc-users-added-meta">
                   <p class="loc-users-added-name">{{ user.first_name }} {{ user.last_name }}</p>
+                  <p class="loc-users-added-email">{{ user.email }}</p>
+                  <!-- Slack Sync Badge -->
+                  <span v-if="user.slack_sync_status === 'success'" class="loc-slack-badge loc-slack-synced">
+                    <i class="bi bi-check-circle-fill me-1"></i>Slack Synced
+                  </span>
+                  <span v-else-if="user.slack_sync_status === 'pending_workspace_join'" class="loc-slack-badge loc-slack-pending">
+                    <i class="bi bi-clock-fill me-1"></i>Slack Pending
+                  </span>
+                  <span v-else-if="user.slack_sync_status === 'failed'" class="loc-slack-badge loc-slack-failed">
+                    <i class="bi bi-x-circle-fill me-1"></i>Slack Failed
+                  </span>
                 </div>
+                <!-- Resync Slack Button — show if slack_channel_ids empty or sync failed/pending -->
+                <button
+                  v-if="selectedCommunication === 'slack' && (!user.slack_channel_ids || user.slack_channel_ids.length === 0 || user.slack_sync_status !== 'success')"
+                  class="loc-resync-btn"
+                  :disabled="user.resyncing"
+                  @click="resyncSlack(user)"
+                >
+                  <span v-if="user.resyncing" class="spinner-border spinner-border-sm me-1"></span>
+                  <i v-else class="bi bi-arrow-repeat me-1"></i>
+                  Resync Slack
+                </button>
               </div>
             </div>
             <div v-else class="loc-users-added-empty">
@@ -615,9 +637,13 @@ export default {
     normalizeAddedUser(user) {
       return {
         _id: user?._id || user?.id || null,
+        detail_id: user?.detail_id || user?._id || user?.id || null,
         first_name: user?.first_name || "",
         last_name: user?.last_name || "",
         email: user?.email || "",
+        slack_channel_ids: user?.slack_channel_ids || [],
+        slack_sync_status: user?.slack_sync_status || null,
+        resyncing: false,
       };
     },
     async loadAddedUsers() {
@@ -625,6 +651,47 @@ export default {
       if (res?.status && Array.isArray(res.data)) {
         this.addedUsers = res.data.map(this.normalizeAddedUser);
       }
+    },
+    async resyncSlack(user) {
+      const detailId = user.detail_id || user._id;
+      if (!detailId) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'User detail ID not found' });
+        return;
+      }
+      user.resyncing = true;
+      const res = await this.authStore.resyncSlackUser(detailId);
+      user.resyncing = false;
+
+      const slackSync = res.slack_sync || res.data?.slack_sync;
+      let icon = 'success';
+      let title = 'Slack Resynced';
+      let text = '';
+
+      if (res.status) {
+        if (slackSync?.status === 'success') {
+          title = 'Slack Synced Successfully';
+          text = 'User has been invited to Slack channels.';
+        } else if (slackSync?.status === 'pending_workspace_join') {
+          icon = 'info';
+          title = 'Slack Invite Sent';
+          text = 'User needs to accept the Slack workspace invite. Then resync again.';
+        } else if (slackSync?.status === 'failed') {
+          icon = 'error';
+          title = 'Slack Sync Failed';
+          text = slackSync.error || 'Unknown error occurred.';
+        } else if (slackSync?.status === 'skipped') {
+          icon = 'warning';
+          title = 'Slack Sync Skipped';
+          text = slackSync.error || 'Slack not connected or roles missing.';
+        }
+        await this.loadAddedUsers();
+      } else {
+        icon = 'error';
+        title = 'Resync Failed';
+        text = res.message || 'Failed to resync Slack.';
+      }
+
+      Swal.fire({ icon, title, text, timer: 3000, showConfirmButton: false });
     },
     closeOnOutside(e) {
       const role = this.$refs.roleDropdown;
@@ -1868,6 +1935,41 @@ export default {
 
 .loc-email-row { display: flex; align-items: center; gap: 12px; }
 .loc-email-input { flex: 1; }
+.loc-users-added-email {
+  font-size: 11px;
+  color: #94a3b8;
+  margin: 0;
+}
+.loc-slack-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  margin-top: 3px;
+}
+.loc-slack-synced  { background: #dcfce7; color: #15803d; }
+.loc-slack-pending { background: #fef3c7; color: #b45309; }
+.loc-slack-failed  { background: #fee2e2; color: #dc2626; }
+.loc-resync-btn {
+  margin-left: auto;
+  background: #f0f9ff;
+  border: 1.5px solid #7dd3fc;
+  color: #0369a1;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 8px;
+  padding: 4px 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  transition: background 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.loc-resync-btn:hover { background: #e0f2fe; }
+.loc-resync-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .loc-add-user-btn {
   background: none; border: none; color: #0f696e; font-size: 0.85rem; font-weight: 700;
   cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 4px;

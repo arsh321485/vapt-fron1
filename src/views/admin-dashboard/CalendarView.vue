@@ -74,8 +74,11 @@
                 <h1 class="cal-month-title">Daily View</h1>
               </div>
               <div v-else>
-                <h1 class="cal-month-title">April 2026</h1>
-                <p class="cal-month-sub">12 Critical Deadlines Remaining</p>
+                <h1 class="cal-month-title">{{ currentMonthName }}</h1>
+                <p class="cal-month-sub">
+                  <span v-if="calendarLoading"><span class="spinner-border spinner-border-sm me-1"></span> Loading...</span>
+                  <span v-else>{{ events.length }} event{{ events.length !== 1 ? 's' : '' }} this month</span>
+                </p>
               </div>
               <div class="d-flex align-items-center gap-3">
                 <!-- Week nav -->
@@ -209,34 +212,42 @@
                         <span class="cal-detail-dot cal-dot-done"></span>
                         <div>
                           <p class="cal-detail-history-title">Vulnerability Identified</p>
-                          <p class="cal-detail-history-sub">First detected on March 15, 2026 during routine scan.</p>
+                          <p class="cal-detail-history-sub">
+                            {{ selectedEvent.historicalDetail?.vulnerability_identified
+                              ? 'First detected on ' + new Date(selectedEvent.historicalDetail.vulnerability_identified).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+                              : 'First detected during routine scan.' }}
+                          </p>
                         </div>
                       </div>
                       <div class="cal-detail-history-item">
                         <span class="cal-detail-dot cal-dot-done"></span>
                         <div>
                           <p class="cal-detail-history-title">Assigned to Team</p>
-                          <p class="cal-detail-history-sub">Assigned to {{ selectedEvent.team || 'Network Security' }} on March 16, 2026.</p>
+                          <p class="cal-detail-history-sub">
+                            Assigned to {{ selectedEvent.historicalDetail?.assigned_to_team || selectedEvent.team || 'Team' }}.
+                          </p>
                         </div>
                       </div>
                       <div class="cal-detail-history-item">
                         <span class="cal-detail-dot cal-dot-active"></span>
                         <div>
                           <p class="cal-detail-history-title">Remediation In Progress</p>
-                          <p class="cal-detail-history-sub">Fix steps initiated. Deadline: {{ selectedEvent.deadline || 'April 12, 5:00 PM' }}</p>
+                          <p class="cal-detail-history-sub">
+                            Fix steps initiated. Deadline: {{ selectedEvent.historicalDetail?.remediation_in_progress_due || selectedEvent.deadline || '—' }}
+                          </p>
                         </div>
                       </div>
                     </div>
                   </div>
 
                   <!-- Extension Requested -->
-                  <div class="cal-detail-section">
+                  <div v-if="selectedEvent.extensionRequested || selectedEvent.extended" class="cal-detail-section">
                     <p class="cal-detail-label">EXTENSION REQUESTED</p>
                     <div class="cal-detail-ext-row">
                       <i class="bi bi-arrow-repeat cal-detail-ext-icon"></i>
                       <div>
-                        <p class="cal-detail-val">{{ selectedEvent.extended ? selectedEvent.extended + ' extension granted' : 'No extension requested' }}</p>
-                        <p class="cal-detail-sub">Original deadline extended due to team workload.</p>
+                        <p class="cal-detail-val">{{ selectedEvent.extensionRequested?.note || (selectedEvent.extended ? selectedEvent.extended + ' extension granted' : '') }}</p>
+                        <p class="cal-detail-sub">{{ selectedEvent.extensionRequested?.reason || 'Original deadline extended due to team workload.' }}</p>
                       </div>
                     </div>
                   </div>
@@ -268,6 +279,10 @@
                 <button class="cal-popup-close" @click="closePopup"><i class="bi bi-x-lg"></i></button>
                 <span class="cal-popup-badge">{{ selectedEvent.type ? selectedEvent.type.toUpperCase() : 'EVENT' }}</span>
                 <h5 class="cal-popup-title">{{ selectedEvent.title }}</h5>
+                <div v-if="selectedEvent.vulnerabilityName" class="cal-popup-row">
+                  <i class="bi bi-shield-exclamation" style="color:#0f696e;"></i>
+                  <span>{{ selectedEvent.vulnerabilityName }}</span>
+                </div>
                 <div v-if="selectedEvent.asset" class="cal-popup-row">
                   <i class="bi bi-hdd-network" style="color:#0f696e;"></i>
                   <span>Asset: {{ selectedEvent.asset }}</span>
@@ -279,6 +294,10 @@
                 <div v-if="selectedEvent.extended" class="cal-popup-row">
                   <i class="bi bi-arrow-repeat" style="color:#f97316;"></i>
                   <span>Extended by: {{ selectedEvent.extended }}</span>
+                </div>
+                <div v-if="selectedEvent.status" class="cal-popup-row">
+                  <i class="bi bi-check-circle" :style="{ color: selectedEvent.status === 'approved' ? '#16a34a' : selectedEvent.status === 'rejected' ? '#dc2626' : '#f97316' }"></i>
+                  <span style="text-transform:capitalize;">{{ selectedEvent.status }}</span>
                 </div>
                 <p v-if="selectedEvent.desc" class="cal-popup-desc">{{ selectedEvent.desc }}</p>
                 <div class="cal-popup-btns">
@@ -311,6 +330,7 @@
 <script>
 import DashboardMenu from '@/components/admin-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/admin-component/DashboardHeader.vue';
+import { useAuthStore } from '@/stores/authStore';
 
 export default {
   name: 'CalendarView',
@@ -327,6 +347,11 @@ export default {
       showPopup: false,
       showDetailModal: false,
       popupPos: { top: 0, left: 0 },
+      calendarLoading: false,
+      apiCalendarData: null,
+      apiEvents: [],
+      currentYear: new Date().getFullYear(),
+      currentMonth: new Date().getMonth() + 1,
       weekDays: ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'],
       currentWeekStart: 12,
       currentDayLabel: 'Wednesday, April 15, 2026',
@@ -347,13 +372,7 @@ export default {
         { id: 6,  day: 16, title: 'Quarterly Review',         type: 'PENDING',   color: 'grey',   team: null },
         { id: 7,  day: 17, title: 'Firewall Rule Audit',      type: 'NETWORK',   color: 'teal',   team: null },
       ],
-      events: [
-        { id: 5,  day: 12, title: 'Critical Level Deadline', type: 'CRITICAL', color: 'maroon', team: 'Patch Management', deadline: 'April 12, 5:00 PM', asset: '192.168.1.104', desc: 'Unpatched Buffer Overflow vulnerability in core firmware. Exploitation confirmed in external environments.', alwaysShow: true },
-        { id: 7,  day: 14, title: 'Critical Level Deadline - Network',        type: 'deadline', color: 'dl-blue',   team: 'Network Security',         deadline: 'April 14, 5:00 PM', extended: '7 Days' },
-        { id: 10, day: 18, title: 'Critical Level Deadline - Patch',           type: 'deadline', color: 'dl-green',  team: 'Patch Management',          deadline: 'April 18, 5:00 PM', extended: '14 Days' },
-        { id: 11, day: 20, title: 'Critical Level Deadline - Configuration',   type: 'deadline', color: 'dl-orange', team: 'Configuration Management',  deadline: 'April 20, 5:00 PM', extended: '10 Days' },
-        { id: 14, day: 25, title: 'Critical Level Deadline - Architectural',   type: 'deadline', color: 'dl-red',    team: 'Architectural Flaws',        deadline: 'April 25, 5:00 PM', extended: '5 Days' },
-      ],
+      events: [],
       calendarDays: [
         { day: 29, currentMonth: false },
         { day: 30, currentMonth: false },
@@ -399,11 +418,98 @@ export default {
     };
   },
   methods: {
+    authStore() {
+      return useAuthStore();
+    },
+    severityColor(sev) {
+      const map = { critical: 'maroon', high: 'dl-blue', medium: 'dl-orange', low: 'dl-green' };
+      return map[(sev || '').toLowerCase()] || 'dl-blue';
+    },
+    async loadCalendarData() {
+      this.calendarLoading = true;
+      const store = useAuthStore();
+      const team = this.teamsFilter !== 'All Units' ? this.teamsFilter : undefined;
+      const severity = this.criticalityFilter !== 'All Types' ? this.criticalityFilter.toLowerCase() : undefined;
+      const res = await store.fetchRiskCriteriaCalendarWithFilters(
+        this.currentYear, this.currentMonth, team, severity
+      );
+      this.calendarLoading = false;
+      if (res.status && res.data) {
+        this.apiCalendarData = res.data;
+        // Build events from calendar days
+        const evts = [];
+        const days = res.data.calendar?.days || [];
+        days.forEach(dayObj => {
+          const dateNum = parseInt(dayObj.date.split('-')[2]);
+          // Severity deadline events
+          dayObj.severities.forEach(sev => {
+            const baseSev = sev.split(':')[0];
+            evts.push({
+              id: `${dayObj.date}-${sev}`,
+              day: dateNum,
+              title: `${baseSev.charAt(0).toUpperCase() + baseSev.slice(1)} Level Deadline`,
+              type: 'deadline',
+              color: this.severityColor(baseSev),
+              team: sev.includes(':') ? sev.split(':')[1] : null,
+              deadline: dayObj.date,
+              extended: null,
+              fromApi: true,
+            });
+          });
+          // Extension events
+          dayObj.events.forEach((evt, i) => {
+            evts.push({
+              id: evt.request_id || `${dayObj.date}-evt-${i}`,
+              day: dateNum,
+              title: evt.title,
+              type: 'deadline',
+              color: this.severityColor(evt.severity),
+              team: evt.assigned_to_team,
+              deadline: evt.due,
+              extended: evt.extended_by_days ? `${evt.extended_by_days} Days` : null,
+              asset: evt.asset,
+              vulnerabilityName: evt.vulnerability_name,
+              status: evt.status,
+              historicalDetail: evt.historical_detail,
+              extensionRequested: evt.extension_requested,
+              fromApi: true,
+              isExtensionEvent: true,
+            });
+          });
+        });
+        this.events = evts;
+        // Build calendarDays from API
+        const firstDay = new Date(this.currentYear, this.currentMonth - 1, 1).getDay();
+        const daysInMonth = new Date(this.currentYear, this.currentMonth, 0).getDate();
+        const calDays = [];
+        // Prev month padding
+        const prevMonthDays = new Date(this.currentYear, this.currentMonth - 1, 0).getDate();
+        for (let i = firstDay - 1; i >= 0; i--) {
+          calDays.push({ day: prevMonthDays - i, currentMonth: false });
+        }
+        const today = new Date();
+        for (let d = 1; d <= daysInMonth; d++) {
+          const isToday = today.getFullYear() === this.currentYear && today.getMonth() + 1 === this.currentMonth && today.getDate() === d;
+          calDays.push({ day: d, currentMonth: true, isToday });
+        }
+        // Next month padding
+        const remaining = 42 - calDays.length;
+        for (let d = 1; d <= remaining; d++) {
+          calDays.push({ day: d, currentMonth: false });
+        }
+        this.calendarDays = calDays;
+      }
+    },
     getEventsForDay(day, currentMonth) {
       if (!currentMonth) return [];
       let evts = this.events.filter(e => e.day === day);
       if (this.extendedFilter !== 'All') {
         evts = evts.filter(e => e.alwaysShow || e.team === this.extendedFilter);
+      }
+      if (this.criticalityFilter !== 'All Types') {
+        evts = evts.filter(e => (e.type || '').toLowerCase().includes(this.criticalityFilter.toLowerCase()) ||
+          (e.title || '').toLowerCase().includes(this.criticalityFilter.toLowerCase()) ||
+          (e.color || '').includes(this.severityColor(this.criticalityFilter.toLowerCase())));
       }
       return evts;
     },
@@ -454,9 +560,22 @@ export default {
       this.$router.push({ name: 'exceptions' });
     },
   },
+  watch: {
+    teamsFilter() { this.loadCalendarData(); },
+    criticalityFilter() { this.loadCalendarData(); },
+    currentMonth() { this.loadCalendarData(); },
+    currentYear() { this.loadCalendarData(); },
+  },
+  async mounted() {
+    await this.loadCalendarData();
+  },
   computed: {
     dayViewTitle() {
       return this.currentDayLabel;
+    },
+    currentMonthName() {
+      return new Date(this.currentYear, this.currentMonth - 1, 1)
+        .toLocaleString('default', { month: 'long', year: 'numeric' });
     },
     currentWeekDays() {
       return Array.from({ length: 7 }, (_, i) => {

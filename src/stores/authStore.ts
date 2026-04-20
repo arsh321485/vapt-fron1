@@ -3795,6 +3795,81 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    // ✅ Admin: Resync Slack for a user
+    async resyncSlackUser(detailId: string) {
+      try {
+        const res = await endpoint.post(
+          `/api/admin/users_details/user-detail/${detailId}/resync-slack/`,
+        );
+        return {
+          status: true,
+          data: res.data,
+          slack_sync: res.data?.slack_sync || null,
+          message: res.data?.message || "Resync initiated",
+        };
+      } catch (error: any) {
+        return {
+          status: false,
+          message:
+            error.response?.data?.message ||
+            error.response?.data?.detail ||
+            error.message ||
+            "Failed to resync Slack",
+        };
+      }
+    },
+
+    // ✅ Admin: Fetch Risk Criteria Calendar with team and severity filters
+    async fetchRiskCriteriaCalendarWithFilters(
+      year: number,
+      month: number,
+      team?: string,
+      severity?: string,
+    ) {
+      try {
+        const riskCriteriaId =
+          localStorage.getItem("riskCriteriaId") || localStorage.getItem("riskId");
+        if (!riskCriteriaId) return { status: false, message: "Risk criteria ID not found" };
+        const monthStr = `${year}-${String(month).padStart(2, "0")}`;
+        const params: Record<string, string> = { month: monthStr };
+        if (team) params.team = team;
+        if (severity) params.severity = severity;
+        const res = await endpoint.get(
+          `/api/admin/risk_criteria/risks/${riskCriteriaId}/calendar/`,
+          { params },
+        );
+        return { status: true, data: res.data };
+      } catch (error: any) {
+        return {
+          status: false,
+          message: error?.response?.data?.message || "Failed to fetch calendar",
+        };
+      }
+    },
+
+    // ✅ Admin: Update Mitigation Timeline Extension Request Status (Approve/Reject)
+    async updateAdminMitigationTimelineExtensionStatus(
+      requestId: string,
+      payload: { status: string; admin_comment: string },
+    ) {
+      try {
+        const res = await endpoint.patch(
+          `/api/admin/admindashboard/dashboard/mitigation-timeline-extension/${requestId}/status/`,
+          payload,
+        );
+        return { status: true, data: res.data, message: res.data?.message };
+      } catch (error: any) {
+        return {
+          status: false,
+          message:
+            error.response?.data?.message ||
+            error.response?.data?.detail ||
+            error.message ||
+            "Failed to update request status",
+        };
+      }
+    },
+
     // ✅ Admin: Mitigation Timeline Extension Report
     async fetchAdminMitigationTimelineExtensionReport() {
       try {

@@ -852,10 +852,25 @@
               </div>
               <div class="reason-detail-body">
                 <p class="reason-detail-text">{{ selectedReasonText }}</p>
+                <div class="mt-3">
+                  <label class="reason-detail-label">Admin Comment</label>
+                  <textarea
+                    v-model="adminComment"
+                    class="reason-detail-textarea"
+                    rows="2"
+                    placeholder="Add a comment (optional)..."
+                  ></textarea>
+                </div>
               </div>
               <div class="reason-detail-footer">
-                <button type="button" class="mte-btn-secondary" @click="rejectRequest">Reject</button>
-                <button type="button" class="mte-btn-primary" @click="approveRequest">Approve</button>
+                <button type="button" class="mte-btn-secondary" :disabled="rejectLoading || approveLoading" @click="rejectRequest">
+                  <span v-if="rejectLoading" class="spinner-border spinner-border-sm me-1"></span>
+                  Reject
+                </button>
+                <button type="button" class="mte-btn-primary" :disabled="approveLoading || rejectLoading" @click="approveRequest">
+                  <span v-if="approveLoading" class="spinner-border spinner-border-sm me-1"></span>
+                  Approve
+                </button>
               </div>
             </div>
           </div>
@@ -910,7 +925,7 @@
                     <td>{{ row.by }}</td>
                     <td>{{ row.date }}</td>
                     <td class="mte-extension">{{ row.ext }}</td>
-                    <td class="mte-reason" @click="openReasonDetail($event, row.reason)">{{ truncateReason(row.reason) }}</td>
+                    <td class="mte-reason" :title="row.reason" @click="openReasonDetail($event, row.reason, row.request_id)">{{ truncateReason(row.reason) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -950,7 +965,7 @@
                     <td>{{ row.by }}</td>
                     <td>{{ row.date }}</td>
                     <td class="mte-extension">{{ row.ext }}</td>
-                    <td class="mte-reason" @click="openReasonDetail($event, row.reason)">{{ truncateReason(row.reason) }}</td>
+                    <td class="mte-reason" :title="row.reason" @click="openReasonDetail($event, row.reason, row.request_id)">{{ truncateReason(row.reason) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -990,7 +1005,7 @@
                     <td>{{ row.by }}</td>
                     <td>{{ row.date }}</td>
                     <td class="mte-extension">{{ row.ext }}</td>
-                    <td class="mte-reason" @click="openReasonDetail($event, row.reason)">{{ truncateReason(row.reason) }}</td>
+                    <td class="mte-reason" :title="row.reason" @click="openReasonDetail($event, row.reason, row.request_id)">{{ truncateReason(row.reason) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -1030,7 +1045,7 @@
                     <td>{{ row.by }}</td>
                     <td>{{ row.date }}</td>
                     <td class="mte-extension">{{ row.ext }}</td>
-                    <td class="mte-reason" @click="openReasonDetail($event, row.reason)">{{ truncateReason(row.reason) }}</td>
+                    <td class="mte-reason" :title="row.reason" @click="openReasonDetail($event, row.reason, row.request_id)">{{ truncateReason(row.reason) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -1270,6 +1285,10 @@ export default {
       adminMteReportLoading: false,
       showReasonDetailModal: false,
       selectedReasonText: "",
+      selectedRequestId: null,
+      adminComment: "",
+      approveLoading: false,
+      rejectLoading: false,
       reasonModalPos: { top: 0, left: 0 },
       showCommonVulnModal: false,
       cvModalOpenSev: 'critical',
@@ -1629,14 +1648,15 @@ export default {
           const sev = (item.severity || '').toLowerCase();
           if (grouped[sev]) {
             grouped[sev].push({
-              ip:      item.asset,
-              vulName: item.vul_name,
-              status:  item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : '—',
-              by:      item.requested_by || '—',
-              date:    item.request_date ? item.request_date.split('T')[0] : '—',
-              ext:     item.extension_days ? `${item.extension_days} Days` : '—',
-              reason:  item.reason || '—',
-              team:    item.requested_by || '',
+              ip:         item.asset,
+              vulName:    item.vul_name,
+              status:     item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : '—',
+              by:         item.requested_by || '—',
+              date:       item.request_date ? item.request_date.split('T')[0] : '—',
+              ext:        item.extension_days ? `${item.extension_days} Days` : '—',
+              reason:     item.reason || '—',
+              team:       item.requested_by || '',
+              request_id: item.request_id || null,
             });
           }
         });
@@ -1655,7 +1675,9 @@ export default {
     toggleMteSection(section) {
       this.mteOpenSection = this.mteOpenSection === section ? "" : section;
     },
-    openReasonDetail(event, reason) {
+    openReasonDetail(event, reason, requestId) {
+      this.selectedRequestId = requestId || null;
+      this.adminComment = "";
       const rect = event.currentTarget.getBoundingClientRect();
       const modalWidth = 300;
       const modalHeight = 160;
@@ -1674,12 +1696,76 @@ export default {
     closeReasonDetail() {
       this.showReasonDetailModal = false;
       this.selectedReasonText = "";
+      this.selectedRequestId = null;
+      this.adminComment = "";
+      this.approveLoading = false;
+      this.rejectLoading = false;
     },
-    approveRequest() {
-      this.closeReasonDetail();
+    async approveRequest() {
+      if (!this.selectedRequestId) return;
+      this.approveLoading = true;
+      const res = await this.authStore.updateAdminMitigationTimelineExtensionStatus(
+        this.selectedRequestId,
+        { status: "approved", admin_comment: this.adminComment || "Approved" }
+      );
+      this.approveLoading = false;
+      if (res.status) {
+        this.closeReasonDetail();
+        await this.loadAdminMteReportData();
+        Swal.fire({
+          icon: "success",
+          title: "Request Approved",
+          timer: 2000,
+          showConfirmButton: false,
+          didOpen: () => {
+            const container = document.querySelector('.swal2-container');
+            if (container) container.style.zIndex = '999999';
+          }
+        });
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Failed",
+          text: res.message || "Failed to approve request",
+          didOpen: () => {
+            const container = document.querySelector('.swal2-container');
+            if (container) container.style.zIndex = '999999';
+          }
+        });
+      }
     },
-    rejectRequest() {
-      this.closeReasonDetail();
+    async rejectRequest() {
+      if (!this.selectedRequestId) return;
+      this.rejectLoading = true;
+      const res = await this.authStore.updateAdminMitigationTimelineExtensionStatus(
+        this.selectedRequestId,
+        { status: "rejected", admin_comment: this.adminComment || "Insufficient justification" }
+      );
+      this.rejectLoading = false;
+      if (res.status) {
+        this.closeReasonDetail();
+        await this.loadAdminMteReportData();
+        Swal.fire({
+          icon: "info",
+          title: "Request Rejected",
+          timer: 2000,
+          showConfirmButton: false,
+          didOpen: () => {
+            const container = document.querySelector('.swal2-container');
+            if (container) container.style.zIndex = '999999';
+          }
+        });
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Failed",
+          text: res.message || "Failed to reject request",
+          didOpen: () => {
+            const container = document.querySelector('.swal2-container');
+            if (container) container.style.zIndex = '999999';
+          }
+        });
+      }
     },
     truncateReason(reason) {
       const text = String(reason || "");
@@ -2838,6 +2924,25 @@ mounted() {
   cursor: pointer;
   color: #475569;
   font-weight: 600;
+  position: relative;
+}
+.mte-reason:hover::after {
+  content: attr(title);
+  position: fixed;
+  background: #1e293b;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: normal;
+  max-width: 280px;
+  word-break: break-word;
+  line-height: 1.5;
+  z-index: 99999;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  pointer-events: none;
+  transform: translateY(-110%);
 }
 .mte-high-icon { color: #f59e0b; }
 .mte-medium-icon { color: #fbbf24; }
@@ -2883,6 +2988,32 @@ mounted() {
   color: #374151;
   line-height: 1.6;
   margin: 0;
+}
+.reason-detail-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: block;
+  margin-bottom: 4px;
+}
+.reason-detail-textarea {
+  width: 100%;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #1e293b;
+  background: #f8fafc;
+  outline: none;
+  resize: none;
+  font-family: inherit;
+  transition: border-color 0.15s;
+}
+.reason-detail-textarea:focus {
+  border-color: #0f696e;
+  box-shadow: 0 0 0 3px rgba(15,105,110,0.1);
 }
 .reason-detail-footer {
   display: flex;
