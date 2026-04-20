@@ -61,6 +61,14 @@
               </div>
 
             </div>
+
+            <!-- Open in Teams button — shown when Teams is connected -->
+            <div v-if="selectedCommunication === 'teams'" class="mt-3">
+              <button class="loc-open-teams-btn" @click="openInTeams">
+                <img :src="teamsIcon" style="width:18px;height:18px;margin-right:6px;" />
+                Open in Teams
+              </button>
+            </div>
           </div>
 
           <!-- Project Management -->
@@ -874,50 +882,71 @@ export default {
   }
     },
   async onTeamsConnected(event) {
-    if (event.data?.type === "TEAMS_CONNECTED") {
+    if (event.data?.type !== "TEAMS_CONNECTED") return;
 
-      // Step 1: localStorage mein save karo
-      const graphToken = event.data.tokens?.access_token;
-      if (graphToken) {
-        localStorage.setItem("microsoft_graph_token", graphToken);
-      }
-      if (event.data.vaptfix_team) {
-        localStorage.setItem("vaptfix_team", JSON.stringify(event.data.vaptfix_team));
-      }
-      if (event.data.django_access_token) {
-        localStorage.setItem("django_access_token", event.data.django_access_token);
-      }
-      const tenantId = event.data.tokens?.tenant_id;
-      if (tenantId) {
-        localStorage.setItem("microsoft_tenant_id", tenantId);
-      }
-      // Mark Teams selected only after successful OAuth/token receive
-      this.selectedCommunication = "teams";
+    // Step 1: Read tokens and team object
+    const graphToken = event.data.tokens?.access_token;
+    const teamObj = event.data.vaptfix_team || null;
+    const tenantId = event.data.tokens?.tenant_id;
 
-      // Step 2: Event se directly teams/channels set karo (fetchTeams() ki zaroorat nahi)
-      if (event.data.vaptfix_team) {
-        this.teams = [{
-          id: event.data.vaptfix_team.team_id,
-          displayName: event.data.vaptfix_team.team_name || "Vaptfix"
-        }];
-        this.channels = event.data.vaptfix_team.channels || [];
-        localStorage.setItem("vaptfix_channels", JSON.stringify(this.channels));
-      }
+    // Step 2: Read new URL fields (priority order)
+    const desktopUrl = teamObj?.teams_desktop_url || null;
+    const webUrl = teamObj?.teams_tab_url || teamObj?.teams_url || "https://teams.microsoft.com";
 
-      // Step 3: Success message
-      Swal.fire({
-        icon: "success",
-        title: "Success",
-        text: "Microsoft Teams connected successfully",
-        timer: 2000,
-        showConfirmButton: false
-      });
+    // Step 3: Save to localStorage — preserve all new keys
+    if (graphToken) localStorage.setItem("microsoft_graph_token", graphToken);
+    if (teamObj) localStorage.setItem("vaptfix_team", JSON.stringify(teamObj));
+    if (event.data.django_access_token) localStorage.setItem("django_access_token", event.data.django_access_token);
+    if (tenantId) localStorage.setItem("microsoft_tenant_id", tenantId);
 
-      // Step 4: Webhook subscribe
-      const teamId = event.data.vaptfix_team?.team_id;
-      if (teamId) {
-        await this.authStore.subscribeTeamsWebhook(teamId);
-      }
+    // Step 4: Set teams/channels from event directly
+    if (teamObj) {
+      this.teams = [{
+        id: teamObj.team_id,
+        displayName: teamObj.team_name || "Vaptfix"
+      }];
+      this.channels = teamObj.channels || [];
+      localStorage.setItem("vaptfix_channels", JSON.stringify(this.channels));
+    }
+
+    // Step 5: Mark Teams selected only after TEAMS_CONNECTED
+    this.selectedCommunication = "teams";
+
+    // Step 6: Success message
+    Swal.fire({
+      icon: "success",
+      title: "Microsoft Teams connected successfully",
+      timer: 2000,
+      showConfirmButton: false
+    });
+
+    // Step 7: Redirect strategy — desktop URL first, web URL fallback after 1.8s
+    if (desktopUrl) {
+      window.location.href = desktopUrl;
+      setTimeout(() => {
+        window.location.href = webUrl;
+      }, 1800);
+    } else {
+      window.location.href = webUrl;
+    }
+
+    // Step 8: Webhook subscribe
+    const teamId = teamObj?.team_id;
+    if (teamId) {
+      await this.authStore.subscribeTeamsWebhook(teamId);
+    }
+  },
+  openInTeams() {
+    const vaptfixTeam = JSON.parse(localStorage.getItem("vaptfix_team") || "null");
+    const desktopUrl = vaptfixTeam?.teams_desktop_url || null;
+    const webUrl = vaptfixTeam?.teams_tab_url || vaptfixTeam?.teams_url || "https://teams.microsoft.com";
+    if (desktopUrl) {
+      window.location.href = desktopUrl;
+      setTimeout(() => {
+        window.location.href = webUrl;
+      }, 1800);
+    } else {
+      window.open(webUrl, "_blank");
     }
   },
     onStorageChange(event) {
@@ -1935,6 +1964,20 @@ export default {
 
 .loc-email-row { display: flex; align-items: center; gap: 12px; }
 .loc-email-input { flex: 1; }
+.loc-open-teams-btn {
+  display: inline-flex;
+  align-items: center;
+  background: #f0f4ff;
+  border: 1.5px solid #6366f1;
+  color: #4338ca;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 8px;
+  padding: 7px 16px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.loc-open-teams-btn:hover { background: #e0e7ff; }
 .loc-users-added-email {
   font-size: 11px;
   color: #94a3b8;

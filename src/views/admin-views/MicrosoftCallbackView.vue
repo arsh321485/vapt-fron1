@@ -83,6 +83,11 @@ export default {
           django_access_token: res.data?.django_access_token || localStorage.getItem("access_token"),
           django_refresh_token: res.data?.django_refresh_token || localStorage.getItem("refresh_token"),
           user: res.data?.user,
+          vaptfix_team: res.data?.vaptfix_team || JSON.parse(localStorage.getItem("vaptfix_team") || "null"),
+          tokens: {
+            access_token: res.data?.tokens?.access_token || localStorage.getItem("microsoft_graph_token"),
+            tenant_id: res.data?.tokens?.tenant_id || localStorage.getItem("microsoft_tenant_id"),
+          },
         }, "*");
         this.$router.push("/settings");
       } else {
@@ -98,4 +103,3 @@ export default {
   }
 };
 </script>
-

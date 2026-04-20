@@ -3819,6 +3819,25 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    // ✅ Admin: Fetch Risk Criteria Calendar Week View
+    async fetchRiskCriteriaCalendarWeek(date: string) {
+      try {
+        const riskCriteriaId =
+          localStorage.getItem("riskCriteriaId") || localStorage.getItem("riskId");
+        if (!riskCriteriaId) return { status: false, message: "Risk criteria ID not found" };
+        const res = await endpoint.get(
+          `/api/admin/risk_criteria/risks/${riskCriteriaId}/calendar/week/`,
+          { params: { date } },
+        );
+        return { status: true, data: res.data };
+      } catch (error: any) {
+        return {
+          status: false,
+          message: error?.response?.data?.message || "Failed to fetch week calendar",
+        };
+      }
+    },
+
     // ✅ Admin: Fetch Risk Criteria Calendar with team and severity filters
     async fetchRiskCriteriaCalendarWithFilters(
       year: number,
