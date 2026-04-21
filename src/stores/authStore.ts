@@ -1145,7 +1145,14 @@ export const useAuthStore = defineStore("auth", {
 
         if (data?.teams) {
           localStorage.setItem("microsoft_teams_list", JSON.stringify(data.teams));
-          return { status: true, teams: data.teams };
+          if (data.refreshed_access_token) {
+            localStorage.setItem("microsoft_graph_token", data.refreshed_access_token);
+          }
+          return {
+            status: true,
+            teams: data.teams,
+            refreshed_access_token: data.refreshed_access_token || null,
+          };
         }
 
         return { status: false };

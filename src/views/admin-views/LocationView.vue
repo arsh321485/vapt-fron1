@@ -877,10 +877,9 @@ export default {
     },
   getPreferredTeamsUrl(teamObj) {
     return (
-      teamObj?.teams_tab_url_alt ||
       teamObj?.teams_tab_url ||
       teamObj?.teams_url ||
-      "https://teams.microsoft.com"
+      "https://teams.cloud.microsoft"
     );
   },
   async onTeamsConnected(event) {
@@ -945,6 +944,11 @@ export default {
       const res = await this.authStore.fetchMicrosoftTeams();
       if (res?.status) {
         this.teams = res.teams;
+
+        // ✅ Backend ne silently refresh kiya — localStorage update karo
+        if (res.refreshed_access_token) {
+          localStorage.setItem("microsoft_graph_token", res.refreshed_access_token);
+        }
 
         // Auto-fetch channels for the VAPTFIX team using the saved team ID
         const vaptfixTeam = JSON.parse(localStorage.getItem("vaptfix_team") || "null");
