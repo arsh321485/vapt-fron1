@@ -234,9 +234,12 @@
                                   class="rt-subtask-entry"
                                   @click.stop
                                 >
-                                  <span class="rt-subtask-desc">{{ sub.description }}</span>
-                                  <div v-if="!sub.items || sub.items.length === 0" class="rt-subtask-dash"> - </div>
-                                  <div v-else class="rt-checklist mt-1">
+                                  <div v-if="!sub.items || sub.items.length === 0" class="rt-subtask-dash">-</div>
+                                  <div v-else class="d-flex align-items-center gap-2">
+                                    <input type="checkbox" class="rt-checkbox" />
+                                    <span class="rt-subtask-desc">{{ sub.description }}</span>
+                                  </div>
+                                  <div v-if="sub.items && sub.items.length > 0" class="rt-checklist mt-1 ps-4">
                                     <label
                                       v-for="(item, ii) in sub.items"
                                       :key="ii"
@@ -602,7 +605,10 @@ export default {
       const res = await this.authStore.fetchVulnerabilityTimeline(fixVulId);
       this.timelineLoading = false;
       if (res.status && res.data?.timeline) {
-        this.timeline = res.data.timeline.map(item => ({
+        const sorted = [...res.data.timeline].sort((a, b) => {
+          return new Date(a.date).getTime() - new Date(b.date).getTime();
+        });
+        this.timeline = sorted.map(item => ({
           time: this.formatTimelineDate(item.date),
           event: item.event,
           desc: item.assigned_team || (item.type === 'deadline' ? 'Scheduled deadline' : ''),

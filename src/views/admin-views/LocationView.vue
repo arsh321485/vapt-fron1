@@ -881,56 +881,66 @@ export default {
     Swal.fire("Error", "Microsoft login failed", "error");
   }
     },
+  getPreferredTeamsUrl(teamObj) {
+    return (
+      teamObj?.teams_tab_url_alt ||
+      teamObj?.teams_tab_url ||
+      teamObj?.teams_url ||
+      "https://teams.microsoft.com"
+    );
+  },
   async onTeamsConnected(event) {
+    // Security: only accept message from trusted origins
+    const allowedOrigins = [
+      window.location.origin,
+      "https://vaptbackend.secureitlab.com",
+    ];
+    if (!allowedOrigins.includes(event.origin)) return;
     if (event.data?.type !== "TEAMS_CONNECTED") return;
 
-    // Step 1: Read tokens and team object
+    // Step 1: read payload
     const graphToken = event.data.tokens?.access_token;
     const teamObj = event.data.vaptfix_team || null;
     const tenantId = event.data.tokens?.tenant_id;
 
-    // Step 2: Read new URL fields (priority order)
-    const desktopUrl = teamObj?.teams_desktop_url || null;
-    const webUrl = teamObj?.teams_tab_url || teamObj?.teams_url || "https://teams.microsoft.com";
-
-    // Step 3: Save to localStorage — preserve all new keys
+    // Step 2: persist tokens/team metadata
     if (graphToken) localStorage.setItem("microsoft_graph_token", graphToken);
     if (teamObj) localStorage.setItem("vaptfix_team", JSON.stringify(teamObj));
-    if (event.data.django_access_token) localStorage.setItem("django_access_token", event.data.django_access_token);
+    if (event.data.django_access_token) {
+      localStorage.setItem("django_access_token", event.data.django_access_token);
+    }
     if (tenantId) localStorage.setItem("microsoft_tenant_id", tenantId);
 
-    // Step 4: Set teams/channels from event directly
+    // Step 3: set UI state
     if (teamObj) {
       this.teams = [{
         id: teamObj.team_id,
-        displayName: teamObj.team_name || "Vaptfix"
+        displayName: teamObj.team_name || "Vaptfix",
       }];
       this.channels = teamObj.channels || [];
       localStorage.setItem("vaptfix_channels", JSON.stringify(this.channels));
     }
-
-    // Step 5: Mark Teams selected only after TEAMS_CONNECTED
     this.selectedCommunication = "teams";
 
-    // Step 6: Success message
     Swal.fire({
       icon: "success",
       title: "Microsoft Teams connected successfully",
       timer: 2000,
-      showConfirmButton: false
+      showConfirmButton: false,
     });
 
-    // Step 7: Redirect strategy — desktop URL first, web URL fallback after 1.8s
-    if (desktopUrl) {
-      window.location.href = desktopUrl;
-      setTimeout(() => {
-        window.location.href = webUrl;
-      }, 1800);
-    } else {
-      window.location.href = webUrl;
+    // IMPORTANT: never navigate current tab — open Teams in new tab only
+    const teamsUrl = this.getPreferredTeamsUrl(teamObj);
+    const opened = window.open(teamsUrl, "_blank", "noopener,noreferrer");
+    if (!opened) {
+      Swal.fire(
+        "Popup blocked",
+        "Please allow popups to open Microsoft Teams in a new tab.",
+        "warning"
+      );
     }
 
-    // Step 8: Webhook subscribe
+    // Step 4: webhook subscribe
     const teamId = teamObj?.team_id;
     if (teamId) {
       await this.authStore.subscribeTeamsWebhook(teamId);
@@ -938,15 +948,14 @@ export default {
   },
   openInTeams() {
     const vaptfixTeam = JSON.parse(localStorage.getItem("vaptfix_team") || "null");
-    const desktopUrl = vaptfixTeam?.teams_desktop_url || null;
-    const webUrl = vaptfixTeam?.teams_tab_url || vaptfixTeam?.teams_url || "https://teams.microsoft.com";
-    if (desktopUrl) {
-      window.location.href = desktopUrl;
-      setTimeout(() => {
-        window.location.href = webUrl;
-      }, 1800);
-    } else {
-      window.open(webUrl, "_blank");
+    const teamsUrl = this.getPreferredTeamsUrl(vaptfixTeam);
+    const opened = window.open(teamsUrl, "_blank", "noopener,noreferrer");
+    if (!opened) {
+      Swal.fire(
+        "Popup blocked",
+        "Please allow popups to open Microsoft Teams in a new tab.",
+        "warning"
+      );
     }
   },
     onStorageChange(event) {

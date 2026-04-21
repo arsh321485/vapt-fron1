@@ -23,10 +23,7 @@
                   </h2>
 
                 </div>
-                <button class="pm-view-report-btn">
-                  <i class="bi bi-eye me-2"></i>
-                  View Report
-                </button>
+
               </div>
 
               <!-- Team Cards Grid -->

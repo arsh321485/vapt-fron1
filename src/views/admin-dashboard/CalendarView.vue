@@ -66,32 +66,31 @@
 
             <!-- Page Header -->
             <div class="cal-page-header">
-              <div v-if="activeView === 'Week'">
-                <h1 class="cal-month-title">Weekly View</h1>
-                <p class="cal-month-sub"><i class="bi bi-calendar3 me-1"></i>{{ weekRangeLabel }}</p>
-              </div>
-              <div v-else-if="activeView === 'Day'">
-                <h1 class="cal-month-title">Daily View</h1>
-              </div>
-              <div v-else>
-                <h1 class="cal-month-title">{{ currentMonthName }}</h1>
-                <p class="cal-month-sub">
-                  <span v-if="calendarLoading"><span class="spinner-border spinner-border-sm me-1"></span> Loading...</span>
-                  <span v-else>{{ events.length }} event{{ events.length !== 1 ? 's' : '' }} this month</span>
-                </p>
-              </div>
               <div class="d-flex align-items-center gap-3">
                 <!-- Month nav -->
                 <div v-if="activeView === 'Month' || activeView === 'List'" class="d-flex align-items-center gap-2">
                   <button class="cal-nav-btn" @click="prevMonth"><i class="bi bi-chevron-left"></i></button>
-                  <button class="cal-today-btn" @click="goToToday">Today</button>
+                  <div style="text-align:center;">
+                    <h1 class="cal-month-title mb-0">{{ currentMonthName }}</h1>
+                    <p class="cal-month-sub mb-0">
+                      <span v-if="calendarLoading"><span class="spinner-border spinner-border-sm me-1"></span> Loading...</span>
+                      <span v-else>{{ events.length }} event{{ events.length !== 1 ? 's' : '' }} this month</span>
+                    </p>
+                  </div>
                   <button class="cal-nav-btn" @click="nextMonth"><i class="bi bi-chevron-right"></i></button>
                 </div>
                 <!-- Week nav -->
                 <div v-if="activeView === 'Week'" class="d-flex align-items-center gap-2">
                   <button class="cal-nav-btn" @click="prevWeek"><i class="bi bi-chevron-left"></i></button>
-                  <button class="cal-today-btn" @click="goToToday">Today</button>
+                  <div style="text-align:center;">
+                    <h1 class="cal-month-title mb-0">Weekly View</h1>
+                    <p class="cal-month-sub mb-0"><i class="bi bi-calendar3 me-1"></i>{{ weekRangeLabel }}</p>
+                  </div>
                   <button class="cal-nav-btn" @click="nextWeek"><i class="bi bi-chevron-right"></i></button>
+                </div>
+                <!-- Day title -->
+                <div v-if="activeView === 'Day'">
+                  <h1 class="cal-month-title mb-0">Daily View</h1>
                 </div>
               </div>
             </div>
@@ -1199,12 +1198,12 @@ export default {
 /* ── Page Header ── */
 .cal-page-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   padding: 20px 28px 16px;
 }
-.cal-month-title { font-size: 2rem; font-weight: 800; color: #1e293b; margin: 0; }
-.cal-month-sub   { font-size: 0.875rem; color: #64748b; margin: 4px 0 0; }
+.cal-month-title { font-size: 1.1rem; font-weight: 800; color: #1e293b; margin: 0; }
+.cal-month-sub   { font-size: 0.78rem; color: #64748b; margin: 2px 0 0; }
 
 .cal-legend { display: flex; gap: 16px; align-items: center; }
 .cal-legend-item {

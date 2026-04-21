@@ -150,15 +150,17 @@
                                 <stop offset="100%" stop-color="#ef4444"/>
                               </linearGradient>
                             </defs>
-                            <!-- Track -->
-                            <circle cx="66" cy="66" r="48" fill="none" stroke="#f1f5f9" stroke-width="12"/>
-                            <!-- Progress: circumference = 2π×32 ≈ 201.1 -->
+                            <!-- Background semi-circle (gray) open at bottom -->
+                            <circle cx="66" cy="66" r="48" fill="none" stroke="#f1f5f9" stroke-width="12"
+                              stroke-dasharray="226.2 75.4"
+                              transform="rotate(135 66 66)"/>
+                            <!-- Colored semi-circle arc -->
                             <circle cx="66" cy="66" r="48" fill="none"
                               stroke="url(#mttr-grad2)" stroke-width="12"
                               stroke-linecap="round"
-                              stroke-dasharray="301.6"
-                              :stroke-dashoffset="301.6 - (Math.min((authStore.meanTimeToRemediate?.mean_time_to_remediate?.weeks ?? 0), 4) / 4 * 301.6)"
-                              transform="rotate(-90 66 66)"/>
+                              stroke-dasharray="226.2 75.4"
+                              :stroke-dashoffset="226.2 - Math.max(20, (Math.min((authStore.meanTimeToRemediate?.mean_time_to_remediate?.weeks ?? 0), 4) / 4 * 226.2))"
+                              transform="rotate(135 66 66)"/>
                           </svg>
                           <!-- Center label -->
                           <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;white-space:nowrap;">
@@ -192,9 +194,9 @@
                       <h5 class="modal-title sr-modal-title in-process-modal-title">
                         <i class="bi bi-hourglass-split me-2 in-process-modal-icon"></i>In-Process Vulnerabilities
                       </h5>
-                      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter: brightness(0);"></button>
                     </div>
-                    <div class="modal-body p-4">
+                    <div class="modal-body p-4" style="max-height:400px; overflow-y:auto;">
                       <div v-if="!inProcessItems.length" class="text-muted small">No in-process vulnerabilities.</div>
                       <div v-else class="d-flex flex-column gap-2">
                         <div v-for="item in inProcessItems" :key="item.fix_vulnerability_id" class="in-process-item-row">

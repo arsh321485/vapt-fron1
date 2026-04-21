@@ -156,13 +156,17 @@
                                 <stop offset="100%" stop-color="#ef4444"/>
                               </linearGradient>
                             </defs>
-                            <circle cx="66" cy="66" r="48" fill="none" stroke="#f1f5f9" stroke-width="12"/>
+                            <!-- Background semi-circle (gray) open at bottom -->
+                            <circle cx="66" cy="66" r="48" fill="none" stroke="#f1f5f9" stroke-width="12"
+                              stroke-dasharray="226.2 75.4"
+                              transform="rotate(135 66 66)"/>
+                            <!-- Colored semi-circle arc -->
                             <circle cx="66" cy="66" r="48" fill="none"
                               stroke="url(#mttr-grad-user)" stroke-width="12"
                               stroke-linecap="round"
-                              stroke-dasharray="301.6"
-                              :stroke-dashoffset="301.6 - (Math.min(meanTimeRemediateWeeks, 4) / 4 * 301.6)"
-                              transform="rotate(-90 66 66)"/>
+                              stroke-dasharray="226.2 75.4"
+                              :stroke-dashoffset="226.2 - Math.max(20, (Math.min(meanTimeRemediateWeeks, 4) / 4 * 226.2))"
+                              transform="rotate(135 66 66)"/>
                           </svg>
                           <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;white-space:nowrap;">
                             <div style="font-size:13px;font-weight:900;color:#1f2937;line-height:1.1;">{{ meanRemediateHuman }}</div>
@@ -195,9 +199,9 @@
                       <h5 class="modal-title sr-modal-title in-process-modal-title">
                         <i class="bi bi-hourglass-split me-2 in-process-modal-icon"></i>In-Process Vulnerabilities
                       </h5>
-                      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter: brightness(0);"></button>
                     </div>
-                    <div class="modal-body p-4">
+                    <div class="modal-body p-4" style="max-height:400px; overflow-y:auto;">
                       <div v-if="!inProcessItems.length" class="text-muted small">No in-process vulnerabilities.</div>
                       <div v-else class="d-flex flex-column gap-2">
                         <div v-for="item in inProcessItems" :key="item.fix_vulnerability_id" class="in-process-item-row">
@@ -662,7 +666,7 @@
                     <td>{{ row.by }}</td>
                     <td>{{ row.date }}</td>
                     <td class="mte-extension">{{ row.ext }}</td>
-                    <td class="mte-reason">{{ row.reason }}</td>
+                    <td class="mte-reason" :title="row.reason">{{ row.reason }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -703,7 +707,7 @@
                     <td>{{ row.by }}</td>
                     <td>{{ row.date }}</td>
                     <td class="mte-extension">{{ row.ext }}</td>
-                    <td class="mte-reason">{{ row.reason }}</td>
+                    <td class="mte-reason" :title="row.reason">{{ row.reason }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -744,7 +748,7 @@
                     <td>{{ row.by }}</td>
                     <td>{{ row.date }}</td>
                     <td class="mte-extension">{{ row.ext }}</td>
-                    <td class="mte-reason">{{ row.reason }}</td>
+                    <td class="mte-reason" :title="row.reason">{{ row.reason }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -785,7 +789,7 @@
                     <td>{{ row.by }}</td>
                     <td>{{ row.date }}</td>
                     <td class="mte-extension">{{ row.ext }}</td>
-                    <td class="mte-reason">{{ row.reason }}</td>
+                    <td class="mte-reason" :title="row.reason">{{ row.reason }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -1726,6 +1730,17 @@ export default {
 
       if (res.status) {
         this.closeExtPopup();
+        Swal.fire({
+          icon: 'success',
+          title: 'Request Submitted',
+          text: 'Your extension request has been submitted for review.',
+          timer: 2500,
+          showConfirmButton: false,
+          didOpen: () => {
+            const container = document.querySelector('.swal2-container');
+            if (container) container.style.zIndex = '99999';
+          },
+        });
       } else {
         Swal.fire({
           icon: 'error',
@@ -2750,7 +2765,29 @@ export default {
 }
 .mte-pill.status { background: #e5e7eb; color: #374151; }
 .mte-extension { font-weight: 800; color: #1e293b !important; }
-.mte-reason { max-width: 170px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; color: #475569; font-weight: 600; }
+.mte-reason {
+  max-width: 170px; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; cursor: pointer; color: #475569;
+  font-weight: 600; position: relative;
+}
+.mte-reason:hover::after {
+  content: attr(title);
+  position: fixed;
+  background: #1e293b;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: normal;
+  max-width: 280px;
+  word-break: break-word;
+  line-height: 1.5;
+  z-index: 99999;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  pointer-events: none;
+  transform: translateY(-110%);
+}
 .mte-modal-footer {
   display: flex;
   justify-content: flex-end;

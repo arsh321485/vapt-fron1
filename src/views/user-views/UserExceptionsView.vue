@@ -229,10 +229,7 @@
                       <button class="st-so-close-btn" @click="closeSlideOver"><i class="bi bi-x-lg"></i></button>
                       <span class="st-so-label">TICKET DETAIL</span>
                     </div>
-                    <div class="d-flex gap-2">
-                      <button class="st-so-icon-btn"><i class="bi bi-share"></i></button>
-                      <button class="st-so-icon-btn"><i class="bi bi-three-dots-vertical"></i></button>
-                    </div>
+
                   </div>
                   <h2 class="st-so-title">
                     SR-{{ String(slideOverIndex + 90000).padStart(5, '0') }}: {{ selectedSupportRequest?.vul_name || '-' }}
