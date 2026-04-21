@@ -1115,7 +1115,7 @@
                       <td style="font-weight:600; color:#1e293b;">{{ vuln.host_name || '—' }}</td>
                       <td style="color:#64748b; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" :title="vuln.os || '—'">{{ vuln.os || '—' }}</td>
                       <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#334155;" :title="vuln.plugin_name">{{ vuln.plugin_name }}</td>
-                      <td><span class="mte-pill" :class="getCvStatusPillClass(vuln.status)">{{ vuln.status || '—' }}</span></td>
+                      <td><span class="mte-pill" :class="getCvStatusPillClass(getResolvedCvStatus(vuln))">{{ getResolvedCvStatus(vuln) }}</span></td>
                       <td>
                         <router-link :to="{ name:'remediation-timeline', params:{ reportId: currentReportId, asset: vuln.host_name }, query:{ id: vuln.id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor } }" class="text-decoration-none" @click="closeCommonVulnModal">
                           <button class="cv-view-btn">View <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
@@ -1145,7 +1145,7 @@
                       <td style="font-weight:600; color:#1e293b;">{{ vuln.host_name || '—' }}</td>
                       <td style="color:#64748b; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" :title="vuln.os || '—'">{{ vuln.os || '—' }}</td>
                       <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#334155;" :title="vuln.plugin_name">{{ vuln.plugin_name }}</td>
-                      <td><span class="mte-pill" :class="getCvStatusPillClass(vuln.status)">{{ vuln.status || '—' }}</span></td>
+                      <td><span class="mte-pill" :class="getCvStatusPillClass(getResolvedCvStatus(vuln))">{{ getResolvedCvStatus(vuln) }}</span></td>
                       <td>
                         <router-link :to="{ name:'remediation-timeline', params:{ reportId: currentReportId, asset: vuln.host_name }, query:{ id: vuln.id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor } }" class="text-decoration-none" @click="closeCommonVulnModal">
                           <button class="cv-view-btn">View <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
@@ -1175,7 +1175,7 @@
                       <td style="font-weight:600; color:#1e293b;">{{ vuln.host_name || '—' }}</td>
                       <td style="color:#64748b; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" :title="vuln.os || '—'">{{ vuln.os || '—' }}</td>
                       <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#334155;" :title="vuln.plugin_name">{{ vuln.plugin_name }}</td>
-                      <td><span class="mte-pill" :class="getCvStatusPillClass(vuln.status)">{{ vuln.status || '—' }}</span></td>
+                      <td><span class="mte-pill" :class="getCvStatusPillClass(getResolvedCvStatus(vuln))">{{ getResolvedCvStatus(vuln) }}</span></td>
                       <td>
                         <router-link :to="{ name:'remediation-timeline', params:{ reportId: currentReportId, asset: vuln.host_name }, query:{ id: vuln.id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor } }" class="text-decoration-none" @click="closeCommonVulnModal">
                           <button class="cv-view-btn">View <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
@@ -1205,7 +1205,7 @@
                       <td style="font-weight:600; color:#1e293b;">{{ vuln.host_name || '—' }}</td>
                       <td style="color:#64748b; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" :title="vuln.os || '—'">{{ vuln.os || '—' }}</td>
                       <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#334155;" :title="vuln.plugin_name">{{ vuln.plugin_name }}</td>
-                      <td><span class="mte-pill" :class="getCvStatusPillClass(vuln.status)">{{ vuln.status || '—' }}</span></td>
+                      <td><span class="mte-pill" :class="getCvStatusPillClass(getResolvedCvStatus(vuln))">{{ getResolvedCvStatus(vuln) }}</span></td>
                       <td>
                         <router-link :to="{ name:'remediation-timeline', params:{ reportId: currentReportId, asset: vuln.host_name }, query:{ id: vuln.id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor } }" class="text-decoration-none" @click="closeCommonVulnModal">
                           <button class="cv-view-btn">View <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
@@ -1406,6 +1406,17 @@ export default {
       const normalize = (s) => String(s).toLowerCase().replace(/\s+/g, ' ').trim();
       const matchedKey = Object.keys(teams).find(k => normalize(k) === normalize(this.mitigationActiveTab));
       return matchedKey ? teams[matchedKey] : { count: 0, vulnerabilities: [] };
+    },
+    closedVulnSet() {
+      const set = new Set();
+      const norm = s => String(s || '').toLowerCase().trim();
+      for (const row of this.authStore.vulnerabilityRows || []) {
+        const s = norm(row.status);
+        if (s === 'closed' || s === 'close' || s === 'fixed') {
+          set.add(`${norm(row.asset)}|${norm(row.vul_name)}`);
+        }
+      }
+      return set;
     },
     cvModalGroupedVulns() {
       const vulns = this.mitigationActiveTeamData?.vulnerabilities || [];
@@ -1774,15 +1785,28 @@ export default {
       if (text.length <= 22) return text;
       return `${text.slice(0, 22)}...`;
     },
-    openCommonVulnModal() {
+    async openCommonVulnModal() {
       this.showCommonVulnModal = true;
       this.cvModalOpenSev = 'critical';
+      const [mitResult] = await Promise.all([
+        this.authStore.fetchMitigationByTeam(true),
+        this.authStore.fetchVulnerabilityRegister(true),
+      ]);
+      if (mitResult.status) {
+        this.mitigationByTeamData = mitResult.data;
+      }
     },
     closeCommonVulnModal() {
       this.showCommonVulnModal = false;
     },
     toggleCvModalGroup(sev) {
       this.cvModalOpenSev = this.cvModalOpenSev === sev ? '' : sev;
+    },
+    getResolvedCvStatus(vuln) {
+      const norm = s => String(s || '').toLowerCase().trim();
+      const key = `${norm(vuln.host_name)}|${norm(vuln.plugin_name)}`;
+      if (this.closedVulnSet.has(key)) return 'Closed';
+      return vuln.status || '—';
     },
     getCvStatusPillClass(status) {
       const s = (status || '').toLowerCase();

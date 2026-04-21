@@ -965,9 +965,9 @@
                       </td>
                       <td>
                         <span class="msu-modal-status-badge"
-                          :class="(vuln.status?.toLowerCase() === 'open') ? 'msu-modal-status-open' : 'msu-modal-status-closed'">
+                          :class="(getResolvedCvStatus(vuln)?.toLowerCase() === 'open') ? 'msu-modal-status-open' : 'msu-modal-status-closed'">
                           <span class="msu-modal-status-dot"></span>
-                          <span class="text-capitalize">{{ vuln.status }}</span>
+                          <span class="text-capitalize">{{ getResolvedCvStatus(vuln) }}</span>
                         </span>
                       </td>
                       <td>
@@ -1093,6 +1093,24 @@ export default {
   computed: {
     authStore() {
       return useAuthStore();
+    },
+    closedVulnSet() {
+      const set = new Set();
+      const norm = s => String(s || '').toLowerCase().trim();
+      for (const row of this.authStore.cachedUserVulnRegister || []) {
+        const s = norm(row.status);
+        if (s === 'closed' || s === 'close' || s === 'fixed') {
+          set.add(`${norm(row.host_name || row.asset)}|${norm(row.plugin_name || row.vul_name)}`);
+        }
+      }
+      // Also check cached closed vulns
+      for (const row of this.authStore.cachedUserClosedVulns?.results || []) {
+        const s = norm(row.status);
+        if (s === 'closed' || s === 'close' || s === 'fixed') {
+          set.add(`${norm(row.host_name || row.asset)}|${norm(row.plugin_name || row.vul_name)}`);
+        }
+      }
+      return set;
     },
     // Teams assigned to this user that also exist in our team map
     assignedTeamKeys() {
@@ -1662,6 +1680,18 @@ export default {
       if (status === 'Rejected') return 'mte-status-rejected';
       return 'mte-status-review';
     },
+    getResolvedCvStatus(vuln) {
+      const norm = s => String(s || '').toLowerCase().trim();
+      const key = `${norm(vuln.host_name)}|${norm(vuln.plugin_name)}`;
+      if (this.closedVulnSet.has(key)) return 'Closed';
+      return vuln.status || '—';
+    },
+    getCvStatusPillClass(status) {
+      const s = (status || '').toLowerCase();
+      if (s === 'open') return 'cv-pill-open';
+      if (s === 'closed' || s === 'fixed') return 'cv-pill-closed';
+      return 'cv-pill-default';
+    },
 
     async openExtPopup(severity) {
       this.extPopupSeverity = severity;
@@ -1808,7 +1838,12 @@ export default {
     },
     closeMitigationExtensionModal() { this.showMitigationExtensionModal = false; this.mteOpenSection = null; },
     toggleMteSection(sec) { this.mteOpenSection = this.mteOpenSection === sec ? null : sec; },
-    openMsuModal() { this.showMsuModal = true; },
+    async openMsuModal() {
+      this.showMsuModal = true;
+      // Fetch user vuln register to get closed status
+      await this.authStore.fetchUserVulnerabilityRegister(true);
+      await this.authStore.fetchUserClosedVulns(true);
+    },
     closeMsuModal() { this.showMsuModal = false; },
   },
   async mounted() {
@@ -2764,6 +2799,9 @@ export default {
   text-transform: uppercase;
 }
 .mte-pill.status { background: #e5e7eb; color: #374151; }
+.cv-pill-open    { background: #fee2e2; color: #dc2626; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
+.cv-pill-closed  { background: #dcfce7; color: #16a34a; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
+.cv-pill-default { background: #f1f5f9; color: #64748b; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
 .mte-extension { font-weight: 800; color: #1e293b !important; }
 .mte-reason {
   max-width: 170px; white-space: nowrap; overflow: hidden;
