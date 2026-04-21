@@ -28,7 +28,7 @@
 
               <!-- Team Cards Grid -->
               <div class="pm-cards-grid">
-                <div v-for="cfg in teamConfigs" :key="cfg.name" class="pm-team-card">
+                <div v-for="cfg in teamConfigs" :key="cfg.name" class="pm-team-card" :style="{ borderTop: '4px solid ' + cfg.color }">
                   <!-- Card Header -->
                   <div class="d-flex justify-content-between align-items-start mb-4">
                     <div>
@@ -53,11 +53,11 @@
                     </div>
                     <div>
                       <p class="pm-metric-label">Closed</p>
-                      <span class="pm-metric-value">{{ (teamDetail[cfg.name] || {}).closed ?? '—' }}</span>
+                      <span class="pm-metric-value" style="color:#16a34a;">{{ (teamDetail[cfg.name] || {}).closed ?? '—' }}</span>
                     </div>
                     <div>
                       <p class="pm-metric-label">Open</p>
-                      <span class="pm-metric-value">{{ (teamDetail[cfg.name] || {}).open ?? '—' }}</span>
+                      <span class="pm-metric-value" style="color:#dc2626;">{{ (teamDetail[cfg.name] || {}).open ?? '—' }}</span>
                     </div>
                   </div>
 
@@ -66,10 +66,10 @@
                     <p class="pm-metric-label mb-2">Severity Breakdown</p>
                     <!-- Stacked bar -->
                     <div class="pm-stacked-bar">
-                      <div class="pm-bar-critical" :style="{ width: getSevPercent(cfg.name, 'Critical') + '%' }"></div>
-                      <div class="pm-bar-high"     :style="{ width: getSevPercent(cfg.name, 'High') + '%' }"></div>
-                      <div class="pm-bar-medium"   :style="{ width: getSevPercent(cfg.name, 'Medium') + '%' }"></div>
-                      <div class="pm-bar-low"      :style="{ width: getSevPercent(cfg.name, 'Low') + '%' }"></div>
+                      <div class="pm-bar-critical" :style="{ width: (getSevPercent(cfg.name, 'Critical') || 25) + '%' }"></div>
+                      <div class="pm-bar-high"     :style="{ width: (getSevPercent(cfg.name, 'High') || 25) + '%' }"></div>
+                      <div class="pm-bar-medium"   :style="{ width: (getSevPercent(cfg.name, 'Medium') || 25) + '%' }"></div>
+                      <div class="pm-bar-low"      :style="{ width: (getSevPercent(cfg.name, 'Low') || 25) + '%' }"></div>
                     </div>
                     <!-- Sev boxes -->
                     <div class="pm-sev-boxes">
@@ -265,6 +265,7 @@ export default {
 .pm-team-card {
   background: white;
   border-radius: 12px;
+  overflow: hidden;
   padding: 22px 24px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   border: 1px solid #f1f5f9;
@@ -352,10 +353,10 @@ export default {
   margin-bottom: 10px;
 }
 
-.pm-bar-critical { height: 100%; background: #ff4d4d; }
-.pm-bar-high     { height: 100%; background: #f2994a; }
-.pm-bar-medium   { height: 100%; background: #f2c94c; }
-.pm-bar-low      { height: 100%; background: #0f696e; }
+.pm-bar-critical { height: 100%; background: #dc2626; }
+.pm-bar-high     { height: 100%; background: #f97316; }
+.pm-bar-medium   { height: 100%; background: #d97706; }
+.pm-bar-low      { height: 100%; background: #16a34a; }
 
 .pm-sev-boxes {
   display: grid;
@@ -368,10 +369,10 @@ export default {
   border-radius: 8px;
   text-align: center;
 }
-.pm-sev-box-critical { background: #fef2f2; }
-.pm-sev-box-high     { background: #fff7ed; }
-.pm-sev-box-medium   { background: #fefce8; }
-.pm-sev-box-low      { background: #f0fdfa; }
+.pm-sev-box-critical { background: rgb(254, 242, 242); }
+.pm-sev-box-high     { background: rgb(255, 247, 237); }
+.pm-sev-box-medium   { background: rgb(254, 252, 232); }
+.pm-sev-box-low      { background: rgb(240, 253, 244); }
 
 .pm-sev-box-label {
   font-size: 0.6rem;
@@ -379,10 +380,10 @@ export default {
   text-transform: uppercase;
   margin-bottom: 2px;
 }
-.pm-sev-box-critical .pm-sev-box-label { color: #ef4444; }
-.pm-sev-box-high     .pm-sev-box-label { color: #f97316; }
-.pm-sev-box-medium   .pm-sev-box-label { color: #ca8a04; }
-.pm-sev-box-low      .pm-sev-box-label { color: #0f696e; }
+.pm-sev-box-critical .pm-sev-box-label { color: rgb(220, 38, 38); }
+.pm-sev-box-high     .pm-sev-box-label { color: rgb(249, 115, 22); }
+.pm-sev-box-medium   .pm-sev-box-label { color: rgb(217, 119, 6); }
+.pm-sev-box-low      .pm-sev-box-label { color: rgb(22, 163, 74); }
 
 .pm-sev-box-value {
   font-size: 0.9rem;

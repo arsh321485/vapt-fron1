@@ -62,13 +62,7 @@
 
             </div>
 
-            <!-- Open in Teams button — shown when Teams is connected -->
-            <div v-if="selectedCommunication === 'teams'" class="mt-3">
-              <button class="loc-open-teams-btn" @click="openInTeams">
-                <img :src="teamsIcon" style="width:18px;height:18px;margin-right:6px;" />
-                Open in Teams
-              </button>
-            </div>
+
           </div>
 
           <!-- Project Management -->
@@ -890,7 +884,6 @@ export default {
     );
   },
   async onTeamsConnected(event) {
-    // Security: only accept message from trusted origins
     const allowedOrigins = [
       window.location.origin,
       "https://vaptbackend.secureitlab.com",
@@ -898,12 +891,10 @@ export default {
     if (!allowedOrigins.includes(event.origin)) return;
     if (event.data?.type !== "TEAMS_CONNECTED") return;
 
-    // Step 1: read payload
     const graphToken = event.data.tokens?.access_token;
     const teamObj = event.data.vaptfix_team || null;
     const tenantId = event.data.tokens?.tenant_id;
 
-    // Step 2: persist tokens/team metadata
     if (graphToken) localStorage.setItem("microsoft_graph_token", graphToken);
     if (teamObj) localStorage.setItem("vaptfix_team", JSON.stringify(teamObj));
     if (event.data.django_access_token) {
@@ -911,7 +902,6 @@ export default {
     }
     if (tenantId) localStorage.setItem("microsoft_tenant_id", tenantId);
 
-    // Step 3: set UI state
     if (teamObj) {
       this.teams = [{
         id: teamObj.team_id,
@@ -929,35 +919,12 @@ export default {
       showConfirmButton: false,
     });
 
-    // IMPORTANT: never navigate current tab — open Teams in new tab only
-    const teamsUrl = this.getPreferredTeamsUrl(teamObj);
-    const opened = window.open(teamsUrl, "_blank", "noopener,noreferrer");
-    if (!opened) {
-      Swal.fire(
-        "Popup blocked",
-        "Please allow popups to open Microsoft Teams in a new tab.",
-        "warning"
-      );
-    }
-
-    // Step 4: webhook subscribe
     const teamId = teamObj?.team_id;
     if (teamId) {
       await this.authStore.subscribeTeamsWebhook(teamId);
     }
   },
-  openInTeams() {
-    const vaptfixTeam = JSON.parse(localStorage.getItem("vaptfix_team") || "null");
-    const teamsUrl = this.getPreferredTeamsUrl(vaptfixTeam);
-    const opened = window.open(teamsUrl, "_blank", "noopener,noreferrer");
-    if (!opened) {
-      Swal.fire(
-        "Popup blocked",
-        "Please allow popups to open Microsoft Teams in a new tab.",
-        "warning"
-      );
-    }
-  },
+
     onStorageChange(event) {
       if (event.key === "microsoft_graph_token" && event.newValue) {
         const savedChannels = localStorage.getItem("vaptfix_channels");
@@ -1973,20 +1940,7 @@ export default {
 
 .loc-email-row { display: flex; align-items: center; gap: 12px; }
 .loc-email-input { flex: 1; }
-.loc-open-teams-btn {
-  display: inline-flex;
-  align-items: center;
-  background: #f0f4ff;
-  border: 1.5px solid #6366f1;
-  color: #4338ca;
-  font-size: 13px;
-  font-weight: 700;
-  border-radius: 8px;
-  padding: 7px 16px;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.loc-open-teams-btn:hover { background: #e0e7ff; }
+
 .loc-users-added-email {
   font-size: 11px;
   color: #94a3b8;
