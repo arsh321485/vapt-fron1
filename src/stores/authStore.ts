@@ -3861,6 +3861,24 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    // ✅ Admin: Refresh Microsoft Teams Access Token silently
+    async refreshMicrosoftTeamsToken() {
+      try {
+        const res = await endpoint.post(`/api/admin/users/microsoft-teams/token-refresh/`);
+        if (res.data?.access_token) {
+          localStorage.setItem("microsoft_graph_token", res.data.access_token);
+          return { status: true, access_token: res.data.access_token };
+        }
+        return { status: false, message: "No access token in response" };
+      } catch (error: any) {
+        return {
+          status: false,
+          message:
+            error.response?.data?.message || error.message || "Failed to refresh Teams token",
+        };
+      }
+    },
+
     // ✅ Admin: Resync Slack for a user
     async resyncSlackUser(detailId: string) {
       try {

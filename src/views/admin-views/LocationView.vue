@@ -953,7 +953,20 @@ export default {
           await this.fetchChannels(teamId);
         }
       } else {
-        // Token expired or invalid — clear stale data and prompt reconnect
+        // Token expired — try silent refresh first
+        const refreshRes = await this.authStore.refreshMicrosoftTeamsToken();
+        if (refreshRes.status && refreshRes.access_token) {
+          // Token refreshed silently — retry fetchTeams
+          const retryRes = await this.authStore.fetchMicrosoftTeams();
+          if (retryRes?.status) {
+            this.teams = retryRes.teams;
+            const vaptfixTeam = JSON.parse(localStorage.getItem("vaptfix_team") || "null");
+            const teamId = vaptfixTeam?.id || vaptfixTeam?.team_id;
+            if (teamId) await this.fetchChannels(teamId);
+            return;
+          }
+        }
+        // Refresh also failed — clear data and show reconnect
         localStorage.removeItem("microsoft_graph_token");
         localStorage.removeItem("teams_connected");
         localStorage.removeItem("vaptfix_team");
