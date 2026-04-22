@@ -34,7 +34,10 @@ endpoint.interceptors.request.use(
 
 // ✅ Handle session expiry
 const AUTH_ENDPOINTS = [
+  "/api/admin/users/login/",
   "/api/admin/users/user-login/",
+  "/api/admin/users/signup/send-otp/",
+  "/api/admin/users/signup/verify-otp/",
   "/api/admin/users/user-set-password/",
   "/api/admin/users/forgot-password/",
   "/api/admin/users/reset-password/",

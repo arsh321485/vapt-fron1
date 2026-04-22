@@ -33,6 +33,11 @@
               <span class="polling-label">Remaining:</span>
               <span class="polling-val">{{ pollingData.remaining_time_text }}</span>
             </div>
+            <div class="polling-stat" v-if="pollingData.estimated_total_text">
+              <i class="bi bi-clock-history me-1"></i>
+              <span class="polling-label">Estimated total:</span>
+              <span class="polling-val">{{ pollingData.estimated_total_text }}</span>
+            </div>
             <div class="polling-stat" v-if="pollingData.cards_total">
               <i class="bi bi-layers me-1"></i>
               <span class="polling-label">Progress:</span>
@@ -684,6 +689,19 @@ function startPolling() {
           reports_ready: res.reports_ready || 0,
         }
       } else {
+        // cards_generating is false — generation complete, redirect
+        if (cardsGenerating.value) {
+          stopPolling()
+          localStorage.removeItem(getUserCacheKey('scoping_submitted'))
+          localStorage.removeItem('authorization')
+          localStorage.removeItem('refreshToken')
+          localStorage.removeItem('user')
+          localStorage.removeItem('authenticated')
+          localStorage.removeItem('google_id_token')
+          localStorage.removeItem('isNewUser')
+          router.push('/signin')
+          return
+        }
         cardsGenerating.value = false
       }
     } catch {

@@ -217,6 +217,13 @@ export const useAuthStore = defineStore("auth", {
       return {
         file_uploaded: res.data.file_uploaded === true,
         cards_generating: res.data.cards_generating === true,
+        elapsed_time_text: res.data.elapsed_time_text || '',
+        remaining_time_text: res.data.remaining_time_text || '',
+        estimated_total_text: res.data.estimated_total_text || '',
+        cards_total: res.data.cards_total || 0,
+        cards_generated: res.data.cards_generated || 0,
+        reports_total: res.data.reports_total || 0,
+        reports_ready: res.data.reports_ready || 0,
       };
     },
 
@@ -363,7 +370,18 @@ export const useAuthStore = defineStore("auth", {
         this.reportStatus.reportId = null;
         this.reportStatus.checked = false;
 
-        const res = await endpoint.post("/api/admin/users/login/", payload);
+        let res;
+        try {
+          res = await endpoint.post("/api/admin/users/login/", payload);
+        } catch (primaryError: any) {
+          // Some backend environments still expose user-login instead of login.
+          const status = primaryError?.response?.status;
+          if (status === 404 || status === 405) {
+            res = await endpoint.post("/api/admin/users/user-login/", payload);
+          } else {
+            throw primaryError;
+          }
+        }
 
         const data = res.data;
 
@@ -380,11 +398,19 @@ export const useAuthStore = defineStore("auth", {
         return { status: true, data, message: data.message };
       } catch (error: any) {
         const errorData = error.response?.data;
+        const fieldErrors =
+          errorData && typeof errorData === "object"
+            ? (Object.values(errorData) as any[])
+                .flatMap((v) => (Array.isArray(v) ? v : [v]))
+                .filter((v) => typeof v === "string")
+                .join(" ")
+            : "";
         const errorMessage =
           errorData?.message ||
           errorData?.error ||
           errorData?.detail ||
           (Array.isArray(errorData?.non_field_errors) ? errorData.non_field_errors[0] : null) ||
+          fieldErrors ||
           "Login failed";
 
         return {
