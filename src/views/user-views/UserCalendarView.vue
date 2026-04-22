@@ -58,10 +58,7 @@
                 </button>
               </div>
 
-              <div class="d-flex align-items-center gap-3">
-                <button class="cal-icon-btn"><i class="bi bi-bell"></i></button>
-                <button class="cal-icon-btn"><i class="bi bi-clock-history"></i></button>
-              </div>
+
             </div>
 
             <!-- Page Header -->
