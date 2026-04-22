@@ -16,10 +16,37 @@
           <i class="bi bi-envelope-check me-2"></i>
           A confirmation has been sent to your email address
         </div>
-        <p v-if="cardsGenerating" class="redirect-note mt-4 mb-0">
-          <span class="spinner-border spinner-border-sm me-2"></span>
-          Report has been uploaded. Vulnerability cards are being generated, please wait...
-        </p>
+        <!-- Progress info while generating -->
+        <div v-if="cardsGenerating" class="polling-progress mt-4">
+          <div class="d-flex align-items-center justify-content-center gap-2 mb-3">
+            <span class="spinner-border spinner-border-sm text-success"></span>
+            <span class="polling-title">Generating vulnerability cards...</span>
+          </div>
+          <div class="polling-stats">
+            <div class="polling-stat" v-if="pollingData.elapsed_time_text">
+              <i class="bi bi-clock me-1"></i>
+              <span class="polling-label">Elapsed:</span>
+              <span class="polling-val">{{ pollingData.elapsed_time_text }}</span>
+            </div>
+            <div class="polling-stat" v-if="pollingData.remaining_time_text">
+              <i class="bi bi-hourglass-split me-1"></i>
+              <span class="polling-label">Remaining:</span>
+              <span class="polling-val">{{ pollingData.remaining_time_text }}</span>
+            </div>
+            <div class="polling-stat" v-if="pollingData.cards_total">
+              <i class="bi bi-layers me-1"></i>
+              <span class="polling-label">Progress:</span>
+              <span class="polling-val">{{ pollingData.cards_generated }}/{{ pollingData.cards_total }} cards</span>
+            </div>
+          </div>
+          <!-- Progress bar -->
+          <div v-if="pollingData.cards_total" class="polling-bar-wrap mt-3">
+            <div class="polling-bar">
+              <div class="polling-bar-fill" :style="{ width: Math.round((pollingData.cards_generated / pollingData.cards_total) * 100) + '%' }"></div>
+            </div>
+            <span class="polling-pct">{{ Math.round((pollingData.cards_generated / pollingData.cards_total) * 100) }}%</span>
+          </div>
+        </div>
         <p v-else class="redirect-note mt-4 mb-0">
           <span class="spinner-border spinner-border-sm me-2"></span>
           Please wait, your account is being set up...
@@ -498,8 +525,17 @@ const submitted = ref(false)
 const pollIntervalRef = ref<ReturnType<typeof setInterval> | null>(null)
 const pollingStartTime = ref<number | null>(null)
 const cardsGenerating = ref(false)
+const pollingData = ref({
+  elapsed_time_text: '',
+  remaining_time_text: '',
+  estimated_total_text: '',
+  cards_total: 0,
+  cards_generated: 0,
+  reports_total: 0,
+  reports_ready: 0,
+})
 const MAX_POLL_DURATION = 30 * 60 * 1000 // 30 minutes
-const POLL_EVERY = 5000 // 5 seconds
+const POLL_EVERY = 2500 // 2.5 seconds
 
 const submitLoading = ref(false)
 
@@ -628,8 +664,6 @@ function startPolling() {
       if (res.file_uploaded === true) {
         stopPolling()
         localStorage.removeItem(getUserCacheKey('scoping_submitted'))
-        // Auth clear karo taaki admin re-login kare
-        // SignInView ka checkAndRedirect() proper routing handle karega
         localStorage.removeItem('authorization')
         localStorage.removeItem('refreshToken')
         localStorage.removeItem('user')
@@ -639,10 +673,18 @@ function startPolling() {
         router.push('/signin')
       } else if (res.cards_generating === true) {
         cardsGenerating.value = true
-        // agents generate ho rahe hain — polling jari rakho
+        // Update polling data for UI
+        pollingData.value = {
+          elapsed_time_text: res.elapsed_time_text || '',
+          remaining_time_text: res.remaining_time_text || '',
+          estimated_total_text: res.estimated_total_text || '',
+          cards_total: res.cards_total || 0,
+          cards_generated: res.cards_generated || 0,
+          reports_total: res.reports_total || 0,
+          reports_ready: res.reports_ready || 0,
+        }
       } else {
         cardsGenerating.value = false
-        // abhi upload nahi hui — polling jari rakho
       }
     } catch {
       // Network error → silently retry, polling band mat karo
@@ -1136,6 +1178,18 @@ onMounted(async () => {
   font-size: 13px; font-weight: 500;
 }
 .redirect-note { font-size: 13px; color: rgba(0,0,0,0.4); }
+
+/* Polling Progress */
+.polling-progress { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px 24px; }
+.polling-title { font-size: 14px; font-weight: 600; color: #1e293b; }
+.polling-stats { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; margin-top: 4px; }
+.polling-stat { display: flex; align-items: center; gap: 4px; font-size: 13px; color: #475569; }
+.polling-label { font-weight: 600; }
+.polling-val { color: #0f696e; font-weight: 700; }
+.polling-bar-wrap { display: flex; align-items: center; gap: 10px; }
+.polling-bar { flex: 1; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+.polling-bar-fill { height: 100%; background: linear-gradient(90deg, #0f696e, #10b981); border-radius: 4px; transition: width 0.5s ease; }
+.polling-pct { font-size: 12px; font-weight: 700; color: #0f696e; min-width: 36px; text-align: right; }
 
 /* ═══════════════════════════════════════
    WRAPPER
