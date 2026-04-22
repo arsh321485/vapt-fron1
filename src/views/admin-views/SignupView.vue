@@ -79,8 +79,6 @@
               v-model="form.password"
               placeholder="Create a password"
               autocomplete="new-password"
-              readonly
-              @focus="$event.target.removeAttribute('readonly')"
               required
             />
             <i
@@ -88,6 +86,29 @@
               :class="showPwd ? 'bi-eye-slash' : 'bi-eye'"
               @click="showPwd = !showPwd"
             ></i>
+            <!-- Password Rules -->
+            <div v-if="form.password && form.password.length > 0" class="pwd-rules mt-2">
+              <div class="pwd-rule" :class="pwdRules.minLength ? 'pwd-rule-pass' : 'pwd-rule-fail'">
+                <i class="bi" :class="pwdRules.minLength ? 'bi-check-circle-fill' : 'bi-x-circle-fill'"></i>
+                At least 8 characters
+              </div>
+              <div class="pwd-rule" :class="pwdRules.uppercase ? 'pwd-rule-pass' : 'pwd-rule-fail'">
+                <i class="bi" :class="pwdRules.uppercase ? 'bi-check-circle-fill' : 'bi-x-circle-fill'"></i>
+                At least one uppercase letter (A-Z)
+              </div>
+              <div class="pwd-rule" :class="pwdRules.lowercase ? 'pwd-rule-pass' : 'pwd-rule-fail'">
+                <i class="bi" :class="pwdRules.lowercase ? 'bi-check-circle-fill' : 'bi-x-circle-fill'"></i>
+                At least one lowercase letter (a-z)
+              </div>
+              <div class="pwd-rule" :class="pwdRules.number ? 'pwd-rule-pass' : 'pwd-rule-fail'">
+                <i class="bi" :class="pwdRules.number ? 'bi-check-circle-fill' : 'bi-x-circle-fill'"></i>
+                At least one number (0-9)
+              </div>
+              <div class="pwd-rule" :class="pwdRules.special ? 'pwd-rule-pass' : 'pwd-rule-fail'">
+                <i class="bi" :class="pwdRules.special ? 'bi-check-circle-fill' : 'bi-x-circle-fill'"></i>
+                At least one special character (!@#$%^&*)
+              </div>
+            </div>
           </div>
 
           <!-- Confirm Password -->
@@ -116,7 +137,7 @@
           <button
             type="submit"
             class="btn signup-btn w-100"
-            :disabled="loading || !recaptchaToken"
+            :disabled="loading || !recaptchaToken || !allPwdRulesPass"
           >
             <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
             Send OTP
@@ -158,12 +179,29 @@ export default {
     }
   },
   computed: {
+    pwdRules() {
+      const pwd = this.form.password || '';
+      return {
+        minLength: pwd.length >= 8,
+        uppercase: /[A-Z]/.test(pwd),
+        lowercase: /[a-z]/.test(pwd),
+        number:    /[0-9]/.test(pwd),
+        special:   /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pwd),
+      };
+    },
+    allPwdRulesPass() {
+      return Object.values(this.pwdRules).every(Boolean);
+    },
     otp() {
       return this.otpDigits.join('')
     }
   },
   methods: {
     async handleSignup() {
+      if (!this.allPwdRulesPass) {
+        Swal.fire('Error', 'Password does not meet all requirements', 'warning')
+        return
+      }
       if (this.form.password !== this.form.confirm_password) {
         Swal.fire('Error', 'Passwords do not match', 'error')
         return
@@ -414,6 +452,22 @@ export default {
   opacity: 0.55;
   cursor: not-allowed;
 }
+
+/* Password Rules */
+.pwd-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: #f8f9fc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+.pwd-rule { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 500; }
+.pwd-rule-pass { color: #16a34a; }
+.pwd-rule-fail { color: #dc2626; }
+.pwd-rule .bi { font-size: 13px; flex-shrink: 0; }
 
 .signin-link {
   color: #4f46e5;

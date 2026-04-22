@@ -94,8 +94,8 @@
                       <td class="exc-date">{{ req.requested_at ? new Date(req.requested_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-' }}</td>
                       <td class="exc-ticket">SR-{{ String(index + 90000).padStart(5,'0') }}</td>
                       <td>
-                        <span class="exc-status exc-status-open">
-                          <span class="exc-status-dot"></span> Open
+                        <span class="exc-status" :class="(req.status || '').toLowerCase() === 'closed' ? 'exc-status-closed' : 'exc-status-open'">
+                          <span class="exc-status-dot"></span> {{ req.status ? req.status.charAt(0).toUpperCase() + req.status.slice(1) : 'Open' }}
                         </span>
                       </td>
                       <td>
@@ -576,6 +576,7 @@ export default {
 .exc-status { display: inline-flex; align-items: center; gap: 5px; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; }
 .exc-status-dot { width: 6px; height: 6px; border-radius: 50%; }
 .exc-status-open { color: #ba1a1a; } .exc-status-open .exc-status-dot { background: #ba1a1a; }
+.exc-status-closed { color: #16a34a; } .exc-status-closed .exc-status-dot { background: #16a34a; }
 .exc-status-progress { color: #f2994a; } .exc-status-progress .exc-status-dot { background: #f2994a; }
 .exc-status-resolved { color: #0f696e; } .exc-status-resolved .exc-status-dot { background: #0f696e; }
 .exc-row-view-btn {

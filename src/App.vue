@@ -1,5 +1,9 @@
 <template>
-  <RouterView />
+  <RouterView v-slot="{ Component }">
+    <keep-alive :include="['AdminDashboardOnboardingView', 'UserDashboard1View']">
+      <component :is="Component" />
+    </keep-alive>
+  </RouterView>
 </template>
 
 <script lang="ts">

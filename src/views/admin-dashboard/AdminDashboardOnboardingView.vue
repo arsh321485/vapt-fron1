@@ -1264,21 +1264,10 @@ export default {
       mteOpenSection: "critical",
       mteSelectedTeam: "All",
       mteStaticData: {
-        critical: [
-          { ip: "192.168.1.104", vulName: "MS17-010 EternalBlue",       status: "Review",   by: "Admin",    date: "2026-03-20", ext: "15 Days", reason: "Patch window approval pending from infra team",    team: "Patch Management" },
-          { ip: "10.0.4.52",     vulName: "CVE-2021-44228 Log4Shell",   status: "Approved", by: "S. Miller",date: "2026-03-21", ext: "7 Days",  reason: "Emergency freeze due to release cutover",          team: "Configuration Management" },
-          { ip: "172.16.0.12",   vulName: "CVE-2023-23397 Outlook RCE", status: "Rejected", by: "Admin",    date: "2026-03-18", ext: "30 Days", reason: "Change advisory board approval not completed",      team: "Network Security" },
-        ],
-        high: [
-          { ip: "10.10.2.11",    vulName: "CVE-2022-30190 Follina",     status: "Review",   by: "N. Joshi", date: "2026-03-23", ext: "10 Days", reason: "Vendor patch waiting for validation in staging",    team: "Patch Management" },
-          { ip: "10.10.2.14",    vulName: "CVE-2021-34527 PrintNightmare",status:"Approved", by: "A. Shah",  date: "2026-03-24", ext: "5 Days",  reason: "Dependency conflict with auth service update",      team: "Architectural Flaws" },
-        ],
-        medium: [
-          { ip: "192.168.20.44", vulName: "CVE-2020-1472 Zerologon",    status: "Review",   by: "R. Kale",  date: "2026-03-22", ext: "14 Days", reason: "Maintenance window moved to next sprint cycle",     team: "Configuration Management" },
-        ],
-        low: [
-          { ip: "172.31.11.09",  vulName: "CVE-2019-0708 BlueKeep",     status: "Rejected", by: "Ops Team", date: "2026-03-25", ext: "6 Days",  reason: "Low-priority fix batched with monthly cycle",       team: "Network Security" },
-        ],
+        critical: [],
+        high: [],
+        medium: [],
+        low: [],
       },
 
       adminMteTeams: [],
@@ -1901,7 +1890,7 @@ export default {
       return { compliancePct: Math.min(Math.max((remaining / allowed) * 100, 0), 100) };
     },
     async loadAllAssets() {
-      const result = await this.authStore.fetchAssets();
+      const result = await this.authStore.fetchAssets(false);
       if (result.status) {
         this.allAssets = this.authStore.assetRows || [];
       }
@@ -1955,7 +1944,7 @@ export default {
     },
     async loadMitigationByTeam() {
       this.mitigationLoading = true;
-      const result = await this.authStore.fetchMitigationByTeam();
+      const result = await this.authStore.fetchMitigationByTeam(false);
       if (result.status) {
         this.mitigationByTeamData = result.data;
       }
@@ -2548,9 +2537,15 @@ mounted() {
     console.log("=== ACTIVATED hook called ===");
     this.initTestingOverlay();
     this.initReportStatusCheck();
-    this.loadDashboardData();
-    this.refreshVulnerabilitiesFixed();
-    this.refreshInProcessCount();
+    // Only reload if more than 5 minutes have passed since last load
+    const now = Date.now();
+    const lastLoad = this._lastDashboardLoad || 0;
+    if (now - lastLoad > 5 * 60 * 1000) {
+      this.loadDashboardData();
+      this.refreshVulnerabilitiesFixed();
+      this.refreshInProcessCount();
+      this._lastDashboardLoad = now;
+    }
   },
 };
 </script>
@@ -2951,24 +2946,6 @@ mounted() {
   color: #475569;
   font-weight: 600;
   position: relative;
-}
-.mte-reason:hover::after {
-  content: attr(title);
-  position: fixed;
-  background: #1e293b;
-  color: #fff;
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  white-space: normal;
-  max-width: 280px;
-  word-break: break-word;
-  line-height: 1.5;
-  z-index: 99999;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-  pointer-events: none;
-  transform: translateY(-110%);
 }
 .mte-high-icon { color: #f59e0b; }
 .mte-medium-icon { color: #fbbf24; }

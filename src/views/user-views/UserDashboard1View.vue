@@ -1055,21 +1055,10 @@ export default {
       mteReportData: { critical: [], high: [], medium: [], low: [] },
       mteReportLoading: false,
       mteStaticData: {
-        critical: [
-          { ip: "192.168.1.104", vulName: "MS17-010 EternalBlue",       status: "Review",   by: "dev-team", date: "2026-03-20", ext: "15 Days", reason: "Patch window approval pending from infra team",    team: "Patch Management" },
-          { ip: "10.0.4.52",     vulName: "CVE-2021-44228 Log4Shell",   status: "Approved", by: "S. Miller",date: "2026-03-21", ext: "7 Days",  reason: "Emergency freeze due to release cutover",          team: "Configuration Management" },
-          { ip: "172.16.0.12",   vulName: "CVE-2023-23397 Outlook RCE", status: "Rejected", by: "dev-team", date: "2026-03-18", ext: "30 Days", reason: "Change advisory board approval not completed",      team: "Network Security" },
-        ],
-        high: [
-          { ip: "10.10.2.11",    vulName: "CVE-2022-30190 Follina",       status: "Review",   by: "N. Joshi", date: "2026-03-23", ext: "10 Days", reason: "Vendor patch waiting for validation in staging",    team: "Patch Management" },
-          { ip: "10.10.2.14",    vulName: "CVE-2021-34527 PrintNightmare", status: "Approved", by: "A. Shah",  date: "2026-03-24", ext: "5 Days",  reason: "Dependency conflict with auth service update",      team: "Architectural Flaws" },
-        ],
-        medium: [
-          { ip: "192.168.20.44", vulName: "CVE-2020-1472 Zerologon",    status: "Review",   by: "R. Kale",  date: "2026-03-22", ext: "14 Days", reason: "Maintenance window moved to next sprint cycle",     team: "Configuration Management" },
-        ],
-        low: [
-          { ip: "172.31.11.09",  vulName: "CVE-2019-0708 BlueKeep",     status: "Rejected", by: "Ops Team", date: "2026-03-25", ext: "6 Days",  reason: "Low-priority fix batched with monthly cycle",       team: "Network Security" },
-        ],
+        critical: [],
+        high: [],
+        medium: [],
+        low: [],
       },
 
       showExtPopup: false,
@@ -1468,7 +1457,7 @@ export default {
     },
     async fetchVulnsFixed(team) {
       const store = useAuthStore();
-      const result = await store.fetchUserVulnerabilitiesFixed(team, true);
+      const result = await store.fetchUserVulnerabilitiesFixed(team, false);
       if (result.status) {
         this.vulnsFixed = {
           total: result.data.total_fixed ?? null,
@@ -1840,9 +1829,9 @@ export default {
     toggleMteSection(sec) { this.mteOpenSection = this.mteOpenSection === sec ? null : sec; },
     async openMsuModal() {
       this.showMsuModal = true;
-      // Fetch user vuln register to get closed status
-      await this.authStore.fetchUserVulnerabilityRegister(true);
-      await this.authStore.fetchUserClosedVulns(true);
+      // Fetch user vuln register to get closed status (use cache)
+      await this.authStore.fetchUserVulnerabilityRegister(false);
+      await this.authStore.fetchUserClosedVulns(false);
     },
     closeMsuModal() { this.showMsuModal = false; },
   },
@@ -1855,14 +1844,14 @@ export default {
       this.userTeams = [];
     }
 
-    // Default to first team on load
-    this.selectedTeam = this.userTeams[0] || '';
+    // Default to All Teams on load
+    this.selectedTeam = 'both';
     await Promise.all([
       this.fetchAssets(this.selectedTeam),
-      this.fetchVulns(this.selectedTeam || undefined),
-      this.fetchVulnsFixed(this.selectedTeam || undefined),
-      this.fetchSupportReqs(this.selectedTeam || undefined),
-      this.fetchMitigation(this.selectedTeam || undefined),
+      this.fetchVulns(undefined),
+      this.fetchVulnsFixed(undefined),
+      this.fetchSupportReqs(undefined),
+      this.fetchMitigation(undefined),
       this.fetchMeanTimeRemediate(undefined),
       this.fetchMitigationByTeam(),
       this.fetchVulnAssetCount(),
@@ -2807,24 +2796,6 @@ export default {
   max-width: 170px; white-space: nowrap; overflow: hidden;
   text-overflow: ellipsis; cursor: pointer; color: #475569;
   font-weight: 600; position: relative;
-}
-.mte-reason:hover::after {
-  content: attr(title);
-  position: fixed;
-  background: #1e293b;
-  color: #fff;
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  white-space: normal;
-  max-width: 280px;
-  word-break: break-word;
-  line-height: 1.5;
-  z-index: 99999;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-  pointer-events: none;
-  transform: translateY(-110%);
 }
 .mte-modal-footer {
   display: flex;

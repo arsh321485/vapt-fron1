@@ -266,7 +266,10 @@
                             <i class="bi bi-check-circle-fill fixed-check-icon"></i>
                             <div>
                               <p class="fixed-vuln-name">{{ item.vulnerability_name }}</p>
-                              <p class="fixed-vuln-date">Status: {{ item.status }}</p>
+                              <span style="display:inline-flex;align-items:center;gap:4px;background:#dcfce7;color:#16a34a;font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;text-transform:capitalize;">
+                                <span style="width:6px;height:6px;border-radius:50%;background:#16a34a;display:inline-block;"></span>
+                                {{ item.status }}
+                              </span>
                             </div>
                           </div>
                           <button class="btn-view-detail" @click="viewFixDetail(item)">View detail</button>

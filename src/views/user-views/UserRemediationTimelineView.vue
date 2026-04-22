@@ -39,11 +39,13 @@
                         <span
                           class="vc-step-pill"
                           :class="[
-                            selectedSteps.includes(n) ? 'vc-step-pill-active' : '',
-                            raisedSupportSteps.includes(n) ? 'vc-step-pill-raised' : ''
+                            completedSteps.includes(n) ? 'vc-step-pill-disabled' : '',
+                            raisedSupportSteps.includes(n) && !completedSteps.includes(n) ? 'vc-step-pill-raised' : '',
+                            selectedSteps.includes(n) && !completedSteps.includes(n) && !raisedSupportSteps.includes(n) ? 'vc-step-pill-active' : ''
                           ]"
-                          style="cursor:pointer;"
-                          @click="toggleStep(n)"
+                          :style="(completedSteps.includes(n) || raisedSupportSteps.includes(n)) ? 'cursor:not-allowed;opacity:0.5;' : 'cursor:pointer;'"
+                          :title="completedSteps.includes(n) ? 'Step already completed' : raisedSupportSteps.includes(n) ? 'Support already raised for this step' : ''"
+                          @click="(!completedSteps.includes(n) && !raisedSupportSteps.includes(n)) && toggleStep(n)"
                         >Step {{ n }}</span>
                       </div>
                     </div>
@@ -1021,6 +1023,7 @@ export default {
 }
 .vc-step-pill-active { background: #e0f2f1; color: #0f696e; border-color: #0f696e; }
 .vc-step-pill-raised { background: #fff7ed; color: #c2410c; border-color: #fdba74; }
+.vc-step-pill-disabled { background: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; }
 .vc-textarea {
   width: 100%; border: 1px solid #e2e8f0; border-radius: 10px;
   padding: 10px 14px; font-size: 0.875rem; color: #1e293b;
