@@ -1,6 +1,6 @@
 <template>
   <div class="signup-page">
-    <div class="signup-card">
+    <div class="signup-card" :class="{ 'signup-card-otp': otpSent }">
 
       <!-- Logo -->
       <div class="text-center mb-4">
@@ -8,43 +8,63 @@
       </div>
 
       <!-- OTP Step -->
-      <div v-if="otpSent">
-        <h2 class="signup-title">Verify your email</h2>
-        <p class="signup-sub mb-4">
-          We sent a 6-digit code to <strong>{{ form.email }}</strong>
-        </p>
+      <div v-if="otpSent" class="otp-verify-wrap">
+        <header class="otp-verify-header">
+          <div class="otp-brand">
+            <img src="@/assets/images/logo-capital.png" alt="VaptFix" class="otp-brand-logo" />
+            <span class="otp-brand-text">VaptFix Pro</span>
+          </div>
+        </header>
 
-        <div class="otp-inputs d-flex justify-content-between gap-2 mb-4">
-          <input
-            v-for="(digit, index) in 6"
-            :key="index"
-            type="text"
-            inputmode="numeric"
-            class="form-control otp-box text-center"
-            maxlength="1"
-            :value="otpDigits[index]"
-            @input="handleOtpInput($event, index)"
-            @keydown="handleOtpKeydown($event, index)"
-            @paste="handleOtpPaste($event, index)"
-            :ref="el => otpRefs[index] = el"
-            autocomplete="one-time-code"
-          />
+        <div class="otp-verify-content">
+          <h2 class="otp-verify-title">Admin Signup - OTP Verification</h2>
+          <p class="otp-verify-sub">
+            Your One-Time Password (OTP) for VAPTFIX Admin Signup is:
+          </p>
+
+          <div class="otp-inputs d-flex justify-content-center gap-2 mb-4">
+            <input
+              v-for="(digit, index) in 6"
+              :key="index"
+              type="text"
+              inputmode="numeric"
+              class="form-control otp-box otp-box-modern text-center"
+              maxlength="1"
+              :value="otpDigits[index]"
+              @input="handleOtpInput($event, index)"
+              @keydown="handleOtpKeydown($event, index)"
+              @paste="handleOtpPaste($event, index)"
+              :ref="el => otpRefs[index] = el"
+              autocomplete="one-time-code"
+            />
+          </div>
+
+          <div class="otp-note mb-4">
+            <i class="bi bi-info-circle-fill otp-note-icon"></i>
+            <p class="otp-note-text">
+              This OTP is valid for <strong>5 minutes</strong>. Please do not share this OTP with anyone for security reasons.
+            </p>
+          </div>
+
+          <button
+            class="btn signup-btn otp-verify-btn w-100 mb-3"
+            @click="handleVerifyOtp"
+            :disabled="loading || otp.length < 6"
+          >
+            <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+            Verify & Continue
+          </button>
+
+          <p class="text-center small mt-2">
+            <a href="#" class="back-link otp-back-link" @click.prevent="otpSent = false">
+              <i class="bi bi-arrow-left me-1"></i>Back
+            </a>
+          </p>
+
+          <footer class="otp-verify-footer">
+            <p>© 2026 VAPTFIX. All rights reserved.</p>
+          </footer>
         </div>
-
-        <button
-          class="btn signup-btn w-100 mb-3"
-          @click="handleVerifyOtp"
-          :disabled="loading || otp.length < 6"
-        >
-          <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
-          Verify & Continue
-        </button>
-
-        <p class="text-center small mt-2">
-          <a href="#" class="back-link" @click.prevent="otpSent = false">
-            <i class="bi bi-arrow-left me-1"></i>Back
-          </a>
-        </p>
       </div>
 
       <!-- Signup Step -->
@@ -382,6 +402,12 @@ export default {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 
+.signup-card-otp {
+  max-width: 560px;
+  padding: 0;
+  overflow: hidden;
+}
+
 .signup-logo {
   height: 36px;
 }
@@ -482,6 +508,113 @@ export default {
 .back-link {
   color: #4f46e5;
   text-decoration: none;
+}
+
+.otp-verify-header {
+  background: #241447;
+  padding: 24px 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.otp-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.otp-brand-logo {
+  height: 26px;
+  filter: brightness(0) invert(1);
+}
+
+.otp-brand-text {
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+.otp-verify-content {
+  padding: 36px 40px 30px;
+  text-align: center;
+}
+
+.otp-verify-title {
+  font-size: 32px;
+  line-height: 1.2;
+  font-weight: 800;
+  color: #241447;
+  margin-bottom: 14px;
+}
+
+.otp-verify-sub {
+  color: #49454f;
+  font-size: 14px;
+  margin-bottom: 28px;
+}
+
+.otp-box-modern {
+  width: 54px !important;
+  height: 58px;
+  border-color: #cbc4d0;
+  border-radius: 10px;
+}
+
+.otp-note {
+  max-width: 420px;
+  margin: 0 auto;
+  background: rgba(161, 236, 242, 0.26);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  text-align: left;
+}
+
+.otp-note-icon {
+  color: #0f696e;
+  font-size: 18px;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+.otp-note-text {
+  margin: 0;
+  font-size: 13px;
+  color: #49454f;
+  line-height: 1.45;
+}
+
+.otp-verify-btn {
+  border-radius: 10px;
+  background: #a592ce;
+}
+
+.otp-verify-btn:hover:not(:disabled) {
+  opacity: 0.95;
+}
+
+.otp-back-link {
+  color: #66558c;
+  font-weight: 500;
+}
+
+.otp-verify-footer {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(122, 117, 128, 0.2);
+}
+
+.otp-verify-footer p {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #7a7580;
+  font-weight: 600;
 }
 
 /* OTP boxes */

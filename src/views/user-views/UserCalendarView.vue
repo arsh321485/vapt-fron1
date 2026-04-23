@@ -15,10 +15,6 @@
             <!-- Top Bar -->
             <div class="cal-topbar">
               <div class="d-flex align-items-center gap-3 flex-wrap">
-                <div class="position-relative cal-search-wrap">
-                  <i class="bi bi-search cal-search-icon"></i>
-                  <input v-model="searchQuery" type="text" class="cal-search" placeholder="Search events..." />
-                </div>
                 <div class="cal-filter-select-wrap">
                   <select v-model="criticalityFilter" class="cal-filter-select">
                     <option value="All Types">All Types</option>

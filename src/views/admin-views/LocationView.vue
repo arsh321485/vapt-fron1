@@ -177,9 +177,7 @@
                 <!-- Email row -->
                 <div class="loc-email-row">
                   <input class="loc-input loc-email-input" placeholder="email@company.com" type="email" v-model="form.email" />
-                  <button class="loc-add-user-btn" @click="addUser">
-                    <i class="bi bi-plus-circle me-1"></i> Add Another User
-                  </button>
+                  <button class="loc-btn-draft" @click="addUser">Save User</button>
                 </div>
           </div>
 
@@ -189,7 +187,6 @@
               <i class="bi bi-arrow-left me-1"></i> Back to Selection
             </button>
             <div class="d-flex gap-3">
-              <button class="loc-btn-draft" @click="addUser">Save User</button>
               <button class="loc-btn-continue" @click="handleContinue">
                 {{ returnTo ? 'Back to Previous Page' : 'Continue to Risk Criteria' }}
                 <i class="bi bi-arrow-right ms-1"></i>
@@ -222,7 +219,6 @@
                 <span class="loc-help-text"> Automatically assign security findings to the correct Slack channel or Jira project.</span>
               </div>
             </div>
-            <a href="#" class="loc-help-link">READ SETUP GUIDE <i class="bi bi-box-arrow-up-right ms-1"></i></a>
           </div>
 
           <div class="loc-users-added-card">
@@ -648,10 +644,22 @@ export default {
         resyncing: false,
       };
     },
+    getAddedUserKey(user) {
+      if (!user) return "";
+      return String(user.detail_id || user._id || user.id || user.email || "").toLowerCase();
+    },
     async loadAddedUsers() {
       const res = await this.authStore.fetchUsersByAdmin();
       if (res?.status && Array.isArray(res.data)) {
-        this.addedUsers = res.data.map(this.normalizeAddedUser);
+        const fetchedUsers = res.data.map(this.normalizeAddedUser);
+        const fetchedKeys = new Set(fetchedUsers.map(this.getAddedUserKey).filter(Boolean));
+        const optimisticUsers = (this.addedUsers || [])
+          .map(this.normalizeAddedUser)
+          .filter((user) => {
+            const key = this.getAddedUserKey(user);
+            return key && !fetchedKeys.has(key);
+          });
+        this.addedUsers = [...optimisticUsers, ...fetchedUsers];
       }
     },
     async resyncSlack(user) {

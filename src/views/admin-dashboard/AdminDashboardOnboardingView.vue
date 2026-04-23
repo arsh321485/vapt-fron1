@@ -135,7 +135,7 @@
                         <div class="dash-icon-wrap" style="width:34px;height:34px;">
                           <i class="bi bi-hourglass-split dash-icon-teal" style="font-size:16px;"></i>
                         </div>
-                        <span class="dash-card-label" style="font-size:11px;">MTTR</span>
+                        <span class="dash-card-label" style="font-size:11px;">Mean time to remediate</span>
                         <span class="info-tooltip" data-tooltip="Average remediation time based on risk criteria."><i class="bi bi-info-circle dash-info-icon"></i></span>
                       </div>
 
