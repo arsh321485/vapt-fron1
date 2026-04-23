@@ -279,8 +279,7 @@ import asanaIcon from "@/assets/images/asana.png";
 export default {
   name: "LocationView",
   components: {
-    DashboardHeader
-  },
+    DashboardHeader  },
   data() {
     return {
       authStore: useAuthStore(),
