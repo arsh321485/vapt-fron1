@@ -15,8 +15,54 @@
             <!-- Page Header -->
             <div class="ud-page-header">
               <div>
-                <h2 class="ud-title">
+                <h2 class="ud-title" data-walkthrough-target="header">
                   Vulnerability Management Program
+                  <button
+                    type="button"
+                    class="dashboard-walkthrough-trigger"
+                    ref="walkthroughTrigger"
+                    @click="startDashboardWalkthrough"
+                    aria-label="Start dashboard walkthrough"
+                  >
+                    <i class="bi bi-info-circle"></i>
+                  </button>
+                  <div
+                    v-if="walkthroughActive"
+                    class="dashboard-walkthrough-popup"
+                    :class="{ 'dashboard-walkthrough-popup-bottom': walkthroughPopupPlacement === 'bottom' }"
+                    :style="walkthroughPopupStyle"
+                  >
+                    <div class="dashboard-walkthrough-step">STEP {{ walkthroughStepIndex + 1 }} OF {{ walkthroughSteps.length }}</div>
+                    <h3 class="dashboard-walkthrough-title">{{ currentWalkthroughStep?.title }}</h3>
+                    <p class="dashboard-walkthrough-text">{{ walkthroughDescriptionText }}</p>
+                    <button
+                      v-if="isWalkthroughDescriptionLong"
+                      type="button"
+                      class="dashboard-walkthrough-readmore"
+                      @click="toggleWalkthroughDescription"
+                    >
+                      {{ walkthroughDescriptionExpanded ? 'Read less' : 'Read more' }}
+                    </button>
+                    <div class="dashboard-walkthrough-actions">
+                      <button
+                        type="button"
+                        class="dashboard-walkthrough-primary dashboard-walkthrough-prev"
+                        :disabled="walkthroughStepIndex === 0"
+                        @click="prevWalkthroughStep"
+                      >
+                        <i class="bi bi-arrow-left"></i>
+                        Previous
+                      </button>
+                      <button
+                        type="button"
+                        class="dashboard-walkthrough-primary"
+                        @click="nextWalkthroughStep"
+                      >
+                        {{ walkthroughStepIndex === walkthroughSteps.length - 1 ? 'Finish' : 'Next' }}
+                        <i class="bi bi-arrow-right"></i>
+                      </button>
+                    </div>
+                  </div>
                   <span class="ud-cal-wrap">
 
                     <!-- Outside-click backdrop -->
@@ -120,7 +166,12 @@
                   <!-- Total Assets mini card -->
                   <div class="col-5 d-flex flex-column">
                     <router-link to="/userassets" class="text-decoration-none d-flex flex-column h-100">
-                      <div class="dash-card row1-equal-card h-100 d-flex flex-column" style="padding:12px 10px; background:linear-gradient(145deg,#ffffff 60%,#f0fdf4 100%);">
+                      <div
+                        class="dash-card row1-equal-card h-100 d-flex flex-column walkthrough-target"
+                        :class="{ 'walkthrough-target-active': walkthroughActive && activeWalkthroughTarget === 'assets' }"
+                        data-walkthrough-target="assets"
+                        style="padding:12px 10px; background:linear-gradient(145deg,#ffffff 60%,#f0fdf4 100%);"
+                      >
                         <div class="d-flex align-items-center gap-1 mb-2">
                           <div class="dash-icon-wrap" style="width:28px;height:28px;">
                             <i class="bi bi-laptop dash-icon-teal" style="font-size:13px;"></i>
@@ -136,7 +187,12 @@
 
                   <!-- MTTR mini card -->
                   <div class="col-7 d-flex flex-column">
-                    <div class="dash-card dash-card-tight row1-equal-card h-100 d-flex flex-column" style="padding:12px 10px;">
+                    <div
+                      class="dash-card dash-card-tight row1-equal-card h-100 d-flex flex-column walkthrough-target"
+                      :class="{ 'walkthrough-target-active': walkthroughActive && activeWalkthroughTarget === 'mttr' }"
+                      data-walkthrough-target="mttr"
+                      style="padding:12px 10px;"
+                    >
                       <div class="d-flex align-items-center gap-1 mb-2">
                         <div class="dash-icon-wrap" style="width:34px;height:34px;">
                           <i class="bi bi-hourglass-split dash-icon-teal" style="font-size:16px;"></i>
@@ -170,7 +226,7 @@
                           </svg>
                           <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;white-space:nowrap;">
                             <div style="font-size:13px;font-weight:900;color:#1f2937;line-height:1.1;">{{ meanRemediateHuman }}</div>
-                            <div style="font-size:9px;color:#94a3b8;font-weight:700;letter-spacing:0.04em;margin-top:2px;">MTTR</div>
+                            <div style="font-size:8px;color:#94a3b8;font-weight:700;letter-spacing:0.04em;margin-top:2px;">Mean Time to Remediate</div>
                           </div>
                         </div>
                       </div>
@@ -219,7 +275,11 @@
 
               <!-- Card 2: Vulnerabilities Bar Chart -->
               <div class="col-4">
-                <div class="dash-card dash-card-tight dash-card-analytics row1-equal-card h-100">
+                <div
+                  class="dash-card dash-card-tight dash-card-analytics row1-equal-card h-100 walkthrough-target"
+                  :class="{ 'walkthrough-target-active': walkthroughActive && activeWalkthroughTarget === 'vulnerabilities' }"
+                  data-walkthrough-target="vulnerabilities"
+                >
                   <div class="d-flex align-items-center gap-2 mb-2">
                     <div class="dash-icon-wrap">
                       <i class="bi bi-shield-fill-exclamation dash-icon-teal" style="font-size: 14px;"></i>
@@ -263,7 +323,11 @@
 
               <!-- Card 3: Mitigation Criteria Timeline -->
               <div class="col-4">
-                <div class="dash-card dash-card-tight dash-card-analytics row1-equal-card h-100">
+                <div
+                  class="dash-card dash-card-tight dash-card-analytics row1-equal-card h-100 walkthrough-target"
+                  :class="{ 'walkthrough-target-active': walkthroughActive && activeWalkthroughTarget === 'mitigationCriteria' }"
+                  data-walkthrough-target="mitigationCriteria"
+                >
                   <div class="d-flex align-items-center gap-2 mb-2">
                     <div class="dash-icon-wrap">
                       <i class="bi bi-clock-history dash-icon-teal" style="font-size:14px;"></i>
@@ -359,7 +423,12 @@
 
               <!-- Support Requests -->
               <div class="col-4">
-                <div class="dash-card dash-card-compact dash-card-tight h-100 d-flex flex-column" style="min-height:142px;">
+                <div
+                  class="dash-card dash-card-compact dash-card-tight h-100 d-flex flex-column walkthrough-target"
+                  :class="{ 'walkthrough-target-active': walkthroughActive && activeWalkthroughTarget === 'supportRequests' }"
+                  data-walkthrough-target="supportRequests"
+                  style="min-height:142px;"
+                >
                   <div class="d-flex align-items-center gap-2 mb-3">
                     <div class="dash-icon-wrap">
                       <i class="bi bi-headset dash-icon-teal" style="font-size:14px;"></i>
@@ -423,7 +492,11 @@
 
               <!-- Total Vulnerabilities Fixed -->
               <div class="col-4">
-                <div class="dash-card dash-card-tight h-100">
+                <div
+                  class="dash-card dash-card-tight h-100 walkthrough-target"
+                  :class="{ 'walkthrough-target-active': walkthroughActive && activeWalkthroughTarget === 'vulnerabilitiesFixed' }"
+                  data-walkthrough-target="vulnerabilitiesFixed"
+                >
                   <div class="d-flex align-items-center gap-2 mb-2">
                     <div class="dash-icon-wrap">
                       <i class="bi bi-patch-check-fill dash-icon-teal" style="font-size:14px;"></i>
@@ -469,7 +542,11 @@
 
               <!-- Mitigation Timeline Extension -->
               <div class="col-4">
-                <div class="dash-card dash-card-tight h-100">
+                <div
+                  class="dash-card dash-card-tight h-100 walkthrough-target"
+                  :class="{ 'walkthrough-target-active': walkthroughActive && activeWalkthroughTarget === 'mitigationExtension' }"
+                  data-walkthrough-target="mitigationExtension"
+                >
                   <div class="d-flex justify-content-between align-items-start mb-3">
                     <div>
                       <div class="dash-card-label" style="font-size:13px; font-weight:700; color:#1e293b; letter-spacing:0.02em;">Mitigation Timeline Extension</div>
@@ -514,7 +591,42 @@
             <div class="mb-4">
               <!-- Section Header -->
               <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="cv-section-title">Common Vulnerabilities</h5>
+                <div class="d-flex align-items-center gap-2 position-relative">
+                  <h5 class="cv-section-title">Common Vulnerabilities</h5>
+                  <button
+                    type="button"
+                    class="common-walkthrough-trigger"
+                    ref="commonWalkthroughTrigger"
+                    @click="startCommonWalkthrough"
+                    aria-label="Start common vulnerabilities walkthrough"
+                  >
+                    <i class="bi bi-info-circle"></i>
+                  </button>
+                  <div v-if="commonWalkthroughActive" class="common-walkthrough-popup">
+                    <div class="dashboard-walkthrough-step">STEP {{ commonWalkthroughStepIndex + 1 }} OF {{ commonWalkthroughSteps.length }}</div>
+                    <h3 class="dashboard-walkthrough-title">{{ currentCommonWalkthroughStep?.title }}</h3>
+                    <p class="dashboard-walkthrough-text">{{ currentCommonWalkthroughStep?.description }}</p>
+                    <div class="dashboard-walkthrough-actions">
+                      <button
+                        type="button"
+                        class="dashboard-walkthrough-primary dashboard-walkthrough-prev"
+                        :disabled="commonWalkthroughStepIndex === 0"
+                        @click="prevCommonWalkthroughStep"
+                      >
+                        <i class="bi bi-arrow-left"></i>
+                        Previous
+                      </button>
+                      <button
+                        type="button"
+                        class="dashboard-walkthrough-primary"
+                        @click="nextCommonWalkthroughStep"
+                      >
+                        {{ commonWalkthroughStepIndex === commonWalkthroughSteps.length - 1 ? 'Finish' : 'Next' }}
+                        <i class="bi bi-arrow-right"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <!-- Team Cards -->
@@ -1077,6 +1189,31 @@ export default {
       inProcessCount: 0,
       inProcessItems: [],
       inProcessReportId: null,
+      walkthroughActive: false,
+      walkthroughStepIndex: 0,
+      activeWalkthroughTarget: "assets",
+      walkthroughPopupPlacement: "top",
+      walkthroughPopupStyle: {},
+      walkthroughDescriptionExpanded: false,
+      walkthroughSteps: [
+        { target: "assets", title: "Total Assets", description: "Displays the total number of assets currently onboarded and actively monitored within the system." },
+        { target: "mttr", title: "MTTR", description: "Represents the average time taken to resolve vulnerabilities from identification to closure." },
+        { target: "vulnerabilities", title: "Total Vulnerabilities", description: "Shows the total number of vulnerabilities identified across all assets in the system." },
+        { target: "mitigationCriteria", title: "Mitigation Criteria", description: "Defines the risk criteria used to prioritize and guide vulnerability remediation." },
+        { target: "supportRequests", title: "Support Requests", description: "Displays the total number of pending and closed support requests raised during the remediation process." },
+        { target: "vulnerabilitiesFixed", title: "Vulnerabilities Fixed", description: "Indicates the number of vulnerabilities successfully remediated by the teams." },
+        { target: "mitigationExtension", title: "Mitigation Timeline Extension", description: "Indicates the number of cases where remediation timelines have been extended beyond the defined SLA." },
+      ],
+      commonWalkthroughActive: false,
+      commonWalkthroughStepIndex: 0,
+      commonWalkthroughSteps: [
+        { title: "Common Vulnerabilities", description: "Displays critical and frequently recurring vulnerabilities across assets to support prioritization and proactive mitigation." },
+        { title: "All Teams", description: "Provides a consolidated view of all teams involved in vulnerability remediation." },
+        { title: "Asset", description: "Displays the asset associated with each vulnerability." },
+        { title: "Operating System", description: "Specifies the operating system or environment of the affected asset." },
+        { title: "Vulnerability Name", description: "Identifies the name or title of the detected vulnerability." },
+        { title: "Status", description: "Indicates whether the vulnerability is open or closed based on remediation progress." },
+      ],
     };
   },
   computed: {
@@ -1291,8 +1428,153 @@ export default {
       const m = s.match(/(\d+)w/);
       return m ? parseInt(m[1]) : 0;
     },
+    currentWalkthroughStep() {
+      return this.walkthroughSteps[this.walkthroughStepIndex] || null;
+    },
+    currentCommonWalkthroughStep() {
+      return this.commonWalkthroughSteps[this.commonWalkthroughStepIndex] || null;
+    },
+    isWalkthroughDescriptionLong() {
+      const text = this.currentWalkthroughStep?.description || "";
+      return text.length > 120;
+    },
+    walkthroughDescriptionText() {
+      const text = this.currentWalkthroughStep?.description || "";
+      if (this.walkthroughDescriptionExpanded || text.length <= 120) return text;
+      return `${text.slice(0, 120).trim()}...`;
+    },
+  },
+  watch: {
+    walkthroughStepIndex() {
+      if (this.walkthroughActive) {
+        this.walkthroughDescriptionExpanded = false;
+        this.activeWalkthroughTarget = this.walkthroughSteps[this.walkthroughStepIndex]?.target || "assets";
+        this.$nextTick(() => this.focusWalkthroughTarget());
+      }
+    },
   },
   methods: {
+    startCommonWalkthrough() {
+      this.commonWalkthroughStepIndex = 0;
+      this.commonWalkthroughActive = true;
+      document.addEventListener("mousedown", this.handleCommonWalkthroughDocumentClick);
+    },
+    nextCommonWalkthroughStep() {
+      if (this.commonWalkthroughStepIndex >= this.commonWalkthroughSteps.length - 1) {
+        this.skipCommonWalkthrough();
+        return;
+      }
+      this.commonWalkthroughStepIndex += 1;
+    },
+    prevCommonWalkthroughStep() {
+      if (this.commonWalkthroughStepIndex <= 0) return;
+      this.commonWalkthroughStepIndex -= 1;
+    },
+    skipCommonWalkthrough() {
+      this.commonWalkthroughActive = false;
+      this.commonWalkthroughStepIndex = 0;
+      document.removeEventListener("mousedown", this.handleCommonWalkthroughDocumentClick);
+    },
+    handleCommonWalkthroughDocumentClick(event) {
+      if (!this.commonWalkthroughActive) return;
+      const popup = this.$el?.querySelector(".common-walkthrough-popup");
+      const trigger = this.$refs.commonWalkthroughTrigger;
+      const clickedInsidePopup = popup?.contains(event.target);
+      const clickedTrigger = trigger?.contains(event.target);
+      if (clickedInsidePopup || clickedTrigger) return;
+      this.skipCommonWalkthrough();
+    },
+    startDashboardWalkthrough() {
+      this.walkthroughStepIndex = 0;
+      this.walkthroughDescriptionExpanded = false;
+      this.activeWalkthroughTarget = this.walkthroughSteps[0]?.target || "assets";
+      this.walkthroughActive = true;
+      document.addEventListener("mousedown", this.handleWalkthroughDocumentClick);
+      this.$nextTick(() => {
+        this.focusWalkthroughTarget();
+        this.updateWalkthroughPopupPosition();
+      });
+    },
+    skipDashboardWalkthrough() {
+      document.removeEventListener("mousedown", this.handleWalkthroughDocumentClick);
+      this.walkthroughActive = false;
+      this.walkthroughStepIndex = 0;
+      this.walkthroughDescriptionExpanded = false;
+      this.activeWalkthroughTarget = this.walkthroughSteps[0]?.target || "assets";
+    },
+    nextWalkthroughStep() {
+      if (this.walkthroughStepIndex >= this.walkthroughSteps.length - 1) {
+        this.skipDashboardWalkthrough();
+        return;
+      }
+      this.walkthroughStepIndex += 1;
+    },
+    prevWalkthroughStep() {
+      if (this.walkthroughStepIndex <= 0) return;
+      this.walkthroughStepIndex -= 1;
+    },
+    toggleWalkthroughDescription() {
+      this.walkthroughDescriptionExpanded = !this.walkthroughDescriptionExpanded;
+      this.$nextTick(() => this.updateWalkthroughPopupPosition());
+    },
+    focusWalkthroughTarget() {
+      const step = this.currentWalkthroughStep;
+      if (!step || !this.$el) return;
+      const targetEl = this.$el.querySelector(`[data-walkthrough-target="${step.target}"]`);
+      if (targetEl && typeof targetEl.scrollIntoView === "function") {
+        targetEl.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+      }
+      this.scheduleWalkthroughPopupPosition();
+    },
+    scheduleWalkthroughPopupPosition() {
+      setTimeout(() => this.updateWalkthroughPopupPosition(), 260);
+    },
+    updateWalkthroughPopupPosition() {
+      if (!this.walkthroughActive) return;
+      const trigger = this.$refs.walkthroughTrigger;
+      const popup = this.$el?.querySelector(".dashboard-walkthrough-popup");
+      if (!trigger || !popup) return;
+
+      const triggerRect = trigger.getBoundingClientRect();
+      const popupRect = popup.getBoundingClientRect();
+      const targetEl = this.$el?.querySelector(`[data-walkthrough-target="${this.activeWalkthroughTarget}"]`);
+      const targetRect = targetEl?.getBoundingClientRect?.() || null;
+      const spacing = 12;
+      const viewportPadding = 10;
+
+      const anchorRect = targetRect || triggerRect;
+      let placement = "top";
+      let top = anchorRect.top - popupRect.height - spacing;
+      if (top < viewportPadding) {
+        top = anchorRect.bottom + spacing;
+        placement = "bottom";
+      }
+
+      let left = anchorRect.left;
+      if (left + popupRect.width > window.innerWidth - viewportPadding) {
+        left = window.innerWidth - popupRect.width - viewportPadding;
+      }
+      left = Math.max(viewportPadding, left);
+
+      this.walkthroughPopupPlacement = placement;
+      this.walkthroughPopupStyle = {
+        top: `${Math.max(viewportPadding, top)}px`,
+        left: `${left}px`,
+      };
+    },
+    handleWalkthroughViewportChange() {
+      if (!this.walkthroughActive) return;
+      this.updateWalkthroughPopupPosition();
+    },
+    handleWalkthroughDocumentClick(event) {
+      if (!this.walkthroughActive) return;
+      const popup = this.$el?.querySelector(".dashboard-walkthrough-popup");
+      const trigger = this.$refs.walkthroughTrigger;
+      const clickedInsidePopup = popup?.contains(event.target);
+      const clickedTrigger = trigger?.contains(event.target);
+      if (clickedInsidePopup || clickedTrigger) return;
+      this.skipDashboardWalkthrough();
+    },
     toggleCalendar() {
       this.showCalendar = !this.showCalendar;
       if (this.showCalendar) this.loadCalendarData();
@@ -1836,6 +2118,9 @@ export default {
     closeMsuModal() { this.showMsuModal = false; },
   },
   async mounted() {
+    window.addEventListener("resize", this.handleWalkthroughViewportChange);
+    window.addEventListener("scroll", this.handleWalkthroughViewportChange, true);
+
     // Load user's assigned teams from localStorage
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -1867,6 +2152,12 @@ export default {
         dropdown.classList.remove('show');
       }
     });
+  },
+  beforeUnmount() {
+    document.removeEventListener("mousedown", this.handleCommonWalkthroughDocumentClick);
+    document.removeEventListener("mousedown", this.handleWalkthroughDocumentClick);
+    window.removeEventListener("resize", this.handleWalkthroughViewportChange);
+    window.removeEventListener("scroll", this.handleWalkthroughViewportChange, true);
   },
 };
 </script>
@@ -2386,6 +2677,148 @@ export default {
 .dash-card:hover {
   box-shadow: 0 5px 16px rgba(15, 23, 42, 0.1);
   transform: translateY(-1px);
+}
+.walkthrough-target {
+  position: relative;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.walkthrough-target-active {
+  z-index: 20;
+  box-shadow: 0 0 0 2px #10b981, 0 14px 28px rgba(15, 23, 42, 0.22) !important;
+}
+.dashboard-walkthrough-trigger {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 999px;
+  background: #e0f2f1;
+  color: #0f696e;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+.dashboard-walkthrough-trigger:hover { background: #bde8e6; }
+.common-walkthrough-trigger {
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 999px;
+  background: #e0f2f1;
+  color: #0f696e;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+.common-walkthrough-trigger:hover { background: #bde8e6; }
+.dashboard-walkthrough-popup {
+  position: fixed;
+  width: min(360px, calc(100vw - 120px));
+  background: #2d1f4f;
+  color: #e8e8ff;
+  border: 1px solid rgba(203, 196, 208, 0.25);
+  border-radius: 14px;
+  padding: 18px 18px 14px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  z-index: 1061;
+}
+.dashboard-walkthrough-popup::before {
+  content: "";
+  position: absolute;
+  left: 28px;
+  bottom: -8px;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 8px solid #2d1f4f;
+}
+.dashboard-walkthrough-popup-bottom::before {
+  top: -8px;
+  bottom: auto;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 8px solid #2d1f4f;
+  border-top: 0;
+}
+.dashboard-walkthrough-step {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #b9b4cd;
+  margin-bottom: 8px;
+}
+.dashboard-walkthrough-title {
+  margin: 0 0 8px;
+  font-size: 20px;
+  color: #ffffff;
+  font-weight: 700;
+}
+.dashboard-walkthrough-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #d7d6e7;
+}
+.dashboard-walkthrough-readmore {
+  border: none;
+  background: transparent;
+  color: #7ce8e7;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 0;
+  margin-top: 6px;
+}
+.dashboard-walkthrough-actions {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(226, 232, 240, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.dashboard-walkthrough-primary {
+  border: none;
+  border-radius: 999px;
+  background: #0f9ea7;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 7px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.dashboard-walkthrough-prev {
+  background: #0f9ea7;
+}
+.dashboard-walkthrough-prev:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.dashboard-walkthrough-primary:hover { background: #0e8f97; }
+.common-walkthrough-popup {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 360px;
+  background: #2d1f4f;
+  color: #e8e8ff;
+  border: 1px solid rgba(203, 196, 208, 0.25);
+  border-radius: 14px;
+  padding: 18px 18px 14px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  z-index: 1061;
+}
+.common-walkthrough-popup::before {
+  content: "";
+  position: absolute;
+  left: 18px;
+  top: -8px;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 8px solid #2d1f4f;
 }
 .dash-card-compact { padding: 12px; }
 .dash-card-tight { padding: 12px; }

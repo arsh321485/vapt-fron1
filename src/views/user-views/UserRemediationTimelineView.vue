@@ -148,10 +148,10 @@
                       <span class="rt-tech-meta-label">ASSIGNED TEAM</span>
                       <span class="rt-tech-meta-val">{{ currentVuln.assignedTeam }}</span>
                     </div>
-                    <div v-if="currentVuln.deadline" class="rt-tech-meta-item">
+                    <!-- <div v-if="currentVuln.deadline" class="rt-tech-meta-item">
                       <span class="rt-tech-meta-label">DEADLINE</span>
                       <span class="rt-tech-meta-val">{{ currentVuln.deadline }}</span>
-                    </div>
+                    </div> -->
                     <div v-if="currentVuln.operatingSystem" class="rt-tech-meta-item">
                       <span class="rt-tech-meta-label">OS</span>
                       <span class="rt-tech-meta-val">{{ currentVuln.operatingSystem }}</span>
@@ -195,7 +195,7 @@
                             <span class="rt-task-assignee">{{ task.assignedTeam }}</span>
                           </div>
                         </div>
-                        <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center gap-2 rt-task-right">
                           <span v-if="task.status === 'completed'" class="rt-step-status-badge rt-status-done">Completed</span>
                           <span v-else class="rt-step-status-badge rt-status-pending-red">Pending</span>
                           <div class="rt-task-chevron" :class="{ 'rt-chevron-open': expandedTask === idx }">
@@ -210,8 +210,8 @@
                       <!-- Expanded detail panel -->
                       <div v-if="expandedTask === idx" class="rt-task-expanded">
 
-                        <!-- Meta: Deadline + Criticality + Effort -->
-                        <div class="rt-expand-meta-row">
+                        <!-- Meta: Deadline + Criticality + Effort (hidden by request) -->
+                        <!-- <div class="rt-expand-meta-row">
                           <div v-if="task.deadline" class="rt-expand-meta-item">
                             <i class="bi bi-calendar3 me-1"></i>
                             <span class="rt-expand-label">Deadline:</span>
@@ -229,6 +229,16 @@
                             <i class="bi bi-clock me-1"></i>
                             <span class="rt-expand-label">Effort:</span>
                             <span class="rt-expand-meta-val">{{ task.effortEstimate }}</span>
+                          </div>
+                        </div> -->
+
+                        <!-- Assigned Members (highlighted, moved above action) -->
+                        <div v-if="task.members && task.members.length" class="rt-expand-section rt-assigned-highlight">
+                          <span class="rt-expand-label">ASSIGNED MEMBERS</span>
+                          <div class="d-flex flex-wrap gap-2 mt-1">
+                            <span v-for="m in task.members" :key="m.user_id" class="rt-member-chip">
+                              <i class="bi bi-person-fill me-1"></i>{{ m.name }}
+                            </span>
                           </div>
                         </div>
 
@@ -291,16 +301,6 @@
                               <i class="bi bi-exclamation-triangle-fill" style="color:#f97316; flex-shrink:0;"></i>
                               <span>{{ task.consideration }}</span>
                             </div>
-                          </div>
-                        </div>
-
-                        <!-- ASSIGNED MEMBERS -->
-                        <div v-if="task.members && task.members.length" class="rt-expand-section">
-                          <span class="rt-expand-label">ASSIGNED MEMBERS</span>
-                          <div class="d-flex flex-wrap gap-2 mt-1">
-                            <span v-for="m in task.members" :key="m.user_id" class="rt-member-chip">
-                              <i class="bi bi-person-fill me-1"></i>{{ m.name }}
-                            </span>
                           </div>
                         </div>
 
@@ -1112,6 +1112,7 @@ export default {
 .rt-task-item:hover { background: #f8f9fc; }
 .rt-task-completed { background: #f0fdf4; }
 .rt-task-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; }
+.rt-task-right { position: relative; }
 .rt-task-left { display: flex; align-items: center; gap: 12px; }
 .rt-task-circle { width: 28px; height: 28px; border-radius: 50%; background: #0f696e; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; flex-shrink: 0; }
 .rt-circle-task-done { background: #0f696e !important; }
@@ -1147,6 +1148,18 @@ export default {
 .rt-subtask-desc { font-size: 0.84rem; font-weight: 600; color: #334155; }
 .rt-subtask-dash { font-size: 0.84rem; color: #94a3b8; padding-left: 4px; }
 .rt-member-chip { display: inline-flex; align-items: center; font-size: 0.72rem; font-weight: 600; background: #e0f2f1; color: #0f696e; padding: 3px 10px; border-radius: 50px; border: 1px solid rgba(15,105,110,0.2); }
+.rt-assigned-highlight {
+  background: #ecfeff;
+  border: 1px solid #99f6e4;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.rt-assigned-highlight .rt-expand-label { color: #0f766e; }
+.rt-assigned-highlight .rt-member-chip {
+  background: #ccfbf1;
+  color: #0f766e;
+  border-color: #5eead4;
+}
 
 /* Complete step section */
 .rt-step-complete-section { margin-top: 20px; padding-top: 18px; border-top: 1px solid #f1f5f9; }

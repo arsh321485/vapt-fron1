@@ -14,17 +14,27 @@
             <!-- Page Header -->
             <div class="rt-page-header">
               <div>
-                <h2 class="rt-title">Remediation Timeline</h2>
-                <p class="rt-subtitle">Track and manage vulnerability remediation progress</p>
+                <div class="rt-header-chips">
+                  <span class="rt-chip rt-chip-risk" :class="riskChipClass">{{ (currentVuln.risk || 'Risk').toUpperCase() }}</span>
+                  <span class="rt-chip rt-chip-status" :class="statusChipClass">{{ remediationStatusLabel }}</span>
+                  <span class="rt-chip rt-chip-asset">
+                    <i class="bi bi-hdd-network me-1"></i>{{ currentVuln.asset || asset }}
+                  </span>
+                </div>
+                <h2 class="rt-title">Vulnerability Remediation</h2>
+                <p class="rt-subtitle">Execute the defined steps to mitigate the identified vulnerability on the target endpoint.</p>
               </div>
               <div class="d-flex gap-2">
+                <button class="rt-btn-neutral" type="button">
+                  <i class="bi bi-pause-fill me-1"></i>Suspend Task
+                </button>
                 <button class="rt-btn-support" @click="openSupportModal">
                   Support Request
                   <span class="rt-support-count-badge">{{ supportRequestCount }}</span>
                 </button>
-                <!-- <button class="rt-btn-ticket" @click="goToCreateTicket">
-                  <i class="bi bi-ticket-perforated me-1"></i>Create Ticket
-                </button> -->
+                <button class="rt-btn-primary" type="button" disabled title="Completion is handled by assigned users">
+                  Complete Remediation
+                </button>
               </div>
             </div>
 
@@ -72,6 +82,10 @@
 
             <!-- Stepper -->
             <div v-if="!isLoading" class="rt-stepper-wrap">
+              <div class="rt-stepper-head">
+                <h3 class="rt-stepper-title">Remediation Path</h3>
+                <span class="rt-stepper-count">Step {{ currentStep }} of {{ totalSteps }}</span>
+              </div>
               <div class="rt-stepper">
                 <template v-for="step in totalSteps" :key="step">
                   <!-- Circle -->
@@ -135,10 +149,10 @@
                       <span class="rt-tech-meta-label">ASSIGNED TEAM</span>
                       <span class="rt-tech-meta-val">{{ currentVuln.assignedTeam }}</span>
                     </div>
-                    <div v-if="currentVuln.deadline" class="rt-tech-meta-item">
+                    <!-- <div v-if="currentVuln.deadline" class="rt-tech-meta-item">
                       <span class="rt-tech-meta-label">DEADLINE</span>
                       <span class="rt-tech-meta-val">{{ currentVuln.deadline }}</span>
-                    </div>
+                    </div> -->
                     <div v-if="currentVuln.operatingSystem" class="rt-tech-meta-item">
                       <span class="rt-tech-meta-label">OS</span>
                       <span class="rt-tech-meta-val">{{ currentVuln.operatingSystem }}</span>
@@ -182,7 +196,7 @@
                             <span class="rt-task-assignee">{{ task.assignedTeam }}</span>
                           </div>
                         </div>
-                        <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center gap-2 rt-task-right">
                           <span v-if="task.status === 'completed'" class="rt-step-status-badge rt-status-done">Completed</span>
                           <span v-else class="rt-step-status-badge rt-status-pending-red">Pending</span>
                           <div class="rt-task-chevron" :class="{ 'rt-chevron-open': expandedTask === idx }">
@@ -197,8 +211,8 @@
                       <!-- Expanded detail panel -->
                       <div v-if="expandedTask === idx" class="rt-task-expanded">
 
-                        <!-- Meta: Deadline + Criticality + Effort -->
-                        <div class="rt-expand-meta-row">
+                        <!-- Meta: Deadline + Criticality + Effort (hidden by request) -->
+                        <!-- <div class="rt-expand-meta-row">
                           <div v-if="task.deadline" class="rt-expand-meta-item">
                             <i class="bi bi-calendar3 me-1"></i>
                             <span class="rt-expand-label">Deadline:</span>
@@ -216,6 +230,16 @@
                             <i class="bi bi-clock me-1"></i>
                             <span class="rt-expand-label">Effort:</span>
                             <span class="rt-expand-meta-val">{{ task.effortEstimate }}</span>
+                          </div>
+                        </div> -->
+
+                        <!-- Assigned Members (highlighted, moved above action) -->
+                        <div v-if="task.members && task.members.length" class="rt-expand-section rt-assigned-highlight">
+                          <span class="rt-expand-label">ASSIGNED MEMBERS</span>
+                          <div class="d-flex flex-wrap gap-2 mt-1">
+                            <span v-for="m in task.members" :key="m.user_id" class="rt-member-chip">
+                              <i class="bi bi-person-fill me-1"></i>{{ m.name }}
+                            </span>
                           </div>
                         </div>
 
@@ -279,16 +303,6 @@
                               <i class="bi bi-exclamation-triangle-fill" style="color:#f97316; flex-shrink:0;"></i>
                               <span>{{ task.consideration }}</span>
                             </div>
-                          </div>
-                        </div>
-
-                        <!-- Assigned Members -->
-                        <div v-if="task.members && task.members.length" class="rt-expand-section">
-                          <span class="rt-expand-label">ASSIGNED MEMBERS</span>
-                          <div class="d-flex flex-wrap gap-2 mt-1">
-                            <span v-for="m in task.members" :key="m.user_id" class="rt-member-chip">
-                              <i class="bi bi-person-fill me-1"></i>{{ m.name }}
-                            </span>
                           </div>
                         </div>
 
@@ -634,6 +648,25 @@ export default {
   },
 
   computed: {
+    remediationStatusLabel() {
+      const status = String(this.currentVuln?.status || 'open').toLowerCase();
+      if (status === 'closed') return 'CLOSED';
+      if (status === 'in_progress' || status === 'in progress') return 'IN PROGRESS';
+      return 'OPEN';
+    },
+    riskChipClass() {
+      const risk = String(this.currentVuln?.risk || '').toLowerCase();
+      if (risk.includes('critical')) return 'rt-chip-risk-critical';
+      if (risk.includes('high')) return 'rt-chip-risk-high';
+      if (risk.includes('medium')) return 'rt-chip-risk-medium';
+      return 'rt-chip-risk-low';
+    },
+    statusChipClass() {
+      const status = this.remediationStatusLabel;
+      if (status === 'CLOSED') return 'rt-chip-status-closed';
+      if (status === 'IN PROGRESS') return 'rt-chip-status-progress';
+      return 'rt-chip-status-open';
+    },
     progressPercent() {
       return Math.round((this.completedSteps.length / this.totalSteps) * 100);
     },
@@ -951,6 +984,39 @@ export default {
   justify-content: space-between;
   align-items: flex-end;
 }
+.rt-header-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.rt-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.rt-chip-risk { color: #7f1d1d; background: #fee2e2; }
+.rt-chip-risk-critical { color: #7f1d1d; background: #fee2e2; }
+.rt-chip-risk-high { color: #9a3412; background: #ffedd5; }
+.rt-chip-risk-medium { color: #854d0e; background: #fef3c7; }
+.rt-chip-risk-low { color: #065f46; background: #d1fae5; }
+.rt-chip-status {
+  color: #334155;
+  background: #e2e8f0;
+}
+.rt-chip-status-open { color: #7f1d1d; background: #fee2e2; }
+.rt-chip-status-progress { color: #0f696e; background: #ccfbf1; }
+.rt-chip-status-closed { color: #166534; background: #dcfce7; }
+.rt-chip-asset {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  color: #475569;
+  background: #f1f5f9;
+}
 
 .rt-btn-support {
   background: #e0f2f1;
@@ -964,6 +1030,27 @@ export default {
   transition: background 0.15s;
 }
 .rt-btn-support:hover { background: #a1ecf2; }
+.rt-btn-neutral,
+.rt-btn-primary {
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+.rt-btn-neutral {
+  background: #f1f5f9;
+  color: #334155;
+  border-color: #e2e8f0;
+}
+.rt-btn-primary {
+  background: #241447;
+  color: #ffffff;
+}
+.rt-btn-primary:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
 .rt-support-count-badge {
   margin-left: 8px;
   display: inline-flex;
@@ -1103,6 +1190,23 @@ export default {
   padding: 24px 28px 40px;
   border-bottom: 1px solid #f1f5f9;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+.rt-stepper-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.rt-stepper-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+.rt-stepper-count {
+  font-size: 0.84rem;
+  color: #0f696e;
+  font-weight: 600;
 }
 
 .rt-stepper {
@@ -1384,6 +1488,7 @@ export default {
   justify-content: space-between;
   padding: 14px 0;
 }
+.rt-task-right { position: relative; }
 
 .rt-task-left {
   display: flex;
@@ -1597,6 +1702,20 @@ export default {
   padding: 3px 10px;
   border-radius: 50px;
   border: 1px solid rgba(15,105,110,0.2);
+}
+.rt-assigned-highlight {
+  background: #ecfeff;
+  border: 1px solid #99f6e4;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.rt-assigned-highlight .rt-expand-label {
+  color: #0f766e;
+}
+.rt-assigned-highlight .rt-member-chip {
+  background: #ccfbf1;
+  color: #0f766e;
+  border-color: #5eead4;
 }
 
 /* Admin note */
