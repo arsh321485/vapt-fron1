@@ -273,15 +273,19 @@
                                 </div>
                               </div>
                             </div>
-                            <div v-if="task.whereToRunLabel && task.whereToRunLabel !== 'N/A'" class="mt-3">
-                              <span class="rt-expand-label">WHERE TO RUN</span>
-                              <div class="rt-where-run-box">{{ task.whereToRunLabel }}</div>
-                            </div>
                           </div>
                           <div v-if="task.filePath && task.filePath !== 'N/A'" class="rt-expand-section">
                             <span class="rt-expand-label">FILE PATH</span>
                             <div class="rt-filepath-box">{{ task.filePath }}</div>
                           </div>
+                        </div>
+
+                        <div
+                          v-if="(task.whereToRunLabel || task.whereToRun) && (task.whereToRunLabel || task.whereToRun) !== 'N/A'"
+                          class="rt-expand-section"
+                        >
+                          <span class="rt-expand-label">WHERE TO RUN</span>
+                          <div class="rt-code-block">{{ task.whereToRunLabel || task.whereToRun }}</div>
                         </div>
 
                         <!-- COMMAND TO RUN (full width) -->
@@ -724,7 +728,16 @@ export default {
           action: detail.action || '',
           filePath: detail.system_file_path || '',
           command: detail.commands_for_action || '',
-          whereToRunLabel: detail.where_to_run_label || '',
+          whereToRunLabel:
+            detail.where_to_run_label ||
+            detail.where_to_run ||
+            step.where_to_run_label ||
+            step.where_to_run ||
+            '',
+          whereToRun:
+            detail.where_to_run ||
+            step.where_to_run ||
+            '',
           tools: detail.artifacts_tools_used || [],
           consideration: detail.precautions || '',
           subTasks: (detail.sub_tasks || []).map(st => ({
@@ -834,7 +847,16 @@ export default {
           action: detail.action || '',
           filePath: detail.system_file_path || '',
           command: detail.commands_for_action || '',
-          whereToRunLabel: detail.where_to_run_label || '',
+          whereToRunLabel:
+            detail.where_to_run_label ||
+            detail.where_to_run ||
+            step.where_to_run_label ||
+            step.where_to_run ||
+            '',
+          whereToRun:
+            detail.where_to_run ||
+            step.where_to_run ||
+            '',
           tools: detail.artifacts_tools_used || [],
           consideration: detail.precautions || '',
           subTasks: (detail.sub_tasks || []).map(st => ({
@@ -1599,15 +1621,6 @@ export default {
   line-height: 1.6;
 }
 
-.rt-where-run-box {
-  background: #f8f9fc;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 0.82rem;
-  color: #334155;
-  line-height: 1.45;
-}
 
 .rt-tool-chip {
   display: inline-block;
