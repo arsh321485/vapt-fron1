@@ -25,9 +25,6 @@
                 <p class="rt-subtitle">Execute the defined steps to mitigate the identified vulnerability on the target endpoint.</p>
               </div>
               <div class="d-flex gap-2">
-                <button class="rt-btn-neutral" type="button">
-                  <i class="bi bi-pause-fill me-1"></i>Suspend Task
-                </button>
                 <button class="rt-btn-support" @click="openSupportModal">
                   Support Request
                   <span class="rt-support-count-badge">{{ supportRequestCount }}</span>
@@ -275,6 +272,10 @@
                                   </div>
                                 </div>
                               </div>
+                            </div>
+                            <div v-if="task.whereToRunLabel && task.whereToRunLabel !== 'N/A'" class="mt-3">
+                              <span class="rt-expand-label">WHERE TO RUN</span>
+                              <div class="rt-where-run-box">{{ task.whereToRunLabel }}</div>
                             </div>
                           </div>
                           <div v-if="task.filePath && task.filePath !== 'N/A'" class="rt-expand-section">
@@ -723,6 +724,7 @@ export default {
           action: detail.action || '',
           filePath: detail.system_file_path || '',
           command: detail.commands_for_action || '',
+          whereToRunLabel: detail.where_to_run_label || '',
           tools: detail.artifacts_tools_used || [],
           consideration: detail.precautions || '',
           subTasks: (detail.sub_tasks || []).map(st => ({
@@ -832,6 +834,7 @@ export default {
           action: detail.action || '',
           filePath: detail.system_file_path || '',
           command: detail.commands_for_action || '',
+          whereToRunLabel: detail.where_to_run_label || '',
           tools: detail.artifacts_tools_used || [],
           consideration: detail.precautions || '',
           subTasks: (detail.sub_tasks || []).map(st => ({
@@ -1594,6 +1597,16 @@ export default {
   color: #4ade80;
   word-break: break-all;
   line-height: 1.6;
+}
+
+.rt-where-run-box {
+  background: #f8f9fc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.82rem;
+  color: #334155;
+  line-height: 1.45;
 }
 
 .rt-tool-chip {

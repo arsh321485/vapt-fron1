@@ -2,9 +2,9 @@
   <div class="signin-page">
     <div class="signin-card">
 
-      <!-- Logo -->
-      <div class="text-center mb-4">
-        <img src="@/assets/images/logo-capital.png" alt="VaptFix" class="signin-logo" />
+      <!-- Logo Header -->
+      <div class="text-center mb-4 signin-top-header">
+        <img src="@/assets/images/vaptfix_white.png" alt="VaptFix" class="signin-logo" />
       </div>
 
       <h2 class="signin-title">Welcome back</h2>
@@ -301,6 +301,11 @@ export default {
 .signin-logo {
   height: 36px;
 }
+.signin-top-header {
+  background: #241447;
+  border-radius: 10px;
+  padding: 14px 12px;
+}
 
 .signin-title {
   font-size: 22px;
@@ -311,7 +316,7 @@ export default {
 
 .signin-sub {
   font-size: 13px;
-  color: rgba(0, 0, 0, 0.45);
+  color: #7a7580;
 }
 
 .form-label {
@@ -323,15 +328,15 @@ export default {
 
 .signin-input {
   border-radius: 8px;
-  border: 1.5px solid #e5e7eb;
+  border: 1.5px solid #cbc4d0;
   font-size: 14px;
   padding: 10px 14px;
   transition: border-color 0.2s;
 }
 
 .signin-input:focus {
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  border-color: #66558c;
+  box-shadow: 0 0 0 3px rgba(102, 85, 140, 0.14);
 }
 
 .password-eye {
@@ -345,12 +350,12 @@ export default {
 }
 
 .password-eye:hover {
-  color: #4f46e5;
+  color: #66558c;
 }
 
 .forgot-link {
   font-size: 13px;
-  color: #4f46e5;
+  color: #66558c;
   text-decoration: none;
 }
 
@@ -359,7 +364,7 @@ export default {
 }
 
 .signin-btn {
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  background: linear-gradient(135deg, #5b4b84, #6f5f99);
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -380,7 +385,7 @@ export default {
 }
 
 .signup-link {
-  color: #4f46e5;
+  color: #66558c;
   text-decoration: none;
   font-weight: 500;
 }

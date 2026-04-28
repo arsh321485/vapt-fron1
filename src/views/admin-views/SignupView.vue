@@ -2,17 +2,20 @@
   <div class="signup-page">
     <div class="signup-card" :class="{ 'signup-card-otp': otpSent }">
 
-      <!-- Logo -->
-      <div class="text-center mb-4">
-        <img src="@/assets/images/logo-capital.png" alt="VaptFix" class="signup-logo" />
+      <!-- Logo Header -->
+      <div class="text-center mb-4" :class="{ 'signup-top-header': !otpSent }">
+        <img
+          src="@/assets/images/vaptfix_white.png"
+          alt="VaptFix"
+          class="signup-logo"
+        />
       </div>
 
       <!-- OTP Step -->
       <div v-if="otpSent" class="otp-verify-wrap">
         <header class="otp-verify-header">
           <div class="otp-brand">
-            <img src="@/assets/images/logo-capital.png" alt="VaptFix" class="otp-brand-logo" />
-            <span class="otp-brand-text">VaptFix Pro</span>
+            <img src="@/assets/images/vaptfix_white.png" alt="VaptFix" class="otp-brand-logo" />
           </div>
         </header>
 
@@ -411,6 +414,11 @@ export default {
 .signup-logo {
   height: 36px;
 }
+.signup-top-header {
+  background: #241447;
+  border-radius: 10px;
+  padding: 14px 12px;
+}
 
 .signup-title {
   font-size: 22px;
@@ -421,7 +429,7 @@ export default {
 
 .signup-sub {
   font-size: 13px;
-  color: rgba(0, 0, 0, 0.45);
+  color: #7a7580;
 }
 
 .form-label {
@@ -433,15 +441,15 @@ export default {
 
 .signup-input {
   border-radius: 8px;
-  border: 1.5px solid #e5e7eb;
+  border: 1.5px solid #cbc4d0;
   font-size: 14px;
   padding: 10px 14px;
   transition: border-color 0.2s;
 }
 
 .signup-input:focus {
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  border-color: #66558c;
+  box-shadow: 0 0 0 3px rgba(102, 85, 140, 0.14);
 }
 
 .password-eye {
@@ -455,11 +463,11 @@ export default {
 }
 
 .password-eye:hover {
-  color: #4f46e5;
+  color: #66558c;
 }
 
 .signup-btn {
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  background: linear-gradient(135deg, #5b4b84, #6f5f99);
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -496,7 +504,7 @@ export default {
 .pwd-rule .bi { font-size: 13px; flex-shrink: 0; }
 
 .signin-link {
-  color: #4f46e5;
+  color: #66558c;
   text-decoration: none;
   font-weight: 500;
 }
@@ -506,7 +514,7 @@ export default {
 }
 
 .back-link {
-  color: #4f46e5;
+  color: #66558c;
   text-decoration: none;
 }
 
@@ -521,12 +529,11 @@ export default {
 .otp-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
 }
 
 .otp-brand-logo {
   height: 26px;
-  filter: brightness(0) invert(1);
 }
 
 .otp-brand-text {
@@ -590,7 +597,7 @@ export default {
 
 .otp-verify-btn {
   border-radius: 10px;
-  background: #a592ce;
+  background: #66558c;
 }
 
 .otp-verify-btn:hover:not(:disabled) {
@@ -623,7 +630,7 @@ export default {
   height: 52px;
   font-size: 20px;
   font-weight: 600;
-  border: 2px solid #e5e7eb;
+  border: 2px solid #cbc4d0;
   border-radius: 10px;
   color: #0f172a;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -631,8 +638,8 @@ export default {
 }
 
 .otp-box:focus {
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+  border-color: #66558c;
+  box-shadow: 0 0 0 3px rgba(102, 85, 140, 0.16);
 }
 
 /* Hide number input spinners */

@@ -274,6 +274,10 @@
                                 </div>
                               </div>
                             </div>
+                            <div v-if="task.whereToRunLabel && task.whereToRunLabel !== 'N/A'" class="mt-3">
+                              <span class="rt-expand-label">WHERE TO RUN</span>
+                              <div class="rt-where-run-box">{{ task.whereToRunLabel }}</div>
+                            </div>
                           </div>
                           <div v-if="task.filePath && task.filePath !== 'N/A'" class="rt-expand-section">
                             <span class="rt-expand-label">FILE PATH</span>
@@ -676,6 +680,7 @@ export default {
             action: detail.action || '',
             filePath: detail.system_file_path || '',
             command: detail.commands_for_action || '',
+            whereToRunLabel: detail.where_to_run_label || '',
             tools: detail.artifacts_tools_used || [],
             consideration: detail.precautions || '',
             subTasks: (detail.sub_tasks || []).map(st => ({
@@ -833,6 +838,7 @@ export default {
           action: detail.action || '',
           filePath: detail.system_file_path || '',
           command: detail.commands_for_action || '',
+          whereToRunLabel: detail.where_to_run_label || '',
           tools: detail.artifacts_tools_used || [],
           consideration: detail.precautions || '',
           subTasks: (detail.sub_tasks || []).map(st => ({
@@ -929,6 +935,7 @@ export default {
           action: detail.action || '',
           filePath: detail.system_file_path || '',
           command: detail.commands_for_action || '',
+          whereToRunLabel: detail.where_to_run_label || '',
           tools: detail.artifacts_tools_used || [],
           consideration: detail.precautions || '',
           subTasks: (detail.sub_tasks || []).map(st => ({
@@ -1138,6 +1145,7 @@ export default {
 .rt-expand-text  { font-size: 0.84rem; color: #334155; margin: 0; line-height: 1.55; }
 .rt-filepath-box { background: #f8f9fc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; font-family: 'Courier New', Courier, monospace; font-size: 0.8rem; color: #475569; word-break: break-all; line-height: 1.6; }
 .rt-code-block { background: #1e293b; border-radius: 8px; padding: 12px 16px; font-family: 'Courier New', Courier, monospace; font-size: 0.82rem; color: #4ade80; word-break: break-all; line-height: 1.6; }
+.rt-where-run-box { background: #f8f9fc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; color: #334155; line-height: 1.45; }
 .rt-tool-chip { display: inline-block; font-size: 0.72rem; font-weight: 600; background: #f1f5f9; color: #475569; padding: 3px 11px; border-radius: 50px; border: 1px solid #e2e8f0; }
 .rt-consideration-box { display: flex; align-items: flex-start; gap: 6px; font-size: 0.82rem; color: #c2410c; line-height: 1.55; margin-top: 2px; }
 .rt-checklist { display: flex; flex-direction: column; gap: 8px; margin-top: 2px; }

@@ -16,46 +16,20 @@
           <i class="bi bi-envelope-check me-2"></i>
           A confirmation has been sent to your email address
         </div>
-        <!-- Progress info while generating -->
-        <div v-if="cardsGenerating" class="polling-progress mt-4">
-          <div class="d-flex align-items-center justify-content-center gap-2 mb-3">
-            <span class="spinner-border spinner-border-sm text-success"></span>
-            <span class="polling-title">Generating vulnerability cards...</span>
-          </div>
-          <div class="polling-stats">
-            <div class="polling-stat" v-if="pollingData.elapsed_time_text">
-              <i class="bi bi-clock me-1"></i>
-              <span class="polling-label">Elapsed:</span>
-              <span class="polling-val">{{ pollingData.elapsed_time_text }}</span>
-            </div>
-            <div class="polling-stat" v-if="pollingData.remaining_time_text">
-              <i class="bi bi-hourglass-split me-1"></i>
-              <span class="polling-label">Remaining:</span>
-              <span class="polling-val">{{ pollingData.remaining_time_text }}</span>
-            </div>
-            <div class="polling-stat" v-if="pollingData.estimated_total_text">
-              <i class="bi bi-clock-history me-1"></i>
-              <span class="polling-label">Estimated total:</span>
-              <span class="polling-val">{{ pollingData.estimated_total_text }}</span>
-            </div>
-            <div class="polling-stat" v-if="pollingData.cards_total">
-              <i class="bi bi-layers me-1"></i>
-              <span class="polling-label">Progress:</span>
-              <span class="polling-val">{{ pollingData.cards_generated }}/{{ pollingData.cards_total }} cards</span>
-            </div>
-          </div>
-          <!-- Progress bar -->
-          <div v-if="pollingData.cards_total" class="polling-bar-wrap mt-3">
+        <!-- Progress bar only -->
+        <div class="polling-progress mt-4">
+          <div class="polling-bar-wrap mt-3">
             <div class="polling-bar">
-              <div class="polling-bar-fill" :style="{ width: Math.round((pollingData.cards_generated / pollingData.cards_total) * 100) + '%' }"></div>
+              <div
+                v-if="pollingData.cards_total"
+                class="polling-bar-fill"
+                :style="{ width: Math.round((pollingData.cards_generated / pollingData.cards_total) * 100) + '%' }"
+              ></div>
+              <div v-else class="polling-bar-fill polling-bar-indeterminate"></div>
             </div>
-            <span class="polling-pct">{{ Math.round((pollingData.cards_generated / pollingData.cards_total) * 100) }}%</span>
+            <span v-if="pollingData.cards_total" class="polling-pct">{{ Math.round((pollingData.cards_generated / pollingData.cards_total) * 100) }}%</span>
           </div>
         </div>
-        <p v-else class="redirect-note mt-4 mb-0">
-          <span class="spinner-border spinner-border-sm me-2"></span>
-          Please wait, your account is being set up...
-        </p>
       </div>
     </div>
 
@@ -1207,6 +1181,11 @@ onMounted(async () => {
 .polling-bar-wrap { display: flex; align-items: center; gap: 10px; }
 .polling-bar { flex: 1; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
 .polling-bar-fill { height: 100%; background: linear-gradient(90deg, #0f696e, #10b981); border-radius: 4px; transition: width 0.5s ease; }
+.polling-bar-indeterminate { width: 35%; animation: polling-indeterminate 1.2s ease-in-out infinite; }
+@keyframes polling-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(320%); }
+}
 .polling-pct { font-size: 12px; font-weight: 700; color: #0f696e; min-width: 36px; text-align: right; }
 
 /* ═══════════════════════════════════════

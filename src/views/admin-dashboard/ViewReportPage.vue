@@ -587,7 +587,7 @@ export default {
               }],
             };
           })(),
-          options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { usePointStyle: true } } } }
+          options: { responsive: true, plugins: { legend: { display: false } } }
         },
       ];
       configs.forEach(cfg => {
