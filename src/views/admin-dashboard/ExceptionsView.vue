@@ -471,7 +471,7 @@ export default {
     try {
       if (!this.authStore.cachedSupportRequests[reportId]) this.loadingRequests = true;
 
-      const res = await this.authStore.getSupportRequestsByReport(reportId, true);
+      const res = await this.authStore.getSupportRequestsByReport(reportId);
 
       console.log("⬅️ API response:", res);
 

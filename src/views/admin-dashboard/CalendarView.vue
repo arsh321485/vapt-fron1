@@ -935,7 +935,7 @@ export default {
       const store = useAuthStore();
       const reportId = localStorage.getItem('reportId');
       if (reportId) {
-        const res = await store.getSupportRequestsByReport(reportId, true);
+        const res = await store.getSupportRequestsByReport(reportId);
         if (res.status) {
           const all = res.data || [];
           const team = this.selectedEvent.team || '';

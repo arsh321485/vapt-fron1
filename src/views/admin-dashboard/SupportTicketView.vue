@@ -265,7 +265,7 @@ export default {
         console.warn("⚠️ No reportId found");
         return;
       }
-      const res = await this.authStore.getTicketsByReport(reportId, true);
+      const res = await this.authStore.getTicketsByReport(reportId);
       if (res.status) {
         this.tickets = res.data;
       } else {

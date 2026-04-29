@@ -490,7 +490,7 @@ export default {
             const reportId = this.authStore.userLatestReportId;
             if (!reportId) return;
             this.loading = true;
-            const res = await this.authStore.fetchUserSupportRequestsByReport(reportId, true);
+            const res = await this.authStore.fetchUserSupportRequestsByReport(reportId);
             this.loading = false;
             if (res.status) {
                 this.supportRequests = res.data;

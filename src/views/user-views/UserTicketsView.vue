@@ -157,7 +157,7 @@ export default {
             const reportId = this.authStore.userLatestReportId;
             if (!reportId) return;
             this.loading = true;
-            const res = await this.authStore.fetchUserAllTickets(reportId, true);
+            const res = await this.authStore.fetchUserAllTickets(reportId);
             this.loading = false;
             if (res.status) this.tickets = res.data;
         },

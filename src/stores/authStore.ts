@@ -2837,7 +2837,7 @@ export const useAuthStore = defineStore("auth", {
           `/api/admin/adminregister/support-requests/raise/report/${reportId}/vulnerability/${vulnerabilityId}/`,
           payload,
         );
-        this.invalidateAdminRealtimeCaches(reportId);
+        this.invalidateAdminSupportTicketCaches(reportId);
 
         return {
           status: true,
@@ -3016,6 +3016,7 @@ export const useAuthStore = defineStore("auth", {
           `/api/user/register/tickets/report/${reportId}/fix/${fixVulnerabilityId}/create/`,
           payload,
         );
+        this.invalidateUserSupportTicketCaches(reportId);
         return { status: true, data: res.data.data, message: res.data.message };
       } catch (error) {
         const err = error as AxiosError<any>;
@@ -3040,7 +3041,7 @@ export const useAuthStore = defineStore("auth", {
           `/api/user/register/fix-vulnerability/${vulnerabilityId}/raise-support-request/`,
           payload,
         );
-        this.invalidateUserRealtimeCaches(this.userLatestReportId || undefined);
+        this.invalidateUserSupportTicketCaches(this.userLatestReportId || undefined);
         return {
           status: true,
           data: res.data.data,
@@ -3107,7 +3108,7 @@ export const useAuthStore = defineStore("auth", {
           `/api/admin/adminregister/tickets/report/${reportId}/fix/${fixVulnerabilityId}/create/`,
           payload,
         );
-        this.invalidateAdminRealtimeCaches(reportId);
+        this.invalidateAdminSupportTicketCaches(reportId);
 
         return {
           status: true,
@@ -3635,6 +3636,19 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    // ✅ Invalidate only user support/ticket related caches (faster than full reset)
+    invalidateUserSupportTicketCaches(reportId?: string) {
+      if (reportId) {
+        delete this.cachedUserSupportRequests[reportId];
+        delete this.cachedUserOpenTickets[reportId];
+        delete this.cachedUserAllTickets[reportId];
+      } else {
+        this.cachedUserSupportRequests = {};
+        this.cachedUserOpenTickets = {};
+        this.cachedUserAllTickets = {};
+      }
+    },
+
     // ✅ Invalidate admin caches after write operations for instant UI refresh
     invalidateAdminRealtimeCaches(reportId?: string) {
       this.assetRows = [];
@@ -3652,6 +3666,19 @@ export const useAuthStore = defineStore("auth", {
         delete this.cachedSupportRequests[reportId];
         delete this.cachedOpenTickets[reportId];
         delete this.cachedTicketsByReport[reportId];
+      }
+    },
+
+    // ✅ Invalidate only admin support/ticket related caches (keeps assets warm)
+    invalidateAdminSupportTicketCaches(reportId?: string) {
+      if (reportId) {
+        delete this.cachedSupportRequests[reportId];
+        delete this.cachedOpenTickets[reportId];
+        delete this.cachedTicketsByReport[reportId];
+      } else {
+        this.cachedSupportRequests = {};
+        this.cachedOpenTickets = {};
+        this.cachedTicketsByReport = {};
       }
     },
 
