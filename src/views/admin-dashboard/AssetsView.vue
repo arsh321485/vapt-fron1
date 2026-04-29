@@ -234,7 +234,17 @@
                             </div>
                             <div class="mb-4">
                               <h5 class="vuln-desc-title">Description</h5>
-                              <p class="vuln-desc-text">{{ v.description }}</p>
+                              <p class="vuln-desc-text">
+                                {{ getDisplayDescription(v.description, i) }}
+                              </p>
+                              <button
+                                v-if="(v.description || '').length > descriptionPreviewLimit"
+                                type="button"
+                                class="btn-read-more"
+                                @click="toggleDescription(i)"
+                              >
+                                {{ isDescriptionExpanded(i) ? 'Read less' : 'Read more' }}
+                              </button>
                             </div>
                             <div class="d-flex gap-3">
                               <router-link
@@ -247,7 +257,6 @@
                                 class="btn-fix-now text-decoration-none">
                                 Fix Now
                               </router-link>
-                              <button class="btn-ignore-once">Ignore Once</button>
                             </div>
                           </div>
                         </div>
@@ -379,6 +388,8 @@ export default {
       isSearching: false,
       selectedAsset: "",
       activeSeverity: 'All',
+      expandedDescriptions: {},
+      descriptionPreviewLimit: 280,
       closedFixVulnerabilities: [],
       closedFixCount: 0,
       loadingClosedFix: false
@@ -482,6 +493,17 @@ export default {
     },
   },
   methods: {
+    async reloadAssetsAndHeld() {
+      await this.authStore.fetchAssets(true);
+      await this.loadHeldAssets();
+      this.resetPaginationIfNeeded();
+      if (!this.activeIndex || !this.authStore.assetRows.some(a => a.asset === this.activeIndex)) {
+        this.activeIndex = null;
+        if (this.pagedAssets.length) {
+          await this.setActive(this.pagedAssets[0]);
+        }
+      }
+    },
     async refreshSupportRequestsForHost(host) {
       if (!host) {
         this.supportRequestsByHost = [];
@@ -590,6 +612,7 @@ export default {
       for (const asset of selected) {
         await this.authStore.deleteAsset(asset.asset);
       }
+      await this.reloadAssetsAndHeld();
       this.showCheckboxes = false;
       this.activeAction = "";
     },
@@ -698,6 +721,7 @@ export default {
           }
         }
       }
+      await this.reloadAssetsAndHeld();
       this.showHoldCheckboxes = false;
       this.resetActions();
     },
@@ -753,7 +777,7 @@ export default {
           );
         }
       }
-
+      await this.reloadAssetsAndHeld();
       this.resetActions();
     },
     async loadHeldAssets() {
@@ -831,6 +855,22 @@ export default {
     },
     openSupportRequestModal(req) {
       this.selectedSupportRequest = req;
+    },
+    isDescriptionExpanded(index) {
+      return !!this.expandedDescriptions[index];
+    },
+    toggleDescription(index) {
+      this.expandedDescriptions = {
+        ...this.expandedDescriptions,
+        [index]: !this.expandedDescriptions[index],
+      };
+    },
+    getDisplayDescription(description, index) {
+      const fullText = description || "-";
+      if (this.isDescriptionExpanded(index) || fullText.length <= this.descriptionPreviewLimit) {
+        return fullText;
+      }
+      return `${fullText.slice(0, this.descriptionPreviewLimit).trimEnd()}...`;
     },
     viewFixDetail(item) {
       const reportId = this.authStore.latestReportId;
@@ -1350,18 +1390,15 @@ export default {
 }
 .btn-fix-now:hover { opacity: 0.88; }
 
-.btn-ignore-once {
-  color: #0f696e;
-  padding: 7px 22px;
-  border-radius: 50px;
-  font-weight: 700;
-  font-size: 0.875rem;
-  border: 1px solid rgba(203, 196, 208, 0.5);
+.btn-read-more {
   background: transparent;
+  border: none;
+  padding: 0;
+  color: #0f696e;
+  font-size: 0.8rem;
+  font-weight: 700;
   cursor: pointer;
-  transition: background 0.15s;
 }
-.btn-ignore-once:hover { background: #f2f3f6; }
 
 /* Fixed Recently */
 .fixed-divider { height: 1px; background: rgba(203, 196, 208, 0.25); }

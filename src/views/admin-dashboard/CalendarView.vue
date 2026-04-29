@@ -440,19 +440,6 @@
               </div>
             </div>
 
-            <!-- Bottom Stats -->
-            <div class="cal-stats-row">
-              <div v-for="(stat, i) in stats" :key="i" class="cal-stat-card" :style="{ borderLeftColor: stat.border }">
-                <div class="cal-stat-icon" :style="{ background: stat.iconBg }">
-                  <i :class="'bi ' + stat.icon" :style="{ color: stat.iconColor }"></i>
-                </div>
-                <div>
-                  <div class="cal-stat-value">{{ stat.value }}</div>
-                  <div class="cal-stat-label">{{ stat.label }}</div>
-                </div>
-              </div>
-            </div>
-
           </div>
         </div>
       </div>
@@ -561,11 +548,6 @@ export default {
         { day: 1,  currentMonth: false },
         { day: 2,  currentMonth: false },
       ],
-      stats: [
-        { value: '08',    label: 'CRITICAL DEADLINES THIS WEEK', icon: 'bi-exclamation-triangle-fill', iconBg: '#fee2e2', iconColor: '#dc2626', border: '#dc2626' },
-        { value: '24',    label: 'NEW VULNERABILITIES TODAY',    icon: 'bi-patch-check-fill',          iconBg: '#e0f2f1', iconColor: '#0f696e', border: '#0f696e' },
-        { value: '98.2%', label: 'ASSET COVERAGE SCAN',         icon: 'bi-cpu-fill',                  iconBg: '#241447', iconColor: '#ffffff', border: '#7c3aed' },
-      ],
     };
   },
   methods: {
@@ -602,7 +584,9 @@ export default {
         Object.keys(deadlines).forEach(sev => {
           const dl = deadlines[sev];
           if (!dl || !dl.deadline_date) return;
-          const dateNum = parseInt(dl.deadline_date.split('-')[2]);
+          const [yy, mm, dd] = dl.deadline_date.split('-').map(n => parseInt(n, 10));
+          if (yy !== this.currentYear || mm !== this.currentMonth) return;
+          const dateNum = dd;
           const sevLabel = sev.charAt(0).toUpperCase() + sev.slice(1);
           evts.push({
             id: `deadline-${sev}`,
@@ -993,7 +977,7 @@ export default {
     },
     currentMonthName() {
       return new Date(this.currentYear, this.currentMonth - 1, 1)
-        .toLocaleString('default', { month: 'long', year: 'numeric' });
+        .toLocaleString('default', { month: 'long' });
     },
     currentWeekDays() {
       const weekDays = this.weekApiData?.week?.days || [];
@@ -1803,45 +1787,4 @@ export default {
   justify-content: space-between;
 }
 
-/* ── Bottom Stats ── */
-.cal-stats-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin: 0 28px 40px;
-}
-.cal-stat-card {
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 24px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  border-left: 4px solid;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-}
-.cal-stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.2rem;
-  flex-shrink: 0;
-}
-.cal-stat-value {
-  font-size: 1.8rem;
-  font-weight: 800;
-  color: #1e293b;
-  line-height: 1;
-  margin-bottom: 4px;
-}
-.cal-stat-label {
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: #94a3b8;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
 </style>

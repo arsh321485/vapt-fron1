@@ -29,9 +29,6 @@
                   Support Request
                   <span class="rt-support-count-badge">{{ supportRequestCount }}</span>
                 </button>
-                <button class="rt-btn-primary" type="button" disabled title="Completion is handled by assigned users">
-                  Complete Remediation
-                </button>
               </div>
             </div>
 
@@ -129,7 +126,6 @@
                         <span class="rt-label-text">Impacted Asset:</span>
                         <span class="rt-asset-chip">{{ currentVuln.asset }}</span>
                       </div>
-                      <span class="rt-critical-badge mb-2 d-inline-block">{{ currentVuln.risk }}</span>
                       <h3 class="rt-vuln-name">{{ currentVuln.name }}</h3>
                     </div>
                     <!-- Right: REMEDIATION PROGRESS -->
@@ -310,20 +306,8 @@
                             </div>
                           </div>
                         </div>
-
                       </div>
                     </div>
-                  </div>
-
-                  <!-- Bottom action buttons -->
-                  <div class="rt-action-btns">
-                    <span class="rt-admin-note">
-                      <i class="bi bi-info-circle me-1"></i>
-                      Step completion is performed by assigned users only.
-                    </span>
-                    <button class="btn-complete" disabled title="Step completion is done by users only">
-                      Complete Step {{ currentStep }}
-                    </button>
                   </div>
                 </div>
 
@@ -1027,7 +1011,7 @@ export default {
 }
 .rt-chip-risk { color: #7f1d1d; background: #fee2e2; }
 .rt-chip-risk-critical { color: #7f1d1d; background: #fee2e2; }
-.rt-chip-risk-high { color: #9a3412; background: #ffedd5; }
+.rt-chip-risk-high { color: #dc2626; background: #fee2e2; }
 .rt-chip-risk-medium { color: #854d0e; background: #fef3c7; }
 .rt-chip-risk-low { color: #065f46; background: #d1fae5; }
 .rt-chip-status {
@@ -1055,26 +1039,15 @@ export default {
   transition: background 0.15s;
 }
 .rt-btn-support:hover { background: #a1ecf2; }
-.rt-btn-neutral,
-.rt-btn-primary {
+.rt-btn-neutral {
   border-radius: 999px;
   padding: 8px 18px;
   font-size: 0.84rem;
   font-weight: 600;
   border: 1px solid transparent;
-}
-.rt-btn-neutral {
   background: #f1f5f9;
   color: #334155;
   border-color: #e2e8f0;
-}
-.rt-btn-primary {
-  background: #241447;
-  color: #ffffff;
-}
-.rt-btn-primary:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
 }
 .rt-support-count-badge {
   margin-left: 8px;
@@ -1514,7 +1487,6 @@ export default {
   padding: 14px 0;
 }
 .rt-task-right { position: relative; }
-
 .rt-task-left {
   display: flex;
   align-items: center;

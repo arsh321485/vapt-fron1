@@ -2158,6 +2158,7 @@ export const useAuthStore = defineStore("auth", {
           `/api/user/asset/report/${reportId}/assets/${assetIp}/hold/`,
         );
         if (typeof res.data?.total_assets === "number") this.assetCount = res.data.total_assets;
+        this.invalidateUserRealtimeCaches(reportId);
         return { status: true, heldAsset: res.data.asset, data: res.data };
       } catch (error: any) {
         return { status: false, message: error.response?.data?.detail || "Failed to hold asset" };
@@ -2173,6 +2174,7 @@ export const useAuthStore = defineStore("auth", {
           `/api/user/asset/report/${reportId}/assets/${assetIp}/unhold/`,
         );
         if (typeof res.data?.total_assets === "number") this.assetCount = res.data.total_assets;
+        this.invalidateUserRealtimeCaches(reportId);
         return { status: true, restoredAsset: res.data.asset, data: res.data };
       } catch (error: any) {
         return { status: false, message: error.response?.data?.detail || "Failed to unhold asset" };
@@ -2180,13 +2182,15 @@ export const useAuthStore = defineStore("auth", {
     },
 
     // 🔹 USER DELETE ASSET
-    async deleteUserAsset(assetIp: string) {
+    async deleteUserAsset(assetIp: string, reportIdArg?: string) {
       try {
-        const reportId = this.userLatestReportId;
+        const reportId = reportIdArg || this.userLatestReportId;
         if (!reportId) return { status: false, message: "Report ID not found" };
+        const safeAsset = encodeURIComponent(assetIp);
         const res = await endpoint.delete(
-          `/api/user/asset/report/${reportId}/assets/${assetIp}/delete/`,
+          `/api/user/asset/report/${reportId}/assets/${safeAsset}/delete/`,
         );
+        this.invalidateUserRealtimeCaches(reportId);
         return { status: true, data: res.data };
       } catch (error: any) {
         return { status: false, message: error.response?.data?.detail || "Failed to delete asset" };
@@ -2259,7 +2263,18 @@ export const useAuthStore = defineStore("auth", {
     async userLogin(payload: { email: string; password: string; recaptcha: string }) {
       try {
         localStorage.removeItem("authorization");
-        const res = await endpoint.post("/api/admin/users/user-login/", payload);
+        let res;
+        try {
+          res = await endpoint.post("/api/admin/users/user-login/", payload);
+        } catch (primaryError: any) {
+          const status = primaryError?.response?.status;
+          // Backend some deployments use `/login/` instead of `/user-login/`
+          if (status === 404 || status === 405) {
+            res = await endpoint.post("/api/admin/users/login/", payload);
+          } else {
+            throw primaryError;
+          }
+        }
         const data = res.data;
         if (data.tokens?.access) {
           this.setAuth(data.tokens.access, data.user);
@@ -2822,6 +2837,7 @@ export const useAuthStore = defineStore("auth", {
           `/api/admin/adminregister/support-requests/raise/report/${reportId}/vulnerability/${vulnerabilityId}/`,
           payload,
         );
+        this.invalidateAdminRealtimeCaches(reportId);
 
         return {
           status: true,
@@ -3024,6 +3040,7 @@ export const useAuthStore = defineStore("auth", {
           `/api/user/register/fix-vulnerability/${vulnerabilityId}/raise-support-request/`,
           payload,
         );
+        this.invalidateUserRealtimeCaches(this.userLatestReportId || undefined);
         return {
           status: true,
           data: res.data.data,
@@ -3090,6 +3107,7 @@ export const useAuthStore = defineStore("auth", {
           `/api/admin/adminregister/tickets/report/${reportId}/fix/${fixVulnerabilityId}/create/`,
           payload,
         );
+        this.invalidateAdminRealtimeCaches(reportId);
 
         return {
           status: true,
@@ -3332,6 +3350,7 @@ export const useAuthStore = defineStore("auth", {
 
         // ✅ remove from main assets list
         this.assetRows = this.assetRows.filter((a) => a.asset !== assetIp);
+        this.invalidateAdminRealtimeCaches(reportId);
 
         return {
           status: true,
@@ -3366,6 +3385,7 @@ export const useAuthStore = defineStore("auth", {
         if (typeof res.data?.total_assets === "number") {
           this.assetCount = res.data.total_assets;
         }
+        this.invalidateAdminRealtimeCaches(reportId);
 
         return {
           status: true,
@@ -3436,6 +3456,7 @@ export const useAuthStore = defineStore("auth", {
         if (typeof res.data?.total_assets === "number") {
           this.assetCount = res.data.total_assets;
         }
+        this.invalidateAdminRealtimeCaches(reportId);
 
         return {
           status: true,
@@ -3587,6 +3608,51 @@ export const useAuthStore = defineStore("auth", {
       this.cachedUserTotalAssets = {};
       this.cachedUserAllTickets = {};
       this.projectNames = [];
+    },
+
+    // ✅ Invalidate user caches after write operations for instant UI refresh
+    invalidateUserRealtimeCaches(reportId?: string) {
+      this.cachedUserAssets = [];
+      this.cachedUserAssetTotal = 0;
+      this.cachedUserHeldAssets = [];
+      this.userHeldAssetsFetched = false;
+      this.cachedUserTotalAssets = {};
+      this.cachedUserVulnRegister = [];
+      this.userVulnRegisterFetched = false;
+      this.cachedUserClosedVulns = null;
+      this.cachedUserVulnerabilities = {};
+      this.cachedUserVulnerabilitiesFixed = {};
+      this.cachedUserSupportRequests = {};
+      this.cachedUserOpenTickets = {};
+      this.cachedUserAllTickets = {};
+      this.cachedMeanTime = {};
+      this.cachedMitigationTimeline = {};
+      this.cachedUserMitigationByTeam = null;
+      if (reportId) {
+        delete this.cachedUserSupportRequests[reportId];
+        delete this.cachedUserOpenTickets[reportId];
+        delete this.cachedUserAllTickets[reportId];
+      }
+    },
+
+    // ✅ Invalidate admin caches after write operations for instant UI refresh
+    invalidateAdminRealtimeCaches(reportId?: string) {
+      this.assetRows = [];
+      this.assetCount = 0;
+      this.vulnerabilityRows = [];
+      this.vulnerabilityCount = 0;
+      this.selectedAssetDetail = null;
+      this.selectedAssetVulnerabilities = [];
+      this.cachedSupportRequests = {};
+      this.cachedOpenTickets = {};
+      this.cachedTicketsByReport = {};
+      this.cachedMitigationByTeam = null;
+      this.latestReportId = null;
+      if (reportId) {
+        delete this.cachedSupportRequests[reportId];
+        delete this.cachedOpenTickets[reportId];
+        delete this.cachedTicketsByReport[reportId];
+      }
     },
 
     // ✅ Logout user
@@ -4012,6 +4078,7 @@ export const useAuthStore = defineStore("auth", {
           `/api/admin/admindashboard/dashboard/mitigation-timeline-extension/${requestId}/status/`,
           payload,
         );
+        this.invalidateAdminRealtimeCaches(this.latestReportId || undefined);
         return { status: true, data: res.data, message: res.data?.message };
       } catch (error: any) {
         return {
@@ -4075,6 +4142,7 @@ export const useAuthStore = defineStore("auth", {
           `/api/user/dashboard/mitigation-timeline-extension/request/`,
           payload,
         );
+        this.invalidateUserRealtimeCaches(this.userLatestReportId || undefined);
         return {
           status: true,
           data: res.data,

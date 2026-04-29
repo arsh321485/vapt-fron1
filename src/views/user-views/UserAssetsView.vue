@@ -188,6 +188,9 @@
                     </button>
                     <button class="detail-tab" disabled style="opacity:0.4;cursor:not-allowed;">Related Assets</button>
                     <button class="detail-tab" disabled style="opacity:0.4;cursor:not-allowed;">History</button>
+                    <button class="detail-tab ext-tab-btn" @click="openExtPopup">
+                      Extended Timeline
+                    </button>
                   </div>
                 </div>
 
@@ -250,7 +253,17 @@
                             </div>
                             <div class="mb-4">
                               <h5 class="vuln-desc-title">Description</h5>
-                              <p class="vuln-desc-text">{{ vuln.description }}</p>
+                              <p class="vuln-desc-text">
+                                {{ getDisplayDescription(vuln.description, idx) }}
+                              </p>
+                              <button
+                                v-if="(vuln.description || '').length > descriptionPreviewLimit"
+                                type="button"
+                                class="btn-read-more"
+                                @click="toggleDescription(idx)"
+                              >
+                                {{ isDescriptionExpanded(idx) ? 'Read less' : 'Read more' }}
+                              </button>
                             </div>
                             <div class="d-flex gap-3">
                               <router-link
@@ -372,6 +385,111 @@
                 </div>
               </div>
 
+              <!-- Extended Timeline Drawer -->
+              <transition name="ext-drawer">
+                <div v-if="showExtPopup" class="ext-popup-backdrop" @click.self="closeExtPopup">
+                  <div class="ext-popup-box" @click.stop>
+                    <div class="ext-drawer-accent" :class="'ext-accent-' + extPopupSeverity"></div>
+                    <div class="ext-popup-header">
+                      <div class="ext-header-left">
+                        <div class="ext-header-icon" :class="'ext-icon-' + extPopupSeverity">
+                          <i class="bi" :class="{
+                            'bi-exclamation-circle-fill': extPopupSeverity === 'critical',
+                            'bi-exclamation-triangle-fill': extPopupSeverity === 'high',
+                            'bi-exclamation-circle': extPopupSeverity === 'medium',
+                            'bi-gear-fill': extPopupSeverity === 'low'
+                          }"></i>
+                        </div>
+                        <div>
+                          <h4 class="ext-popup-title">Extended Timeline</h4>
+                          <span class="ext-popup-subtitle">
+                            <span class="ext-sev-pill" :class="'ext-sev-' + extPopupSeverity">{{ extPopupSeverity }}</span>
+                            Severity Request
+                          </span>
+                        </div>
+                      </div>
+                      <button type="button" class="ext-header-close" @click="closeExtPopup"><i class="bi bi-x-lg"></i></button>
+                    </div>
+                    <div class="ext-popup-body">
+                      <div class="ext-info-banner">
+                        <i class="bi bi-info-circle-fill"></i>
+                        <span>Submit a request to extend the remediation deadline for a specific vulnerability on an asset.</span>
+                      </div>
+                      <div class="ext-section-title"><i class="bi bi-hdd-network"></i> Asset & Vulnerability</div>
+                      <div class="ext-popup-field">
+                        <label class="ext-popup-label">Asset (IP)</label>
+                        <div class="ext-select-wrap">
+                          <i class="bi bi-hdd-fill ext-select-icon ext-icon-asset"></i>
+                          <select class="ext-popup-select ext-has-icon" v-model="extPopupAsset" @change="onExtPopupAssetChange">
+                            <option value="">{{ extPopupOptionsLoading ? 'Loading...' : 'Select Asset' }}</option>
+                            <option v-for="ip in extPopupAssetList" :key="ip" :value="ip">{{ ip }}</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div class="ext-popup-field">
+                        <label class="ext-popup-label">Vulnerability Name</label>
+                        <div class="ext-select-wrap">
+                          <i class="bi bi-shield-exclamation ext-select-icon ext-icon-vuln"></i>
+                          <select class="ext-popup-select ext-has-icon" v-model="extPopupVulName" :disabled="!extPopupAsset || extPopupOptionsLoading">
+                            <option value="">{{ extPopupOptionsLoading ? 'Loading...' : 'Select Vulnerability' }}</option>
+                            <option v-for="vn in extPopupVulList" :key="vn" :value="vn">{{ vn }}</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div class="ext-drawer-divider" style="margin: 4px 0 12px;"></div>
+                      <div class="ext-section-title"><i class="bi bi-calendar3"></i> Timeline Details</div>
+                      <div class="ext-popup-row">
+                        <div class="ext-popup-field">
+                          <label class="ext-popup-label">Original Deadline</label>
+                          <div class="ext-deadline-chip ext-deadline-original">
+                            <i class="bi bi-clock-history"></i>
+                            <span>{{ extOriginalDeadlineDisplay }}</span>
+                          </div>
+                        </div>
+                        <div class="ext-popup-field">
+                          <label class="ext-popup-label">Extended Deadline</label>
+                          <div class="ext-select-wrap">
+                            <i class="bi bi-clock-fill ext-select-icon"></i>
+                            <select class="ext-popup-select ext-has-icon" v-model="extPopupExtension">
+                              <option value="">— Select Extension —</option>
+                              <optgroup label="Days">
+                                <option value="1 Day">1 Day</option>
+                                <option value="2 Days">2 Days</option>
+                                <option value="3 Days">3 Days</option>
+                                <option value="4 Days">4 Days</option>
+                                <option value="5 Days">5 Days</option>
+                                <option value="6 Days">6 Days</option>
+                              </optgroup>
+                              <optgroup label="Weeks">
+                                <option value="1 Week">1 Week</option>
+                                <option value="2 Weeks">2 Weeks</option>
+                                <option value="3 Weeks">3 Weeks</option>
+                                <option value="4 Weeks">4 Weeks</option>
+                                <option value="5 Weeks">5 Weeks</option>
+                                <option value="6 Weeks">6 Weeks</option>
+                              </optgroup>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="ext-drawer-divider" style="margin: 4px 0 12px;"></div>
+                      <div class="ext-section-title"><i class="bi bi-chat-left-text"></i> Justification</div>
+                      <div class="ext-popup-field">
+                        <label class="ext-popup-label">Reason</label>
+                        <textarea class="ext-popup-textarea" v-model="extPopupReason" rows="4" placeholder="Describe why an extension is needed — include any dependencies, blockers, or risk context..."></textarea>
+                        <span class="ext-char-hint">{{ extPopupReason.trim().length > 0 ? extPopupReason.trim().length + ' chars' : 'Required' }}</span>
+                      </div>
+                    </div>
+                    <div class="ext-popup-footer">
+                      <button type="button" class="mte-btn-secondary" @click="closeExtPopup">Cancel</button>
+                      <button type="button" class="mte-btn-primary ext-submit-btn" @click="submitExtPopup" :disabled="!extPopupAsset || !extPopupVulName || !extPopupExtension || !extPopupReason.trim()">
+                        <i class="bi bi-send-fill"></i> <span style="color:#fff;">Submit Request</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </transition>
+
             </div>
           </div>
         </div>
@@ -416,6 +534,18 @@ export default {
       loadingSupportRequests: false,
       supportRequestCount: 0,
       selectedSupportRequest: null,
+      expandedDescriptions: {},
+      descriptionPreviewLimit: 280,
+      showExtPopup: false,
+      extPopupSeverity: "critical",
+      extPopupAsset: "",
+      extPopupVulName: "",
+      extPopupExtension: "",
+      extPopupReason: "",
+      extPopupAssetListApi: [],
+      extPopupVulListApi: [],
+      extPopupOriginalDeadlineDays: null,
+      extPopupOptionsLoading: false,
     };
   },
   computed: {
@@ -451,6 +581,24 @@ export default {
     assetSupportRequests() {
       return this.supportRequests;
     },
+    extPopupAssetList() {
+      if (this.extPopupAssetListApi.length > 0) return this.extPopupAssetListApi;
+      return this.assets.map(a => a.asset).filter(Boolean);
+    },
+    extPopupVulList() {
+      if (this.extPopupVulListApi.length > 0) return this.extPopupVulListApi;
+      if (!this.extPopupAsset) return [];
+      return this.authStore.selectedAssetVulnerabilities
+        .filter(v => (v.status || '').toLowerCase() === 'open')
+        .map(v => v.vul_name)
+        .filter(Boolean);
+    },
+    extOriginalDeadlineDisplay() {
+      if (this.extPopupOriginalDeadlineDays !== null && this.extPopupOriginalDeadlineDays !== undefined) {
+        return `${this.extPopupOriginalDeadlineDays} Days`;
+      }
+      return "—";
+    },
   },
   methods: {
     async onSupportRequestsTabClick() {
@@ -459,6 +607,22 @@ export default {
     },
     setSeverity(sev) {
       this.activeSeverity = sev;
+    },
+    isDescriptionExpanded(index) {
+      return !!this.expandedDescriptions[index];
+    },
+    toggleDescription(index) {
+      this.expandedDescriptions = {
+        ...this.expandedDescriptions,
+        [index]: !this.expandedDescriptions[index],
+      };
+    },
+    getDisplayDescription(description, index) {
+      const fullText = description || "-";
+      if (this.isDescriptionExpanded(index) || fullText.length <= this.descriptionPreviewLimit) {
+        return fullText;
+      }
+      return `${fullText.slice(0, this.descriptionPreviewLimit).trimEnd()}...`;
     },
     async loadSupportRequestsByHost(host) {
       if (!host) {
@@ -489,8 +653,26 @@ export default {
         this.totalAssets = result.total;
         if (this.assets.length > 0) {
           await this.setActive(this.assets[0]);
+        } else {
+          this.activeIndex = null;
         }
       }
+      this.loading = false;
+    },
+    async reloadAssetsAndHeld() {
+      this.loading = true;
+      const result = await this.authStore.fetchUserAssets(true);
+      if (result.status) {
+        this.assets = result.data;
+        this.totalAssets = result.total;
+        if (this.assets.length > 0) {
+          await this.setActive(this.assets[0]);
+        } else {
+          this.activeIndex = null;
+        }
+      }
+      await this.loadHeldAssets();
+      this.totalAssets = this.assets.length + this.heldAssets.length;
       this.loading = false;
     },
     async loadHeldAssets() {
@@ -586,8 +768,13 @@ export default {
     },
     async confirmDelete() {
       const selected = this.assets.filter(a => a.selected);
+      const reportId = this.authStore.userLatestReportId;
+      if (!reportId) {
+        Swal.fire('Error', 'Report ID not found', 'error');
+        return;
+      }
       for (const item of selected) {
-        const res = await this.authStore.deleteUserAsset(item.asset);
+        const res = await this.authStore.deleteUserAsset(item.asset, reportId);
         if (res.status) {
           this.assets = this.assets.filter(x => x.asset !== item.asset);
           if (this.activeIndex === item.asset) {
@@ -596,7 +783,7 @@ export default {
           }
         }
       }
-      this.totalAssets = this.assets.length + this.heldAssets.length;
+      await this.reloadAssetsAndHeld();
       this.showCheckboxes = false;
       this.resetActions();
     },
@@ -663,6 +850,87 @@ export default {
       this.assets.forEach((a) => (a.selected = false));
       this.showHoldCheckboxes = false;
       this.resetActions();
+    },
+    inferExtSeverity() {
+      const s = this.selectedAsset?.severity_counts || {};
+      if ((s.critical || 0) > 0) return "critical";
+      if ((s.high || 0) > 0) return "high";
+      if ((s.medium || 0) > 0) return "medium";
+      return "low";
+    },
+    parseExtensionDays(label) {
+      const m = String(label || "").trim().toLowerCase().match(/^(\d+)\s*(day|days|week|weeks)$/);
+      if (!m) return NaN;
+      const n = Number(m[1]);
+      const unit = m[2];
+      return unit.startsWith("week") ? n * 7 : n;
+    },
+    async fetchExtPopupOptions(severity, asset) {
+      this.extPopupOptionsLoading = true;
+      const team = (this.selectedAsset?.assigned_teams && this.selectedAsset.assigned_teams[0]) || undefined;
+      const res = await this.authStore.fetchUserMitigationTimelineExtensionOptions(severity, asset || undefined, team);
+      this.extPopupOptionsLoading = false;
+      if (res.status && res.data) {
+        this.extPopupAssetListApi = res.data.assets || [];
+        this.extPopupVulListApi = res.data.vulnerabilities || [];
+        this.extPopupOriginalDeadlineDays = res.data.original_deadline_days ?? null;
+      } else {
+        this.extPopupAssetListApi = [];
+        this.extPopupVulListApi = [];
+        this.extPopupOriginalDeadlineDays = null;
+      }
+    },
+    async openExtPopup() {
+      this.extPopupSeverity = this.inferExtSeverity();
+      this.extPopupAsset = this.activeIndex || "";
+      this.extPopupVulName = "";
+      this.extPopupExtension = "";
+      this.extPopupReason = "";
+      this.extPopupAssetListApi = [];
+      this.extPopupVulListApi = [];
+      this.extPopupOriginalDeadlineDays = null;
+      this.showExtPopup = true;
+      await this.fetchExtPopupOptions(this.extPopupSeverity, this.extPopupAsset || null);
+    },
+    async onExtPopupAssetChange() {
+      this.extPopupVulName = "";
+      this.extPopupVulListApi = [];
+      this.extPopupOriginalDeadlineDays = null;
+      if (this.extPopupAsset && this.extPopupSeverity) {
+        await this.fetchExtPopupOptions(this.extPopupSeverity, this.extPopupAsset);
+      }
+    },
+    closeExtPopup() {
+      this.showExtPopup = false;
+      this.extPopupSeverity = "critical";
+      this.extPopupAsset = "";
+      this.extPopupVulName = "";
+      this.extPopupExtension = "";
+      this.extPopupReason = "";
+      this.extPopupAssetListApi = [];
+      this.extPopupVulListApi = [];
+      this.extPopupOriginalDeadlineDays = null;
+      this.extPopupOptionsLoading = false;
+    },
+    async submitExtPopup() {
+      if (!this.extPopupAsset || !this.extPopupVulName || !this.extPopupExtension || !this.extPopupReason.trim()) return;
+      const requestedDays = this.parseExtensionDays(this.extPopupExtension);
+      if (!Number.isFinite(requestedDays) || requestedDays <= 0) return;
+
+      const payload = {
+        severity: this.extPopupSeverity,
+        asset: this.extPopupAsset,
+        vulnerability_name: this.extPopupVulName,
+        requested_extension_days: requestedDays,
+        reason: this.extPopupReason.trim(),
+        team: (this.selectedAsset?.assigned_teams && this.selectedAsset.assigned_teams[0]) || undefined,
+      };
+      const res = await this.authStore.submitUserMitigationTimelineExtensionRequest(payload);
+      if (res.status) {
+        this.closeExtPopup();
+      } else {
+        alert(res.message || "Failed to submit extension request");
+      }
     },
     async confirmHold() {
       const selected = this.assets.filter(a => a.selected);
@@ -1018,6 +1286,10 @@ export default {
   color: #0f696e;
   border-bottom: 2px solid #0f696e;
 }
+.ext-tab-btn {
+  color: #15803d;
+  font-weight: 700;
+}
 
 /* Right panel scrollable body */
 .right-panel-scroll {
@@ -1155,6 +1427,16 @@ export default {
   display: inline-block;
 }
 .btn-fix-now:hover { opacity: 0.88; }
+
+.btn-read-more {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: #0f696e;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
 
 /* Fixed Recently */
 .fixed-divider { height: 1px; background: rgba(203, 196, 208, 0.25); }
@@ -1324,4 +1606,124 @@ export default {
   transition: background 0.15s;
 }
 .btn-view-requests:hover { background: #a1ecf2; }
+
+/* Extended Timeline Drawer */
+.ext-popup-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 25, 50, 0.38);
+  z-index: 2100;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+}
+.ext-popup-box {
+  background: #fff;
+  width: 560px;
+  max-width: 100vw;
+  height: 100%;
+  box-shadow: -8px 0 40px rgba(0,0,0,0.18);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+.ext-drawer-accent { height: 5px; width: 100%; flex-shrink: 0; }
+.ext-accent-critical { background: linear-gradient(90deg, #c71616, #ef4444); }
+.ext-accent-high     { background: linear-gradient(90deg, #d97706, #f59e0b); }
+.ext-accent-medium   { background: linear-gradient(90deg, #b45309, #fbbf24); }
+.ext-accent-low      { background: linear-gradient(90deg, #0f696e, #14b8a6); }
+.ext-popup-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px 22px;
+  background: linear-gradient(135deg, #241447 0%, #0f696e 100%);
+  flex-shrink: 0;
+  margin-top: 52px;
+}
+.ext-header-left { display: flex; align-items: center; gap: 12px; }
+.ext-header-icon {
+  width: 42px; height: 42px; border-radius: 10px;
+  background: rgba(255,255,255,0.15);
+  border: 1.5px solid rgba(255,255,255,0.25);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0; color: #fff;
+}
+.ext-icon-critical { background: rgba(239,68,68,0.25); border-color: rgba(239,68,68,0.4); color: #fca5a5; }
+.ext-icon-high     { background: rgba(245,158,11,0.25); border-color: rgba(245,158,11,0.4); color: #fcd34d; }
+.ext-icon-medium   { background: rgba(251,191,36,0.2);  border-color: rgba(251,191,36,0.35); color: #fde68a; }
+.ext-icon-low      { background: rgba(20,184,166,0.25); border-color: rgba(20,184,166,0.4); color: #5eead4; }
+.ext-popup-title { font-size: 17px; font-weight: 700; color: #fff; margin: 0 0 3px; line-height: 1.2; }
+.ext-popup-subtitle { font-size: 12px; color: rgba(255,255,255,0.65); display: flex; align-items: center; gap: 6px; }
+.ext-header-close {
+  background: rgba(255,255,255,0.12); border: 1.5px solid rgba(255,255,255,0.2);
+  color: #fff; width: 34px; height: 34px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; cursor: pointer; flex-shrink: 0;
+}
+.ext-sev-pill {
+  display: inline-block; border-radius: 20px; font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 8px;
+}
+.ext-sev-critical { background: #fee2e2; color: #b91c1c; }
+.ext-sev-high     { background: #fef3c7; color: #b45309; }
+.ext-sev-medium   { background: #fefce8; color: #92400e; }
+.ext-sev-low      { background: #ccfbf1; color: #0f766e; }
+.ext-drawer-divider { height: 1px; background: #e2e8f0; margin: 0; flex-shrink: 0; }
+.ext-section-title {
+  font-size: 11px; font-weight: 700; color: #0f696e;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  display: flex; align-items: center; gap: 6px; margin-bottom: 2px;
+}
+.ext-info-banner {
+  background: #f0fdf9; border: 1px solid #99f6e4; border-radius: 8px;
+  padding: 10px 14px; font-size: 12px; color: #0f696e;
+  display: flex; align-items: flex-start; gap: 8px; line-height: 1.5;
+}
+.ext-select-wrap { position: relative; display: flex; align-items: center; }
+.ext-select-icon { position: absolute; left: 11px; color: #94a3b8; font-size: 13px; pointer-events: none; z-index: 1; }
+.ext-icon-asset { color: #0f696e; }
+.ext-icon-vuln  { color: #7c3aed; }
+.ext-popup-select.ext-has-icon { padding-left: 32px; }
+.ext-deadline-chip {
+  display: flex; align-items: center; gap: 7px; border-radius: 8px;
+  padding: 9px 14px; font-size: 13px; font-weight: 600; border: 1.5px solid #e2e8f0;
+}
+.ext-deadline-original { background: #f1f5f9; color: #475569; }
+.ext-char-hint { font-size: 11px; color: #94a3b8; text-align: right; margin-top: 2px; }
+.ext-popup-body { padding: 14px 22px; display: flex; flex-direction: column; gap: 12px; flex: 1; overflow-y: auto; background: #f8fafc; }
+.ext-popup-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.ext-popup-field { display: flex; flex-direction: column; gap: 5px; }
+.ext-popup-label { font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; }
+.ext-popup-select,
+.ext-popup-textarea {
+  border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 9px 12px;
+  font-size: 13px; color: #1e293b; background: #f8fafc; outline: none; width: 100%;
+}
+.ext-popup-textarea { resize: vertical; min-height: 90px; }
+.ext-popup-footer {
+  display: flex; justify-content: flex-end; gap: 10px;
+  padding: 12px 22px 16px; border-top: 1px solid #e2e8f0;
+  flex-shrink: 0; background: #fff;
+}
+.mte-btn-secondary {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+  border-radius: 999px;
+  padding: 10px 22px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
+.mte-btn-primary {
+  border: 1px solid #241447;
+  background: #241447;
+  color: #fff;
+  border-radius: 999px;
+  padding: 10px 22px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
+.ext-submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 </style>

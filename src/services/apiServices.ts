@@ -2,7 +2,9 @@ import axios from "axios";
 import router from "../router";
 import Swal from "sweetalert2";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+// In dev we rely on Vite's proxy (vite.config.*) for `/api` requests,
+// otherwise browsers block cross-origin calls (CORS).
+const BASE_URL = import.meta.env.DEV ? "" : import.meta.env.VITE_API_BASE_URL;
 
 const endpoint = axios.create({
   baseURL: BASE_URL,

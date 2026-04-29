@@ -18,7 +18,7 @@
               </div>
               <div class="st-stat-card st-stat-card-static">
                 <div class="text-end">
-                  <p class="st-stat-label">Active Tickets</p>
+                  <p class="st-stat-label">Support Request Raised</p>
                   <p class="st-stat-value">{{ filteredRequests.length }}</p>
                 </div>
                 <div class="st-stat-icon">
@@ -29,6 +29,9 @@
 
             <div class="st-filter-bar">
               <div class="d-flex gap-2 flex-wrap">
+                <button class="st-btn-filter">
+                  <i class="bi bi-funnel me-1"></i> Filter View
+                </button>
                 <button
                   class="st-tab-btn"
                   :class="{ 'st-tab-active': activeTab === 'all' }"
@@ -59,6 +62,13 @@
                   <span v-if="sortOrder === 'asc'">↑</span>
                   <span v-else>↓</span>
                 </button>
+                <select v-model="selectedTeam" class="st-select">
+                  <option value="all">All Teams</option>
+                  <option value="Patch Management">Patch Management</option>
+                  <option value="Configuration Management">Configuration Management</option>
+                  <option value="Network Management">Network Management</option>
+                  <option value="Architectural Management">Architectural Management</option>
+                </select>
               </div>
               <span class="st-count-badge">{{ filteredRequests.length }} requests</span>
             </div>
@@ -71,39 +81,40 @@
                 <table class="st-table">
                   <thead>
                     <tr>
-                      <th class="st-th">#</th>
-                      <th class="st-th">Vulnerability</th>
                       <th class="st-th">Asset</th>
+                      <th class="st-th">Vulnerability Name</th>
+                      <th class="st-th text-center">Criticality</th>
                       <th class="st-th">Requested by</th>
-                      <th class="st-th">Description</th>
-                      <th class="st-th">Date requested</th>
+                      <th class="st-th">Support Raised</th>
                       <th class="st-th">Status</th>
                       <th class="st-th">Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr v-for="(req, i) in paginatedRequests" :key="req._id" class="st-tr">
-                      <td class="st-td st-td-num">{{ (currentPage - 1) * itemsPerPage + i + 1 }}</td>
-                      <td class="st-td" data-bs-toggle="tooltip" data-bs-placement="top" :title="req.vul_name">
-                        <span class="st-vuln-name text-truncate d-block">{{ req.vul_name || '-' }}</span>
+                      <td class="st-td">
+                        <div class="st-asset-cell">
+                          <span class="st-asset-ip">{{ req.host_name || '-' }}</span>
+                          <span class="st-asset-sub">{{ req.requested_by || '-' }}</span>
+                        </div>
                       </td>
                       <td class="st-td">
-                        <span class="st-asset-chip">{{ req.host_name || '-' }}</span>
+                        <span class="st-vuln-name text-truncate d-block" :title="req.vul_name">{{ req.vul_name || '-' }}</span>
                       </td>
-                      <td class="st-td">{{ req.requested_by || '-' }}</td>
-                      <td
-                        class="st-td"
-                        data-bs-toggle="tooltip"
-                        data-bs-placement="top"
-                        :title="req.description"
-                        data-bs-target="#viewRequestsModal"
-                        style="cursor: pointer;"
-                        @click="viewRequest(req)"
-                      >
-                        <span class="st-desc-text text-truncate d-block">{{ req.description || '-' }}</span>
-                        <i class="bi bi-box-arrow-up-right st-expand-icon ms-1"></i>
+                      <td class="st-td">
+                        <span class="st-crit-badge" :class="getSeverityBadgeClass(req)">
+                          {{ getSeverityLabel(req) }}
+                        </span>
                       </td>
-                      <td class="st-td st-td-date">{{ formatDate(req.requested_at) }}</td>
+                      <td class="st-td">
+                        <div class="d-flex align-items-center gap-2">
+                          <div class="st-avatar">{{ (req.requested_by || 'U').charAt(0).toUpperCase() }}</div>
+                          <span class="st-person-name">{{ req.requested_by || '-' }}</span>
+                        </div>
+                      </td>
+                      <td class="st-td st-td-date">
+                        {{ req.requested_at ? new Date(req.requested_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-' }}
+                      </td>
                       <td class="st-td">
                         <span
                           class="st-status-badge"
@@ -123,7 +134,7 @@
                       </td>
                     </tr>
                     <tr v-if="!filteredRequests.length">
-                      <td colspan="8" class="st-empty-row">
+                      <td colspan="7" class="st-empty-row">
                         <i class="bi bi-inbox st-empty-icon"></i>
                         <p class="mb-0">No support requests found.</p>
                       </td>
@@ -227,21 +238,19 @@
                   <div class="d-flex justify-content-between align-items-center mb-3">
                     <div class="d-flex align-items-center gap-2">
                       <button class="st-so-close-btn" @click="closeSlideOver"><i class="bi bi-x-lg"></i></button>
-                      <span class="st-so-label">TICKET DETAIL</span>
+                      <span class="st-so-label">SUPPORT REQUEST DETAILS</span>
                     </div>
 
                   </div>
-                  <h2 class="st-so-title">
-                    SR-{{ String(slideOverIndex + 90000).padStart(5, '0') }}: {{ selectedSupportRequest?.vul_name || '-' }}
-                  </h2>
+                  <h2 class="st-so-title">{{ selectedSupportRequest?.vul_name || '-' }}</h2>
                   <div class="d-flex flex-wrap gap-2 mt-3">
                     <span class="st-so-badge st-so-badge-open">
                       <span class="st-so-dot bg-success"></span>
                       STATUS: {{ (selectedSupportRequest?.status || 'Open').toUpperCase() }}
                     </span>
-                    <span class="st-so-badge st-so-badge-critical">
-                      <span class="st-so-dot bg-danger"></span>
-                      CRITICALITY: CRITICAL
+                    <span class="st-so-badge" :class="getSeveritySlideBadgeClass(selectedSupportRequest)">
+                      <span class="st-so-dot" :class="getSeverityDotClass(selectedSupportRequest)"></span>
+                      CRITICALITY: {{ getSeverityLabel(selectedSupportRequest) }}
                     </span>
                   </div>
                 </div>
@@ -370,8 +379,9 @@ export default {
             selectedSupportRequest: null,
             sortOrder: 'desc',
             activeTab: 'all',
+            selectedTeam: 'all',
             currentPage: 1,
-            itemsPerPage: 5,
+            itemsPerPage: 6,
             showSlideOver: false,
             slideOverIndex: 0,
             slideOverNote: '',
@@ -386,10 +396,14 @@ export default {
             });
         },
         filteredRequests() {
-            if (this.activeTab === 'all') return this.sortedRequests;
-            return this.sortedRequests.filter((req) => {
-                return req.status?.toLowerCase() === this.activeTab;
-            });
+            let rows = this.sortedRequests;
+            if (this.selectedTeam !== 'all') {
+                rows = rows.filter((req) =>
+                    String(req.assigned_team || '').toLowerCase() === this.selectedTeam.toLowerCase()
+                );
+            }
+            if (this.activeTab === 'all') return rows;
+            return rows.filter((req) => req.status?.toLowerCase() === this.activeTab);
         },
         totalPages() {
             return Math.ceil(this.filteredRequests.length / this.itemsPerPage);
@@ -417,6 +431,9 @@ export default {
         sortOrder() {
             this.currentPage = 1;
         },
+        selectedTeam() {
+            this.currentPage = 1;
+        },
         filteredRequests() {
             if (this.currentPage > this.totalPages && this.totalPages > 0) {
                 this.currentPage = this.totalPages;
@@ -430,6 +447,38 @@ export default {
         this.initTooltips();
     },
     methods: {
+        getSeverityRaw(req) {
+            if (!req) return '';
+            return String(req.risk_factor || req.severity || req.criticality || '').trim().toLowerCase();
+        },
+        getSeverityLabel(req) {
+            const sev = this.getSeverityRaw(req);
+            if (sev === 'high') return 'HIGH';
+            if (sev === 'medium') return 'MEDIUM';
+            if (sev === 'low') return 'LOW';
+            return 'CRITICAL';
+        },
+        getSeverityBadgeClass(req) {
+            const sev = this.getSeverityRaw(req);
+            if (sev === 'high') return 'st-crit-high';
+            if (sev === 'medium') return 'st-crit-medium';
+            if (sev === 'low') return 'st-crit-low';
+            return 'st-crit-critical';
+        },
+        getSeveritySlideBadgeClass(req) {
+            const sev = this.getSeverityRaw(req);
+            if (sev === 'high') return 'st-so-badge-high';
+            if (sev === 'medium') return 'st-so-badge-medium';
+            if (sev === 'low') return 'st-so-badge-low';
+            return 'st-so-badge-critical';
+        },
+        getSeverityDotClass(req) {
+            const sev = this.getSeverityRaw(req);
+            if (sev === 'high') return 'st-so-dot-high';
+            if (sev === 'medium') return 'st-so-dot-medium';
+            if (sev === 'low') return 'st-so-dot-low';
+            return 'st-so-dot-critical';
+        },
         initTooltips() {
             this.$nextTick(() => {
                 const tooltipEls = document.querySelectorAll('[data-bs-toggle="tooltip"]');
@@ -441,7 +490,7 @@ export default {
             const reportId = this.authStore.userLatestReportId;
             if (!reportId) return;
             this.loading = true;
-            const res = await this.authStore.fetchUserSupportRequestsByReport(reportId);
+            const res = await this.authStore.fetchUserSupportRequestsByReport(reportId, true);
             this.loading = false;
             if (res.status) {
                 this.supportRequests = res.data;
@@ -601,6 +650,28 @@ export default {
   color: #49454f;
 }
 
+.st-btn-filter {
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: none;
+  background: #f2e8ff;
+  color: #241447;
+}
+
+.st-select {
+  border-radius: 8px;
+  border: 1px solid rgba(203, 196, 208, 0.4);
+  background: #f8f9fc;
+  color: #49454f;
+  font-size: 0.8rem;
+  font-weight: 600;
+  min-width: 190px;
+  height: 34px;
+  padding: 0 10px;
+}
+
 .st-tab-count {
   font-size: 0.7rem;
   font-weight: 700;
@@ -707,6 +778,42 @@ export default {
   max-width: 200px;
 }
 
+.st-asset-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.st-asset-ip {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.st-asset-sub {
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+.st-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #241447;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.st-person-name {
+  font-size: 0.82rem;
+  color: #334155;
+  font-weight: 600;
+}
+
 .st-asset-chip {
   display: inline-block;
   background: #edeef1;
@@ -786,6 +893,23 @@ export default {
   background: #16a34a;
   flex-shrink: 0;
 }
+
+.st-crit-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 84px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.st-crit-critical { background: #ffdad6; color: #ba1a1a; }
+.st-crit-high { background: #ffe0c8; color: #9a3412; }
+.st-crit-medium { background: #fff4cc; color: #a16207; }
+.st-crit-low { background: #d1fae5; color: #166534; }
 
 .st-empty-row {
   padding: 48px 16px;
@@ -1077,6 +1201,18 @@ export default {
   background: #ffdad6;
   color: #ba1a1a;
 }
+.st-so-badge-high {
+  background: #ffe0c8;
+  color: #9a3412;
+}
+.st-so-badge-medium {
+  background: #fff4cc;
+  color: #a16207;
+}
+.st-so-badge-low {
+  background: #d1fae5;
+  color: #166534;
+}
 
 .st-so-dot {
   width: 8px;
@@ -1084,6 +1220,10 @@ export default {
   border-radius: 50%;
   display: inline-block;
 }
+.st-so-dot-critical { background: #ba1a1a; }
+.st-so-dot-high { background: #f2994a; }
+.st-so-dot-medium { background: #f2c94c; }
+.st-so-dot-low { background: #0f696e; }
 
 .st-so-body {
   flex: 1;

@@ -446,8 +446,9 @@ export default {
   mounted() {
     this.authStore = useAuthStore();
 
-    // Set tab from ?mode= query param; default to set-password
-    const mode = this.$route.query.mode;
+    // Normalize legacy/local alias (?mode=signinlocal) to signin.
+    const rawMode = this.$route.query.mode;
+    const mode = rawMode === 'signinlocal' ? 'signin' : rawMode;
     if (mode === 'signin' || mode === 'set-password') {
       this.currentMode = mode;
     }
@@ -459,8 +460,8 @@ export default {
     this.loadRecaptchaScript();
     this.$nextTick(() => { this.startSlider(); });
 
-    // Ensure URL reflects the active tab on initial load
-    if (!this.$route.query.mode) {
+    // Ensure URL reflects the active tab on initial load and normalized aliases.
+    if (!this.$route.query.mode || rawMode === 'signinlocal') {
       this.$router.replace({ path: '/auth', query: { mode: this.currentMode } });
     }
   },

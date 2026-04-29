@@ -19,7 +19,7 @@
               </div>
               <div class="exc-stat-card">
                 <div class="text-end">
-                  <p class="exc-stat-label">Active Tickets</p>
+                  <p class="exc-stat-label">Support Request Raised</p>
                   <p class="exc-stat-value">{{ finalSupportRequests.length }}</p>
                 </div>
                 <div class="exc-stat-icon">
@@ -33,6 +33,30 @@
               <!-- Controls -->
               <div class="exc-table-controls">
                 <div class="d-flex gap-3">
+                  <button
+                    class="exc-tab-btn"
+                    :class="{ 'exc-tab-active': activeTab === 'all' }"
+                    @click="activeTab = 'all'"
+                  >
+                    All
+                    <span class="exc-tab-count">{{ sortedSupportRequests.length }}</span>
+                  </button>
+                  <button
+                    class="exc-tab-btn exc-tab-open"
+                    :class="{ 'exc-tab-active-open': activeTab === 'open' }"
+                    @click="activeTab = 'open'"
+                  >
+                    Open
+                    <span class="exc-tab-count">{{ sortedSupportRequests.filter((r) => (r.status || '').toLowerCase() === 'open').length }}</span>
+                  </button>
+                  <button
+                    class="exc-tab-btn exc-tab-closed"
+                    :class="{ 'exc-tab-active-closed': activeTab === 'closed' }"
+                    @click="activeTab = 'closed'"
+                  >
+                    Closed
+                    <span class="exc-tab-count">{{ sortedSupportRequests.filter((r) => (r.status || '').toLowerCase() === 'closed').length }}</span>
+                  </button>
                   <button class="exc-btn-filter">
                     <i class="bi bi-funnel me-1"></i> Filter View
                   </button>
@@ -47,7 +71,7 @@
                     <option value="Architectural Management">Architectural Management</option>
                   </select>
                 </div>
-                <span class="exc-showing-badge">Showing {{ finalSupportRequests.length }} requests</span>
+                <span class="exc-showing-badge">Showing {{ paginatedSupportRequests.length }} requests</span>
               </div>
 
               <!-- Table -->
@@ -60,19 +84,18 @@
                       <th class="text-center">Criticality</th>
                       <th>Requested By</th>
                       <th>Support Raised</th>
-                      <th>Ticket #</th>
                       <th>Status</th>
                     <th>Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr v-if="loadingRequests">
-                      <td colspan="8" class="text-center py-5 text-muted">Loading...</td>
+                      <td colspan="7" class="text-center py-5 text-muted">Loading...</td>
                     </tr>
                     <tr v-else-if="!finalSupportRequests.length">
-                      <td colspan="8" class="text-center py-5 text-muted">No support requests found</td>
+                      <td colspan="7" class="text-center py-5 text-muted">No support requests found</td>
                     </tr>
-                    <tr v-else v-for="(req, index) in finalSupportRequests" :key="req._id">
+                    <tr v-else v-for="(req, index) in paginatedSupportRequests" :key="req._id">
                       <td>
                         <div class="exc-asset-cell">
                           <span class="exc-asset-ip">{{ req.host_name }}</span>
@@ -92,14 +115,13 @@
                         </div>
                       </td>
                       <td class="exc-date">{{ req.requested_at ? new Date(req.requested_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-' }}</td>
-                      <td class="exc-ticket">SR-{{ String(index + 90000).padStart(5,'0') }}</td>
                       <td>
                         <span class="exc-status" :class="(req.status || '').toLowerCase() === 'closed' ? 'exc-status-closed' : 'exc-status-open'">
                           <span class="exc-status-dot"></span> {{ req.status ? req.status.charAt(0).toUpperCase() + req.status.slice(1) : 'Open' }}
                         </span>
                       </td>
                       <td>
-                        <button type="button" class="exc-row-view-btn" @click.stop.prevent="openSlideOver(req, index)">View</button>
+                        <button type="button" class="exc-row-view-btn" @click.stop.prevent="openSlideOver(req, (currentPage - 1) * itemsPerPage + index)">View</button>
                       </td>
                     </tr>
                   </tbody>
@@ -107,12 +129,18 @@
               </div>
 
               <!-- Pagination -->
-              <div class="exc-pagination">
-                <button class="exc-page-btn"><i class="bi bi-chevron-left"></i></button>
-                <button class="exc-page-btn exc-page-active">1</button>
-                <button class="exc-page-btn">2</button>
-                <button class="exc-page-btn">3</button>
-                <button class="exc-page-btn"><i class="bi bi-chevron-right"></i></button>
+              <div v-if="totalPages > 0" class="exc-pagination">
+                <button class="exc-page-btn" :disabled="currentPage === 1" @click="goToPrevPage"><i class="bi bi-chevron-left"></i></button>
+                <button
+                  v-for="page in pageNumbers"
+                  :key="page"
+                  class="exc-page-btn"
+                  :class="{ 'exc-page-active': currentPage === page }"
+                  @click="goToPage(page)"
+                >
+                  {{ page }}
+                </button>
+                <button class="exc-page-btn" :disabled="currentPage === totalPages" @click="goToNextPage"><i class="bi bi-chevron-right"></i></button>
               </div>
             </div>
 
@@ -151,14 +179,14 @@
                   <div class="d-flex justify-content-between align-items-center mb-3">
                     <div class="d-flex align-items-center gap-2">
                       <button class="exc-so-close-btn" @click="closeSlideOver"><i class="bi bi-x-lg"></i></button>
-                      <span class="exc-so-label">TICKET DETAIL</span>
+                      <span class="exc-so-label">SUPPORT REQUEST DETAILS</span>
                     </div>
                     <!-- <div class="d-flex gap-2">
                       <button class="exc-so-icon-btn"><i class="bi bi-share"></i></button>
                       <button class="exc-so-icon-btn"><i class="bi bi-three-dots-vertical"></i></button>
                     </div> -->
                   </div>
-                  <h2 class="exc-so-title">SR-{{ String(slideOverIndex + 90000).padStart(5,'0') }}: {{ selectedSupportRequest?.vul_name }}</h2>
+                  <h2 class="exc-so-title">{{ selectedSupportRequest?.vul_name || '-' }}</h2>
                   <div class="d-flex flex-wrap gap-2 mt-3">
                     <span class="exc-so-badge exc-so-badge-open"><span class="exc-so-dot bg-success"></span> STATUS: OPEN</span>
                     <span class="exc-so-badge" :class="getSeveritySlideBadgeClass(selectedSupportRequest)">
@@ -305,6 +333,9 @@ export default {
       selectedLocation: "greece",
       sortOrder: 'asc' ,
       selectedTeam: "all",
+      activeTab: "all",
+      currentPage: 1,
+      itemsPerPage: 6,
     };
   },
   computed: {
@@ -338,15 +369,49 @@ export default {
     return sorted;
   },
    finalSupportRequests() {
-    if (this.selectedTeam === "all") {
-      return this.sortedSupportRequests;
+    let rows = this.sortedSupportRequests;
+    if (this.selectedTeam !== "all") {
+      rows = rows.filter(req =>
+        req.assigned_team?.toLowerCase() === this.selectedTeam.toLowerCase()
+      );
     }
-
-    return this.sortedSupportRequests.filter(req =>
-      req.assigned_team?.toLowerCase() === this.selectedTeam.toLowerCase()
-    );
+    if (this.activeTab === "all") return rows;
+    return rows.filter((req) => (req.status || "").toLowerCase() === this.activeTab);
+  },
+  totalPages() {
+    return Math.ceil(this.finalSupportRequests.length / this.itemsPerPage);
+  },
+  paginatedSupportRequests() {
+    const start = (this.currentPage - 1) * this.itemsPerPage;
+    const end = start + this.itemsPerPage;
+    return this.finalSupportRequests.slice(start, end);
+  },
+  pageNumbers() {
+    const total = this.totalPages;
+    if (total <= 3) return Array.from({ length: total }, (_, i) => i + 1);
+    if (this.currentPage <= 2) return [1, 2, 3];
+    if (this.currentPage >= total - 1) return [total - 2, total - 1, total];
+    return [this.currentPage - 1, this.currentPage, this.currentPage + 1];
   }
 
+  },
+  watch: {
+    sortOrder() {
+      this.currentPage = 1;
+    },
+    selectedTeam() {
+      this.currentPage = 1;
+    },
+    activeTab() {
+      this.currentPage = 1;
+    },
+    finalSupportRequests() {
+      if (this.currentPage > this.totalPages && this.totalPages > 0) {
+        this.currentPage = this.totalPages;
+      } else if (!this.totalPages) {
+        this.currentPage = 1;
+      }
+    },
   },
   methods: {
     getSeverityRaw(req) {
@@ -406,7 +471,7 @@ export default {
     try {
       if (!this.authStore.cachedSupportRequests[reportId]) this.loadingRequests = true;
 
-      const res = await this.authStore.getSupportRequestsByReport(reportId);
+      const res = await this.authStore.getSupportRequestsByReport(reportId, true);
 
       console.log("⬅️ API response:", res);
 
@@ -438,6 +503,15 @@ export default {
   },
   closeSlideOver() {
     this.showSlideOver = false;
+  },
+  goToPage(page) {
+    this.currentPage = page;
+  },
+  goToPrevPage() {
+    if (this.currentPage > 1) this.currentPage -= 1;
+  },
+  goToNextPage() {
+    if (this.currentPage < this.totalPages) this.currentPage += 1;
   },
   },
   mounted() {
@@ -533,6 +607,54 @@ export default {
   display: inline-flex; align-items: center; transition: background 0.15s;
 }
 .exc-btn-sort:hover { background: #f2f3f6; }
+.exc-tab-btn {
+  border-radius: 50px;
+  padding: 6px 16px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  border: 1px solid rgba(203, 196, 208, 0.4);
+  background: #f8f9fc;
+  color: #49454f;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.exc-tab-count {
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: #edeef1;
+  color: #49454f;
+  padding: 1px 6px;
+  border-radius: 50px;
+}
+.exc-tab-active {
+  background: #e0f2f1 !important;
+  color: #0f696e !important;
+  border-color: #0f696e !important;
+}
+.exc-tab-active .exc-tab-count {
+  background: #0f696e;
+  color: #ffffff;
+}
+.exc-tab-active-open {
+  background: #fdeaea !important;
+  color: #ba1a1a !important;
+  border-color: #ba1a1a !important;
+}
+.exc-tab-active-open .exc-tab-count {
+  background: #ba1a1a;
+  color: #ffffff;
+}
+.exc-tab-active-closed {
+  background: #dcfce7 !important;
+  color: #166534 !important;
+  border-color: #16a34a !important;
+}
+.exc-tab-active-closed .exc-tab-count {
+  background: #16a34a;
+  color: #ffffff;
+}
 .exc-select {
   border: 1px solid #e2e8f0; border-radius: 8px; padding: 7px 12px;
   font-size: 0.82rem; color: #1e293b; background: #f2f3f6; outline: none; cursor: pointer;
@@ -602,6 +724,10 @@ export default {
   transition: background 0.15s;
 }
 .exc-page-btn:hover { background: #e7e8eb; }
+.exc-page-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 .exc-page-active { background: #0f696e !important; color: #ffffff !important; }
 
 .exc-insights {

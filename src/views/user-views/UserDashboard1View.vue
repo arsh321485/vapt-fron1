@@ -1,6 +1,7 @@
 <template>
   <main>
     <section>
+
       <div class="container-fluid px-0">
         <div class="row gx-0 no-gutters">
           <DashboardHeader />
@@ -226,7 +227,7 @@
                           </svg>
                           <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;white-space:nowrap;">
                             <div style="font-size:13px;font-weight:900;color:#1f2937;line-height:1.1;">{{ meanRemediateHuman }}</div>
-                            <div style="font-size:8px;color:#94a3b8;font-weight:700;letter-spacing:0.04em;margin-top:2px;">Mean Time to Remediate</div>
+                            <div style="font-size:8px;color:#94a3b8;font-weight:700;letter-spacing:0.04em;margin-top:2px;">MTTR</div>
                           </div>
                         </div>
                       </div>
@@ -752,7 +753,6 @@
                 <span class="mte-badge critical">{{ mteFilteredData.critical.length }} ITEMS</span>
               </div>
               <div class="mte-head-right">
-                <button type="button" class="mte-ext-btn" @click.stop="openExtPopup('critical')">Extended Timeline</button>
                 <i class="bi" :class="mteOpenSection === 'critical' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
               </div>
             </div>
@@ -793,7 +793,6 @@
                 <span class="mte-badge high">{{ mteFilteredData.high.length }} ITEMS</span>
               </div>
               <div class="mte-head-right">
-                <button type="button" class="mte-ext-btn" @click.stop="openExtPopup('high')">Extended Timeline</button>
                 <i class="bi" :class="mteOpenSection === 'high' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
               </div>
             </div>
@@ -834,7 +833,6 @@
                 <span class="mte-badge medium">{{ mteFilteredData.medium.length }} ITEMS</span>
               </div>
               <div class="mte-head-right">
-                <button type="button" class="mte-ext-btn" @click.stop="openExtPopup('medium')">Extended Timeline</button>
                 <i class="bi" :class="mteOpenSection === 'medium' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
               </div>
             </div>
@@ -875,7 +873,6 @@
                 <span class="mte-badge low">{{ mteFilteredData.low.length }} ITEMS</span>
               </div>
               <div class="mte-head-right">
-                <button type="button" class="mte-ext-btn" @click.stop="openExtPopup('low')">Extended Timeline</button>
                 <i class="bi" :class="mteOpenSection === 'low' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
               </div>
             </div>
@@ -907,111 +904,6 @@
               </table>
             </div>
           </div>
-
-          <!-- Extended Timeline Drawer -->
-          <transition name="ext-drawer">
-            <div v-if="showExtPopup" class="ext-popup-backdrop" @click.self="closeExtPopup">
-              <div class="ext-popup-box" @click.stop>
-                <div class="ext-drawer-accent" :class="'ext-accent-' + extPopupSeverity"></div>
-                <div class="ext-popup-header">
-                  <div class="ext-header-left">
-                    <div class="ext-header-icon" :class="'ext-icon-' + extPopupSeverity">
-                      <i class="bi" :class="{
-                        'bi-exclamation-circle-fill': extPopupSeverity === 'critical',
-                        'bi-exclamation-triangle-fill': extPopupSeverity === 'high',
-                        'bi-exclamation-circle': extPopupSeverity === 'medium',
-                        'bi-gear-fill': extPopupSeverity === 'low'
-                      }"></i>
-                    </div>
-                    <div>
-                      <h4 class="ext-popup-title">Extended Timeline</h4>
-                      <span class="ext-popup-subtitle">
-                        <span class="ext-sev-pill" :class="'ext-sev-' + extPopupSeverity">{{ extPopupSeverity }}</span>
-                        Severity Request
-                      </span>
-                    </div>
-                  </div>
-                  <button type="button" class="ext-header-close" @click="closeExtPopup"><i class="bi bi-x-lg"></i></button>
-                </div>
-                <div class="ext-popup-body">
-                  <div class="ext-info-banner">
-                    <i class="bi bi-info-circle-fill"></i>
-                    <span>Submit a request to extend the remediation deadline for a specific vulnerability on an asset.</span>
-                  </div>
-                  <div class="ext-section-title"><i class="bi bi-hdd-network"></i> Asset & Vulnerability</div>
-                  <div class="ext-popup-field">
-                    <label class="ext-popup-label">Asset (IP)</label>
-                    <div class="ext-select-wrap">
-                      <i class="bi bi-hdd-fill ext-select-icon ext-icon-asset"></i>
-                      <select class="ext-popup-select ext-has-icon" v-model="extPopupAsset" @change="onExtPopupAssetChange">
-                        <option value="">{{ extPopupOptionsLoading ? 'Loading...' : 'Select Asset' }}</option>
-                        <option v-for="ip in extPopupAssetList" :key="ip" :value="ip">{{ ip }}</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div class="ext-popup-field">
-                    <label class="ext-popup-label">Vulnerability Name</label>
-                    <div class="ext-select-wrap">
-                      <i class="bi bi-shield-exclamation ext-select-icon ext-icon-vuln"></i>
-                      <select class="ext-popup-select ext-has-icon" v-model="extPopupVulName" :disabled="!extPopupAsset || extPopupOptionsLoading">
-                        <option value="">{{ extPopupOptionsLoading ? 'Loading...' : 'Select Vulnerability' }}</option>
-                        <option v-for="vn in extPopupVulList" :key="vn" :value="vn">{{ vn }}</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div class="ext-drawer-divider" style="margin: 4px 0 12px;"></div>
-                  <div class="ext-section-title"><i class="bi bi-calendar3"></i> Timeline Details</div>
-                  <div class="ext-popup-row">
-                    <div class="ext-popup-field">
-                      <label class="ext-popup-label">Original Deadline</label>
-                      <div class="ext-deadline-chip ext-deadline-original">
-                        <i class="bi bi-clock-history"></i>
-                        <span>{{ extOriginalDeadlineDisplay }}</span>
-                      </div>
-                    </div>
-                    <div class="ext-popup-field">
-                      <label class="ext-popup-label">Extended Deadline</label>
-                      <div class="ext-select-wrap">
-                        <i class="bi bi-clock-fill ext-select-icon"></i>
-                        <select class="ext-popup-select ext-has-icon" v-model="extPopupExtension">
-                          <option value="">— Select Extension —</option>
-                          <optgroup label="Days">
-                            <option value="1 Day">1 Day</option>
-                            <option value="2 Days">2 Days</option>
-                            <option value="3 Days">3 Days</option>
-                            <option value="4 Days">4 Days</option>
-                            <option value="5 Days">5 Days</option>
-                            <option value="6 Days">6 Days</option>
-                          </optgroup>
-                          <optgroup label="Weeks">
-                            <option value="1 Week">1 Week</option>
-                            <option value="2 Weeks">2 Weeks</option>
-                            <option value="3 Weeks">3 Weeks</option>
-                            <option value="4 Weeks">4 Weeks</option>
-                            <option value="5 Weeks">5 Weeks</option>
-                            <option value="6 Weeks">6 Weeks</option>
-                          </optgroup>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="ext-drawer-divider" style="margin: 4px 0 12px;"></div>
-                  <div class="ext-section-title"><i class="bi bi-chat-left-text"></i> Justification</div>
-                  <div class="ext-popup-field">
-                    <label class="ext-popup-label">Reason</label>
-                    <textarea class="ext-popup-textarea" v-model="extPopupReason" rows="4" placeholder="Describe why an extension is needed — include any dependencies, blockers, or risk context..."></textarea>
-                    <span class="ext-char-hint">{{ extPopupReason.trim().length > 0 ? extPopupReason.trim().length + ' chars' : 'Required' }}</span>
-                  </div>
-                </div>
-                <div class="ext-popup-footer">
-                  <button type="button" class="mte-btn-secondary" @click="closeExtPopup">Cancel</button>
-                  <button type="button" class="mte-btn-primary ext-submit-btn" @click="submitExtPopup" :disabled="!extPopupAsset || !extPopupVulName || !extPopupExtension || !extPopupReason.trim()">
-                    <i class="bi bi-send-fill"></i> <span style="color:#fff;">Submit Request</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </transition>
 
           <div class="mte-modal-footer">
             <button type="button" class="mte-btn-secondary" @click="closeMitigationExtensionModal">Close</button>
@@ -2030,6 +1922,10 @@ export default {
       console.log('🔥 Extension Request Response:', JSON.stringify(res));
 
       if (res.status) {
+        await Promise.all([
+          this.loadMteExtensionData(),
+          this.loadMteReportData(),
+        ]);
         this.closeExtPopup();
         Swal.fire({
           icon: 'success',
@@ -2066,27 +1962,38 @@ export default {
     },
     async loadMteReportData() {
       this.mteReportLoading = true;
-      const res = await this.authStore.fetchUserMitigationTimelineExtensionReport();
+      const res = await this.authStore.fetchUserMitigationTimelineExtension();
       this.mteReportLoading = false;
-      if (res.status && res.data?.results) {
-        const grouped = { critical: [], high: [], medium: [], low: [] };
-        res.data.results.forEach(item => {
-          const sev = (item.severity || '').toLowerCase();
-          if (grouped[sev]) {
-            grouped[sev].push({
-              ip:     item.asset,
-              vulName: item.vul_name,
-              status: item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : '—',
-              by:     item.requested_by || '—',
-              date:   item.request_date ? item.request_date.split('T')[0] : '—',
-              ext:    item.extension_days ? `${item.extension_days} Days` : '—',
-              reason: item.reason || '—',
-              team:   item.requested_by || '',
-            });
+      if (!(res.status && res.data)) return;
+
+      const grouped = { critical: [], high: [], medium: [], low: [] };
+      const normalizeRow = (item) => ({
+        ip: item.asset || item.ip || '—',
+        vulName: item.vul_name || item.vulnerability_name || item.vulName || '—',
+        status: item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : '—',
+        by: item.requested_by || item.by || '—',
+        date: item.request_date
+          ? String(item.request_date).split('T')[0]
+          : (item.date ? String(item.date).split('T')[0] : '—'),
+        ext: item.extension_days ? `${item.extension_days} Days` : (item.ext || '—'),
+        reason: item.reason || '—',
+        team: item.team || item.requested_by || item.by || '',
+      });
+
+      if (Array.isArray(res.data.results)) {
+        res.data.results.forEach((item) => {
+          const sev = String(item.severity || '').toLowerCase();
+          if (grouped[sev]) grouped[sev].push(normalizeRow(item));
+        });
+      } else {
+        ['critical', 'high', 'medium', 'low'].forEach((sev) => {
+          if (Array.isArray(res.data[sev])) {
+            grouped[sev] = res.data[sev].map(normalizeRow);
           }
         });
-        this.mteReportData = grouped;
       }
+
+      this.mteReportData = grouped;
     },
     async loadMteExtensionData() {
       this.mteExtensionLoading = true;

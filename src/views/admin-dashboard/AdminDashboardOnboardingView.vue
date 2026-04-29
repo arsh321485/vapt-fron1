@@ -1047,9 +1047,9 @@
             </div>
           </div>
 
-          <div class="mte-severity-card">
-            <div class="mte-severity-head" @click="toggleMteSection('high')">
-              <div class="mte-severity-left">
+          <div class="mte-severity-card mte-high" style="border-color:#fed7aa;background:#fffbf5;">
+            <div class="mte-severity-head" style="background:#fff7ed;" @click="toggleMteSection('high')">
+              <div class="mte-severity-left" style="color:#c2410c;">
                 <i class="bi bi-exclamation-triangle-fill mte-high-icon"></i>
                 <span>High Severity Requests</span>
                 <span class="mte-badge high">{{ mteFilteredData.high.length }} Items</span>
@@ -1087,9 +1087,9 @@
             </div>
           </div>
 
-          <div class="mte-severity-card">
-            <div class="mte-severity-head" @click="toggleMteSection('medium')">
-              <div class="mte-severity-left">
+          <div class="mte-severity-card mte-medium" style="border-color:#fde68a;background:#fffdf0;">
+            <div class="mte-severity-head" style="background:#fefce8;" @click="toggleMteSection('medium')">
+              <div class="mte-severity-left" style="color:#a16207;">
                 <i class="bi bi-exclamation-circle-fill mte-medium-icon"></i>
                 <span>Medium Severity Requests</span>
                 <span class="mte-badge medium">{{ mteFilteredData.medium.length }} Items</span>
@@ -1127,9 +1127,9 @@
             </div>
           </div>
 
-          <div class="mte-severity-card">
-            <div class="mte-severity-head" @click="toggleMteSection('low')">
-              <div class="mte-severity-left">
+          <div class="mte-severity-card mte-low" style="border-color:#99f6e4;background:#f0fffe;">
+            <div class="mte-severity-head" style="background:#f0fdfa;" @click="toggleMteSection('low')">
+              <div class="mte-severity-left" style="color:#0f766e;">
                 <i class="bi bi-gear-fill mte-low-icon"></i>
                 <span>Low Severity Requests</span>
                 <span class="mte-badge low">{{ mteFilteredData.low.length }} Items</span>
@@ -1923,28 +1923,39 @@ export default {
     },
     async loadAdminMteReportData() {
       this.adminMteReportLoading = true;
-      const res = await this.authStore.fetchAdminMitigationTimelineExtensionReport();
+      const res = await this.authStore.fetchAdminMitigationTimelineExtension();
       this.adminMteReportLoading = false;
-      if (res.status && res.data?.results) {
-        const grouped = { critical: [], high: [], medium: [], low: [] };
-        res.data.results.forEach(item => {
-          const sev = (item.severity || '').toLowerCase();
-          if (grouped[sev]) {
-            grouped[sev].push({
-              ip:         item.asset,
-              vulName:    item.vul_name,
-              status:     item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : '—',
-              by:         item.requested_by || '—',
-              date:       item.request_date ? item.request_date.split('T')[0] : '—',
-              ext:        item.extension_days ? `${item.extension_days} Days` : '—',
-              reason:     item.reason || '—',
-              team:       item.requested_by || '',
-              request_id: item.request_id || null,
-            });
+      if (!(res.status && res.data)) return;
+
+      const grouped = { critical: [], high: [], medium: [], low: [] };
+      const normalizeRow = (item) => ({
+        ip: item.asset || item.ip || '—',
+        vulName: item.vul_name || item.vulnerability_name || item.vulName || '—',
+        status: item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : '—',
+        by: item.requested_by || item.by || '—',
+        date: item.request_date
+          ? String(item.request_date).split('T')[0]
+          : (item.date ? String(item.date).split('T')[0] : '—'),
+        ext: item.extension_days ? `${item.extension_days} Days` : (item.ext || '—'),
+        reason: item.reason || '—',
+        team: item.team || item.requested_by || item.by || '',
+        request_id: item.request_id || null,
+      });
+
+      if (Array.isArray(res.data.results)) {
+        res.data.results.forEach((item) => {
+          const sev = String(item.severity || '').toLowerCase();
+          if (grouped[sev]) grouped[sev].push(normalizeRow(item));
+        });
+      } else {
+        ['critical', 'high', 'medium', 'low'].forEach((sev) => {
+          if (Array.isArray(res.data[sev])) {
+            grouped[sev] = res.data[sev].map(normalizeRow);
           }
         });
-        this.adminMteReportData = grouped;
       }
+
+      this.adminMteReportData = grouped;
     },
     async openMitigationExtensionModal() {
       this.showMitigationExtensionModal = true;
@@ -3321,6 +3332,9 @@ mounted() {
   flex-shrink: 0;
 }
 .mte-critical { border-color: #f2d3d3; background: #fff8f8; }
+.mte-high { border-color: #fdba74 !important; background: #fff7ed !important; box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0.10); }
+.mte-medium { border-color: #fcd34d !important; background: #fefce8 !important; box-shadow: inset 0 0 0 1px rgba(217, 119, 6, 0.10); }
+.mte-low { border-color: #5eead4 !important; background: #f0fdfa !important; box-shadow: inset 0 0 0 1px rgba(15, 118, 110, 0.10); }
 .mte-severity-head {
   padding: 16px 20px;
   display: flex;
@@ -3338,6 +3352,12 @@ mounted() {
   line-height: 1.25;
 }
 .mte-critical .mte-severity-left { color: #c71616; }
+.mte-high .mte-severity-left { color: #c2410c !important; }
+.mte-medium .mte-severity-left { color: #a16207 !important; }
+.mte-low .mte-severity-left { color: #0f766e !important; }
+.mte-high .mte-severity-head { background: #ffedd5; border-bottom: 1px solid #fed7aa; }
+.mte-medium .mte-severity-head { background: #fef3c7; border-bottom: 1px solid #fde68a; }
+.mte-low .mte-severity-head { background: #ccfbf1; border-bottom: 1px solid #99f6e4; }
 .mte-badge {
   border-radius: 6px;
   font-size: 11px;
@@ -3348,9 +3368,9 @@ mounted() {
   padding: 3px 7px;
 }
 .mte-badge.critical { background: #c71616; color: #fff; }
-.mte-badge.high { background: #ffedd5; color: #ea580c; }
-.mte-badge.medium { background: #fef3c7; color: #d97706; }
-.mte-badge.low { background: #ccfbf1; color: #0f766e; }
+.mte-badge.high { background: #c2410c; color: #fff; }
+.mte-badge.medium { background: #a16207; color: #fff; }
+.mte-badge.low { background: #0f766e; color: #fff; }
 .mte-table-wrap { overflow-x: auto; border-top: 1px solid #e2e8f0; }
 .mte-table { width: 100%; border-collapse: collapse; min-width: 760px; }
 .mte-table th,
@@ -3396,8 +3416,8 @@ mounted() {
   font-weight: 600;
   position: relative;
 }
-.mte-high-icon { color: #f59e0b; }
-.mte-medium-icon { color: #fbbf24; }
+.mte-high-icon { color: #c2410c; }
+.mte-medium-icon { color: #a16207; }
 .mte-low-icon { color: #0f766e; }
 .reason-detail-overlay-inner {
   position: absolute;

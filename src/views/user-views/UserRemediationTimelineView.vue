@@ -14,12 +14,23 @@
             <!-- Page Header -->
             <div class="rt-page-header">
               <div>
-                <h2 class="rt-title">Remediation Timeline</h2>
-                <p class="rt-subtitle">Track and manage vulnerability remediation progress</p>
+                <div class="rt-header-chips">
+                  <span class="rt-chip rt-chip-risk" :class="riskChipClass">{{ (currentVuln.risk || 'Risk').toUpperCase() }}</span>
+                  <span class="rt-chip rt-chip-status" :class="statusChipClass">{{ remediationStatusLabel }}</span>
+                  <span class="rt-chip rt-chip-asset">
+                    <i class="bi bi-hdd-network me-1"></i>{{ currentVuln.asset || asset }}
+                  </span>
+                </div>
+                <h2 class="rt-title">Vulnerability Remediation</h2>
+                <p class="rt-subtitle">Execute the defined steps to mitigate the identified vulnerability on the target endpoint.</p>
               </div>
               <div class="d-flex gap-2">
                 <button class="rt-btn-support" @click="openSupportModal">
                   Support Request
+                  <span class="rt-support-count-badge">{{ supportRequestCount }}</span>
+                </button>
+                <button class="rt-btn-extend" @click="openExtPopup">
+                  Extended Timeline
                 </button>
               </div>
             </div>
@@ -74,11 +85,124 @@
                       </span>
                       <span v-else>Submit</span>
                     </button>
-                    <button v-else class="vc-btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button
+                      v-else
+                      class="vc-btn-primary"
+                      :disabled="!hasNextSupportStep"
+                      @click="prepareAnotherSupportRequest"
+                    >
+                      <span>Raise Support Request for other Steps</span>
+                    </button>
+                    <button class="vc-btn-secondary" data-bs-dismiss="modal">Close</button>
                   </div>
                 </div>
               </div>
             </div>
+
+            <!-- Extended Timeline Drawer -->
+            <transition name="ext-drawer">
+              <div v-if="showExtPopup" class="ext-popup-backdrop" @click.self="closeExtPopup">
+                <div class="ext-popup-box" @click.stop>
+                  <div class="ext-drawer-accent" :class="'ext-accent-' + extPopupSeverity"></div>
+                  <div class="ext-popup-header">
+                    <div class="ext-header-left">
+                      <div class="ext-header-icon" :class="'ext-icon-' + extPopupSeverity">
+                        <i class="bi" :class="{
+                          'bi-exclamation-circle-fill': extPopupSeverity === 'critical',
+                          'bi-exclamation-triangle-fill': extPopupSeverity === 'high',
+                          'bi-exclamation-circle': extPopupSeverity === 'medium',
+                          'bi-gear-fill': extPopupSeverity === 'low'
+                        }"></i>
+                      </div>
+                      <div>
+                        <h4 class="ext-popup-title">Extended Timeline</h4>
+                        <span class="ext-popup-subtitle">
+                          <span class="ext-sev-pill" :class="'ext-sev-' + extPopupSeverity">{{ extPopupSeverity }}</span>
+                          Severity Request
+                        </span>
+                      </div>
+                    </div>
+                    <button type="button" class="ext-header-close" @click="closeExtPopup"><i class="bi bi-x-lg"></i></button>
+                  </div>
+                  <div class="ext-popup-body">
+                    <div class="ext-info-banner">
+                      <i class="bi bi-info-circle-fill"></i>
+                      <span>Submit a request to extend the remediation deadline for a specific vulnerability on an asset.</span>
+                    </div>
+                    <div class="ext-section-title"><i class="bi bi-hdd-network"></i> Asset & Vulnerability</div>
+                    <div class="ext-popup-field">
+                      <label class="ext-popup-label">Asset (IP)</label>
+                      <div class="ext-select-wrap">
+                        <i class="bi bi-hdd-fill ext-select-icon ext-icon-asset"></i>
+                        <select class="ext-popup-select ext-has-icon" v-model="extPopupAsset" @change="onExtPopupAssetChange">
+                          <option value="">{{ extPopupOptionsLoading ? 'Loading...' : 'Select Asset' }}</option>
+                          <option v-for="ip in extPopupAssetList" :key="ip" :value="ip">{{ ip }}</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="ext-popup-field">
+                      <label class="ext-popup-label">Vulnerability Name</label>
+                      <div class="ext-select-wrap">
+                        <i class="bi bi-shield-exclamation ext-select-icon ext-icon-vuln"></i>
+                        <select class="ext-popup-select ext-has-icon" v-model="extPopupVulName" :disabled="!extPopupAsset || extPopupOptionsLoading">
+                          <option value="">{{ extPopupOptionsLoading ? 'Loading...' : 'Select Vulnerability' }}</option>
+                          <option v-for="vn in extPopupVulList" :key="vn" :value="vn">{{ vn }}</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="ext-drawer-divider" style="margin: 4px 0 12px;"></div>
+                    <div class="ext-section-title"><i class="bi bi-calendar3"></i> Timeline Details</div>
+                    <div class="ext-popup-row">
+                      <div class="ext-popup-field">
+                        <label class="ext-popup-label">Original Deadline</label>
+                        <div class="ext-deadline-chip ext-deadline-original">
+                          <i class="bi bi-clock-history"></i>
+                          <span>{{ extOriginalDeadlineDisplay }}</span>
+                        </div>
+                      </div>
+                      <div class="ext-popup-field">
+                        <label class="ext-popup-label">Extended Deadline</label>
+                        <div class="ext-select-wrap">
+                          <i class="bi bi-clock-fill ext-select-icon"></i>
+                          <select class="ext-popup-select ext-has-icon" v-model="extPopupExtension">
+                            <option value="">— Select Extension —</option>
+                            <optgroup label="Days">
+                              <option value="1 Day">1 Day</option>
+                              <option value="2 Days">2 Days</option>
+                              <option value="3 Days">3 Days</option>
+                              <option value="4 Days">4 Days</option>
+                              <option value="5 Days">5 Days</option>
+                              <option value="6 Days">6 Days</option>
+                            </optgroup>
+                            <optgroup label="Weeks">
+                              <option value="1 Week">1 Week</option>
+                              <option value="2 Weeks">2 Weeks</option>
+                              <option value="3 Weeks">3 Weeks</option>
+                              <option value="4 Weeks">4 Weeks</option>
+                              <option value="5 Weeks">5 Weeks</option>
+                              <option value="6 Weeks">6 Weeks</option>
+                            </optgroup>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="ext-drawer-divider" style="margin: 4px 0 12px;"></div>
+                    <div class="ext-section-title"><i class="bi bi-chat-left-text"></i> Justification</div>
+                    <div class="ext-popup-field">
+                      <label class="ext-popup-label">Reason</label>
+                      <textarea class="ext-popup-textarea" v-model="extPopupReason" rows="4" placeholder="Describe why an extension is needed — include any dependencies, blockers, or risk context..."></textarea>
+                      <span class="ext-char-hint">{{ extPopupReason.trim().length > 0 ? extPopupReason.trim().length + ' chars' : 'Required' }}</span>
+                    </div>
+                  </div>
+                  <div class="ext-popup-footer">
+                    <button type="button" class="mte-btn-secondary" @click="closeExtPopup">Cancel</button>
+                    <button type="button" class="mte-btn-primary ext-submit-btn" @click="submitExtPopup" :disabled="!extPopupAsset || !extPopupVulName || !extPopupExtension || !extPopupReason.trim()">
+                      <i class="bi bi-send-fill"></i> <span style="color:#fff;">Submit Request</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </transition>
 
             <!-- Loading overlay -->
             <div v-if="isLoading" class="rt-loading-overlay">
@@ -132,7 +256,6 @@
                         <span class="rt-label-text">Impacted Asset:</span>
                         <span class="rt-asset-chip">{{ currentVuln.asset }}</span>
                       </div>
-                      <span class="rt-critical-badge mb-2 d-inline-block">{{ currentVuln.risk }}</span>
                       <h3 class="rt-vuln-name">{{ currentVuln.name }}</h3>
                     </div>
                     <div class="rt-tech-right">
@@ -311,36 +434,24 @@
                             </div>
                           </div>
                         </div>
+                        <div v-if="task.status !== 'completed'" class="rt-inline-complete-wrap">
+                          <button
+                            class="rt-inline-complete-btn"
+                            :disabled="savingStep || task.id !== currentStep"
+                            :title="task.id !== currentStep ? `Step ${currentStep} ko pehle complete karein` : ''"
+                            @click.stop="completeCurrentStep(task.id)"
+                          >
+                            <span v-if="savingStep && task.id === currentStep">
+                              <span class="spinner-border spinner-border-sm me-1"></span>Saving...
+                            </span>
+                            <span v-else>Complete Step {{ task.id }}</span>
+                          </button>
+                        </div>
 
                       </div>
                     </div>
                   </div>
 
-                  <!-- Comment + Complete Step -->
-                  <div class="rt-step-complete-section" v-if="!showFeedback">
-                    <p class="rt-step-complete-label">
-                      Step {{ currentStep }} — Add a comment before marking complete
-                    </p>
-                    <textarea
-                      v-model="currentStepComment"
-                      class="rt-step-comment-textarea"
-                      rows="2"
-                      placeholder="Write a comment for this step..."
-                      :disabled="savingStep"
-                    ></textarea>
-                    <div class="rt-action-btns">
-                      <button
-                        class="btn-complete"
-                        :disabled="savingStep"
-                        @click="completeCurrentStep"
-                      >
-                        <span v-if="savingStep">
-                          <span class="spinner-border spinner-border-sm me-1"></span>Saving...
-                        </span>
-                        <span v-else>Complete Step {{ currentStep }}</span>
-                      </button>
-                    </div>
-                  </div>
                 </div>
 
                 <!-- Final Feedback Card -->
@@ -499,10 +610,19 @@ export default {
       selectedSteps: [],
       raisedSupportSteps: [],
       supportRequestsByStep: {},
-      supportRequestCount: 0,
       supportDescription: '',
       supportDetail: null,
       submittingSupport: false,
+      showExtPopup: false,
+      extPopupSeverity: "critical",
+      extPopupAsset: "",
+      extPopupVulName: "",
+      extPopupExtension: "",
+      extPopupReason: "",
+      extPopupAssetListApi: [],
+      extPopupVulListApi: [],
+      extPopupOriginalDeadlineDays: null,
+      extPopupOptionsLoading: false,
       timelineLoading: false,
       currentVuln: {
         id: null,
@@ -524,6 +644,25 @@ export default {
   },
 
   computed: {
+    remediationStatusLabel() {
+      const status = String(this.currentVuln?.status || 'open').toLowerCase();
+      if (status === 'closed') return 'CLOSED';
+      if (status === 'in_progress' || status === 'in progress') return 'IN PROGRESS';
+      return 'OPEN';
+    },
+    riskChipClass() {
+      const risk = String(this.currentVuln?.risk || '').toLowerCase();
+      if (risk.includes('critical')) return 'rt-chip-risk-critical';
+      if (risk.includes('high')) return 'rt-chip-risk-high';
+      if (risk.includes('medium')) return 'rt-chip-risk-medium';
+      return 'rt-chip-risk-low';
+    },
+    statusChipClass() {
+      const status = this.remediationStatusLabel;
+      if (status === 'CLOSED') return 'rt-chip-status-closed';
+      if (status === 'IN PROGRESS') return 'rt-chip-status-progress';
+      return 'rt-chip-status-open';
+    },
     progressPercent() {
       return this.totalSteps > 0
         ? Math.round((this.completedSteps.length / this.totalSteps) * 100)
@@ -534,6 +673,34 @@ export default {
     },
     showFeedback() {
       return this.totalSteps > 0 && this.completedSteps.length >= this.totalSteps;
+    },
+    nextSupportStep() {
+      for (let step = 1; step <= this.totalSteps; step += 1) {
+        if (!this.completedSteps.includes(step) && !this.raisedSupportSteps.includes(step)) {
+          return step;
+        }
+      }
+      return null;
+    },
+    hasNextSupportStep() {
+      return this.nextSupportStep !== null;
+    },
+    supportRequestCount() {
+      return this.raisedSupportSteps.length;
+    },
+    extPopupAssetList() {
+      if (this.extPopupAssetListApi.length > 0) return this.extPopupAssetListApi;
+      return [this.currentVuln.asset].filter(Boolean);
+    },
+    extPopupVulList() {
+      if (this.extPopupVulListApi.length > 0) return this.extPopupVulListApi;
+      return [this.currentVuln.name].filter(Boolean);
+    },
+    extOriginalDeadlineDisplay() {
+      if (this.extPopupOriginalDeadlineDays !== null && this.extPopupOriginalDeadlineDays !== undefined) {
+        return `${this.extPopupOriginalDeadlineDays} Days`;
+      }
+      return "—";
     },
   },
 
@@ -573,14 +740,6 @@ export default {
       });
       this.raisedSupportSteps = Object.keys(this.supportRequestsByStep).map(s => Number(s));
     },
-    async fetchSupportRequestCountByReport(reportId) {
-      if (!reportId) {
-        this.supportRequestCount = 0;
-        return;
-      }
-      const res = await this.authStore.fetchUserSupportRequestsByReport(reportId, true);
-      this.supportRequestCount = res?.status ? (res.count || 0) : 0;
-    },
     async openSupportModal() {
       this.isSupportAlreadyRaised = false;
       this.selectedSteps = [];
@@ -589,8 +748,6 @@ export default {
       this.raisedSupportSteps = [];
       this.supportRequestsByStep = {};
       const vulnerabilityId = this.currentVuln?.id;
-      const reportId = this.currentVuln?.report_id;
-      await this.fetchSupportRequestCountByReport(reportId);
       await this.fetchSupportRequestStatus(vulnerabilityId);
       if (this.raisedSupportSteps.length) {
         const defaultStep = this.raisedSupportSteps[0];
@@ -624,15 +781,114 @@ export default {
       if (res.status) {
         this.supportDetail = res.data;
         await this.fetchSupportRequestStatus(vulnerabilityId);
-        await this.fetchSupportRequestCountByReport(this.currentVuln?.report_id);
         this.isSupportAlreadyRaised = true;
         Swal.fire({ icon: 'success', title: 'Support Request Raised', timer: 2000, showConfirmButton: false });
       } else {
         Swal.fire('Error', res.message || 'Failed to raise support request', 'error');
       }
     },
-    async completeCurrentStep() {
+    prepareAnotherSupportRequest() {
+      const step = this.nextSupportStep;
+      if (!step) return;
+
+      // Keep modal open and switch UI to the next pending step
+      this.selectedSteps = [step];
+      this.isSupportAlreadyRaised = false;
+      this.supportDescription = '';
+      this.supportDetail = null;
+    },
+    inferExtSeverity() {
+      const risk = String(this.currentVuln?.risk || "").toLowerCase();
+      if (risk.includes("critical")) return "critical";
+      if (risk.includes("high")) return "high";
+      if (risk.includes("medium")) return "medium";
+      return "low";
+    },
+    parseExtensionDays(label) {
+      const m = String(label || "").trim().toLowerCase().match(/^(\d+)\s*(day|days|week|weeks)$/);
+      if (!m) return NaN;
+      const n = Number(m[1]);
+      return m[2].startsWith("week") ? n * 7 : n;
+    },
+    async fetchExtPopupOptions(severity, asset) {
+      this.extPopupOptionsLoading = true;
+      const res = await this.authStore.fetchUserMitigationTimelineExtensionOptions(
+        severity,
+        asset || undefined,
+        this.currentVuln.assignedTeam || undefined
+      );
+      this.extPopupOptionsLoading = false;
+      if (res.status && res.data) {
+        this.extPopupAssetListApi = res.data.assets || [];
+        this.extPopupVulListApi = res.data.vulnerabilities || [];
+        this.extPopupOriginalDeadlineDays = res.data.original_deadline_days ?? null;
+      } else {
+        this.extPopupAssetListApi = [];
+        this.extPopupVulListApi = [];
+        this.extPopupOriginalDeadlineDays = null;
+      }
+    },
+    async openExtPopup() {
+      this.extPopupSeverity = this.inferExtSeverity();
+      this.extPopupAsset = this.currentVuln.asset || "";
+      this.extPopupVulName = this.currentVuln.name || "";
+      this.extPopupExtension = "";
+      this.extPopupReason = "";
+      this.extPopupAssetListApi = [];
+      this.extPopupVulListApi = [];
+      this.extPopupOriginalDeadlineDays = null;
+      this.showExtPopup = true;
+      await this.fetchExtPopupOptions(this.extPopupSeverity, this.extPopupAsset || null);
+      if (!this.extPopupVulName && this.extPopupVulList.length) {
+        this.extPopupVulName = this.extPopupVulList[0];
+      }
+    },
+    async onExtPopupAssetChange() {
+      this.extPopupVulName = "";
+      this.extPopupVulListApi = [];
+      this.extPopupOriginalDeadlineDays = null;
+      if (this.extPopupAsset && this.extPopupSeverity) {
+        await this.fetchExtPopupOptions(this.extPopupSeverity, this.extPopupAsset);
+      }
+      if (this.extPopupVulList.length) {
+        this.extPopupVulName = this.extPopupVulList[0];
+      }
+    },
+    closeExtPopup() {
+      this.showExtPopup = false;
+      this.extPopupSeverity = "critical";
+      this.extPopupAsset = "";
+      this.extPopupVulName = "";
+      this.extPopupExtension = "";
+      this.extPopupReason = "";
+      this.extPopupAssetListApi = [];
+      this.extPopupVulListApi = [];
+      this.extPopupOriginalDeadlineDays = null;
+      this.extPopupOptionsLoading = false;
+    },
+    async submitExtPopup() {
+      if (!this.extPopupAsset || !this.extPopupVulName || !this.extPopupExtension || !this.extPopupReason.trim()) return;
+      const requestedDays = this.parseExtensionDays(this.extPopupExtension);
+      if (!Number.isFinite(requestedDays) || requestedDays <= 0) return;
+      const payload = {
+        severity: this.extPopupSeverity,
+        asset: this.extPopupAsset,
+        vulnerability_name: this.extPopupVulName,
+        requested_extension_days: requestedDays,
+        reason: this.extPopupReason.trim(),
+        team: this.currentVuln.assignedTeam || undefined,
+      };
+      const res = await this.authStore.submitUserMitigationTimelineExtensionRequest(payload);
+      if (res.status) {
+        this.closeExtPopup();
+        Swal.fire({ icon: 'success', title: 'Extension request submitted', timer: 1800, showConfirmButton: false });
+      } else {
+        Swal.fire('Error', res.message || 'Failed to submit extension request', 'error');
+      }
+    },
+    async completeCurrentStep(stepNumber = this.currentStep) {
       if (!this.currentVuln.id) return;
+      this.currentStep = stepNumber;
 
       this.savingStep = true;
 
@@ -640,7 +896,7 @@ export default {
         this.currentVuln.id,
         {
           status: 'completed',
-          comment: this.currentStepComment || `Step ${this.currentStep} completed`,
+          comment: this.currentStepComment || `Step ${stepNumber} completed`,
         }
       );
 
@@ -829,8 +1085,7 @@ export default {
         status: s.vulnerability_status || '',
         closed_at: null,
       };
-
-      await this.fetchSupportRequestCountByReport(this.currentVuln.report_id);
+      await this.fetchSupportRequestStatus(this.currentVuln.id);
 
       this.totalSteps = s.total_steps || 0;
       this.currentStep = s.next_step || 1;
@@ -920,8 +1175,7 @@ export default {
       status: created.status || '',
       closed_at: null,
     };
-    await this.fetchSupportRequestCountByReport(created.report_id);
-
+    await this.fetchSupportRequestStatus(this.currentVuln.id);
     // Step 2: Fetch steps (user API)
     const stepsRes = await this.authStore.getUserFixVulnerabilitySteps(created._id);
 
@@ -1046,6 +1300,63 @@ export default {
   transition: background 0.15s;
 }
 .rt-btn-support:hover { background: #a1ecf2; }
+.rt-btn-extend {
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  color: #15803d;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.rt-btn-extend:hover { background: #dcfce7; }
+.rt-header-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.rt-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.rt-chip-risk { color: #7f1d1d; background: #fee2e2; }
+.rt-chip-risk-critical { color: #7f1d1d; background: #fee2e2; }
+.rt-chip-risk-high { color: #dc2626; background: #fee2e2; }
+.rt-chip-risk-medium { color: #854d0e; background: #fef3c7; }
+.rt-chip-risk-low { color: #065f46; background: #d1fae5; }
+.rt-chip-status {
+  color: #334155;
+  background: #e2e8f0;
+}
+.rt-chip-status-open { color: #7f1d1d; background: #fee2e2; }
+.rt-chip-status-progress { color: #0f696e; background: #ccfbf1; }
+.rt-chip-status-closed { color: #166534; background: #dcfce7; }
+.rt-chip-asset {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  color: #475569;
+  background: #f1f5f9;
+}
+.rt-support-count-badge {
+  margin-left: 8px;
+  background: #241447;
+  color: #fff;
+  font-size: 12px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
 
 /* ─── Modal styles ──────────────────────────────────────────────────── */
 .vc-modal-content  { border-radius: 16px; overflow: hidden; border: none; }
@@ -1078,10 +1389,84 @@ export default {
   background: white; color: #241447; border: 1px solid #e2e8f0;
   border-radius: 8px; padding: 8px 18px; font-size: 0.875rem; font-weight: 600; cursor: pointer;
 }
+.vc-support-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #241447;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
 .rt-support-raised-note {
   font-size: 0.84rem; color: #0f696e; display: flex; align-items: center;
   background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px;
 }
+
+/* Extended Timeline Drawer */
+.ext-popup-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 25, 50, 0.38);
+  z-index: 2100;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+}
+.ext-popup-box {
+  background: #fff;
+  width: 560px;
+  max-width: 100vw;
+  height: 100%;
+  box-shadow: -8px 0 40px rgba(0,0,0,0.18);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.ext-drawer-accent { height: 5px; width: 100%; flex-shrink: 0; }
+.ext-accent-critical { background: linear-gradient(90deg, #c71616, #ef4444); }
+.ext-accent-high     { background: linear-gradient(90deg, #d97706, #f59e0b); }
+.ext-accent-medium   { background: linear-gradient(90deg, #b45309, #fbbf24); }
+.ext-accent-low      { background: linear-gradient(90deg, #0f696e, #14b8a6); }
+.ext-popup-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 22px; background: linear-gradient(135deg, #241447 0%, #0f696e 100%); margin-top: 52px; }
+.ext-header-left { display: flex; align-items: center; gap: 12px; }
+.ext-header-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+.ext-icon-critical { background: rgba(239,68,68,0.25); border: 1px solid rgba(239,68,68,0.4); color: #fca5a5; }
+.ext-icon-high     { background: rgba(245,158,11,0.25); border: 1px solid rgba(245,158,11,0.4); color: #fcd34d; }
+.ext-icon-medium   { background: rgba(251,191,36,0.2); border: 1px solid rgba(251,191,36,0.35); color: #fde68a; }
+.ext-icon-low      { background: rgba(20,184,166,0.25); border: 1px solid rgba(20,184,166,0.4); color: #5eead4; }
+.ext-popup-title { font-size: 17px; font-weight: 700; color: #fff; margin: 0 0 3px; }
+.ext-popup-subtitle { font-size: 12px; color: rgba(255,255,255,0.65); display: flex; align-items: center; gap: 6px; }
+.ext-header-close { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); color: #fff; width: 34px; height: 34px; border-radius: 8px; }
+.ext-sev-pill { display: inline-block; border-radius: 20px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 8px; }
+.ext-sev-critical { background: #fee2e2; color: #b91c1c; }
+.ext-sev-high { background: #fef3c7; color: #b45309; }
+.ext-sev-medium { background: #fefce8; color: #92400e; }
+.ext-sev-low { background: #ccfbf1; color: #0f766e; }
+.ext-popup-body { padding: 14px 22px; display: flex; flex-direction: column; gap: 12px; flex: 1; overflow-y: auto; background: #f8fafc; }
+.ext-info-banner { background: #f0fdf9; border: 1px solid #99f6e4; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #0f696e; display: flex; gap: 8px; }
+.ext-section-title { font-size: 11px; font-weight: 700; color: #0f696e; text-transform: uppercase; letter-spacing: 0.06em; display: flex; align-items: center; gap: 6px; }
+.ext-popup-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.ext-popup-field { display: flex; flex-direction: column; gap: 5px; }
+.ext-popup-label { font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; }
+.ext-select-wrap { position: relative; display: flex; align-items: center; }
+.ext-select-icon { position: absolute; left: 11px; color: #94a3b8; font-size: 13px; pointer-events: none; z-index: 1; }
+.ext-popup-select.ext-has-icon { padding-left: 32px; }
+.ext-popup-select,.ext-popup-textarea { border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 9px 12px; font-size: 13px; color: #1e293b; background: #f8fafc; outline: none; width: 100%; }
+.ext-popup-textarea { resize: vertical; min-height: 90px; }
+.ext-deadline-chip { display: flex; align-items: center; gap: 7px; border-radius: 8px; padding: 9px 14px; font-size: 13px; font-weight: 600; border: 1.5px solid #e2e8f0; }
+.ext-deadline-original { background: #f1f5f9; color: #475569; }
+.ext-drawer-divider { height: 1px; background: #e2e8f0; }
+.ext-char-hint { font-size: 11px; color: #94a3b8; text-align: right; }
+.ext-popup-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 12px 22px 16px; border-top: 1px solid #e2e8f0; background: #fff; }
+.mte-btn-secondary { border: 1px solid #cbd5e1; background: #fff; color: #334155; border-radius: 999px; padding: 10px 22px; font-weight: 700; font-size: 14px; }
+.mte-btn-primary { border: 1px solid #241447; background: #241447; color: #fff; border-radius: 999px; padding: 10px 22px; font-weight: 700; font-size: 14px; }
+.ext-submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* ─── Loading Overlay ───────────────────────────────────────────────── */
 .rt-loading-overlay { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; }
@@ -1151,6 +1536,18 @@ export default {
 .rt-task-completed { background: #f0fdf4; }
 .rt-task-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; }
 .rt-task-right { position: relative; }
+.rt-inline-complete-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: #0f696e;
+  color: #fff;
+  cursor: pointer;
+}
+.rt-inline-complete-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.rt-inline-complete-wrap { display: flex; justify-content: flex-end; }
 .rt-task-left { display: flex; align-items: center; gap: 12px; }
 .rt-task-circle { width: 28px; height: 28px; border-radius: 50%; background: #0f696e; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; flex-shrink: 0; }
 .rt-circle-task-done { background: #0f696e !important; }
