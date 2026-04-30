@@ -2112,6 +2112,19 @@ export default {
       }
     });
   },
+  async activated() {
+    const team = this.selectedTeam || 'both';
+    const t = team === 'both' ? undefined : team;
+    await Promise.all([
+      this.fetchAssets(team),
+      this.fetchVulns(t),
+      this.fetchVulnsFixed(t),
+      this.fetchSupportReqs(t),
+      this.fetchMitigation(t),
+      this.fetchMeanTimeRemediate(t),
+      this.refreshInProcessCount(),
+    ]);
+  },
   beforeUnmount() {
     document.removeEventListener("mousedown", this.handleCommonWalkthroughDocumentClick);
     document.removeEventListener("mousedown", this.handleWalkthroughDocumentClick);
