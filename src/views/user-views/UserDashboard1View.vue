@@ -736,8 +736,9 @@
               <p class="mte-modal-subtitle">Review and manage pending extension requests for vulnerability fixes.</p>
             </div>
             <div class="mte-header-actions">
-              <select class="mte-team-dropdown" v-model="mteSelectedTeam">
-                <option v-for="team in assignedTeamKeys" :key="team" :value="team">{{ team }}</option>
+              <select class="mte-team-dropdown" v-model="mteSelectedTeam" @change="onMteTeamChange">
+                <option value="All">All Teams</option>
+                <option v-for="team in mteDropdownTeams" :key="team" :value="team">{{ team }}</option>
               </select>
               <button type="button" class="mte-close-btn" @click="closeMitigationExtensionModal">
                 <i class="bi bi-x-lg"></i>
@@ -785,7 +786,7 @@
             </div>
           </div>
 
-          <div class="mte-severity-card">
+          <div class="mte-severity-card mte-high">
             <div class="mte-severity-head" @click="toggleMteSection('high')">
               <div class="mte-severity-left">
                 <i class="bi bi-exclamation-triangle-fill mte-high-icon"></i>
@@ -825,7 +826,7 @@
             </div>
           </div>
 
-          <div class="mte-severity-card">
+          <div class="mte-severity-card mte-medium">
             <div class="mte-severity-head" @click="toggleMteSection('medium')">
               <div class="mte-severity-left">
                 <i class="bi bi-exclamation-circle-fill mte-medium-icon"></i>
@@ -865,7 +866,7 @@
             </div>
           </div>
 
-          <div class="mte-severity-card">
+          <div class="mte-severity-card mte-low">
             <div class="mte-severity-head" @click="toggleMteSection('low')">
               <div class="mte-severity-left">
                 <i class="bi bi-gear-fill mte-low-icon"></i>
@@ -1035,6 +1036,8 @@ export default {
       monthNames: ["January","February","March","April","May","June","July","August","September","October","November","December"],
       userTeams: [],
       selectedTeam: '',
+      dashboardRefreshTimerId: null,
+      dashboardSyncInFlight: false,
       totalAssets: null,
       assetsLoading: false,
       vulns: { critical: null, high: null, medium: null, low: null },
@@ -1132,7 +1135,21 @@ export default {
     },
     // Teams assigned to this user that also exist in our team map
     assignedTeamKeys() {
-      return this.userTeams.filter(t => this.mteTeamMap[t]);
+      const normalize = (s) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+      const apiTeams = (this.mteApiTeams || []).map(t => t?.team).filter(Boolean);
+      const merged = [...this.userTeams, ...apiTeams].filter(Boolean);
+      const uniq = Array.from(new Set(merged.map(normalize)));
+      const normalizeToOriginal = new Map();
+      merged.forEach((team) => {
+        const k = normalize(team);
+        if (!normalizeToOriginal.has(k)) normalizeToOriginal.set(k, team);
+      });
+      return uniq.map(k => normalizeToOriginal.get(k)).filter(Boolean);
+    },
+    mteDropdownTeams() {
+      const fromCard = (this.mteCardRows || []).map(r => r.short || r.key).filter(Boolean);
+      const merged = [...fromCard, ...this.assignedTeamKeys].filter(Boolean);
+      return Array.from(new Set(merged));
     },
     // Card table rows — from API data directly, filtered by user's assigned teams
     mteCardRows() {
@@ -1166,7 +1183,8 @@ export default {
       const normalize = (s) => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
 
       const filterByTeam = (rows) => {
-        if (!this.mteSelectedTeam) return rows;
+        const selected = normalize(this.mteSelectedTeam);
+        if (!selected || selected === 'all' || selected === 'both') return rows;
         return rows.filter(r => normalize(r.team) === normalize(this.mteSelectedTeam) ||
           normalize(r.by) === normalize(this.mteSelectedTeam));
       };
@@ -1184,7 +1202,8 @@ export default {
       const allowed = new Set(this.assignedTeamKeys);
       const filter = (rows) => {
         const byTeam = rows.filter(r => allowed.has(r.team));
-        if (!this.mteSelectedTeam) return byTeam;
+        const selected = normalize(this.mteSelectedTeam);
+        if (!selected || selected === 'all' || selected === 'both') return byTeam;
         return byTeam.filter(r => normalize(r.team) === normalize(this.mteSelectedTeam));
       };
       return {
@@ -1569,12 +1588,36 @@ export default {
     async fetchAssets(team) {
       const store = useAuthStore();
       this.assetsLoading = true;
-      const result = await store.fetchUserTotalAssets(team === 'both' ? undefined : team);
-      if (result.status) {
-        this.totalAssets = result.data?.total_assets ?? null;
-      } else {
-        this.totalAssets = null;
+      const normalizedTeam = team === 'both' ? undefined : team;
+
+      if (!normalizedTeam) {
+        // Fast path: show cached/quick values first
+        const quickAssetsRes = await store.fetchUserAssets(false);
+        const quickHeldRes = await store.fetchUserHeldAssets(false);
+        if (quickAssetsRes.status) {
+          const assetCount = Array.isArray(quickAssetsRes.data) ? quickAssetsRes.data.length : 0;
+          const heldCount = quickHeldRes.status && Array.isArray(quickHeldRes.assets) ? quickHeldRes.assets.length : 0;
+          this.totalAssets = assetCount + heldCount;
+          this.assetsLoading = false;
+        } else {
+          this.totalAssets = null;
+          this.assetsLoading = false;
+        }
+
+        // Fresh path: revalidate in background and update card when done
+        (async () => {
+          const freshAssetsRes = await store.fetchUserAssets(true);
+          if (!freshAssetsRes.status) return;
+          const freshHeldRes = await store.fetchUserHeldAssets(true);
+          const assetCount = Array.isArray(freshAssetsRes.data) ? freshAssetsRes.data.length : 0;
+          const heldCount = freshHeldRes.status && Array.isArray(freshHeldRes.assets) ? freshHeldRes.assets.length : 0;
+          this.totalAssets = assetCount + heldCount;
+        })();
+        return;
       }
+
+      const result = await store.fetchUserTotalAssets(normalizedTeam);
+      this.totalAssets = result.status ? (result.data?.total_assets ?? null) : null;
       this.assetsLoading = false;
     },
     async fetchMeanTimeRemediate(team) {
@@ -1814,6 +1857,46 @@ export default {
         this.refreshInProcessCount(),
       ]);
     },
+    async refreshDashboardMetrics(force = false) {
+      if (this.dashboardSyncInFlight) return;
+      if (!force && document.visibilityState === "hidden") return;
+      this.dashboardSyncInFlight = true;
+      try {
+        const team = this.selectedTeam || 'both';
+        const t = team === 'both' ? undefined : team;
+        await Promise.all([
+          this.fetchAssets(team),
+          this.fetchVulns(t),
+          this.fetchVulnsFixed(t),
+          this.fetchSupportReqs(t),
+          this.fetchMitigation(t),
+          this.fetchMeanTimeRemediate(t),
+          this.refreshInProcessCount(),
+        ]);
+      } finally {
+        this.dashboardSyncInFlight = false;
+      }
+    },
+    onDashboardWindowFocus() {
+      this.refreshDashboardMetrics(true);
+    },
+    onDashboardVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        this.refreshDashboardMetrics(true);
+      }
+    },
+    startDashboardAutoRefresh() {
+      this.stopDashboardAutoRefresh();
+      this.dashboardRefreshTimerId = window.setInterval(() => {
+        this.refreshDashboardMetrics(false);
+      }, 10000);
+    },
+    stopDashboardAutoRefresh() {
+      if (this.dashboardRefreshTimerId) {
+        window.clearInterval(this.dashboardRefreshTimerId);
+        this.dashboardRefreshTimerId = null;
+      }
+    },
     getMitigationDaysFromStr(sev) {
       const val = this.mitigation[sev];
       if (!val) return null;
@@ -1954,15 +2037,24 @@ export default {
     async openMitigationExtensionModal() {
       this.showMitigationExtensionModal = true;
       this.mteOpenSection = 'critical';
-      this.mteSelectedTeam = this.assignedTeamKeys[0] || '';
+      this.mteSelectedTeam = 'All';
       await Promise.all([
         this.loadMteExtensionData(),
         this.loadMteReportData(),
       ]);
     },
+    onMteTeamChange() {
+      this.mteOpenSection = 'critical';
+      if (this.showExtPopup && this.extPopupSeverity) {
+        this.fetchExtPopupOptions(this.extPopupSeverity, this.extPopupAsset || null, this.mteSelectedTeam);
+      }
+    },
     async loadMteReportData() {
       this.mteReportLoading = true;
-      const res = await this.authStore.fetchUserMitigationTimelineExtension();
+      let res = await this.authStore.fetchUserMitigationTimelineExtensionReport();
+      if (!res?.status) {
+        res = await this.authStore.fetchUserMitigationTimelineExtension();
+      }
       this.mteReportLoading = false;
       if (!(res.status && res.data)) return;
 
@@ -1977,7 +2069,7 @@ export default {
           : (item.date ? String(item.date).split('T')[0] : '—'),
         ext: item.extension_days ? `${item.extension_days} Days` : (item.ext || '—'),
         reason: item.reason || '—',
-        team: item.team || item.requested_by || item.by || '',
+        team: item.team || item.team_name || item.assigned_team || item.requested_by || item.by || '',
       });
 
       if (Array.isArray(res.data.results)) {
@@ -2051,6 +2143,9 @@ export default {
       this.loadRiskCriteria(),
       this.loadMteExtensionData(),
     ]);
+    this.startDashboardAutoRefresh();
+    window.addEventListener("focus", this.onDashboardWindowFocus);
+    document.addEventListener("visibilitychange", this.onDashboardVisibilityChange);
 
     // Close dropdown when clicking outside
     document.addEventListener('click', (e) => {
@@ -2061,6 +2156,9 @@ export default {
     });
   },
   beforeUnmount() {
+    this.stopDashboardAutoRefresh();
+    window.removeEventListener("focus", this.onDashboardWindowFocus);
+    document.removeEventListener("visibilitychange", this.onDashboardVisibilityChange);
     document.removeEventListener("mousedown", this.handleCommonWalkthroughDocumentClick);
     document.removeEventListener("mousedown", this.handleWalkthroughDocumentClick);
     window.removeEventListener("resize", this.handleWalkthroughViewportChange);
@@ -3083,6 +3181,9 @@ export default {
   flex-shrink: 0;
 }
 .mte-critical { border-color: #f2d3d3; background: #fff8f8; }
+.mte-high { border-color: #f3dfc2; background: #fdf7ef; }
+.mte-medium { border-color: #efe4b1; background: #fefbe8; }
+.mte-low { border-color: #b7ece1; background: #ecfbf8; }
 .mte-severity-head {
   padding: 16px 20px;
   display: flex;
@@ -3098,6 +3199,9 @@ export default {
   font-weight: 700;
 }
 .mte-critical .mte-severity-left { color: #c71616; }
+.mte-high .mte-severity-left { color: #b45309; }
+.mte-medium .mte-severity-left { color: #a16207; }
+.mte-low .mte-severity-left { color: #0f766e; }
 .mte-badge {
   border-radius: 6px;
   font-size: 11px;
@@ -3106,6 +3210,9 @@ export default {
   padding: 3px 7px;
 }
 .mte-badge.critical { background: #c71616; color: #fff; }
+.mte-badge.high { background: #c2410c; color: #fff; }
+.mte-badge.medium { background: #a16207; color: #fff; }
+.mte-badge.low { background: #0f766e; color: #fff; }
 .mte-table-wrap { overflow-x: auto; border-top: 1px solid #e2e8f0; }
 .mte-table { width: 100%; border-collapse: collapse; min-width: 520px; }
 .mte-table th, .mte-table td {

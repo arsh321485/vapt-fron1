@@ -2190,6 +2190,12 @@ export const useAuthStore = defineStore("auth", {
         const res = await endpoint.delete(
           `/api/user/asset/report/${reportId}/assets/${safeAsset}/delete/`,
         );
+        this.cachedUserAssets = this.cachedUserAssets.filter((a: any) => a.asset !== assetIp);
+        this.cachedUserHeldAssets = this.cachedUserHeldAssets.filter((a: any) => a.asset !== assetIp);
+        this.cachedUserAssetTotal =
+          typeof res.data?.total_assets === "number"
+            ? res.data.total_assets
+            : Math.max(0, this.cachedUserAssets.length + this.cachedUserHeldAssets.length);
         this.invalidateUserRealtimeCaches(reportId);
         return { status: true, data: res.data };
       } catch (error: any) {

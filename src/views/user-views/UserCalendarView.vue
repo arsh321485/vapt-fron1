@@ -28,20 +28,18 @@
                 <div class="cal-filter-select-wrap">
                   <select v-model="teamsFilter" class="cal-filter-select">
                     <option value="All Units">All Units</option>
-                    <option value="Network Security">Network Security</option>
-                    <option value="Patch Management">Patch Management</option>
-                    <option value="Configuration Management">Configuration Management</option>
-                    <option value="Architectural Flaws">Architectural Flaws</option>
+                    <option v-for="team in assignedTeams" :key="`team-${team}`" :value="team">
+                      {{ team }}
+                    </option>
                   </select>
                   <i class="bi bi-chevron-down cal-filter-arrow"></i>
                 </div>
                 <div class="cal-filter-select-wrap">
                   <select v-model="extendedFilter" class="cal-filter-select">
                     <option value="All">Extended Deadlines</option>
-                    <option value="Network Security">Network</option>
-                    <option value="Patch Management">Patch</option>
-                    <option value="Configuration Management">Configuration</option>
-                    <option value="Architectural Flaws">Architectural</option>
+                    <option v-for="team in assignedTeams" :key="`ext-team-${team}`" :value="team">
+                      {{ team }}
+                    </option>
                   </select>
                   <i class="bi bi-chevron-down cal-filter-arrow"></i>
                 </div>
@@ -501,6 +499,7 @@ export default {
       ],
 
       weekDays: ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'],
+      assignedTeams: [],
     };
   },
 
@@ -919,6 +918,20 @@ export default {
   },
 
   async mounted() {
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      this.assignedTeams = Array.isArray(user.Member_role) ? user.Member_role : [];
+    } catch {
+      this.assignedTeams = [];
+    }
+
+    if (this.teamsFilter !== 'All Units' && !this.assignedTeams.includes(this.teamsFilter)) {
+      this.teamsFilter = 'All Units';
+    }
+    if (this.extendedFilter !== 'All' && !this.assignedTeams.includes(this.extendedFilter)) {
+      this.extendedFilter = 'All';
+    }
+
     await this.loadCalendarData();
   },
 

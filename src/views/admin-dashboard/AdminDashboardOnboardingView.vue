@@ -996,10 +996,8 @@
             </div>
             <div class="mte-header-actions">
               <select class="mte-team-dropdown" v-model="mteSelectedTeam">
-                <option value="Patch Management">Patch Management</option>
-                <option value="Configuration Management">Configuration Management</option>
-                <option value="Network Security">Network Security</option>
-                <option value="Architectural Flaws">Architectural Flaws</option>
+                <option value="All">All Teams</option>
+                <option v-for="team in mteDropdownTeams" :key="team" :value="team">{{ team }}</option>
               </select>
               <button type="button" class="mte-close-btn" @click="closeMitigationExtensionModal">
                 <i class="bi bi-x-lg"></i>
@@ -1483,6 +1481,11 @@ export default {
     authStore() {
       return useAuthStore();
     },
+    mteDropdownTeams() {
+      return (this.adminMteTeams || [])
+        .map((t) => t?.team)
+        .filter(Boolean);
+    },
     mteFilteredData() {
       const apiC = this.adminMteReportData.critical || [];
       const apiH = this.adminMteReportData.high     || [];
@@ -1493,7 +1496,8 @@ export default {
       const normalize = (s) => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
 
       const filterByTeam = (rows) => {
-        if (!this.mteSelectedTeam) return rows;
+        const selected = normalize(this.mteSelectedTeam);
+        if (!selected || selected === 'all' || selected === 'both') return rows;
         return rows.filter(r =>
           normalize(r.team) === normalize(this.mteSelectedTeam) ||
           normalize(r.by) === normalize(this.mteSelectedTeam)
@@ -1923,7 +1927,10 @@ export default {
     },
     async loadAdminMteReportData() {
       this.adminMteReportLoading = true;
-      const res = await this.authStore.fetchAdminMitigationTimelineExtension();
+      let res = await this.authStore.fetchAdminMitigationTimelineExtensionReport();
+      if (!res?.status) {
+        res = await this.authStore.fetchAdminMitigationTimelineExtension();
+      }
       this.adminMteReportLoading = false;
       if (!(res.status && res.data)) return;
 
@@ -1938,7 +1945,7 @@ export default {
           : (item.date ? String(item.date).split('T')[0] : '—'),
         ext: item.extension_days ? `${item.extension_days} Days` : (item.ext || '—'),
         reason: item.reason || '—',
-        team: item.team || item.requested_by || item.by || '',
+        team: item.team || item.team_name || item.assigned_team || item.requested_by || item.by || '',
         request_id: item.request_id || null,
       });
 
@@ -1960,7 +1967,7 @@ export default {
     async openMitigationExtensionModal() {
       this.showMitigationExtensionModal = true;
       this.mteOpenSection = "critical";
-      this.mteSelectedTeam = "Patch Management";
+      this.mteSelectedTeam = "All";
       await this.loadAdminMteReportData();
     },
     closeMitigationExtensionModal() {

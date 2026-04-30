@@ -546,6 +546,7 @@ export default {
       extPopupVulListApi: [],
       extPopupOriginalDeadlineDays: null,
       extPopupOptionsLoading: false,
+      refreshTimerId: null,
     };
   },
   computed: {
@@ -601,6 +602,9 @@ export default {
     },
   },
   methods: {
+    syncTotalAssets() {
+      this.totalAssets = this.assets.length + this.heldAssets.length;
+    },
     async onSupportRequestsTabClick() {
       this.activeTab = "exceptions";
       await this.loadSupportRequestsByHost(this.activeIndex);
@@ -650,7 +654,6 @@ export default {
       const result = await this.authStore.fetchUserAssets();
       if (result.status) {
         this.assets = result.data;
-        this.totalAssets = result.total;
         if (this.assets.length > 0) {
           await this.setActive(this.assets[0]);
         } else {
@@ -664,7 +667,6 @@ export default {
       const result = await this.authStore.fetchUserAssets(true);
       if (result.status) {
         this.assets = result.data;
-        this.totalAssets = result.total;
         if (this.assets.length > 0) {
           await this.setActive(this.assets[0]);
         } else {
@@ -672,8 +674,34 @@ export default {
         }
       }
       await this.loadHeldAssets();
-      this.totalAssets = this.assets.length + this.heldAssets.length;
+      this.syncTotalAssets();
       this.loading = false;
+    },
+    async refreshAssetsIfIdle() {
+      if (this.loading || this.showCheckboxes || this.showHoldCheckboxes || this.showUnholdCheckboxes) {
+        return;
+      }
+      await this.reloadAssetsAndHeld();
+    },
+    async handleWindowFocus() {
+      await this.refreshAssetsIfIdle();
+    },
+    async handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        await this.refreshAssetsIfIdle();
+      }
+    },
+    startRealtimeRefresh() {
+      this.stopRealtimeRefresh();
+      this.refreshTimerId = window.setInterval(() => {
+        this.refreshAssetsIfIdle();
+      }, 10000);
+    },
+    stopRealtimeRefresh() {
+      if (this.refreshTimerId) {
+        window.clearInterval(this.refreshTimerId);
+        this.refreshTimerId = null;
+      }
     },
     async loadHeldAssets() {
       const res = await this.authStore.fetchUserHeldAssets();
@@ -695,6 +723,7 @@ export default {
         this.showHeld = false;
         this.heldAssets = [];
       }
+      this.syncTotalAssets();
     },
     async setActive(asset) {
       if (!asset?.asset) return;
@@ -774,14 +803,7 @@ export default {
         return;
       }
       for (const item of selected) {
-        const res = await this.authStore.deleteUserAsset(item.asset, reportId);
-        if (res.status) {
-          this.assets = this.assets.filter(x => x.asset !== item.asset);
-          if (this.activeIndex === item.asset) {
-            this.activeIndex = this.assets.length ? this.assets[0].asset : null;
-            if (this.activeIndex) this.authStore.fetchUserSingleAssetVulnerabilities(this.activeIndex);
-          }
-        }
+        await this.authStore.deleteUserAsset(item.asset, reportId);
       }
       await this.reloadAssetsAndHeld();
       this.showCheckboxes = false;
@@ -821,22 +843,9 @@ export default {
       }
       for (const item of selected) {
         const res = await this.authStore.unholdUserAsset(item.asset);
-        if (res.status && res.restoredAsset) {
-          const a = res.restoredAsset;
-          this.assets.unshift({
-            asset: a.asset,
-            member_type: a.member_type,
-            severity_counts: a.severity_counts,
-            host_information: a.host_information,
-            isInternal: a.member_type === 'internal',
-            held: false,
-            selected: false,
-          });
-          this.heldAssets = this.heldAssets.filter(h => h.asset !== item.asset);
-        }
+        if (!res.status) continue;
       }
-      this.totalAssets = this.assets.length + this.heldAssets.length;
-      this.showHeld = this.heldAssets.length > 0;
+      await this.reloadAssetsAndHeld();
       this.resetActions();
     },
     resetActions() {
@@ -941,27 +950,9 @@ export default {
       }
       for (const item of selected) {
         const res = await this.authStore.holdUserAsset(item.asset);
-        if (res.status && res.heldAsset) {
-          const a = res.heldAsset;
-          this.heldAssets.push({
-            asset: a.asset,
-            ip: a.asset,
-            member_type: a.member_type,
-            severity_counts: a.severity_counts,
-            host_information: a.host_information,
-            isInternal: a.member_type === 'internal',
-            held: true,
-            selected: false,
-          });
-          this.assets = this.assets.filter(x => x.asset !== item.asset);
-          if (this.activeIndex === item.asset) {
-            this.activeIndex = this.assets.length ? this.assets[0].asset : null;
-            if (this.activeIndex) this.authStore.fetchUserSingleAssetVulnerabilities(this.activeIndex);
-          }
-        }
+        if (!res.status) continue;
       }
-      this.totalAssets = this.assets.length + this.heldAssets.length;
-      this.showHeld = this.heldAssets.length > 0;
+      await this.reloadAssetsAndHeld();
       this.showHoldCheckboxes = false;
       this.resetActions();
     },
@@ -976,6 +967,15 @@ export default {
     [...tooltipTriggerList].map(el => new bootstrap.Tooltip(el));
     await this.loadAssets();
     await this.loadHeldAssets();
+    this.syncTotalAssets();
+    this.startRealtimeRefresh();
+    window.addEventListener("focus", this.handleWindowFocus);
+    document.addEventListener("visibilitychange", this.handleVisibilityChange);
+  },
+  beforeUnmount() {
+    this.stopRealtimeRefresh();
+    window.removeEventListener("focus", this.handleWindowFocus);
+    document.removeEventListener("visibilitychange", this.handleVisibilityChange);
   },
 };
 </script>
