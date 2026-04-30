@@ -230,6 +230,8 @@
                             <div style="font-size:8px;color:#94a3b8;font-weight:700;letter-spacing:0.04em;margin-top:2px;">MTTR</div>
                           </div>
                         </div>
+
+                    
                       </div>
 
                       <div class="d-flex justify-content-between align-items-center pt-2" style="border-top:1px solid #f1f5f9; margin-top:8px;">
@@ -1036,8 +1038,6 @@ export default {
       monthNames: ["January","February","March","April","May","June","July","August","September","October","November","December"],
       userTeams: [],
       selectedTeam: '',
-      dashboardRefreshTimerId: null,
-      dashboardSyncInFlight: false,
       totalAssets: null,
       assetsLoading: false,
       vulns: { critical: null, high: null, medium: null, low: null },
@@ -1857,46 +1857,6 @@ export default {
         this.refreshInProcessCount(),
       ]);
     },
-    async refreshDashboardMetrics(force = false) {
-      if (this.dashboardSyncInFlight) return;
-      if (!force && document.visibilityState === "hidden") return;
-      this.dashboardSyncInFlight = true;
-      try {
-        const team = this.selectedTeam || 'both';
-        const t = team === 'both' ? undefined : team;
-        await Promise.all([
-          this.fetchAssets(team),
-          this.fetchVulns(t),
-          this.fetchVulnsFixed(t),
-          this.fetchSupportReqs(t),
-          this.fetchMitigation(t),
-          this.fetchMeanTimeRemediate(t),
-          this.refreshInProcessCount(),
-        ]);
-      } finally {
-        this.dashboardSyncInFlight = false;
-      }
-    },
-    onDashboardWindowFocus() {
-      this.refreshDashboardMetrics(true);
-    },
-    onDashboardVisibilityChange() {
-      if (document.visibilityState === "visible") {
-        this.refreshDashboardMetrics(true);
-      }
-    },
-    startDashboardAutoRefresh() {
-      this.stopDashboardAutoRefresh();
-      this.dashboardRefreshTimerId = window.setInterval(() => {
-        this.refreshDashboardMetrics(false);
-      }, 10000);
-    },
-    stopDashboardAutoRefresh() {
-      if (this.dashboardRefreshTimerId) {
-        window.clearInterval(this.dashboardRefreshTimerId);
-        this.dashboardRefreshTimerId = null;
-      }
-    },
     getMitigationDaysFromStr(sev) {
       const val = this.mitigation[sev];
       if (!val) return null;
@@ -2143,9 +2103,6 @@ export default {
       this.loadRiskCriteria(),
       this.loadMteExtensionData(),
     ]);
-    this.startDashboardAutoRefresh();
-    window.addEventListener("focus", this.onDashboardWindowFocus);
-    document.addEventListener("visibilitychange", this.onDashboardVisibilityChange);
 
     // Close dropdown when clicking outside
     document.addEventListener('click', (e) => {
@@ -2156,9 +2113,6 @@ export default {
     });
   },
   beforeUnmount() {
-    this.stopDashboardAutoRefresh();
-    window.removeEventListener("focus", this.onDashboardWindowFocus);
-    document.removeEventListener("visibilitychange", this.onDashboardVisibilityChange);
     document.removeEventListener("mousedown", this.handleCommonWalkthroughDocumentClick);
     document.removeEventListener("mousedown", this.handleWalkthroughDocumentClick);
     window.removeEventListener("resize", this.handleWalkthroughViewportChange);

@@ -546,7 +546,6 @@ export default {
       extPopupVulListApi: [],
       extPopupOriginalDeadlineDays: null,
       extPopupOptionsLoading: false,
-      refreshTimerId: null,
     };
   },
   computed: {
@@ -676,32 +675,6 @@ export default {
       await this.loadHeldAssets();
       this.syncTotalAssets();
       this.loading = false;
-    },
-    async refreshAssetsIfIdle() {
-      if (this.loading || this.showCheckboxes || this.showHoldCheckboxes || this.showUnholdCheckboxes) {
-        return;
-      }
-      await this.reloadAssetsAndHeld();
-    },
-    async handleWindowFocus() {
-      await this.refreshAssetsIfIdle();
-    },
-    async handleVisibilityChange() {
-      if (document.visibilityState === "visible") {
-        await this.refreshAssetsIfIdle();
-      }
-    },
-    startRealtimeRefresh() {
-      this.stopRealtimeRefresh();
-      this.refreshTimerId = window.setInterval(() => {
-        this.refreshAssetsIfIdle();
-      }, 10000);
-    },
-    stopRealtimeRefresh() {
-      if (this.refreshTimerId) {
-        window.clearInterval(this.refreshTimerId);
-        this.refreshTimerId = null;
-      }
     },
     async loadHeldAssets() {
       const res = await this.authStore.fetchUserHeldAssets();
@@ -968,14 +941,8 @@ export default {
     await this.loadAssets();
     await this.loadHeldAssets();
     this.syncTotalAssets();
-    this.startRealtimeRefresh();
-    window.addEventListener("focus", this.handleWindowFocus);
-    document.addEventListener("visibilitychange", this.handleVisibilityChange);
   },
   beforeUnmount() {
-    this.stopRealtimeRefresh();
-    window.removeEventListener("focus", this.handleWindowFocus);
-    document.removeEventListener("visibilitychange", this.handleVisibilityChange);
   },
 };
 </script>
