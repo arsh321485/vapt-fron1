@@ -392,7 +392,8 @@ export default {
       descriptionPreviewLimit: 280,
       closedFixVulnerabilities: [],
       closedFixCount: 0,
-      loadingClosedFix: false
+      loadingClosedFix: false,
+      assetFetchSeq: 0,
     };
   },
   computed: {
@@ -460,9 +461,18 @@ export default {
       return Math.ceil(list.length / this.pageSize);
     },
     pageNumbers() {
-      const pages = [];
-      for (let i = 1; i <= this.totalPages; i++) pages.push(i);
-      return pages;
+      const total = this.totalPages;
+      const maxVisible = 5;
+      if (total <= maxVisible) {
+        return Array.from({ length: total }, (_, i) => i + 1);
+      }
+      let start = Math.max(1, this.currentPage - Math.floor(maxVisible / 2));
+      let end = start + maxVisible - 1;
+      if (end > total) {
+        end = total;
+        start = end - maxVisible + 1;
+      }
+      return Array.from({ length: end - start + 1 }, (_, i) => start + i);
     },
     filteredVulnerabilities() {
       const list =
@@ -531,7 +541,7 @@ export default {
         }
       }
     },
-    async refreshSupportRequestsForHost(host) {
+    async refreshSupportRequestsForHost(host, requestSeq = this.assetFetchSeq) {
       if (!host) {
         this.supportRequestsByHost = [];
         this.supportRequestCount = 0;
@@ -540,6 +550,7 @@ export default {
 
       this.loadingSupportRequests = true;
       const res = await this.authStore.getSupportRequestsByHost(host);
+      if (requestSeq !== this.assetFetchSeq) return;
       this.loadingSupportRequests = false;
 
       if (res.status) {
@@ -552,7 +563,34 @@ export default {
     },
     async onSupportRequestsTabClick() {
       this.activeTab = "exceptions";
-      await this.refreshSupportRequestsForHost(this.activeIndex);
+      await this.refreshSupportRequestsForHost(this.activeIndex, this.assetFetchSeq);
+    },
+    async loadClosedFixForAsset(asset, requestSeq = this.assetFetchSeq) {
+      this.loadingClosedFix = true;
+      const reportId = this.authStore.latestReportId;
+      if (!reportId) {
+        if (requestSeq === this.assetFetchSeq) {
+          this.loadingClosedFix = false;
+          this.closedFixVulnerabilities = [];
+          this.closedFixCount = 0;
+        }
+        return;
+      }
+
+      const fixRes = await this.authStore.getClosedVulnerabilities(reportId, asset);
+      if (requestSeq !== this.assetFetchSeq) return;
+
+      this.loadingClosedFix = false;
+      if (fixRes.status && fixRes.data?.results) {
+        const closedOnly = fixRes.data.results.filter(
+          (v) => v.status?.toLowerCase() === "closed"
+        );
+        this.closedFixVulnerabilities = closedOnly;
+        this.closedFixCount = closedOnly.length;
+      } else {
+        this.closedFixVulnerabilities = [];
+        this.closedFixCount = 0;
+      }
     },
     getVulRegisterId(v) {
       const asset = this.authStore.selectedAssetDetail?.asset;
@@ -645,30 +683,16 @@ export default {
     },
     async setActive(asset) {
       if (!asset?.asset) return;
+      const requestSeq = ++this.assetFetchSeq;
       this.activeIndex = asset.asset;
-      await this.authStore.fetchSingleAssetVulnerabilities(asset.asset);
-      await this.refreshSupportRequestsForHost(asset.asset);
 
-      this.loadingClosedFix = true;
-      const reportId = this.authStore.latestReportId;
-      if (reportId) {
-        const fixRes = await this.authStore.getClosedVulnerabilities(reportId, asset.asset);
-        this.loadingClosedFix = false;
-        if (fixRes.status && fixRes.data?.results) {
-          const closedOnly = fixRes.data.results.filter(
-            v => v.status?.toLowerCase() === "closed"
-          );
-          this.closedFixVulnerabilities = closedOnly;
-          this.closedFixCount = closedOnly.length;
-        } else {
-          this.closedFixVulnerabilities = [];
-          this.closedFixCount = 0;
-        }
-      } else {
-        this.loadingClosedFix = false;
-        this.closedFixVulnerabilities = [];
-        this.closedFixCount = 0;
-      }
+      // Primary details first, so UI updates quickly for selected asset.
+      await this.authStore.fetchSingleAssetVulnerabilities(asset.asset);
+      if (requestSeq !== this.assetFetchSeq) return;
+
+      // Secondary data in parallel (do not block main asset details render).
+      this.refreshSupportRequestsForHost(asset.asset, requestSeq);
+      this.loadClosedFixForAsset(asset.asset, requestSeq);
     },
     toggleHoldMode() {
       if (this.activeAction === "delete") return;
@@ -958,11 +982,16 @@ export default {
     }
 
     // Always refresh on page entry so navigation also triggers APIs.
-    await this.reloadAssetsAndHeld();
-    await this.authStore.fetchVulnerabilityRegister(true);
+    await Promise.all([
+      this.reloadAssetsAndHeld(),
+      this.authStore.fetchVulnerabilityRegister(true),
+    ]);
   },
   async activated() {
-    await this.reloadAssetsAndHeld();
+    await Promise.all([
+      this.reloadAssetsAndHeld(),
+      this.authStore.fetchVulnerabilityRegister(true),
+    ]);
   },
 };
 </script>

@@ -580,9 +580,18 @@ export default {
       return Math.ceil(this.filteredAssets.length / this.pageSize);
     },
     pageNumbers() {
-      const pages = [];
-      for (let i = 1; i <= this.totalPages; i++) pages.push(i);
-      return pages;
+      const total = this.totalPages;
+      const maxVisible = 5;
+      if (total <= maxVisible) {
+        return Array.from({ length: total }, (_, i) => i + 1);
+      }
+      let start = Math.max(1, this.currentPage - Math.floor(maxVisible / 2));
+      let end = start + maxVisible - 1;
+      if (end > total) {
+        end = total;
+        start = end - maxVisible + 1;
+      }
+      return Array.from({ length: end - start + 1 }, (_, i) => start + i);
     },
     selectedAsset() {
       if (!this.activeIndex) return null;

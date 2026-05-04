@@ -287,7 +287,7 @@
                         <!-- COMMAND TO RUN (full width) -->
                         <div v-if="task.command && task.command !== 'N/A'" class="rt-expand-section">
                           <span class="rt-expand-label">COMMAND TO RUN</span>
-                          <div class="rt-code-block">{{ task.command }}</div>
+                          <div class="rt-code-block" v-text="formatCommandToRun(task.command)"></div>
                         </div>
 
                         <div v-if="task.expectedOutput && task.expectedOutput !== 'N/A'" class="rt-expand-section">
@@ -475,6 +475,24 @@ export default {
   },
 
   methods: {
+    formatCommandToRun(commandValue) {
+      const commandParts = Array.isArray(commandValue)
+        ? commandValue
+          .map(item => String(item || '').trim())
+          .filter(Boolean)
+        : String(commandValue || '')
+          .split(/\r?\n|,/)
+          .map(item => item.trim())
+          .filter(Boolean);
+
+      if (commandParts.length <= 1) {
+        return commandParts[0] || String(commandValue || '');
+      }
+
+      return commandParts
+        .map((part, index) => (index === commandParts.length - 1 ? part : `${part},`))
+        .join('\n');
+    },
     toggleStep(step) {
       if (this.selectedSteps.includes(step)) {
         this.selectedSteps = [];
@@ -1604,6 +1622,7 @@ export default {
   color: #4ade80;
   word-break: break-all;
   line-height: 1.6;
+  white-space: pre-wrap;
 }
 
 
