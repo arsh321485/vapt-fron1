@@ -909,7 +909,7 @@ export default {
 .st-crit-critical { background: #ffdad6; color: #ba1a1a; }
 .st-crit-high { background: #ffe0c8; color: #9a3412; }
 .st-crit-medium { background: #fff4cc; color: #a16207; }
-.st-crit-low { background: #d1fae5; color: #166534; }
+.st-crit-low { background: #d1fae5; color: #10b981; }
 
 .st-empty-row {
   padding: 48px 16px;
@@ -1211,7 +1211,7 @@ export default {
 }
 .st-so-badge-low {
   background: #d1fae5;
-  color: #166534;
+  color: #10b981;
 }
 
 .st-so-dot {
@@ -1223,7 +1223,7 @@ export default {
 .st-so-dot-critical { background: #ba1a1a; }
 .st-so-dot-high { background: #f2994a; }
 .st-so-dot-medium { background: #f2c94c; }
-.st-so-dot-low { background: #0f696e; }
+.st-so-dot-low { background: #10b981; }
 
 .st-so-body {
   flex: 1;

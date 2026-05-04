@@ -683,7 +683,7 @@ export default {
 .exc-badge-critical { background: #ffdad6; color: #ba1a1a; }
 .exc-badge-high { background: #ffe0c8; color: #f2994a; }
 .exc-badge-medium { background: #fff4cc; color: #f2c94c; }
-.exc-badge-low { background: #a1ecf2; color: #002022; }
+.exc-badge-low { background: #d1fae5; color: #10b981; }
 
 .exc-avatar {
   width: 32px; height: 32px; border-radius: 50%;
@@ -797,12 +797,12 @@ export default {
 .exc-so-badge-critical { background: #ffdad6; color: #ba1a1a; }
 .exc-so-badge-high { background: #ffe0c8; color: #9a3412; }
 .exc-so-badge-medium { background: #fff4cc; color: #a16207; }
-.exc-so-badge-low { background: #d1fae5; color: #166534; }
+.exc-so-badge-low { background: #d1fae5; color: #10b981; }
 .exc-so-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .exc-so-dot-critical { background: #ba1a1a; }
 .exc-so-dot-high { background: #f2994a; }
 .exc-so-dot-medium { background: #f2c94c; }
-.exc-so-dot-low { background: #0f696e; }
+.exc-so-dot-low { background: #10b981; }
 
 .exc-so-body { flex: 1; overflow-y: auto; padding: 28px 32px; }
 .exc-so-summary {

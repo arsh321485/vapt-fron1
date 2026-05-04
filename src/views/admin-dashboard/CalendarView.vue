@@ -476,7 +476,13 @@ export default {
       dayApiData: null,
       dayEvents: [],
       dayExtensionEvents: [],
-      currentDayDate: new Date().toISOString().split('T')[0],
+      currentDayDate: (() => {
+        const t = new Date();
+        const y = t.getFullYear();
+        const m = String(t.getMonth() + 1).padStart(2, '0');
+        const d = String(t.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      })(),
       dayHourSlots: [
         '08:00 AM','09:00 AM','10:00 AM','11:00 AM',
         '12:00 PM','01:00 PM','02:00 PM','03:00 PM',
@@ -491,7 +497,13 @@ export default {
       weekLoading: false,
       weekApiData: null,
       weekEvents: [],
-      currentWeekDate: new Date().toISOString().split('T')[0],
+      currentWeekDate: (() => {
+        const t = new Date();
+        const y = t.getFullYear();
+        const m = String(t.getMonth() + 1).padStart(2, '0');
+        const d = String(t.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      })(),
       currentDayLabel: 'Wednesday, April 15, 2026',
       dayHours: [
         '08:00 AM','09:00 AM','10:00 AM','11:00 AM',
@@ -566,6 +578,90 @@ export default {
       if (t.includes('architectural')) return 'team-arch';
       return 'dl-blue';
     },
+    formatLocalYmd(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    },
+    /** Sunday–Saturday YYYY-MM-DD strings for the week containing anchorYmd (local calendar). */
+    getSundayWeekDateStrings(anchorYmd) {
+      const parts = anchorYmd.split('-').map(n => parseInt(n, 10));
+      const base = new Date(parts[0], parts[1] - 1, parts[2]);
+      const dow = base.getDay();
+      const sunday = new Date(base);
+      sunday.setDate(base.getDate() - dow);
+      const out = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(sunday);
+        d.setDate(sunday.getDate() + i);
+        out.push(this.formatLocalYmd(d));
+      }
+      return out;
+    },
+    /**
+     * Same event shape as month view; includes fullDate for week filtering.
+     * Matches admin calendar month API: deadlines + calendar.days[].events
+     */
+    pushEventsFromCalendarApiData(data, year, month, targetEvts) {
+      const deadlines = data.deadlines || {};
+      Object.keys(deadlines).forEach(sev => {
+        const dl = deadlines[sev];
+        if (!dl || !dl.deadline_date) return;
+        const [yy, mm, dd] = dl.deadline_date.split('-').map(n => parseInt(n, 10));
+        if (yy !== year || mm !== month) return;
+        const sevLabel = sev.charAt(0).toUpperCase() + sev.slice(1);
+        targetEvts.push({
+          id: `deadline-${sev}`,
+          day: dd,
+          fullDate: dl.deadline_date,
+          title: `${sevLabel} Level Deadline`,
+          severityLabel: sevLabel,
+          type: 'deadline',
+          color: this.severityColor(sev),
+          team: null,
+          deadline: dl.deadline_date,
+          extended: null,
+          asset: null,
+          vulnerabilityName: null,
+          status: dl.status || null,
+          remainingDays: dl.remaining_days,
+          remainingLabel: dl.remaining_label,
+          isDeadlineEvent: true,
+          fromApi: true,
+        });
+      });
+
+      const days = data.calendar?.days || [];
+      days.forEach(dayObj => {
+        const p = dayObj.date.split('-').map(n => parseInt(n, 10));
+        const yy = p[0];
+        const mm = p[1];
+        const dd = p[2];
+        if (yy !== year || mm !== month) return;
+        dayObj.events.forEach((evt, i) => {
+          targetEvts.push({
+            id: evt.request_id || `${dayObj.date}-evt-${i}`,
+            day: dd,
+            fullDate: dayObj.date,
+            title: evt.title,
+            type: 'deadline',
+            color: this.teamColor(evt.assigned_to_team),
+            team: evt.assigned_to_team,
+            severityLabel: evt.severity ? evt.severity.charAt(0).toUpperCase() + evt.severity.slice(1) : '',
+            deadline: evt.due,
+            extended: evt.extended_by_days ? `${evt.extended_by_days} Days` : null,
+            asset: evt.asset,
+            vulnerabilityName: evt.vulnerability_name,
+            status: evt.status,
+            historicalDetail: evt.historical_detail,
+            extensionRequested: evt.extension_requested,
+            fromApi: true,
+            isExtensionEvent: true,
+          });
+        });
+      });
+    },
     async loadCalendarData() {
       this.calendarLoading = true;
       const store = useAuthStore();
@@ -578,61 +674,7 @@ export default {
       if (res.status && res.data) {
         this.apiCalendarData = res.data;
         const evts = [];
-
-        // 1️⃣ Add deadline events from deadlines object (critical/high/medium/low)
-        const deadlines = res.data.deadlines || {};
-        Object.keys(deadlines).forEach(sev => {
-          const dl = deadlines[sev];
-          if (!dl || !dl.deadline_date) return;
-          const [yy, mm, dd] = dl.deadline_date.split('-').map(n => parseInt(n, 10));
-          if (yy !== this.currentYear || mm !== this.currentMonth) return;
-          const dateNum = dd;
-          const sevLabel = sev.charAt(0).toUpperCase() + sev.slice(1);
-          evts.push({
-            id: `deadline-${sev}`,
-            day: dateNum,
-            title: `${sevLabel} Level Deadline`,
-            type: 'deadline',
-            color: this.severityColor(sev),
-            team: null,
-            deadline: dl.deadline_date,
-            extended: null,
-            asset: null,
-            vulnerabilityName: null,
-            status: dl.status || null,
-            remainingDays: dl.remaining_days,
-            remainingLabel: dl.remaining_label,
-            isDeadlineEvent: true,
-            fromApi: true,
-          });
-        });
-
-        // 2️⃣ Add extension events from calendar days
-        const days = res.data.calendar?.days || [];
-        days.forEach(dayObj => {
-          const dateNum = parseInt(dayObj.date.split('-')[2]);
-          dayObj.events.forEach((evt, i) => {
-            evts.push({
-              id: evt.request_id || `${dayObj.date}-evt-${i}`,
-              day: dateNum,
-              title: evt.title,
-              type: 'deadline',
-              color: this.teamColor(evt.assigned_to_team),
-              team: evt.assigned_to_team,
-              severityLabel: evt.severity ? evt.severity.charAt(0).toUpperCase() + evt.severity.slice(1) : '',
-              deadline: evt.due,
-              extended: evt.extended_by_days ? `${evt.extended_by_days} Days` : null,
-              asset: evt.asset,
-              vulnerabilityName: evt.vulnerability_name,
-              status: evt.status,
-              historicalDetail: evt.historical_detail,
-              extensionRequested: evt.extension_requested,
-              fromApi: true,
-              isExtensionEvent: true,
-            });
-          });
-        });
-
+        this.pushEventsFromCalendarApiData(res.data, this.currentYear, this.currentMonth, evts);
         this.events = evts;
         // Build calendarDays from API
         const firstDay = new Date(this.currentYear, this.currentMonth - 1, 1).getDay();
@@ -776,71 +818,54 @@ export default {
     },
     getWeekApiEventsForDate(fullDate) {
       if (!fullDate) return [];
-      return this.weekEvents.filter(e => e.fullDate === fullDate);
+      let evts = this.weekEvents.filter(e => e.fullDate === fullDate);
+      if (this.extendedFilter !== 'All') {
+        evts = evts.filter(e => e.alwaysShow || e.team === this.extendedFilter);
+      }
+      if (this.criticalityFilter !== 'All Types') {
+        const cf = this.criticalityFilter.toLowerCase();
+        evts = evts.filter(e =>
+          (e.type || '').toLowerCase().includes(cf) ||
+          (e.title || '').toLowerCase().includes(cf) ||
+          (e.color || '').includes(this.severityColor(cf)),
+        );
+      }
+      return evts;
     },
     async loadWeekData() {
       this.weekLoading = true;
       const store = useAuthStore();
-      const res = await store.fetchRiskCriteriaCalendarWeek(this.currentWeekDate);
-      this.weekLoading = false;
-      if (res.status && res.data) {
-        this.weekApiData = res.data;
-        const evts = [];
+      const team = this.teamsFilter !== 'All Units' ? this.teamsFilter : undefined;
+      const severity = this.criticalityFilter !== 'All Types' ? this.criticalityFilter.toLowerCase() : undefined;
 
-        // 1️⃣ Deadline events from deadlines object — show on their deadline_date if within week
-        const deadlines = res.data.deadlines || {};
-        const weekDays = res.data.week?.days || [];
-        const weekDates = weekDays.map(d => d.date);
+      const weekDates = this.getSundayWeekDateStrings(this.currentWeekDate);
+      const monthKeys = new Set();
+      weekDates.forEach(ds => {
+        const [y, m] = ds.split('-').map(n => parseInt(n, 10));
+        monthKeys.add(`${y}-${m}`);
+      });
 
-        Object.keys(deadlines).forEach(sev => {
-          const dl = deadlines[sev];
-          if (!dl?.deadline_date) return;
-          if (weekDates.includes(dl.deadline_date)) {
-            const sevLabel = sev.charAt(0).toUpperCase() + sev.slice(1);
-            evts.push({
-              id: `week-deadline-${sev}`,
-              fullDate: dl.deadline_date,
-              title: `${sevLabel} Level Deadline`,
-              type: 'deadline',
-              color: this.severityColor(sev),
-              severityLabel: sevLabel,
-              deadline: dl.deadline_date,
-              remainingDays: dl.remaining_days,
-              remainingLabel: dl.remaining_days + ' day' + (dl.remaining_days !== 1 ? 's' : ''),
-              status: dl.status,
-              isDeadlineEvent: true,
-              fromApi: true,
-            });
-          }
-        });
-
-        // 2️⃣ Extension events from extension_events array
-        const extEvents = res.data.extension_events || [];
-        extEvents.forEach((evt, i) => {
-          // Show on due date if within week, else on first day of week
-          const targetDate = weekDates.includes(evt.due) ? evt.due : (weekDates[0] || evt.due);
-          evts.push({
-            id: evt.request_id || `week-ext-${i}`,
-            fullDate: targetDate,
-            title: evt.title,
-            type: 'deadline',
-            color: this.teamColor(evt.assigned_to_team),
-            severityLabel: evt.severity ? evt.severity.charAt(0).toUpperCase() + evt.severity.slice(1) : '',
-            team: evt.assigned_to_team,
-            deadline: evt.due,
-            extended: evt.extended_by_days ? `${evt.extended_by_days} Days` : null,
-            asset: evt.asset,
-            vulnerabilityName: evt.vulnerability_name,
-            status: evt.status,
-            historicalDetail: evt.historical_detail,
-            extensionRequested: evt.extension_requested,
-            isExtensionEvent: true,
-            fromApi: true,
-          });
-        });
-
-        this.weekEvents = evts;
+      const mergedEvts = [];
+      for (const key of monthKeys) {
+        const [y, m] = key.split('-').map(n => parseInt(n, 10));
+        const res = await store.fetchRiskCriteriaCalendarWithFilters(y, m, team, severity);
+        if (res.status && res.data) {
+          this.pushEventsFromCalendarApiData(res.data, y, m, mergedEvts);
+        }
       }
+
+      const weekSet = new Set(weekDates);
+      const evts = mergedEvts.filter(e => e.fullDate && weekSet.has(e.fullDate));
+
+      this.weekApiData = {
+        week: {
+          start_date: weekDates[0],
+          end_date: weekDates[6],
+          days: weekDates.map(date => ({ date })),
+        },
+      };
+      this.weekEvents = evts;
+      this.weekLoading = false;
     },
     prevMonth() {
       if (this.currentMonth === 1) {
@@ -859,17 +884,17 @@ export default {
       }
     },
     prevWeek() {
-      this.currentWeekStart -= 7;
-      const d = new Date(this.currentWeekDate);
+      const parts = this.currentWeekDate.split('-').map(n => parseInt(n, 10));
+      const d = new Date(parts[0], parts[1] - 1, parts[2]);
       d.setDate(d.getDate() - 7);
-      this.currentWeekDate = d.toISOString().split('T')[0];
+      this.currentWeekDate = this.formatLocalYmd(d);
       this.loadWeekData();
     },
     nextWeek() {
-      this.currentWeekStart += 7;
-      const d = new Date(this.currentWeekDate);
+      const parts = this.currentWeekDate.split('-').map(n => parseInt(n, 10));
+      const d = new Date(parts[0], parts[1] - 1, parts[2]);
       d.setDate(d.getDate() + 7);
-      this.currentWeekDate = d.toISOString().split('T')[0];
+      this.currentWeekDate = this.formatLocalYmd(d);
       this.loadWeekData();
     },
     prevDay() {
@@ -897,8 +922,9 @@ export default {
       this.currentYear = today.getFullYear();
       this.currentMonth = today.getMonth() + 1;
       this.currentWeekStart = today.getDate();
-      this.currentWeekDate = today.toISOString().split('T')[0];
-      this.currentDayDate = today.toISOString().split('T')[0];
+      const ymd = this.formatLocalYmd(today);
+      this.currentWeekDate = ymd;
+      this.currentDayDate = ymd;
       if (this.activeView === 'Week') this.loadWeekData();
       else if (this.activeView === 'Day') this.loadDayData();
       else this.loadCalendarData();
@@ -906,7 +932,11 @@ export default {
     openEventPopup(evt, dayObj, $event) {
       this.selectedEvent = evt;
       this.showPopup = true;
-      const rect = $event.currentTarget.closest('.cal-day-cell').getBoundingClientRect();
+      const anchor =
+        $event.currentTarget.closest('.cal-day-cell') ||
+        $event.currentTarget.closest('.cal-week-col') ||
+        $event.currentTarget;
+      const rect = anchor.getBoundingClientRect();
       let left = rect.right + 8;
       let top  = rect.top;
       if (left + 290 > window.innerWidth - 20) {
@@ -958,8 +988,14 @@ export default {
     },
   },
   watch: {
-    teamsFilter() { this.loadCalendarData(); },
-    criticalityFilter() { this.loadCalendarData(); },
+    teamsFilter() {
+      if (this.activeView === 'Week') this.loadWeekData();
+      else this.loadCalendarData();
+    },
+    criticalityFilter() {
+      if (this.activeView === 'Week') this.loadWeekData();
+      else this.loadCalendarData();
+    },
     currentMonth() { this.loadCalendarData(); },
     currentYear() { this.loadCalendarData(); },
     activeView(val) {
@@ -982,9 +1018,9 @@ export default {
     currentWeekDays() {
       const weekDays = this.weekApiData?.week?.days || [];
       if (weekDays.length > 0) {
-        const today = new Date().toISOString().split('T')[0];
+        const today = this.formatLocalYmd(new Date());
         return weekDays.map(d => {
-          const dateNum = parseInt(d.date.split('-')[2]);
+          const dateNum = parseInt(d.date.split('-')[2], 10);
           return {
             day: dateNum,
             fullDate: d.date,
@@ -994,17 +1030,11 @@ export default {
         });
       }
       // Fallback — build from currentWeekDate
-      const base = new Date(this.currentWeekDate);
-      const dayOfWeek = base.getDay();
-      const sunday = new Date(base);
-      sunday.setDate(base.getDate() - dayOfWeek);
-      const today = new Date().toISOString().split('T')[0];
-      return Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(sunday);
-        d.setDate(sunday.getDate() + i);
-        const fullDate = d.toISOString().split('T')[0];
+      return this.getSundayWeekDateStrings(this.currentWeekDate).map(fullDate => {
+        const dateNum = parseInt(fullDate.split('-')[2], 10);
+        const today = this.formatLocalYmd(new Date());
         return {
-          day: d.getDate(),
+          day: dateNum,
           fullDate,
           currentMonth: true,
           isToday: fullDate === today,
@@ -1015,13 +1045,8 @@ export default {
       if (this.weekApiData?.week) {
         return `${this.weekApiData.week.start_date} — ${this.weekApiData.week.end_date}`;
       }
-      const base = new Date(this.currentWeekDate);
-      const dayOfWeek = base.getDay();
-      const sunday = new Date(base);
-      sunday.setDate(base.getDate() - dayOfWeek);
-      const saturday = new Date(sunday);
-      saturday.setDate(sunday.getDate() + 6);
-      return `${sunday.toISOString().split('T')[0]} — ${saturday.toISOString().split('T')[0]}`;
+      const dates = this.getSundayWeekDateStrings(this.currentWeekDate);
+      return `${dates[0]} — ${dates[6]}`;
     },
   },
 };

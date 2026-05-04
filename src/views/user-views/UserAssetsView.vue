@@ -1345,8 +1345,13 @@ export default {
 .sev-pill-critical { color: #dc2626; }
 .sev-pill-high     { color: #f97316; }
 .sev-pill-medium   { color: #f59e0b; }
-.sev-pill-low      { color: #10b981; background: #d1fae5; border-color: #a7f3d0; }
-.sev-pill-low.sev-pill-active { background: #d1fae5 !important; color: #10b981 !important; border-color: #10b981 !important; }
+/* Same white / gray border as other severity pills; green text only */
+.sev-pill-low { color: #10b981; }
+.sev-pill-low.sev-pill-active {
+  background: #e0f2f1 !important;
+  color: #10b981 !important;
+  border-color: #10b981 !important;
+}
 
 /* Vuln accordion */
 .vuln-accordion-item {

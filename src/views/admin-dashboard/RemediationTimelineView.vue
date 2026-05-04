@@ -290,6 +290,15 @@
                           <div class="rt-code-block">{{ task.command }}</div>
                         </div>
 
+                        <div v-if="task.expectedOutput && task.expectedOutput !== 'N/A'" class="rt-expand-section">
+                          <span class="rt-expand-label">EXPECTED OUTPUT</span>
+                          <div class="rt-code-block">{{ task.expectedOutput }}</div>
+                        </div>
+                        <div v-if="task.verificationCheck && task.verificationCheck !== 'N/A'" class="rt-expand-section">
+                          <span class="rt-expand-label">VERIFICATION CHECK</span>
+                          <div class="rt-code-block">{{ task.verificationCheck }}</div>
+                        </div>
+
                         <!-- ROW 2: TOOLS + CONSIDERATION side by side -->
                         <div class="rt-expand-row-2">
                           <div v-if="task.tools && task.tools.length" class="rt-expand-section">
@@ -712,6 +721,8 @@ export default {
           action: detail.action || '',
           filePath: detail.system_file_path || '',
           command: detail.commands_for_action || '',
+          expectedOutput: detail.expected_output || step.expected_output || '',
+          verificationCheck: detail.verification_check || step.verification_check || '',
           whereToRunLabel:
             detail.where_to_run_label ||
             detail.where_to_run ||
@@ -831,6 +842,8 @@ export default {
           action: detail.action || '',
           filePath: detail.system_file_path || '',
           command: detail.commands_for_action || '',
+          expectedOutput: detail.expected_output || step.expected_output || '',
+          verificationCheck: detail.verification_check || step.verification_check || '',
           whereToRunLabel:
             detail.where_to_run_label ||
             detail.where_to_run ||
