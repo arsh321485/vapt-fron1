@@ -4,6 +4,8 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 
+const devApiTarget = process.env.VITE_DEV_API_PROXY || 'http://127.0.0.1:8000'
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -18,9 +20,9 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://vaptbackend.secureitlab.com',
+        target: devApiTarget,
         changeOrigin: true,
-        secure: true,
+        secure: false,
       },
     },
   },

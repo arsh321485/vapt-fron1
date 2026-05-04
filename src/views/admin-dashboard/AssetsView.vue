@@ -957,15 +957,9 @@ export default {
       await this.authStore.getReportStatus();
     }
 
-    this.authStore.fetchAssets();
-
-    if (!this.authStore.latestReportId || !this.authStore.vulnerabilityRows.length) {
-      this.authStore.fetchVulnerabilityRegister();
-    }
-
-    if (typeof this.authStore.fetchHeldAssets === 'function') {
-      this.loadHeldAssets();
-    }
+    // Always refresh on page entry so navigation also triggers APIs.
+    await this.reloadAssetsAndHeld();
+    await this.authStore.fetchVulnerabilityRegister(true);
   },
   async activated() {
     await this.reloadAssetsAndHeld();

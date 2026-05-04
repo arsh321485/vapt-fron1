@@ -12,7 +12,7 @@
   
     <!-- Right Section -->
     <div class="d-flex align-items-center gap-2">
-      <NotificationPanel />
+      <NotificationPanel recipient-type="user" />
     <div class="position-relative d-inline-block">
       <div
         class="circle-bottom d-flex align-items-center justify-content-center fw-bold"

@@ -611,7 +611,14 @@
                           <td colspan="5" style="text-align:center; color:#94a3b8; font-size:12px; padding:12px 0;">No data available.</td>
                         </tr>
                         <tr v-for="row in adminMteTeams" :key="row.team">
-                          <td>{{ row.team }}</td>
+                          <td>
+                            <span class="dash-mte-team-name">{{ row.team }}</span>
+                            <span
+                              v-if="teamHasPendingRequests(row)"
+                              class="dash-mte-team-alert"
+                              title="Pending timeline extension request received"
+                            >*</span>
+                          </td>
                           <td><span class="dash-mte-pill critical">{{ String(row.critical || 0).padStart(2,'0') }}</span></td>
                           <td><span class="dash-mte-pill high">{{ String(row.high || 0).padStart(2,'0') }}</span></td>
                           <td><span class="dash-mte-pill medium">{{ String(row.medium || 0).padStart(2,'0') }}</span></td>
@@ -1916,6 +1923,12 @@ export default {
       if (status === 'Rejected') return 'mte-status-rejected';
       return 'mte-status-review';
     },
+    teamHasPendingRequests(row) {
+      if (!row) return false;
+      return ["critical", "high", "medium", "low"].some(
+        (severity) => Number(row[severity] || 0) > 0
+      );
+    },
 
     async loadAdminMteData() {
       this.adminMteLoading = true;
@@ -3207,6 +3220,20 @@ mounted() {
   font-weight: 700;
   color: #334155;
   padding-left: 12px;
+}
+.dash-mte-team-name {
+  position: relative;
+}
+.dash-mte-team-alert {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 4px;
+  color: #dc2626;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1;
+  vertical-align: text-top;
 }
 .dash-mte-table th.sev-critical { color: #dc2626; }
 .dash-mte-table th.sev-high { color: #f97316; }

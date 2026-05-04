@@ -3901,6 +3901,172 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    // Admin notifications list
+    async fetchAdminNotifications() {
+      try {
+        const res = await endpoint.get(`/api/notifications/admin/list/`, {
+          params: { _ts: Date.now() },
+        });
+        return {
+          status: true,
+          data: res.data,
+        };
+      } catch (error) {
+        const err = error as AxiosError<any>;
+        return {
+          status: false,
+          message: err.response?.data?.detail || err.response?.data?.message || "Failed to fetch notifications",
+        };
+      }
+    },
+
+    // User notifications list
+    async fetchUserNotifications() {
+      try {
+        const res = await endpoint.get(`/api/notifications/user/list/`, {
+          params: { _ts: Date.now() },
+        });
+        return {
+          status: true,
+          data: res.data,
+        };
+      } catch (error) {
+        const err = error as AxiosError<any>;
+        return {
+          status: false,
+          message: err.response?.data?.detail || err.response?.data?.message || "Failed to fetch user notifications",
+        };
+      }
+    },
+
+    // User unread notifications count
+    async fetchUserUnreadNotificationCount() {
+      try {
+        const res = await endpoint.get(`/api/notifications/user/unread-count/`, {
+          params: { _ts: Date.now() },
+        });
+        return {
+          status: true,
+          data: res.data,
+        };
+      } catch (error) {
+        const err = error as AxiosError<any>;
+        return {
+          status: false,
+          message:
+            err.response?.data?.detail ||
+            err.response?.data?.message ||
+            "Failed to fetch user unread notification count",
+        };
+      }
+    },
+
+    // Admin unread notifications count
+    async fetchAdminUnreadNotificationCount() {
+      try {
+        const res = await endpoint.get(`/api/notifications/admin/unread-count/`, {
+          params: { _ts: Date.now() },
+        });
+        return {
+          status: true,
+          data: res.data,
+        };
+      } catch (error) {
+        const err = error as AxiosError<any>;
+        return {
+          status: false,
+          message:
+            err.response?.data?.detail ||
+            err.response?.data?.message ||
+            "Failed to fetch unread notification count",
+        };
+      }
+    },
+
+    // Mark a specific admin notification as read
+    async markAdminNotificationRead(notificationId: string) {
+      try {
+        const res = await endpoint.patch(
+          `/api/notifications/admin/${notificationId}/mark-read/`,
+        );
+        return {
+          status: true,
+          data: res.data,
+        };
+      } catch (error) {
+        const err = error as AxiosError<any>;
+        return {
+          status: false,
+          message:
+            err.response?.data?.detail ||
+            err.response?.data?.message ||
+            "Failed to mark notification as read",
+        };
+      }
+    },
+
+    // Mark a specific user notification as read
+    async markUserNotificationRead(notificationId: string) {
+      try {
+        const res = await endpoint.patch(
+          `/api/notifications/user/${notificationId}/mark-read/`,
+        );
+        return {
+          status: true,
+          data: res.data,
+        };
+      } catch (error) {
+        const err = error as AxiosError<any>;
+        return {
+          status: false,
+          message:
+            err.response?.data?.detail ||
+            err.response?.data?.message ||
+            "Failed to mark notification as read",
+        };
+      }
+    },
+
+    // Mark all admin notifications as read
+    async markAllAdminNotificationsRead() {
+      try {
+        const res = await endpoint.patch(`/api/notifications/admin/mark-all-read/`);
+        return {
+          status: true,
+          data: res.data,
+        };
+      } catch (error) {
+        const err = error as AxiosError<any>;
+        return {
+          status: false,
+          message:
+            err.response?.data?.detail ||
+            err.response?.data?.message ||
+            "Failed to mark all notifications as read",
+        };
+      }
+    },
+
+    // Mark all user notifications as read
+    async markAllUserNotificationsRead() {
+      try {
+        const res = await endpoint.patch(`/api/notifications/user/mark-all-read/`);
+        return {
+          status: true,
+          data: res.data,
+        };
+      } catch (error) {
+        const err = error as AxiosError<any>;
+        return {
+          status: false,
+          message:
+            err.response?.data?.detail ||
+            err.response?.data?.message ||
+            "Failed to mark all notifications as read",
+        };
+      }
+    },
+
     // Get admin remediation timeline in-process summary
     async getDashboardRemediationInProcess() {
       try {

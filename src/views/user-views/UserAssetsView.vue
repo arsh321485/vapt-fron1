@@ -672,9 +672,9 @@ export default {
       if (!dateStr) return '';
       return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' });
     },
-    async loadAssets() {
+    async loadAssets(force = false) {
       this.loading = true;
-      const result = await this.authStore.fetchUserAssets();
+      const result = await this.authStore.fetchUserAssets(force);
       if (result.status) {
         this.assets = result.data;
         if (this.assets.length > 0) {
@@ -962,7 +962,8 @@ export default {
   async mounted() {
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     [...tooltipTriggerList].map(el => new bootstrap.Tooltip(el));
-    await this.loadAssets();
+    // Keep behavior consistent with navigation: always fetch fresh on entry.
+    await this.loadAssets(true);
     await this.loadHeldAssets();
     this.syncTotalAssets();
   },
