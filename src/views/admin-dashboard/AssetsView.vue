@@ -143,9 +143,9 @@
                     <span v-if="authStore.selectedAssetDetail?.severity" class="sev-badge" :class="'sev-' + (authStore.selectedAssetDetail.severity?.toLowerCase() || '')">
                       {{ authStore.selectedAssetDetail.severity }} Severity
                     </span>
-                    <span class="status-open-badge">
-                      <span class="status-dot-open"></span>
-                      Open
+                    <span :class="getStatusBadgeClass(selectedAssetStatusLabel)">
+                      <span :class="getStatusDotClass(selectedAssetStatusLabel)"></span>
+                      {{ selectedAssetStatusLabel }}
                     </span>
                   </div>
                   <div class="d-flex gap-5 mb-4">
@@ -205,8 +205,8 @@
                           </div>
                           <div class="d-flex align-items-center gap-3 flex-shrink-0">
                             <span class="sev-badge" :class="'sev-' + (v.severity?.toLowerCase() || '')">{{ v.severity }}</span>
-                            <span class="status-open-badge">
-                              <span class="status-dot-open"></span>Open
+                            <span :class="getStatusBadgeClass(v.status)">
+                              <span :class="getStatusDotClass(v.status)"></span>{{ getStatusLabel(v.status) }}
                             </span>
                             <span class="text-muted" style="font-size:0.78rem;">CVSS: {{ v.cvss_score || '-' }}</span>
                             <i class="bi bi-chevron-down text-muted"></i>
@@ -396,6 +396,19 @@ export default {
     };
   },
   computed: {
+    openAssetVulnerabilities() {
+      const closedNames = new Set(
+        this.closedFixVulnerabilities
+          .map(v => (v.plugin_name || "").toLowerCase())
+          .filter(Boolean)
+      );
+      return this.authStore.selectedAssetVulnerabilities.filter(v => {
+        const status = (v.status || "").toLowerCase();
+        const isOpen = status === "open" || status === "";
+        const vulnName = (v.vul_name || "").toLowerCase();
+        return isOpen && !closedNames.has(vulnName);
+      });
+    },
     pagedAssets() {
       const start = (this.currentPage - 1) * this.pageSize;
 
@@ -454,8 +467,8 @@ export default {
     filteredVulnerabilities() {
       const list =
         this.activeSeverity === "All"
-          ? this.authStore.selectedAssetVulnerabilities
-          : this.authStore.selectedAssetVulnerabilities.filter(
+          ? this.openAssetVulnerabilities
+          : this.openAssetVulnerabilities.filter(
             v => v.severity === this.activeSeverity
           );
 
@@ -465,6 +478,9 @@ export default {
           this.getSeverityRank(b.severity)
         );
       });
+    },
+    selectedAssetStatusLabel() {
+      return this.openAssetVulnerabilities.length > 0 ? "Open" : "Closed";
     },
     pagedHeldAssets() {
       return [...this.heldAssets].sort((a, b) => {
@@ -493,6 +509,17 @@ export default {
     },
   },
   methods: {
+    getStatusLabel(status) {
+      const normalized = (status || "").toLowerCase();
+      if (normalized === "closed" || normalized === "resolved") return "Closed";
+      return "Open";
+    },
+    getStatusBadgeClass(status) {
+      return this.getStatusLabel(status) === "Closed" ? "status-closed-badge" : "status-open-badge";
+    },
+    getStatusDotClass(status) {
+      return this.getStatusLabel(status) === "Closed" ? "status-dot-closed" : "status-dot-open";
+    },
     async reloadAssetsAndHeld() {
       await this.authStore.fetchAssets(true);
       await this.loadHeldAssets();
@@ -940,6 +967,9 @@ export default {
       this.loadHeldAssets();
     }
   },
+  async activated() {
+    await this.reloadAssetsAndHeld();
+  },
 };
 </script>
 
@@ -1078,10 +1108,10 @@ export default {
   border-radius: 3px;
   white-space: nowrap;
 }
-.sev-critical { background: #ffdad6; color: #93000a; }
-.sev-high     { background: #ffedd5; color: #9a3412; }
-.sev-medium   { background: #fef9c3; color: #854d0e; }
-.sev-low      { background: #a1ecf2; color: #002022; }
+.sev-critical { background: #fee2e2; color: #dc2626; }
+.sev-high     { background: #ffedd5; color: #f97316; }
+.sev-medium   { background: #fef3c7; color: #f59e0b; }
+.sev-low      { background: #d1fae5; color: #10b981; }
 
 .vuln-chip {
   font-size: 0.65rem;
@@ -1101,7 +1131,7 @@ export default {
 .critical-dot { color: maroon;  background: #fdeaea; }
 .high-dot     { color: red;     background: rgb(246,214,214); }
 .medium-dot   { color: orange;  background: rgb(249,225,193); }
-.low-dot      { color: green;   background: rgb(202,233,204); }
+.low-dot      { color: #0f696e; background: #dcfce7; }
 
 /* Mitigation on hold */
 .mitigation-hold-section {
@@ -1203,11 +1233,31 @@ export default {
   font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+.status-dot-open {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #dc2626;
+  flex-shrink: 0;
+}
+.status-closed-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
   background: #dcfce7;
   color: #166534;
   border: 1px solid #bbf7d0;
 }
-.status-dot-open {
+.status-dot-closed {
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -1289,10 +1339,11 @@ export default {
   border-color: #0f696e !important;
   font-weight: 700;
 }
-.sev-pill-critical { color: #93000a; }
-.sev-pill-high     { color: #9a3412; }
-.sev-pill-medium   { color: #854d0e; }
-.sev-pill-low      { color: #0f696e; }
+.sev-pill-critical { color: #dc2626; }
+.sev-pill-high     { color: #f97316; }
+.sev-pill-medium   { color: #f59e0b; }
+.sev-pill-low      { color: #10b981; background: #d1fae5; border-color: #a7f3d0; }
+.sev-pill-low.sev-pill-active { background: #d1fae5 !important; color: #10b981 !important; border-color: #10b981 !important; }
 
 /* Vuln accordion */
 .vuln-accordion-item {
@@ -1318,7 +1369,7 @@ export default {
 .vuln-icon-critical { color: #ba1a1a; }
 .vuln-icon-high     { color: #ea580c; }
 .vuln-icon-medium   { color: #ca8a04; }
-.vuln-icon-low      { color: #0f696e; }
+.vuln-icon-low      { color: #10b981; }
 
 .vuln-name {
   font-size: 0.92rem;

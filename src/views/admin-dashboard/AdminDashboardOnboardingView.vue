@@ -358,7 +358,7 @@
                         <svg width="66" height="38" viewBox="0 0 72 42">
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none" stroke="#f1f5f9" stroke-width="8" stroke-linecap="round"/>
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none"
-                            :stroke="mitigationPct('critical').compliancePct <= 0 ? '#d1d5db' : '#e53e3e'"
+                            :stroke="mitigationPct('critical').compliancePct <= 0 ? '#d1d5db' : '#dc2626'"
                             stroke-width="8" stroke-linecap="round"
                             stroke-dasharray="94"
                             :stroke-dashoffset="94 - (mitigationPct('critical').compliancePct / 100 * 94)"/>
@@ -367,7 +367,7 @@
                           <div style="font-size:11px;font-weight:800;color:#1f2937;line-height:1;">{{ formatTimeline(getMitigationValue('critical')) }}</div>
                         </div>
                       </div>
-                      <span class="mitigation-sev-label" style="color:#e53e3e;">Critical</span>
+                      <span class="mitigation-sev-label" style="color:#dc2626;">Critical</span>
                     </div>
 
                     <!-- High -->
@@ -376,7 +376,7 @@
                         <svg width="66" height="38" viewBox="0 0 72 42">
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none" stroke="#f1f5f9" stroke-width="8" stroke-linecap="round"/>
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none"
-                            :stroke="mitigationPct('high').compliancePct <= 0 ? '#d1d5db' : '#fc6b57'"
+                            :stroke="mitigationPct('high').compliancePct <= 0 ? '#d1d5db' : '#f97316'"
                             stroke-width="8" stroke-linecap="round"
                             stroke-dasharray="94"
                             :stroke-dashoffset="94 - (mitigationPct('high').compliancePct / 100 * 94)"/>
@@ -385,7 +385,7 @@
                           <div style="font-size:11px;font-weight:800;color:#1f2937;line-height:1;">{{ formatTimeline(getMitigationValue('high')) }}</div>
                         </div>
                       </div>
-                      <span class="mitigation-sev-label" style="color:#fc6b57;">High</span>
+                      <span class="mitigation-sev-label" style="color:#f97316;">High</span>
                     </div>
 
                     <!-- Medium -->
@@ -1045,9 +1045,9 @@
             </div>
           </div>
 
-          <div class="mte-severity-card mte-high" style="border-color:#fed7aa;background:#fffbf5;">
-            <div class="mte-severity-head" style="background:#fff7ed;" @click="toggleMteSection('high')">
-              <div class="mte-severity-left" style="color:#c2410c;">
+          <div class="mte-severity-card mte-high">
+            <div class="mte-severity-head" @click="toggleMteSection('high')">
+              <div class="mte-severity-left">
                 <i class="bi bi-exclamation-triangle-fill mte-high-icon"></i>
                 <span>High Severity Requests</span>
                 <span class="mte-badge high">{{ mteFilteredData.high.length }} Items</span>
@@ -1085,9 +1085,9 @@
             </div>
           </div>
 
-          <div class="mte-severity-card mte-medium" style="border-color:#fde68a;background:#fffdf0;">
-            <div class="mte-severity-head" style="background:#fefce8;" @click="toggleMteSection('medium')">
-              <div class="mte-severity-left" style="color:#a16207;">
+          <div class="mte-severity-card mte-medium">
+            <div class="mte-severity-head" @click="toggleMteSection('medium')">
+              <div class="mte-severity-left">
                 <i class="bi bi-exclamation-circle-fill mte-medium-icon"></i>
                 <span>Medium Severity Requests</span>
                 <span class="mte-badge medium">{{ mteFilteredData.medium.length }} Items</span>
@@ -1125,9 +1125,9 @@
             </div>
           </div>
 
-          <div class="mte-severity-card mte-low" style="border-color:#99f6e4;background:#f0fffe;">
-            <div class="mte-severity-head" style="background:#f0fdfa;" @click="toggleMteSection('low')">
-              <div class="mte-severity-left" style="color:#0f766e;">
+          <div class="mte-severity-card mte-low">
+            <div class="mte-severity-head" @click="toggleMteSection('low')">
+              <div class="mte-severity-left">
                 <i class="bi bi-gear-fill mte-low-icon"></i>
                 <span>Low Severity Requests</span>
                 <span class="mte-badge low">{{ mteFilteredData.low.length }} Items</span>
@@ -1372,7 +1372,7 @@ export default {
       monthNames: ["January","February","March","April","May","June","July","August","September","October","November","December"],
       showModal: false,
       showMitigationExtensionModal: false,
-      mteOpenSection: "critical",
+      mteOpenSection: null,
       mteSelectedTeam: "All",
       mteStaticData: {
         critical: [],
@@ -1966,15 +1966,16 @@ export default {
     },
     async openMitigationExtensionModal() {
       this.showMitigationExtensionModal = true;
-      this.mteOpenSection = "critical";
+      this.mteOpenSection = null;
       this.mteSelectedTeam = "All";
       await this.loadAdminMteReportData();
     },
     closeMitigationExtensionModal() {
       this.showMitigationExtensionModal = false;
+      this.mteOpenSection = null;
     },
     toggleMteSection(section) {
-      this.mteOpenSection = this.mteOpenSection === section ? "" : section;
+      this.mteOpenSection = this.mteOpenSection === section ? null : section;
     },
     openReasonDetail(event, reason, requestId) {
       this.selectedRequestId = requestId || null;
@@ -2132,7 +2133,7 @@ export default {
       return assetsSet.size;
     },
     getMitigationRiskColor(risk) {
-      const map = { Critical: "#b31c1c", High: "#f44336", Medium: "#f6b100", Low: "#4caf50" };
+      const map = { Critical: "#dc2626", High: "#f44336", Medium: "#f6b100", Low: "#4caf50" };
       return map[risk] || "#666";
     },
     getMitigationDays(sev) {
@@ -3209,8 +3210,8 @@ mounted() {
 }
 .dash-mte-table th.sev-critical { color: #dc2626; }
 .dash-mte-table th.sev-high { color: #f97316; }
-.dash-mte-table th.sev-medium { color: #d97706; }
-.dash-mte-table th.sev-low { color: #0f766e; }
+.dash-mte-table th.sev-medium { color: #f59e0b; }
+.dash-mte-table th.sev-low { color: #10b981; }
 .dash-mte-pill {
   display: inline-flex;
   align-items: center;
@@ -3338,10 +3339,10 @@ mounted() {
   background: #fff;
   flex-shrink: 0;
 }
-.mte-critical { border-color: #f2d3d3; background: #fff8f8; }
-.mte-high { border-color: #fdba74 !important; background: #fff7ed !important; box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0.10); }
-.mte-medium { border-color: #fcd34d !important; background: #fefce8 !important; box-shadow: inset 0 0 0 1px rgba(217, 119, 6, 0.10); }
-.mte-low { border-color: #5eead4 !important; background: #f0fdfa !important; box-shadow: inset 0 0 0 1px rgba(15, 118, 110, 0.10); }
+.mte-critical { border-color: rgba(220, 38, 38, 0.35); background: rgba(220, 38, 38, 0.08); box-shadow: inset 0 0 0 1px rgba(220, 38, 38, 0.12); }
+.mte-high { border-color: rgba(249, 115, 22, 0.35) !important; background: rgba(249, 115, 22, 0.08) !important; box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0.12); }
+.mte-medium { border-color: rgba(249, 115, 22, 0.35) !important; background: rgba(249, 115, 22, 0.10) !important; box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0.14); }
+.mte-low { border-color: rgba(22, 163, 74, 0.35) !important; background: rgba(22, 163, 74, 0.08) !important; box-shadow: inset 0 0 0 1px rgba(22, 163, 74, 0.12); }
 .mte-severity-head {
   padding: 16px 20px;
   display: flex;
@@ -3358,13 +3359,14 @@ mounted() {
   font-weight: 700;
   line-height: 1.25;
 }
-.mte-critical .mte-severity-left { color: #c71616; }
-.mte-high .mte-severity-left { color: #c2410c !important; }
-.mte-medium .mte-severity-left { color: #a16207 !important; }
-.mte-low .mte-severity-left { color: #0f766e !important; }
-.mte-high .mte-severity-head { background: #ffedd5; border-bottom: 1px solid #fed7aa; }
-.mte-medium .mte-severity-head { background: #fef3c7; border-bottom: 1px solid #fde68a; }
-.mte-low .mte-severity-head { background: #ccfbf1; border-bottom: 1px solid #99f6e4; }
+.mte-critical .mte-severity-left { color: #dc2626; }
+.mte-high .mte-severity-left { color: #f97316 !important; }
+.mte-medium .mte-severity-left { color: #f97316 !important; }
+.mte-low .mte-severity-left { color: #16a34a !important; }
+.mte-critical .mte-severity-head { background: rgba(220, 38, 38, 0.12); border-bottom: 1px solid rgba(220, 38, 38, 0.3); }
+.mte-high .mte-severity-head { background: rgba(249, 115, 22, 0.12); border-bottom: 1px solid rgba(249, 115, 22, 0.3); }
+.mte-medium .mte-severity-head { background: rgba(249, 115, 22, 0.14); border-bottom: 1px solid rgba(249, 115, 22, 0.3); }
+.mte-low .mte-severity-head { background: rgba(22, 163, 74, 0.12); border-bottom: 1px solid rgba(22, 163, 74, 0.3); }
 .mte-badge {
   border-radius: 6px;
   font-size: 11px;
@@ -3374,10 +3376,10 @@ mounted() {
   text-transform: uppercase;
   padding: 3px 7px;
 }
-.mte-badge.critical { background: #c71616; color: #fff; }
-.mte-badge.high { background: #c2410c; color: #fff; }
-.mte-badge.medium { background: #a16207; color: #fff; }
-.mte-badge.low { background: #0f766e; color: #fff; }
+.mte-badge.critical { background: #dc2626; color: #fff; }
+.mte-badge.high { background: #f97316; color: #fff; }
+.mte-badge.medium { background: #f59e0b; color: #fff; }
+.mte-badge.low { background: #10b981; color: #fff; }
 .mte-table-wrap { overflow-x: auto; border-top: 1px solid #e2e8f0; }
 .mte-table { width: 100%; border-collapse: collapse; min-width: 760px; }
 .mte-table th,
@@ -3423,9 +3425,9 @@ mounted() {
   font-weight: 600;
   position: relative;
 }
-.mte-high-icon { color: #c2410c; }
-.mte-medium-icon { color: #a16207; }
-.mte-low-icon { color: #0f766e; }
+.mte-high-icon { color: #f97316; }
+.mte-medium-icon { color: #f97316; }
+.mte-low-icon { color: #16a34a; }
 .reason-detail-overlay-inner {
   position: absolute;
   inset: 0;
@@ -3703,7 +3705,7 @@ mounted() {
   display: block;
   cursor: pointer;
 }
-.bg-maroon { background-color: maroon !important; }
+.bg-maroon { background-color: #dc2626 !important; }
 .bg-red { background-color: red !important; }
 
 .info-tooltip {
@@ -3803,7 +3805,7 @@ mounted() {
   overflow: hidden;
 }
 .rsev-badge { padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; display: inline-block; }
-.rsev-maroon, .rsev-critical { background: maroon; color: white; }
+.rsev-maroon, .rsev-critical { background: #dc2626; color: white; }
 .rsev-red, .rsev-high { background: red; color: white; }
 .rsev-orange, .rsev-medium { background: goldenrod; color: white; }
 .rsev-darkgreen, .rsev-low { background: green; color: white; }
@@ -3840,7 +3842,7 @@ mounted() {
   border-radius: 10px;
   border-left: 4px solid transparent;
 }
-.ms-risk-critical { background: #fef2f2; border-left-color: #9b1c1c; }
+.ms-risk-critical { background: #fef2f2; border-left-color: #dc2626; }
 .ms-risk-high     { background: #fff7ed; border-left-color: #c2410c; }
 .ms-risk-medium   { background: #fefce8; border-left-color: #a16207; }
 .ms-risk-low      { background: #f0fdf4; border-left-color: #15803d; }
@@ -4018,7 +4020,7 @@ mounted() {
   white-space: nowrap;
   border: none;
 }
-.sev-critical { background: #ffdad6; color: #93000a; }
+.sev-critical { background: #fee2e2; color: #dc2626; }
 .sev-high     { background: #ffedd5; color: #c2410c; }
 .sev-medium   { background: #fef9c3; color: #854d0e; }
 .sev-low      { background: #ccfbf1; color: #0f696e; }
@@ -4029,7 +4031,7 @@ mounted() {
   padding: 2px 5px;
   border-radius: 4px;
 }
-.critical-dot { color: maroon;  background: #fdeaea; }
+.critical-dot { color: #dc2626;  background: #fee2e2; }
 .high-dot     { color: red;     background: rgb(246,214,214); }
 .medium-dot   { color: orange;  background: rgb(249,225,193); }
 .low-dot      { color: green;   background: rgb(202,233,204); }
@@ -4159,10 +4161,10 @@ mounted() {
   border-color: #0f696e !important;
   font-weight: 700;
 }
-.sev-pill-critical { color: #93000a; }
-.sev-pill-high     { color: #9a3412; }
-.sev-pill-medium   { color: #854d0e; }
-.sev-pill-low      { color: #0f696e; }
+.sev-pill-critical { color: #dc2626; }
+.sev-pill-high     { color: #f97316; }
+.sev-pill-medium   { color: #f59e0b; }
+.sev-pill-low      { color: #10b981; }
 
 .vuln-accordion-item {
   border-radius: 12px;
@@ -4184,7 +4186,7 @@ mounted() {
 .vuln-accordion-header:hover { background: #edeef1; }
 
 .vuln-icon { font-size: 1rem; }
-.vuln-icon-critical { color: #ba1a1a; }
+.vuln-icon-critical { color: #dc2626; }
 .vuln-icon-high     { color: #ea580c; }
 .vuln-icon-medium   { color: #ca8a04; }
 .vuln-icon-low      { color: #0f696e; }

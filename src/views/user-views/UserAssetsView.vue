@@ -151,9 +151,9 @@
                       :class="'sev-' + getTopSeverity(selectedAsset.severity_counts).toLowerCase()">
                       {{ getTopSeverity(selectedAsset.severity_counts) }} Severity
                     </span>
-                    <span class="status-open-badge">
-                      <span class="status-dot-open"></span>
-                      Open
+                    <span :class="getStatusBadgeClass(selectedAssetStatusLabel)">
+                      <span :class="getStatusDotClass(selectedAssetStatusLabel)"></span>
+                      {{ selectedAssetStatusLabel }}
                     </span>
                   </div>
                   <div class="d-flex gap-5 mb-4 flex-wrap">
@@ -189,7 +189,7 @@
                     <button class="detail-tab" disabled style="opacity:0.4;cursor:not-allowed;">Related Assets</button>
                     <button class="detail-tab" disabled style="opacity:0.4;cursor:not-allowed;">History</button>
                     <button class="detail-tab ext-tab-btn" @click="openExtPopup">
-                      Extended Timeline
+                      Extend Timeline
                     </button>
                   </div>
                 </div>
@@ -224,8 +224,8 @@
                           </div>
                           <div class="d-flex align-items-center gap-3 flex-shrink-0">
                             <span class="sev-badge" :class="'sev-' + (vuln.severity?.toLowerCase() || '')">{{ vuln.severity }}</span>
-                            <span class="status-open-badge">
-                              <span class="status-dot-open"></span>{{ vuln.status || 'Open' }}
+                            <span :class="getStatusBadgeClass(vuln.status)">
+                              <span :class="getStatusDotClass(vuln.status)"></span>{{ getStatusLabel(vuln.status) }}
                             </span>
                             <span class="text-muted" style="font-size:0.78rem;">CVSS: {{ vuln.cvss_score || '-' }}</span>
                             <i class="bi bi-chevron-down text-muted"></i>
@@ -401,7 +401,7 @@
                           }"></i>
                         </div>
                         <div>
-                          <h4 class="ext-popup-title">Extended Timeline</h4>
+                          <h4 class="ext-popup-title">Extend Timeline</h4>
                           <span class="ext-popup-subtitle">
                             <span class="ext-sev-pill" :class="'ext-sev-' + extPopupSeverity">{{ extPopupSeverity }}</span>
                             Severity Request
@@ -420,7 +420,7 @@
                         <label class="ext-popup-label">Asset (IP)</label>
                         <div class="ext-select-wrap">
                           <i class="bi bi-hdd-fill ext-select-icon ext-icon-asset"></i>
-                          <select class="ext-popup-select ext-has-icon" v-model="extPopupAsset" @change="onExtPopupAssetChange">
+                          <select class="ext-popup-select ext-has-icon" v-model="extPopupAsset" disabled>
                             <option value="">{{ extPopupOptionsLoading ? 'Loading...' : 'Select Asset' }}</option>
                             <option v-for="ip in extPopupAssetList" :key="ip" :value="ip">{{ ip }}</option>
                           </select>
@@ -549,11 +549,21 @@ export default {
     };
   },
   computed: {
-    filteredVulnerabilities() {
-      const closedNames = new Set(this.closedFixVulnerabilities.map(v => v.plugin_name));
-      const vulns = this.authStore.selectedAssetVulnerabilities.filter(v =>
-        v.status === 'open' && !closedNames.has(v.vul_name)
+    openAssetVulnerabilities() {
+      const closedNames = new Set(
+        this.closedFixVulnerabilities
+          .map(v => (v.plugin_name || "").toLowerCase())
+          .filter(Boolean)
       );
+      return this.authStore.selectedAssetVulnerabilities.filter(v => {
+        const status = (v.status || "").toLowerCase();
+        const isOpen = status === "open" || status === "";
+        const vulnName = (v.vul_name || "").toLowerCase();
+        return isOpen && !closedNames.has(vulnName);
+      });
+    },
+    filteredVulnerabilities() {
+      const vulns = this.openAssetVulnerabilities;
       if (this.activeSeverity === 'All') return vulns;
       return vulns.filter(v => v.severity === this.activeSeverity);
     },
@@ -578,6 +588,9 @@ export default {
       if (!this.activeIndex) return null;
       return this.assets.find(a => a.asset === this.activeIndex) || null;
     },
+    selectedAssetStatusLabel() {
+      return this.openAssetVulnerabilities.length > 0 ? "Open" : "Closed";
+    },
     assetSupportRequests() {
       return this.supportRequests;
     },
@@ -601,6 +614,17 @@ export default {
     },
   },
   methods: {
+    getStatusLabel(status) {
+      const normalized = (status || "").toLowerCase();
+      if (normalized === "closed" || normalized === "resolved") return "Closed";
+      return "Open";
+    },
+    getStatusBadgeClass(status) {
+      return this.getStatusLabel(status) === "Closed" ? "status-closed-badge" : "status-open-badge";
+    },
+    getStatusDotClass(status) {
+      return this.getStatusLabel(status) === "Closed" ? "status-dot-closed" : "status-dot-open";
+    },
     syncTotalAssets() {
       this.totalAssets = this.assets.length + this.heldAssets.length;
     },
@@ -701,7 +725,7 @@ export default {
     async setActive(asset) {
       if (!asset?.asset) return;
       this.activeIndex = asset.asset;
-      this.authStore.fetchUserSingleAssetVulnerabilities(asset.asset);
+      await this.authStore.fetchUserSingleAssetVulnerabilities(asset.asset);
       await this.loadSupportRequestsByHost(asset.asset);
       this.loadingClosedFix = true;
       const res = await this.authStore.getUserClosedVulnerabilities(asset.asset);
@@ -748,7 +772,7 @@ export default {
         case 'critical': return 'rgba(173, 0, 0, 1)';
         case 'high': return '#AD0000';
         case 'medium': return '#f6b100';
-        case 'low': return '#4caf50';
+        case 'low': return '#0f696e';
         default: return '#888';
       }
     },
@@ -942,6 +966,9 @@ export default {
     await this.loadHeldAssets();
     this.syncTotalAssets();
   },
+  async activated() {
+    await this.reloadAssetsAndHeld();
+  },
   beforeUnmount() {
   },
 };
@@ -1079,10 +1106,10 @@ export default {
   border-radius: 3px;
   white-space: nowrap;
 }
-.sev-critical { background: #ffdad6; color: #93000a; }
-.sev-high     { background: #ffedd5; color: #9a3412; }
-.sev-medium   { background: #fef9c3; color: #854d0e; }
-.sev-low      { background: #a1ecf2; color: #002022; }
+.sev-critical { background: #fee2e2; color: #dc2626; }
+.sev-high     { background: #ffedd5; color: #f97316; }
+.sev-medium   { background: #fef3c7; color: #f59e0b; }
+.sev-low      { background: #d1fae5; color: #10b981; }
 
 .vuln-chip {
   font-size: 0.65rem;
@@ -1102,7 +1129,7 @@ export default {
 .critical-dot { color: maroon;  background: #fdeaea; }
 .high-dot     { color: red;     background: rgb(246,214,214); }
 .medium-dot   { color: orange;  background: rgb(249,225,193); }
-.low-dot      { color: green;   background: rgb(202,233,204); }
+.low-dot      { color: #0f696e; background: #dcfce7; }
 
 /* Mitigation on hold */
 .mitigation-hold-section {
@@ -1205,11 +1232,31 @@ export default {
   font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+.status-dot-open {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #dc2626;
+  flex-shrink: 0;
+}
+.status-closed-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
   background: #dcfce7;
   color: #166534;
   border: 1px solid #bbf7d0;
 }
-.status-dot-open {
+.status-dot-closed {
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -1295,10 +1342,11 @@ export default {
   border-color: #0f696e !important;
   font-weight: 700;
 }
-.sev-pill-critical { color: #93000a; }
-.sev-pill-high     { color: #9a3412; }
-.sev-pill-medium   { color: #854d0e; }
-.sev-pill-low      { color: #0f696e; }
+.sev-pill-critical { color: #dc2626; }
+.sev-pill-high     { color: #f97316; }
+.sev-pill-medium   { color: #f59e0b; }
+.sev-pill-low      { color: #10b981; background: #d1fae5; border-color: #a7f3d0; }
+.sev-pill-low.sev-pill-active { background: #d1fae5 !important; color: #10b981 !important; border-color: #10b981 !important; }
 
 /* Vuln accordion */
 .vuln-accordion-item {
@@ -1324,7 +1372,7 @@ export default {
 .vuln-icon-critical { color: #ba1a1a; }
 .vuln-icon-high     { color: #ea580c; }
 .vuln-icon-medium   { color: #ca8a04; }
-.vuln-icon-low      { color: #0f696e; }
+.vuln-icon-low      { color: #10b981; }
 
 .vuln-name {
   font-size: 0.92rem;

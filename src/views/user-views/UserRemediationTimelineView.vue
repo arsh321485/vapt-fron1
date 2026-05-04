@@ -30,7 +30,7 @@
                   <span class="rt-support-count-badge">{{ supportRequestCount }}</span>
                 </button>
                 <button class="rt-btn-extend" @click="openExtPopup">
-                  Extended Timeline
+                  Extend Timeline
                 </button>
               </div>
             </div>
@@ -115,7 +115,7 @@
                         }"></i>
                       </div>
                       <div>
-                        <h4 class="ext-popup-title">Extended Timeline</h4>
+                        <h4 class="ext-popup-title">Extend Timeline</h4>
                         <span class="ext-popup-subtitle">
                           <span class="ext-sev-pill" :class="'ext-sev-' + extPopupSeverity">{{ extPopupSeverity }}</span>
                           Severity Request
@@ -134,7 +134,7 @@
                       <label class="ext-popup-label">Asset (IP)</label>
                       <div class="ext-select-wrap">
                         <i class="bi bi-hdd-fill ext-select-icon ext-icon-asset"></i>
-                        <select class="ext-popup-select ext-has-icon" v-model="extPopupAsset" @change="onExtPopupAssetChange">
+                        <select class="ext-popup-select ext-has-icon" v-model="extPopupAsset" disabled>
                           <option value="">{{ extPopupOptionsLoading ? 'Loading...' : 'Select Asset' }}</option>
                           <option v-for="ip in extPopupAssetList" :key="ip" :value="ip">{{ ip }}</option>
                         </select>
@@ -438,7 +438,6 @@
                           <button
                             class="rt-inline-complete-btn"
                             :disabled="savingStep || task.id !== currentStep"
-                            :title="task.id !== currentStep ? `Step ${currentStep} ko pehle complete karein` : ''"
                             @click.stop="completeCurrentStep(task.id)"
                           >
                             <span v-if="savingStep && task.id === currentStep">
