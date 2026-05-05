@@ -192,10 +192,14 @@ export default {
       const authStore = useAuthStore()
 
       try {
-        const res = await authStore.getScopingUploadStatus()
+        // Run onboarding checks in parallel to reduce post-login wait.
+        const [res, riskRes] = await Promise.all([
+          authStore.getScopingUploadStatus(),
+          authStore.fetchAdminRiskCriteria(),
+        ])
 
         if (!res.file_uploaded) {
-          this.$router.push('/scoping-form-2')
+          this.$router.replace('/scoping-form-2')
           return
         }
 
@@ -207,14 +211,13 @@ export default {
         localStorage.removeItem('scoping_completed')
 
         // Check risk criteria from backend (source of truth for step 2)
-        const riskRes = await authStore.fetchAdminRiskCriteria()
         const riskCriteriaDone = riskRes.status === true
 
         if (riskCriteriaDone) {
           // Risk criteria already set → all onboarding done → sync store and go to dashboard
           authStore.markStepCompleted(1)
           authStore.markStepCompleted(2)
-          this.$router.push('/admindashboardonboarding')
+          this.$router.replace('/admindashboardonboarding')
           return
         }
 
@@ -224,12 +227,12 @@ export default {
         const communicationDone = completedSteps.includes(1)
 
         if (communicationDone) {
-          this.$router.push('/riskcriteria')
+          this.$router.replace('/riskcriteria')
         } else {
-          this.$router.push('/communication')
+          this.$router.replace('/communication')
         }
       } catch {
-        this.$router.push('/scoping-form-2')
+        this.$router.replace('/scoping-form-2')
       }
     }
   },

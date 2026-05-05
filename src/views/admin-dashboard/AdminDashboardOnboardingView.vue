@@ -1868,18 +1868,6 @@ export default {
       if (clickedInsidePopup || clickedTrigger) return;
       this.skipDashboardWalkthrough();
     },
-    async refreshVulnerabilitiesFixed() {
-      const token = this.dashboardLoadToken;
-      const res = await this.authStore.getDashboardVulnerabilitiesFixed(true);
-      if (this.dashboardLoadToken !== token) return;
-      if (res.status) {
-        this.vulFixedTotal = res.data.total_fixed || 0;
-        this.vulFixedCritical = res.data.critical_fixed || 0;
-        this.vulFixedHigh = res.data.high_fixed || 0;
-        this.vulFixedMedium = res.data.medium_fixed || 0;
-        this.vulFixedLow = res.data.low_fixed || 0;
-      }
-    },
     async refreshInProcessCount() {
       const token = this.dashboardLoadToken;
       const res = await this.authStore.getDashboardRemediationInProcess();
@@ -2256,12 +2244,10 @@ export default {
       return match?.id || v.id || '';
     },
     async loadMitigationByTeam() {
-      this.mitigationLoading = true;
-      const result = await this.authStore.fetchMitigationByTeam(false);
+      const result = await this.authStore.fetchMitigationByTeam(true);
       if (result.status) {
         this.mitigationByTeamData = result.data;
       }
-      this.mitigationLoading = false;
     },
     async loadVulnAssetCount() {
       const result = await this.authStore.fetchAdminMitigationVulnAssetCount();
@@ -2620,44 +2606,48 @@ export default {
         };
       }
     },
-    async loadMitigationTimeline(force = false) {
-      const res = await this.authStore.fetchDashboardMitigationTimeline(force);
-      if (res.status) {
-        this.mitigationTimeline = res.data;
-      }
-    },
-
     loadDashboardData() {
       const token = Date.now();
       this.dashboardLoadToken = token;
-      this.loadMitigationByTeam();
-      this.loadVulnAssetCount();
-      this.loadRiskCriteria();
-      this.loadAllAssets();
-      // Keep this independent so vulnerabilities fixed API always hits.
-      this.refreshVulnerabilitiesFixed();
-      this.refreshInProcessCount();
-      this.loadAdminMteData();
-      Promise.all([
-        this.authStore.fetchDashboardTotalAssets(),
-        this.authStore.fetchDashboardAvgScore(),
-        this.authStore.fetchDashboardVulnerabilities(),
-        this.authStore.fetchDashboardMitigationTimeline(true),
-        this.authStore.fetchDashboardMeanTimeToRemediate(),
-        this.authStore.getDashboardSupportRequests().then(res => {
-          if (this.dashboardLoadToken !== token) return;
-          if (res.status) {
-            this.supportTotal = res.data.total || 0;
-            this.supportPending = res.data.pending || 0;
-            this.supportClosed = res.data.closed || 0;
-          }
-        }),
+      this.mitigationLoading = true;
+
+      // Single parallel batch: avoids waiting for mitigation/vuln helpers to finish before KPI Promise.all starts.
+      Promise.allSettled([
+        this.loadMitigationByTeam(),
+        this.loadVulnAssetCount(),
+        this.loadRiskCriteria(),
+        // Do not call loadAllAssets() — full assets list loads on /assets only.
+        this.refreshInProcessCount(),
+        this.loadAdminMteData(),
+        this.authStore.fetchDashboardSummary(),
       ])
-        .then(() => {
-          console.log("✅ All dashboard APIs loaded");
+        .then((results) => {
+          if (this.dashboardLoadToken !== token) return;
+          const summaryResult = results[results.length - 1];
+          if (summaryResult.status === "fulfilled" && summaryResult.value?.status) {
+            const summary = summaryResult.value.data || {};
+            const support = summary.support_requests || {};
+            const fixed = summary.vulnerabilities_fixed || {};
+
+            this.supportTotal = support.total || 0;
+            this.supportPending = support.pending || 0;
+            this.supportClosed = support.closed || 0;
+
+            this.vulFixedTotal = fixed.total_fixed || 0;
+            this.vulFixedCritical = fixed.critical_fixed || 0;
+            this.vulFixedHigh = fixed.high_fixed || 0;
+            this.vulFixedMedium = fixed.medium_fixed || 0;
+            this.vulFixedLow = fixed.low_fixed || 0;
+          }
+          console.log("✅ Dashboard API batch finished");
         })
-        .catch(err => {
+        .catch((err) => {
           console.error("❌ Dashboard API error", err);
+        })
+        .finally(() => {
+          if (this.dashboardLoadToken === token) {
+            this.mitigationLoading = false;
+          }
         });
     },
 
@@ -2784,7 +2774,6 @@ export default {
         this.currentReportId = this.authStore.reportStatus.reportId;
         this.reportStatusChecking = false;
         this.removeReportStatusOverlay();
-        this.loadDashboardData();
         return;
       }
 
@@ -2795,7 +2784,6 @@ export default {
         this.currentReportId = cachedReportId;
         this.reportStatusChecking = false;
         this.removeReportStatusOverlay();
-        this.loadDashboardData();
         return;
       }
 
@@ -2812,11 +2800,10 @@ export default {
         this.reportStatusChecking = false;
         this.removeReportStatusOverlay();
       } else {
-        console.log("⚠️ Report status API returned no report, proceeding to load dashboard.");
+        console.log("⚠️ Report status API returned no report.");
         this.hasReport = false;
         this.reportStatusChecking = false;
         this.removeReportStatusOverlay();
-        this.loadDashboardData();
       }
     },
   },
@@ -2827,17 +2814,13 @@ mounted() {
   window.addEventListener("resize", this.handleWalkthroughViewportChange);
   window.addEventListener("scroll", this.handleWalkthroughViewportChange, true);
 
-  this.initReportStatusCheck();
-
-  setTimeout(() => {
-    this.initTestingOverlay();
-  }, 100);
-
-  const user =
-    this.authStore.user ||
-    JSON.parse(localStorage.getItem("user") || "null");
-
+  // Fire dashboard APIs immediately; report-status check runs in parallel (no duplicate loadDashboardData).
   this.loadDashboardData();
+  void this.initReportStatusCheck();
+
+  queueMicrotask(() => {
+    this.initTestingOverlay();
+  });
 },
 
   beforeUnmount() {
@@ -2857,16 +2840,10 @@ mounted() {
   activated() {
     console.log("=== ACTIVATED hook called ===");
     this.initTestingOverlay();
-    this.initReportStatusCheck();
-    // Only reload if more than 5 minutes have passed since last load
-    const now = Date.now();
-    const lastLoad = this._lastDashboardLoad || 0;
-    if (now - lastLoad > 5 * 60 * 1000) {
-      this.loadDashboardData();
-      this.refreshVulnerabilitiesFixed();
-      this.refreshInProcessCount();
-      this._lastDashboardLoad = now;
-    }
+    void this.initReportStatusCheck();
+    // Refresh every time dashboard is shown again (keep-alive includes vulns-fixed + in-process inside loadDashboardData).
+    this.loadDashboardData();
+    this._lastDashboardLoad = Date.now();
   },
 };
 </script>

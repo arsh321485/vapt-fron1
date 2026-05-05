@@ -520,13 +520,14 @@ export default {
     async fetchVulnerabilities() {
       this.statsLoading = true;
       const store = useAuthStore();
-      const result = await store.fetchDashboardVulnerabilities();
+      const result = await store.fetchDashboardSummary();
       if (result.status) {
+        const v = result.data?.vulnerabilities || {};
         this.vulnStats = {
-          critical: store.vulnerabilities.critical,
-          high: store.vulnerabilities.high,
-          medium: store.vulnerabilities.medium,
-          low: store.vulnerabilities.low,
+          critical: v.critical ?? store.vulnerabilities.critical ?? 0,
+          high: v.high ?? store.vulnerabilities.high ?? 0,
+          medium: v.medium ?? store.vulnerabilities.medium ?? 0,
+          low: v.low ?? store.vulnerabilities.low ?? 0,
         };
       }
       this.statsLoading = false;

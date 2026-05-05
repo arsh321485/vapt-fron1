@@ -328,14 +328,15 @@ export default {
         });
 
         if (result.status) {
-          await Swal.fire({
+          // Non-blocking toast; navigate immediately for faster perceived login.
+          void Swal.fire({
             icon: 'success',
             title: 'Login Successful',
             text: result.message || 'Welcome!',
-            timer: 1500,
+            timer: 1200,
             showConfirmButton: false
           });
-          this.$router.push('/userdashboard');
+          this.$router.replace('/userdashboard');
         } else {
           Swal.fire('Login Failed', result.message || 'Invalid credentials', 'error');
           this.resetRecaptcha();

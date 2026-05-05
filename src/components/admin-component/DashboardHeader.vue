@@ -149,7 +149,7 @@ export default {
           timer: 3000,
           showConfirmButton: false,
         });
-        router.push("/signin");
+        router.replace("/signin");
       } else {
         Swal.fire({
           icon: "error",

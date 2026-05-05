@@ -99,7 +99,7 @@ export default {
           timer: 3000,
           showConfirmButton: false,
         });
-        router.push("/auth?mode=signin");
+        router.replace("/auth?mode=signin");
       } else {
         Swal.fire({
           icon: "error",

@@ -1905,66 +1905,37 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-    // ✅ NEW: Dashboard Total Assets (NO reportId)
-    async fetchDashboardTotalAssets() {
+    // ✅ Dashboard summary (single endpoint for top cards)
+    async fetchDashboardSummary() {
       try {
-        const res = await endpoint.get("/api/admin/admindashboard/dashboard/total-assets/");
+        const res = await endpoint.get("/api/admin/admindashboard/dashboard/summary/");
+        const data = res.data || {};
 
-        this.totalAssets = res.data?.total_assets ?? 0;
-        console.log("Dashboard total assets:", this.totalAssets);
+        this.totalAssets = data?.total_assets?.total_assets ?? data?.total_assets ?? 0;
+        this.avgScore = data?.avg_score?.avg_score ?? data?.avg_score ?? 0;
 
-        return { status: true };
-      } catch (error) {
-        console.error("Dashboard total assets error", error);
-        this.totalAssets = 0;
-        return { status: false };
-      }
-    },
-
-    // 🔹 DASHBOARD AVG SCORE (NO reportId)
-    async fetchDashboardAvgScore() {
-      try {
-        const res = await endpoint.get("/api/admin/admindashboard/dashboard/avg-score/");
-
-        this.avgScore = res.data?.avg_score ?? 0;
-        console.log("Dashboard avg score:", this.avgScore);
-
-        return { status: true, data: res.data };
-      } catch (error: any) {
-        console.error("Dashboard avg score error:", error.response?.data || error.message);
-
-        this.avgScore = 0;
-        return {
-          status: false,
-          message: "Failed to fetch dashboard avg score",
-          details: error.response?.data || null,
-        };
-      }
-    },
-
-    // 🔹 DASHBOARD VULNERABILITIES (NO reportId)
-    async fetchDashboardVulnerabilities() {
-      try {
-        const res = await endpoint.get("/api/admin/admindashboard/dashboard/vulnerabilities/");
-
+        const vuln = data?.vulnerabilities || {};
         this.vulnerabilities = {
-          critical: res.data?.critical ?? 0,
-          high: res.data?.high ?? 0,
-          medium: res.data?.medium ?? 0,
-          low: res.data?.low ?? 0,
+          critical: vuln.critical ?? 0,
+          high: vuln.high ?? 0,
+          medium: vuln.medium ?? 0,
+          low: vuln.low ?? 0,
         };
 
-        console.log("Dashboard vulnerabilities:", this.vulnerabilities);
+        // Keep existing shape used by dashboard UI.
+        this.mitigationTimeline = data?.mitigation_timeline || null;
+        this.meanTimeToRemediate = data?.mean_time_remediate || null;
 
-        return { status: true, data: res.data };
+        return { status: true, data };
       } catch (error: any) {
-        console.error("Dashboard vulnerabilities error:", error.response?.data || error.message);
-
+        this.totalAssets = 0;
+        this.avgScore = 0;
         this.vulnerabilities = { critical: 0, high: 0, medium: 0, low: 0 };
-
+        this.mitigationTimeline = null;
+        this.meanTimeToRemediate = null;
         return {
           status: false,
-          message: "Failed to fetch dashboard vulnerabilities",
+          message: error.response?.data?.message || "Failed to fetch dashboard summary",
           details: error.response?.data || null,
         };
       }
@@ -1986,124 +1957,51 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-    // 🔹 USER MEAN TIME TO REMEDIATE
-    async fetchUserMeanTimeRemediate(team?: string, force = false) {
-      const key = team || "__all__";
-      if (!force && this.cachedMeanTime[key]) {
-        return { status: true, data: this.cachedMeanTime[key] };
-      }
-      try {
-        const params = team ? { team } : {};
-        const res = await endpoint.get("/api/user/dashboard/mean-time-remediate/", { params });
-        this.cachedMeanTime[key] = res.data;
-        return { status: true, data: res.data };
-      } catch (error: any) {
-        return {
-          status: false,
-          message: "Failed to fetch mean time to remediate",
-          details: error.response?.data || null,
-        };
-      }
-    },
-
-    // 🔹 USER MITIGATION TIMELINE
-    async fetchUserMitigationTimeline(team?: string, force = false) {
-      const key = team || "__all__";
-      if (!force && this.cachedMitigationTimeline[key]) {
-        return { status: true, data: this.cachedMitigationTimeline[key] };
-      }
-      try {
-        const params = team ? { team } : {};
-        const res = await endpoint.get("/api/user/dashboard/mitigation-timeline/", { params });
-        this.cachedMitigationTimeline[key] = res.data;
-        return { status: true, data: res.data };
-      } catch (error: any) {
-        return {
-          status: false,
-          message: "Failed to fetch mitigation timeline",
-          details: error.response?.data || null,
-        };
-      }
-    },
-
-    // 🔹 USER SUPPORT REQUESTS
-    async fetchUserSupportRequests(team?: string) {
-      try {
-        const params = team ? { team } : {};
-        const res = await endpoint.get("/api/user/dashboard/support-requests/", { params });
-        return { status: true, data: res.data };
-      } catch (error: any) {
-        return {
-          status: false,
-          message: "Failed to fetch support requests",
-          details: error.response?.data || null,
-        };
-      }
-    },
-
-    // 🔹 USER VULNERABILITIES FIXED
-    async fetchUserVulnerabilitiesFixed(team?: string, force = false) {
+    // ✅ User dashboard summary (single endpoint for top cards)
+    async fetchUserDashboardSummary(team?: string, force = false) {
       const normalizedTeam = (team || "").trim();
       const effectiveTeam =
         normalizedTeam && normalizedTeam !== "All" && normalizedTeam !== "both"
           ? normalizedTeam
-          : undefined;
+          : "";
       const key = effectiveTeam || "__all__";
-      if (!force && this.cachedUserVulnerabilitiesFixed[key]) {
-        return { status: true, data: this.cachedUserVulnerabilitiesFixed[key] };
+      if (!force && this.cachedUserTotalAssets[key]?.__summary) {
+        return { status: true, data: this.cachedUserTotalAssets[key].__summary };
       }
       try {
-        const params = effectiveTeam
-          ? { team: effectiveTeam, _ts: Date.now() }
-          : { _ts: Date.now() };
-        const res = await endpoint.get("/api/user/dashboard/vulnerabilities-fixed/", { params });
-        this.cachedUserVulnerabilitiesFixed[key] = res.data;
-        return { status: true, data: res.data };
-      } catch (error: any) {
-        return {
-          status: false,
-          message: "Failed to fetch vulnerabilities fixed",
-          details: error.response?.data || null,
-        };
-      }
-    },
+        const params = effectiveTeam ? { team: effectiveTeam } : {};
+        const res = await endpoint.get("/api/user/dashboard/summary/", { params });
+        const data = res.data || {};
 
-    // 🔹 USER VULNERABILITIES
-    async fetchUserVulnerabilities(team?: string, force = false) {
-      const key = team || "__all__";
-      if (!force && this.cachedUserVulnerabilities[key]) {
-        return { status: true, data: this.cachedUserVulnerabilities[key] };
-      }
-      try {
-        const params = team ? { team } : {};
-        const res = await endpoint.get("/api/user/dashboard/vulnerabilities/", { params });
-        this.cachedUserVulnerabilities[key] = res.data;
-        return { status: true, data: res.data };
-      } catch (error: any) {
-        return {
-          status: false,
-          message: "Failed to fetch vulnerabilities",
-          details: error.response?.data || null,
+        // Keep existing store state in sync with cards.
+        this.totalAssets = data?.total_assets?.total_assets ?? 0;
+        this.avgScore = data?.avg_score?.avg_score ?? 0;
+        this.vulnerabilities = {
+          critical: data?.vulnerabilities?.critical ?? 0,
+          high: data?.vulnerabilities?.high ?? 0,
+          medium: data?.vulnerabilities?.medium ?? 0,
+          low: data?.vulnerabilities?.low ?? 0,
         };
-      }
-    },
+        this.mitigationTimeline = data?.mitigation_timeline || null;
+        this.meanTimeToRemediate = data?.mean_time_remediate || null;
 
-    // 🔹 USER TOTAL ASSETS BY TEAM
-    async fetchUserTotalAssets(team: string, force = false) {
-      const key = team || "__all__";
-      if (!force && this.cachedUserTotalAssets[key]) {
-        return { status: true, data: this.cachedUserTotalAssets[key] };
-      }
-      try {
-        const res = await endpoint.get("/api/user/dashboard/total-assets/", {
-          params: { team },
-        });
-        this.cachedUserTotalAssets[key] = res.data;
-        return { status: true, data: res.data };
+        // Reuse existing cache buckets so old keys remain valid.
+        this.cachedUserTotalAssets[key] = {
+          ...(this.cachedUserTotalAssets[key] || {}),
+          __summary: data,
+          total_assets: data?.total_assets?.total_assets ?? 0,
+        };
+        this.cachedUserVulnerabilities[key] = data?.vulnerabilities || {};
+        this.cachedUserVulnerabilitiesFixed[key] = data?.vulnerabilities_fixed || {};
+        this.cachedMitigationTimeline[key] = data?.mitigation_timeline || null;
+        this.cachedMeanTime[key] = data?.mean_time_remediate || null;
+        this.cachedSupportRequests[key] = data?.support_requests || {};
+
+        return { status: true, data };
       } catch (error: any) {
         return {
           status: false,
-          message: "Failed to fetch total assets",
+          message: error.response?.data?.message || "Failed to fetch user dashboard summary",
           details: error.response?.data || null,
         };
       }
@@ -2367,52 +2265,6 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-    // 🔹 DASHBOARD MITIGATION TIMELINE
-    async fetchDashboardMitigationTimeline() {
-      try {
-        const res = await endpoint.get("/api/admin/admindashboard/dashboard/mitigation-timeline/");
-
-        this.mitigationTimeline = res.data || null;
-
-        return { status: true, data: res.data };
-      } catch (error: any) {
-        console.error("Mitigation timeline error:", error.response?.data || error.message);
-
-        this.mitigationTimeline = null;
-
-        return {
-          status: false,
-          message: error.response?.data?.detail || "Failed to fetch mitigation timeline",
-        };
-      }
-    },
-
-    // ✅ fetch Dashboard Mean Time To Remediate
-    async fetchDashboardMeanTimeToRemediate() {
-      try {
-        console.log("[MTTR] Calling DASHBOARD API");
-
-        const res = await endpoint.get("/api/admin/admindashboard/dashboard/mean-time-remediate/");
-
-        console.log("[MTTR] API response:", res.data);
-
-        // 🔹 Store full response
-        this.meanTimeToRemediate = res.data;
-
-        console.log("[MTTR] Stored in authStore:", this.meanTimeToRemediate);
-
-        return { status: true, data: res.data };
-      } catch (error: any) {
-        console.error("[MTTR] API error:", error.response?.data || error.message);
-
-        this.meanTimeToRemediate = null;
-
-        return {
-          status: false,
-          message: error.response?.data?.detail || "Failed to fetch mean time to remediate",
-        };
-      }
-    },
 
     // fetch user vulnerability register data
     async fetchUserVulnerabilityRegister(force = false) {
@@ -3690,39 +3542,36 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-    // ✅ Logout user
+    // ✅ Logout user (frontend-first, backend revoke in background)
     async logout() {
-      try {
-        const refreshToken = localStorage.getItem("refreshToken");
-        if (!refreshToken) {
-          return { status: false, message: "No refresh token found" };
-        }
-        const res = await endpoint.post("/api/admin/users/logout/", {
-          refresh: refreshToken,
-        });
-        localStorage.removeItem("authorization");
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("user");
-        localStorage.removeItem("authenticated");
-        // localStorage.removeItem("locations");
-        localStorage.removeItem("google_id_token");
-        localStorage.removeItem("isNewUser");
-        // completedSteps is kept intentionally — onboarding milestones persist across logout
-        // localStorage.removeItem("reportId");
-        this.user = null;
-        this.accessToken = null;
-        this.refreshToken = null;
-        this.clearCache();
-        console.log("🚪 User logged out, localStorage cleared");
+      const refreshToken = localStorage.getItem("refreshToken");
 
-        return { status: true, data: res.data };
-      } catch (error: any) {
-        return {
-          status: false,
-          message: error.response?.data?.message || error.message || "Logout failed",
-          details: error.response?.data || null,
-        };
+      // Clear local session immediately so signout feels instant.
+      localStorage.removeItem("authorization");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
+      localStorage.removeItem("authenticated");
+      localStorage.removeItem("google_id_token");
+      localStorage.removeItem("isNewUser");
+      this.user = null;
+      this.accessToken = null;
+      this.refreshToken = null;
+      this.clearCache();
+
+      // Best-effort server revoke; do not block UI navigation.
+      if (refreshToken) {
+        void endpoint
+          .post("/api/admin/users/logout/", { refresh: refreshToken })
+          .catch((error: any) => {
+            console.warn(
+              "[authStore] Background logout revoke failed:",
+              error?.response?.data || error?.message || error,
+            );
+          });
       }
+
+      console.log("🚪 User logged out, local session cleared");
+      return { status: true };
     },
 
     // ✅ Set Auth
@@ -3862,43 +3711,6 @@ export const useAuthStore = defineStore("auth", {
           status: false,
           message: err.response?.data?.message || "Failed to fetch closed vulnerabilities",
           details: err.response?.data || null,
-        };
-      }
-    },
-
-    // Get dashboard vulnerabilities fixed summary
-    async getDashboardVulnerabilitiesFixed(force = false) {
-      try {
-        const res = await endpoint.get(
-          `/api/admin/admindashboard/dashboard/vulnerabilities-fixed/`,
-          { params: force ? { _ts: Date.now() } : {} },
-        );
-        return {
-          status: true,
-          data: res.data,
-        };
-      } catch (error) {
-        const err = error as AxiosError<any>;
-        return {
-          status: false,
-          message: err.response?.data?.message || "Failed to fetch vulnerabilities fixed",
-        };
-      }
-    },
-
-    // Get dashboard support requests summary
-    async getDashboardSupportRequests() {
-      try {
-        const res = await endpoint.get(`/api/admin/admindashboard/dashboard/support-requests/`);
-        return {
-          status: true,
-          data: res.data,
-        };
-      } catch (error) {
-        const err = error as AxiosError<any>;
-        return {
-          status: false,
-          message: err.response?.data?.message || "Failed to fetch support requests",
         };
       }
     },

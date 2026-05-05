@@ -300,7 +300,7 @@ selectedTestingType: {
     const user = JSON.parse(localStorage.getItem("user"));
     this.adminId = user?.id || user?._id;
 
-    await this.authStore.fetchDashboardTotalAssets();
+    await this.authStore.fetchDashboardSummary();
     this.actionsLocked = this.authStore.totalAssets > 0;
 
     if (this.adminId) {

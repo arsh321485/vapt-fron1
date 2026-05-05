@@ -1602,57 +1602,57 @@ export default {
     toggleTeamDropdown() {
       this.$refs.teamDropdown.classList.toggle('show');
     },
-    async fetchAssets(team) {
+    async loadDashboardSummaryCards(team, force = false) {
       const store = useAuthStore();
       this.assetsLoading = true;
       const normalizedTeam = team === 'both' ? undefined : team;
-
-      if (!normalizedTeam) {
-        // Fast path: show cached/quick values first
-        const quickAssetsRes = await store.fetchUserAssets(false);
-        const quickHeldRes = await store.fetchUserHeldAssets(false);
-        if (quickAssetsRes.status) {
-          const assetCount = Array.isArray(quickAssetsRes.data) ? quickAssetsRes.data.length : 0;
-          const heldCount = quickHeldRes.status && Array.isArray(quickHeldRes.assets) ? quickHeldRes.assets.length : 0;
-          this.totalAssets = assetCount + heldCount;
-          this.assetsLoading = false;
-        } else {
-          this.totalAssets = null;
-          this.assetsLoading = false;
-        }
-
-        // Fresh path: revalidate in background and update card when done
-        (async () => {
-          const freshAssetsRes = await store.fetchUserAssets(true);
-          if (!freshAssetsRes.status) return;
-          const freshHeldRes = await store.fetchUserHeldAssets(true);
-          const assetCount = Array.isArray(freshAssetsRes.data) ? freshAssetsRes.data.length : 0;
-          const heldCount = freshHeldRes.status && Array.isArray(freshHeldRes.assets) ? freshHeldRes.assets.length : 0;
-          this.totalAssets = assetCount + heldCount;
-        })();
-        return;
-      }
-
-      const result = await store.fetchUserTotalAssets(normalizedTeam);
-      this.totalAssets = result.status ? (result.data?.total_assets ?? null) : null;
-      this.assetsLoading = false;
-    },
-    async fetchMeanTimeRemediate(team) {
-      const store = useAuthStore();
-      const result = await store.fetchUserMeanTimeRemediate(team);
+      const result = await store.fetchUserDashboardSummary(normalizedTeam, force);
       if (result.status) {
-        const m = result.data.mean_time_to_remediate;
-        if (m) {
-          const w = m.weeks ?? 0;
-          const d = m.days ?? 0;
-          const h = m.hours_remaining ?? 0;
-          this.meanTimeRemediate = `${w}w ${d}d ${h}hrs`;
-        } else {
-          this.meanTimeRemediate = null;
-        }
+        const data = result.data || {};
+        const assets = data.total_assets || {};
+        const mttr = data.mean_time_remediate?.mean_time_to_remediate;
+        const mitigation = data.mitigation_timeline || {};
+        const support = data.support_requests || {};
+        const fixed = data.vulnerabilities_fixed || {};
+        const vulns = data.vulnerabilities || {};
+
+        this.totalAssets = assets.total_assets ?? null;
+        this.meanTimeRemediate = mttr
+          ? `${mttr.weeks ?? 0}w ${mttr.days ?? 0}d ${mttr.hours_remaining ?? 0}hrs`
+          : null;
+        this.mitigation = {
+          critical: this.formatMitigationDays(mitigation.critical),
+          high: this.formatMitigationDays(mitigation.high),
+          medium: this.formatMitigationDays(mitigation.medium),
+          low: this.formatMitigationDays(mitigation.low),
+        };
+        this.supportReqs = {
+          total: support.total ?? null,
+          pending: support.pending ?? null,
+          closed: support.closed ?? null,
+        };
+        this.vulnsFixed = {
+          total: fixed.total_fixed ?? null,
+          critical: fixed.critical_fixed ?? null,
+          high: fixed.high_fixed ?? null,
+          medium: fixed.medium_fixed ?? null,
+          low: fixed.low_fixed ?? null,
+        };
+        this.vulns = {
+          critical: vulns.critical ?? null,
+          high: vulns.high ?? null,
+          medium: vulns.medium ?? null,
+          low: vulns.low ?? null,
+        };
       } else {
+        this.totalAssets = null;
         this.meanTimeRemediate = null;
+        this.mitigation = { critical: null, high: null, medium: null, low: null };
+        this.supportReqs = { total: null, pending: null, closed: null };
+        this.vulnsFixed = { total: null, critical: null, high: null, medium: null, low: null };
+        this.vulns = { critical: null, high: null, medium: null, low: null };
       }
+      this.assetsLoading = false;
     },
     formatMitigationDays(entry) {
       if (!entry) return null;
@@ -1662,65 +1662,9 @@ export default {
       const d = days % 7;
       return d > 0 ? `${w}w ${d}d` : `${w}w`;
     },
-    async fetchMitigation(team) {
+    async fetchMitigationByTeam(force = false) {
       const store = useAuthStore();
-      const result = await store.fetchUserMitigationTimeline(team);
-      if (result.status) {
-        this.mitigation = {
-          critical: this.formatMitigationDays(result.data.critical),
-          high: this.formatMitigationDays(result.data.high),
-          medium: this.formatMitigationDays(result.data.medium),
-          low: this.formatMitigationDays(result.data.low),
-        };
-      } else {
-        this.mitigation = { critical: null, high: null, medium: null, low: null };
-      }
-    },
-    async fetchSupportReqs(team) {
-      const store = useAuthStore();
-      const result = await store.fetchUserSupportRequests(team);
-      if (result.status) {
-        this.supportReqs = {
-          total: result.data.total ?? null,
-          pending: result.data.pending ?? null,
-          closed: result.data.closed ?? null,
-        };
-      } else {
-        this.supportReqs = { total: null, pending: null, closed: null };
-      }
-    },
-    async fetchVulnsFixed(team) {
-      const store = useAuthStore();
-      const result = await store.fetchUserVulnerabilitiesFixed(team, false);
-      if (result.status) {
-        this.vulnsFixed = {
-          total: result.data.total_fixed ?? null,
-          critical: result.data.critical_fixed ?? null,
-          high: result.data.high_fixed ?? null,
-          medium: result.data.medium_fixed ?? null,
-          low: result.data.low_fixed ?? null,
-        };
-      } else {
-        this.vulnsFixed = { total: null, critical: null, high: null, medium: null, low: null };
-      }
-    },
-    async fetchVulns(team) {
-      const store = useAuthStore();
-      const result = await store.fetchUserVulnerabilities(team);
-      if (result.status) {
-        this.vulns = {
-          critical: result.data.critical ?? null,
-          high: result.data.high ?? null,
-          medium: result.data.medium ?? null,
-          low: result.data.low ?? null,
-        };
-      } else {
-        this.vulns = { critical: null, high: null, medium: null, low: null };
-      }
-    },
-    async fetchMitigationByTeam() {
-      const store = useAuthStore();
-      const result = await store.fetchUserMitigationByTeam();
+      const result = await store.fetchUserMitigationByTeam(force);
       if (result.status) {
         this.mitigationByTeamData = result.data;
         this.msuReportId = result.data.report_id || null;
@@ -1819,7 +1763,7 @@ export default {
         this.riskCriteria = { ...updated };
         this.closeModal();
         // Re-fetch mitigation timeline immediately with fresh data
-        await this.fetchMitigation(this.selectedTeam || undefined);
+        await this.loadDashboardSummaryCards(this.selectedTeam || 'both', true);
       } else {
         alert(result.message || 'Failed to save risk criteria');
       }
@@ -1863,14 +1807,8 @@ export default {
       if (this.$refs.teamDropdown) {
         this.$refs.teamDropdown.classList.remove('show');
       }
-      const t = team === 'both' ? undefined : team;
       await Promise.all([
-        this.fetchAssets(team),
-        this.fetchVulns(t),
-        this.fetchVulnsFixed(t),
-        this.fetchSupportReqs(t),
-        this.fetchMitigation(t),
-        this.fetchMeanTimeRemediate(t),
+        this.loadDashboardSummaryCards(team, true),
         this.refreshInProcessCount(),
       ]);
     },
@@ -2107,19 +2045,14 @@ export default {
 
     // Default to All Teams on load
     this.selectedTeam = 'both';
-    await Promise.all([
-      this.fetchAssets(this.selectedTeam),
-      this.fetchVulns(undefined),
-      this.fetchVulnsFixed(undefined),
-      this.fetchSupportReqs(undefined),
-      this.fetchMitigation(undefined),
-      this.fetchMeanTimeRemediate(undefined),
-      this.fetchMitigationByTeam(),
+    void Promise.all([
+      this.loadDashboardSummaryCards(this.selectedTeam, true),
+      this.fetchMitigationByTeam(true),
       this.fetchVulnAssetCount(),
       this.refreshInProcessCount(),
       this.loadRiskCriteria(),
       this.loadMteExtensionData(),
-    ]);
+    ]).catch(() => {});
 
     // Close dropdown when clicking outside
     document.addEventListener('click', (e) => {
@@ -2129,18 +2062,14 @@ export default {
       }
     });
   },
-  async activated() {
+  activated() {
     const team = this.selectedTeam || 'both';
-    const t = team === 'both' ? undefined : team;
-    await Promise.all([
-      this.fetchAssets(team),
-      this.fetchVulns(t),
-      this.fetchVulnsFixed(t),
-      this.fetchSupportReqs(t),
-      this.fetchMitigation(t),
-      this.fetchMeanTimeRemediate(t),
+    void Promise.all([
+      this.loadDashboardSummaryCards(team, true),
+      this.fetchMitigationByTeam(true),
+      this.fetchVulnAssetCount(),
       this.refreshInProcessCount(),
-    ]);
+    ]).catch(() => {});
   },
   beforeUnmount() {
     document.removeEventListener("mousedown", this.handleCommonWalkthroughDocumentClick);

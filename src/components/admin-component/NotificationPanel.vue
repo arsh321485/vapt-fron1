@@ -10,14 +10,14 @@
   </div>
 
   <div class="notification-panel" :class="{ open: showNotifications, fullscreen: isFullscreen }">
-    <div class="card notification-drawer-card shadow-lg border-0 rounded-4 h-100 d-flex flex-column overflow-hidden">
-      <!-- Header — matches app chrome (#241447) -->
-      <div class="notification-drawer-header card-header d-flex justify-content-between align-items-center border-0">
-        <h5 class="mb-0 fw-semibold px-2 py-3 text-white">Notifications</h5>
-        <div class="d-flex align-items-center gap-1 pe-2">
+    <div class="notif-drawer card border-0 rounded-4 h-100 d-flex flex-column overflow-hidden shadow-lg">
+      <!-- Header — dashboard purple -->
+      <div class="notif-drawer-header card-header border-0 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold notif-drawer-title">Notifications</h5>
+        <div class="d-flex align-items-center gap-1">
           <div class="btn-group">
             <button
-              class="btn btn-sm btn-outline-light border-0 dropdown-toggle"
+              class="btn btn-sm notif-header-btn dropdown-toggle border-0"
               type="button"
               data-bs-toggle="dropdown"
               aria-expanded="false"
@@ -31,75 +31,61 @@
             </ul>
           </div>
 
-          <button
-            type="button"
-            class="btn btn-sm btn-outline-light border-0"
-            aria-label="Toggle fullscreen"
-            @click="toggleFullscreen"
-          >
+          <button type="button" class="btn btn-sm notif-header-btn border-0" aria-label="Toggle fullscreen" @click="toggleFullscreen">
             <i class="bi bi-arrows-fullscreen"></i>
           </button>
 
-          <button
-            type="button"
-            class="btn-close btn-close-white"
-            aria-label="Close"
-            @click="toggleNotificationPanel"
-          ></button>
+          <button type="button" class="btn-close btn-close-white" aria-label="Close" @click="toggleNotificationPanel"></button>
         </div>
       </div>
 
-      <!-- Body -->
-      <div class="notification-drawer-body card-body px-0 pt-0 flex-grow-1" style="max-height: 500px; overflow-y: auto">
-        <div v-if="loading && notifications.length === 0" class="text-center py-5 text-muted">
-          <span class="spinner-border spinner-border-sm me-2"></span>Loading...
+      <!-- Body — dashboard grey canvas -->
+      <div class="notif-drawer-body card-body flex-grow-1 px-3 py-3" style="max-height: 500px; overflow-y: auto">
+        <div v-if="loading && notifications.length === 0" class="text-center py-5 notif-muted">
+          <span class="spinner-border spinner-border-sm me-2" style="color: #0f696e"></span>
+          Loading…
         </div>
 
         <div
           v-for="notification in filteredNotifications"
           v-else
           :key="notification.id"
-          class="notification-row d-flex align-items-start gap-3 px-3 py-3"
-          :class="[
-            notification.is_read ? 'is-read' : 'is-unread',
-            notification.severityFromMessage
-              ? `notification-row--sev-${notification.severityFromMessage}`
-              : '',
-          ]"
+          class="notif-card mb-3"
+          :class="{
+            'notif-card--unread': !notification.is_read,
+            [`notif-card--${notification.severityKey || 'default'}`]: true,
+          }"
           role="button"
           tabindex="0"
           @click="handleNotificationClick(notification)"
           @keydown.enter="handleNotificationClick(notification)"
         >
-          <div
-            class="notification-row-icon flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle"
-            :class="`notification-row-icon--${notification.severityFromMessage || 'default'}`"
-          >
-            <i :class="['fs-5', notification.icon, notification.color]"></i>
-          </div>
-          <div class="flex-grow-1 min-w-0">
-            <p class="notification-message mb-1" :class="{ 'opacity-75': notification.is_read }">
-              <template v-for="(seg, idx) in getMessageSegments(notification.message)" :key="`${notification.id}-${idx}`">
-                <span :class="messageSegmentClass(seg)">{{ seg.text }}</span>
-              </template>
-            </p>
-            <small class="notification-time text-muted">{{ formatTimeAgo(notification.created_at) }}</small>
+          <div class="d-flex align-items-start gap-3">
+            <div class="notif-icon-wrap flex-shrink-0" :class="notification.iconWrapClass">
+              <i :class="['fs-5', notification.icon, notification.iconColorClass]"></i>
+            </div>
+            <div class="min-w-0 flex-grow-1">
+              <p class="notif-message mb-1" :class="{ 'notif-message--read': notification.is_read }">
+                <template v-for="(seg, idx) in getMessageSegments(notification.message)" :key="`${notification.id}-${idx}`">
+                  <span :class="messageSegmentClass(seg)">{{ seg.text }}</span>
+                </template>
+              </p>
+              <small class="notif-time">{{ formatTimeAgo(notification.created_at) }}</small>
+            </div>
           </div>
         </div>
 
-        <p v-if="!loading && filteredNotifications.length === 0" class="text-center text-muted py-5 px-3 mb-0">
+        <p v-if="!loading && filteredNotifications.length === 0" class="text-center notif-muted py-5 mb-0">
           No notifications found.
         </p>
       </div>
 
       <!-- Footer -->
-      <div class="notification-drawer-footer card-footer border-0 d-flex flex-wrap justify-content-between gap-2 mt-auto">
-        <button type="button" class="btn btn-sm notification-footer-btn" @click="toggleShowAll">
+      <div class="notif-drawer-footer card-footer border-0 d-flex flex-wrap justify-content-between gap-2">
+        <button type="button" class="btn btn-sm notif-btn-primary" @click="toggleShowAll">
           {{ showAll ? "View Less" : "View All Notifications" }}
         </button>
-        <button type="button" class="btn btn-sm notification-footer-btn notification-footer-btn--outline" @click="markAllAsRead">
-          Mark All as Read
-        </button>
+        <button type="button" class="btn btn-sm notif-btn-outline" @click="markAllAsRead">Mark All as Read</button>
       </div>
     </div>
   </div>
@@ -140,34 +126,57 @@ export default {
   methods: {
     severityFromMessage(message) {
       const m = String(message || "").match(/\[(Critical|High|Medium|Low)\]/i);
-      if (!m) return null;
-      return String(m[1] || "").toLowerCase();
+      return m ? String(m[1]).toLowerCase() : null;
     },
-    mapNotifIcon(notifType, message) {
+    mapNotifVisuals(notifType, message) {
       const sev = this.severityFromMessage(message);
       if (sev === "critical") {
-        return { icon: "bi bi-exclamation-octagon-fill", color: "text-white" };
+        return {
+          icon: "bi bi-exclamation-octagon-fill",
+          iconColorClass: "notif-icon-fg",
+          iconWrapClass: "notif-icon-wrap--critical",
+        };
       }
       if (sev === "high") {
-        return { icon: "bi bi-clock-history", color: "text-white" };
+        return {
+          icon: "bi bi-clock-history",
+          iconColorClass: "notif-icon-fg",
+          iconWrapClass: "notif-icon-wrap--high",
+        };
       }
       if (sev === "medium") {
-        return { icon: "bi bi-exclamation-triangle", color: "text-white" };
+        return {
+          icon: "bi bi-exclamation-triangle-fill",
+          iconColorClass: "notif-icon-fg",
+          iconWrapClass: "notif-icon-wrap--medium",
+        };
       }
       if (sev === "low") {
-        return { icon: "bi bi-info-circle", color: "text-white" };
+        return {
+          icon: "bi bi-info-circle-fill",
+          iconColorClass: "notif-icon-fg",
+          iconWrapClass: "notif-icon-wrap--low",
+        };
       }
+
       const t = String(notifType || "").toLowerCase();
-      if (t.includes("held")) return { icon: "bi bi-pause-circle", color: "text-warning" };
-      if (t.includes("unhold") || t.includes("restored")) return { icon: "bi bi-arrow-repeat", color: "text-success" };
-      if (t.includes("support") || t.includes("exception")) return { icon: "bi bi-exclamation-triangle", color: "text-warning" };
-      if (t.includes("deadline")) return { icon: "bi bi-clock-history", color: "text-danger" };
-      return { icon: "bi bi-bell", color: "text-primary" };
+      if (t.includes("held")) {
+        return { icon: "bi bi-pause-circle-fill", iconColorClass: "notif-icon-fg-warn", iconWrapClass: "notif-icon-wrap--hold" };
+      }
+      if (t.includes("unhold") || t.includes("restored")) {
+        return { icon: "bi bi-arrow-repeat", iconColorClass: "notif-icon-fg-ok", iconWrapClass: "notif-icon-wrap--ok" };
+      }
+      if (t.includes("support") || t.includes("exception")) {
+        return { icon: "bi bi-exclamation-triangle-fill", iconColorClass: "notif-icon-fg-warn", iconWrapClass: "notif-icon-wrap--warn" };
+      }
+      if (t.includes("deadline")) {
+        return { icon: "bi bi-alarm-fill", iconColorClass: "notif-icon-fg", iconWrapClass: "notif-icon-wrap--deadline" };
+      }
+      return { icon: "bi bi-bell-fill", iconColorClass: "notif-icon-fg-muted", iconWrapClass: "notif-icon-wrap--default" };
     },
     getMessageSegments(text) {
       const raw = String(text || "");
       const segments = [];
-      // Order: specific phrases first (due date today …), then standalone today/tomorrow.
       const pattern =
         /(\[(?:Critical|High|Medium|Low)\])|(\d+\s*day\(s\))|(exceeded\s+by\s+\d+\s*day\(s\))|(due\s+date\s+(?:today|tomorrow))|((?:is\s+)?due\s+(?:today|tomorrow))|\b(today|tomorrow)\b/gi;
       let lastIndex = 0;
@@ -201,22 +210,21 @@ export default {
     },
     messageSegmentClass(seg) {
       const map = {
-        plain: "notif-msg-plain",
-        "sev-critical": "notif-sev notif-sev-critical",
-        "sev-high": "notif-sev notif-sev-high",
-        "sev-medium": "notif-sev notif-sev-medium",
-        "sev-low": "notif-sev notif-sev-low",
-        "time-days": "notif-time",
-        "due-date": "notif-due-date",
-        urgency: "notif-urgency",
-        overdue: "notif-overdue",
+        plain: "notif-txt-plain",
+        "sev-critical": "notif-pill notif-pill-critical",
+        "sev-high": "notif-pill notif-pill-high",
+        "sev-medium": "notif-pill notif-pill-medium",
+        "sev-low": "notif-pill notif-pill-low",
+        "time-days": "notif-accent-teal",
+        "due-date": "notif-accent-due",
+        urgency: "notif-accent-urgent",
+        overdue: "notif-accent-overdue",
       };
-      return map[seg.kind] || "notif-msg-plain";
+      return map[seg.kind] || "notif-txt-plain";
     },
     normalizeTimestamp(dateStr) {
       const raw = String(dateStr || "").trim();
       if (!raw) return "";
-      // Some API responses can be timezone-naive; treat them as UTC for consistent "time ago".
       const isTimezoneNaive = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(raw);
       return isTimezoneNaive ? `${raw}Z` : raw;
     },
@@ -243,12 +251,13 @@ export default {
         const data = res.status ? res.data : null;
         const list = Array.isArray(data?.notifications) ? data.notifications : [];
         this.notifications = list.map((n) => {
-          const mapped = this.mapNotifIcon(n.notif_type, n.message);
+          const v = this.mapNotifVisuals(n.notif_type, n.message);
           return {
             ...n,
-            icon: mapped.icon,
-            color: mapped.color,
-            severityFromMessage: this.severityFromMessage(n.message),
+            icon: v.icon,
+            iconColorClass: v.iconColorClass,
+            iconWrapClass: v.iconWrapClass,
+            severityKey: this.severityFromMessage(n.message),
           };
         });
         await this.fetchUnreadCount();
@@ -332,7 +341,6 @@ export default {
     document.removeEventListener("visibilitychange", this.handleVisibilityChange);
   },
   created() {
-    // Keep bell count updated even when panel is closed.
     this.pollTimer = setInterval(() => {
       this.fetchUnreadCount();
       if (this.showNotifications) {
@@ -344,6 +352,247 @@ export default {
 </script>
 
 <style scoped>
+/* Dashboard palette: purple #241447, teal #0f696e, canvas ~#f4f7fe */
+.notif-drawer {
+  background: #fff;
+}
+
+.notif-drawer-header {
+  background: linear-gradient(135deg, #241447 0%, #1a0f38 100%);
+  padding: 0.85rem 1rem;
+}
+
+.notif-drawer-title {
+  color: #fff;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+}
+
+.notif-header-btn {
+  color: rgba(255, 255, 255, 0.85);
+  background: transparent;
+}
+
+.notif-header-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.notif-drawer-body {
+  background: #f4f7fe;
+}
+
+.notif-muted {
+  color: rgba(36, 20, 71, 0.45);
+}
+
+.notif-drawer-footer {
+  background: #fff;
+  padding: 0.85rem 1rem;
+  box-shadow: 0 -4px 20px rgba(36, 20, 71, 0.06);
+}
+
+.notif-btn-primary {
+  background: #241447;
+  color: #fff;
+  border: none;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 0.45rem 0.9rem;
+}
+
+.notif-btn-primary:hover {
+  background: #1a0f38;
+  color: #fff;
+}
+
+.notif-btn-outline {
+  background: #fff;
+  color: #241447;
+  border: 1px solid rgba(36, 20, 71, 0.35);
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 0.45rem 0.9rem;
+}
+
+.notif-btn-outline:hover {
+  background: #f4f7fe;
+  color: #241447;
+  border-color: #241447;
+}
+
+.notif-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1rem 1rem 0.9rem;
+  box-shadow: 0 2px 12px rgba(36, 20, 71, 0.07);
+  border: 1px solid rgba(36, 20, 71, 0.06);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
+}
+
+.notif-card:hover {
+  box-shadow: 0 6px 20px rgba(36, 20, 71, 0.1);
+  border-color: rgba(15, 105, 110, 0.2);
+}
+
+.notif-card--unread {
+  border-left: 4px solid #0f696e;
+  box-shadow: 0 2px 14px rgba(15, 105, 110, 0.12);
+}
+
+.notif-card--critical.notif-card--unread {
+  border-left-color: #dc2626;
+}
+
+.notif-card--high.notif-card--unread {
+  border-left-color: #ea580c;
+}
+
+.notif-card--medium.notif-card--unread {
+  border-left-color: #ca8a04;
+}
+
+.notif-card--low.notif-card--unread {
+  border-left-color: #0f696e;
+}
+
+.notif-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notif-icon-wrap--critical {
+  background: linear-gradient(145deg, #fecaca 0%, #fca5a5 100%);
+}
+.notif-icon-wrap--high {
+  background: linear-gradient(145deg, #fed7aa 0%, #fdba74 100%);
+}
+.notif-icon-wrap--medium {
+  background: linear-gradient(145deg, #fef08a 0%, #fde047 100%);
+}
+.notif-icon-wrap--low {
+  background: linear-gradient(145deg, #ccfbf1 0%, #99f6e4 100%);
+}
+.notif-icon-wrap--deadline {
+  background: linear-gradient(145deg, #e0e7ff 0%, #c7d2fe 100%);
+}
+.notif-icon-wrap--default {
+  background: linear-gradient(145deg, #e0e7ff 0%, #dbeafe 100%);
+}
+.notif-icon-wrap--hold {
+  background: linear-gradient(145deg, #fef3c7 0%, #fde68a 100%);
+}
+.notif-icon-wrap--warn {
+  background: linear-gradient(145deg, #fef3c7 0%, #fcd34d 100%);
+}
+.notif-icon-wrap--ok {
+  background: linear-gradient(145deg, #d1fae5 0%, #a7f3d0 100%);
+}
+
+.notif-icon-fg {
+  color: #241447;
+}
+.notif-icon-fg-muted {
+  color: #3730a3;
+}
+.notif-icon-fg-warn {
+  color: #b45309;
+}
+.notif-icon-fg-ok {
+  color: #047857;
+}
+
+.notif-message {
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: #1e1b2e;
+  font-weight: 500;
+  margin: 0;
+}
+
+.notif-message--read {
+  color: #64748b;
+  font-weight: 400;
+}
+
+.notif-txt-plain {
+  font-weight: inherit;
+  color: inherit;
+}
+
+.notif-pill {
+  display: inline;
+  font-weight: 700;
+  font-size: 0.78em;
+  letter-spacing: 0.03em;
+  padding: 0.12em 0.4em;
+  border-radius: 6px;
+  margin-right: 0.12em;
+  white-space: nowrap;
+}
+
+.notif-pill-critical {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+.notif-pill-high {
+  background: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+}
+.notif-pill-medium {
+  background: #fefce8;
+  color: #a16207;
+  border: 1px solid #fde047;
+}
+.notif-pill-low {
+  background: #ccfbf1;
+  color: #0f696e;
+  border: 1px solid #99f6e4;
+}
+
+.notif-accent-teal {
+  font-weight: 700;
+  color: #0f696e;
+  background: rgba(15, 105, 110, 0.1);
+  padding: 0.05em 0.28em;
+  border-radius: 4px;
+}
+.notif-accent-due {
+  font-weight: 700;
+  color: #241447;
+  background: rgba(36, 20, 71, 0.08);
+  padding: 0.05em 0.35em;
+  border-radius: 6px;
+  border: 1px solid rgba(36, 20, 71, 0.12);
+}
+.notif-accent-urgent {
+  font-weight: 700;
+  color: #0f696e;
+  background: rgba(15, 105, 110, 0.12);
+  padding: 0.05em 0.28em;
+  border-radius: 4px;
+}
+.notif-accent-overdue {
+  font-weight: 700;
+  color: #b91c1c;
+  background: rgba(220, 38, 38, 0.1);
+  padding: 0.05em 0.28em;
+  border-radius: 4px;
+}
+
+.notif-time {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(36, 20, 71, 0.45);
+}
+
 .notif-badge {
   position: absolute;
   top: 2px;
@@ -358,23 +607,5 @@ export default {
   line-height: 16px;
   font-weight: 700;
   text-align: center;
-}
-
-/* Due date callouts (today / tomorrow) */
-.notif-due-date {
-  font-weight: 700;
-  color: #0f696e;
-  background: rgba(15, 105, 110, 0.12);
-  padding: 0.1em 0.35em;
-  border-radius: 6px;
-  border: 1px solid rgba(15, 105, 110, 0.25);
-}
-
-.notif-urgency {
-  font-weight: 600;
-  color: #7c3aed;
-  background: rgba(124, 58, 237, 0.08);
-  padding: 0.05em 0.25em;
-  border-radius: 4px;
 }
 </style>

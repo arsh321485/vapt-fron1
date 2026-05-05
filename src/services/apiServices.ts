@@ -68,6 +68,7 @@ endpoint.interceptors.request.use(
 const AUTH_ENDPOINTS = [
   "/api/admin/users/login/",
   "/api/admin/users/user-login/",
+  "/api/admin/users/logout/",
   "/api/admin/users/signup/send-otp/",
   "/api/admin/users/signup/verify-otp/",
   "/api/admin/users/user-set-password/",
@@ -80,8 +81,10 @@ endpoint.interceptors.response.use(
   async (error) => {
     const requestUrl = error.config?.url || "";
     const isAuthEndpoint = AUTH_ENDPOINTS.some((ep) => requestUrl.includes(ep));
+    const currentPath = router.currentRoute.value?.path || "";
+    const isAuthScreen = currentPath === "/" || currentPath === "/signin" || currentPath === "/auth";
 
-    if (error.response?.status === 401 && !isAuthEndpoint) {
+    if (error.response?.status === 401 && !isAuthEndpoint && !isAuthScreen) {
       // Clear localStorage directly
       localStorage.removeItem("authorization");
       localStorage.removeItem("user");
