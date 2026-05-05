@@ -10,33 +10,48 @@
   </div>
 
   <div class="notification-panel" :class="{ open: showNotifications, fullscreen: isFullscreen }">
-    <div class="card shadow-lg border-0 rounded-4 h-100 d-flex flex-column" style="background-color: white;">
-      <!-- Header -->
-      <div class="card-header d-flex justify-content-between align-items-center border-0">
-        <h5 class="mb-0 fw-semibold my-3 mx-3 text-dark">Notifications</h5>
-        <div>
-          <div class="btn-group me-2">
-            <button class="btn btn-sm btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+    <div class="card notification-drawer-card shadow-lg border-0 rounded-4 h-100 d-flex flex-column overflow-hidden">
+      <!-- Header — matches app chrome (#241447) -->
+      <div class="notification-drawer-header card-header d-flex justify-content-between align-items-center border-0">
+        <h5 class="mb-0 fw-semibold px-2 py-3 text-white">Notifications</h5>
+        <div class="d-flex align-items-center gap-1 pe-2">
+          <div class="btn-group">
+            <button
+              class="btn btn-sm btn-outline-light border-0 dropdown-toggle"
+              type="button"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+            >
               <i class="bi bi-filter"></i>
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
-              <li><a class="dropdown-item" @click="filterType = ''">All</a></li>
-              <li><a class="dropdown-item" @click="filterType = 'unread'">Unread</a></li>
-              <li><a class="dropdown-item" @click="filterType = 'read'">Read</a></li>
+              <li><a class="dropdown-item" href="#" @click.prevent="filterType = ''">All</a></li>
+              <li><a class="dropdown-item" href="#" @click.prevent="filterType = 'unread'">Unread</a></li>
+              <li><a class="dropdown-item" href="#" @click.prevent="filterType = 'read'">Read</a></li>
             </ul>
           </div>
 
-          <button class="btn btn-sm btn-light me-2" @click="toggleFullscreen">
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-light border-0"
+            aria-label="Toggle fullscreen"
+            @click="toggleFullscreen"
+          >
             <i class="bi bi-arrows-fullscreen"></i>
           </button>
 
-          <button class="btn-close btn-close-dark" @click="toggleNotificationPanel"></button>
+          <button
+            type="button"
+            class="btn-close btn-close-white"
+            aria-label="Close"
+            @click="toggleNotificationPanel"
+          ></button>
         </div>
       </div>
 
       <!-- Body -->
-      <div class="card-body px-3 pt-2" style="max-height: 500px; overflow-y: auto;">
-        <div v-if="loading && notifications.length === 0" class="text-center py-4 text-muted">
+      <div class="notification-drawer-body card-body px-0 pt-0 flex-grow-1" style="max-height: 500px; overflow-y: auto">
+        <div v-if="loading && notifications.length === 0" class="text-center py-5 text-muted">
           <span class="spinner-border spinner-border-sm me-2"></span>Loading...
         </div>
 
@@ -44,34 +59,47 @@
           v-for="notification in filteredNotifications"
           v-else
           :key="notification.id"
-          class="d-flex align-items-start py-2 border-bottom text-dark"
-          style="cursor: pointer;"
+          class="notification-row d-flex align-items-start gap-3 px-3 py-3"
+          :class="[
+            notification.is_read ? 'is-read' : 'is-unread',
+            notification.severityFromMessage
+              ? `notification-row--sev-${notification.severityFromMessage}`
+              : '',
+          ]"
+          role="button"
+          tabindex="0"
           @click="handleNotificationClick(notification)"
+          @keydown.enter="handleNotificationClick(notification)"
         >
-          <i :class="['me-3 fs-5', notification.icon, notification.color]"></i>
-          <div>
-            <p
-              class="mb-2"
-              style="font-weight:100;"
-              :class="{ 'text-secondary': notification.is_read }"
-            >
-              {{ notification.message }}
+          <div
+            class="notification-row-icon flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle"
+            :class="`notification-row-icon--${notification.severityFromMessage || 'default'}`"
+          >
+            <i :class="['fs-5', notification.icon, notification.color]"></i>
+          </div>
+          <div class="flex-grow-1 min-w-0">
+            <p class="notification-message mb-1" :class="{ 'opacity-75': notification.is_read }">
+              <template v-for="(seg, idx) in getMessageSegments(notification.message)" :key="`${notification.id}-${idx}`">
+                <span :class="messageSegmentClass(seg)">{{ seg.text }}</span>
+              </template>
             </p>
-            <small class="text-secondary">{{ formatTimeAgo(notification.created_at) }}</small>
+            <small class="notification-time text-muted">{{ formatTimeAgo(notification.created_at) }}</small>
           </div>
         </div>
 
-        <p v-if="!loading && filteredNotifications.length === 0" class="text-center text-muted mt-3">
+        <p v-if="!loading && filteredNotifications.length === 0" class="text-center text-muted py-5 px-3 mb-0">
           No notifications found.
         </p>
       </div>
 
       <!-- Footer -->
-      <div class="card-footer border-0 d-flex justify-content-between mt-auto">
-        <button class="btn btn-dark btn-sm" @click="toggleShowAll">
+      <div class="notification-drawer-footer card-footer border-0 d-flex flex-wrap justify-content-between gap-2 mt-auto">
+        <button type="button" class="btn btn-sm notification-footer-btn" @click="toggleShowAll">
           {{ showAll ? "View Less" : "View All Notifications" }}
         </button>
-        <button class="btn btn-dark btn-sm" @click="markAllAsRead">Mark All as Read</button>
+        <button type="button" class="btn btn-sm notification-footer-btn notification-footer-btn--outline" @click="markAllAsRead">
+          Mark All as Read
+        </button>
       </div>
     </div>
   </div>
@@ -110,13 +138,80 @@ export default {
     },
   },
   methods: {
-    mapNotifIcon(notifType) {
+    severityFromMessage(message) {
+      const m = String(message || "").match(/\[(Critical|High|Medium|Low)\]/i);
+      if (!m) return null;
+      return String(m[1] || "").toLowerCase();
+    },
+    mapNotifIcon(notifType, message) {
+      const sev = this.severityFromMessage(message);
+      if (sev === "critical") {
+        return { icon: "bi bi-exclamation-octagon-fill", color: "text-white" };
+      }
+      if (sev === "high") {
+        return { icon: "bi bi-clock-history", color: "text-white" };
+      }
+      if (sev === "medium") {
+        return { icon: "bi bi-exclamation-triangle", color: "text-white" };
+      }
+      if (sev === "low") {
+        return { icon: "bi bi-info-circle", color: "text-white" };
+      }
       const t = String(notifType || "").toLowerCase();
       if (t.includes("held")) return { icon: "bi bi-pause-circle", color: "text-warning" };
       if (t.includes("unhold") || t.includes("restored")) return { icon: "bi bi-arrow-repeat", color: "text-success" };
       if (t.includes("support") || t.includes("exception")) return { icon: "bi bi-exclamation-triangle", color: "text-warning" };
       if (t.includes("deadline")) return { icon: "bi bi-clock-history", color: "text-danger" };
       return { icon: "bi bi-bell", color: "text-primary" };
+    },
+    getMessageSegments(text) {
+      const raw = String(text || "");
+      const segments = [];
+      // Order: specific phrases first (due date today …), then standalone today/tomorrow.
+      const pattern =
+        /(\[(?:Critical|High|Medium|Low)\])|(\d+\s*day\(s\))|(exceeded\s+by\s+\d+\s*day\(s\))|(due\s+date\s+(?:today|tomorrow))|((?:is\s+)?due\s+(?:today|tomorrow))|\b(today|tomorrow)\b/gi;
+      let lastIndex = 0;
+      let match;
+      while ((match = pattern.exec(raw)) !== null) {
+        if (match.index > lastIndex) {
+          segments.push({ kind: "plain", text: raw.slice(lastIndex, match.index) });
+        }
+        const full = match[0];
+        if (match[1]) {
+          const label = match[1].replace(/[\[\]]/g, "").toLowerCase();
+          segments.push({ kind: `sev-${label}`, text: full });
+        } else if (match[2]) {
+          segments.push({ kind: "time-days", text: full });
+        } else if (match[3]) {
+          segments.push({ kind: "overdue", text: full });
+        } else if (match[4] || match[5]) {
+          segments.push({ kind: "due-date", text: full });
+        } else if (match[6]) {
+          segments.push({ kind: "urgency", text: full });
+        }
+        lastIndex = match.index + full.length;
+      }
+      if (lastIndex < raw.length) {
+        segments.push({ kind: "plain", text: raw.slice(lastIndex) });
+      }
+      if (!segments.length && raw) {
+        segments.push({ kind: "plain", text: raw });
+      }
+      return segments;
+    },
+    messageSegmentClass(seg) {
+      const map = {
+        plain: "notif-msg-plain",
+        "sev-critical": "notif-sev notif-sev-critical",
+        "sev-high": "notif-sev notif-sev-high",
+        "sev-medium": "notif-sev notif-sev-medium",
+        "sev-low": "notif-sev notif-sev-low",
+        "time-days": "notif-time",
+        "due-date": "notif-due-date",
+        urgency: "notif-urgency",
+        overdue: "notif-overdue",
+      };
+      return map[seg.kind] || "notif-msg-plain";
     },
     normalizeTimestamp(dateStr) {
       const raw = String(dateStr || "").trim();
@@ -148,11 +243,12 @@ export default {
         const data = res.status ? res.data : null;
         const list = Array.isArray(data?.notifications) ? data.notifications : [];
         this.notifications = list.map((n) => {
-          const mapped = this.mapNotifIcon(n.notif_type);
+          const mapped = this.mapNotifIcon(n.notif_type, n.message);
           return {
             ...n,
             icon: mapped.icon,
             color: mapped.color,
+            severityFromMessage: this.severityFromMessage(n.message),
           };
         });
         await this.fetchUnreadCount();
@@ -262,5 +358,23 @@ export default {
   line-height: 16px;
   font-weight: 700;
   text-align: center;
+}
+
+/* Due date callouts (today / tomorrow) */
+.notif-due-date {
+  font-weight: 700;
+  color: #0f696e;
+  background: rgba(15, 105, 110, 0.12);
+  padding: 0.1em 0.35em;
+  border-radius: 6px;
+  border: 1px solid rgba(15, 105, 110, 0.25);
+}
+
+.notif-urgency {
+  font-weight: 600;
+  color: #7c3aed;
+  background: rgba(124, 58, 237, 0.08);
+  padding: 0.05em 0.25em;
+  border-radius: 4px;
 }
 </style>

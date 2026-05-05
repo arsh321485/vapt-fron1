@@ -217,9 +217,9 @@ export const useAuthStore = defineStore("auth", {
       return {
         file_uploaded: res.data.file_uploaded === true,
         cards_generating: res.data.cards_generating === true,
-        elapsed_time_text: res.data.elapsed_time_text || '',
-        remaining_time_text: res.data.remaining_time_text || '',
-        estimated_total_text: res.data.estimated_total_text || '',
+        elapsed_time_text: res.data.elapsed_time_text || "",
+        remaining_time_text: res.data.remaining_time_text || "",
+        estimated_total_text: res.data.estimated_total_text || "",
         cards_total: res.data.cards_total || 0,
         cards_generated: res.data.cards_generated || 0,
         reports_total: res.data.reports_total || 0,
@@ -2191,7 +2191,9 @@ export const useAuthStore = defineStore("auth", {
           `/api/user/asset/report/${reportId}/assets/${safeAsset}/delete/`,
         );
         this.cachedUserAssets = this.cachedUserAssets.filter((a: any) => a.asset !== assetIp);
-        this.cachedUserHeldAssets = this.cachedUserHeldAssets.filter((a: any) => a.asset !== assetIp);
+        this.cachedUserHeldAssets = this.cachedUserHeldAssets.filter(
+          (a: any) => a.asset !== assetIp,
+        );
         this.cachedUserAssetTotal =
           typeof res.data?.total_assets === "number"
             ? res.data.total_assets
@@ -3915,7 +3917,10 @@ export const useAuthStore = defineStore("auth", {
         const err = error as AxiosError<any>;
         return {
           status: false,
-          message: err.response?.data?.detail || err.response?.data?.message || "Failed to fetch notifications",
+          message:
+            err.response?.data?.detail ||
+            err.response?.data?.message ||
+            "Failed to fetch notifications",
         };
       }
     },
@@ -3934,7 +3939,10 @@ export const useAuthStore = defineStore("auth", {
         const err = error as AxiosError<any>;
         return {
           status: false,
-          message: err.response?.data?.detail || err.response?.data?.message || "Failed to fetch user notifications",
+          message:
+            err.response?.data?.detail ||
+            err.response?.data?.message ||
+            "Failed to fetch user notifications",
         };
       }
     },
@@ -3986,9 +3994,7 @@ export const useAuthStore = defineStore("auth", {
     // Mark a specific admin notification as read
     async markAdminNotificationRead(notificationId: string) {
       try {
-        const res = await endpoint.patch(
-          `/api/notifications/admin/${notificationId}/mark-read/`,
-        );
+        const res = await endpoint.patch(`/api/notifications/admin/${notificationId}/mark-read/`);
         return {
           status: true,
           data: res.data,
@@ -4008,9 +4014,7 @@ export const useAuthStore = defineStore("auth", {
     // Mark a specific user notification as read
     async markUserNotificationRead(notificationId: string) {
       try {
-        const res = await endpoint.patch(
-          `/api/notifications/user/${notificationId}/mark-read/`,
-        );
+        const res = await endpoint.patch(`/api/notifications/user/${notificationId}/mark-read/`);
         return {
           status: true,
           data: res.data,

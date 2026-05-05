@@ -35,12 +35,10 @@ endpoint.interceptors.request.use(
       config.headers["Authorization"] = `Bearer ${token}`;
     }
 
-    // Only realtime APIs need aggressive no-cache; keep normal pages fast.
-    if (isRealtime) {
-      config.headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
-      config.headers.Pragma = "no-cache";
-      config.headers.Expires = "0";
-    }
+    // Do not set Cache-Control / Pragma / Expires on notification calls: they are
+    // non-simple headers and widen CORS preflight; if the API does not list them
+    // in Access-Control-Allow-Headers, the browser fails with HeaderDisallowedByPreflightResponse.
+    // Cache busting for these routes is handled via _ts below.
 
     // Add cache-buster only for realtime GET requests unless already provided.
     if (method === "get" && isRealtime) {
