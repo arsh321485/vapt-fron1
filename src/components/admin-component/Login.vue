@@ -85,7 +85,7 @@ export default {
             // Set authorization key so router guard passes
             localStorage.setItem("authorization", "true");
           }
-          this.$router.push("/admindashboardonboarding");
+          this.$router.push({ name: "home" });
         })
         .catch((error) => {
           this.message = "❌ Login failed. Please check your credentials.";

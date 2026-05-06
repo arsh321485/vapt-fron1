@@ -422,7 +422,7 @@ router.beforeEach((to) => {
 
   // Authenticated users should not stay on explicit auth forms
   if (isAuthenticated && (to.path === "/signin" || to.path === "/")) {
-    return { path: "/admindashboardonboarding" };
+    return { path: "/home" };
   }
 
   return true;
