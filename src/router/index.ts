@@ -23,6 +23,9 @@ import UserMissingSecurityUpdatesView from "../views/user-views/UserMissingSecur
 import VulnerabilityCardView from "../views/admin-dashboard/VulnerabilityCardView.vue";
 import YourTeamView from "../views/admin-dashboard/YourTeamView.vue";
 import PricingplansView from "../views/admin-views/PricingplansView.vue";
+import PartnerView from "../views/admin-views/PartnerView.vue";
+import PartnerLeadPortalView from "../views/admin-views/PartnerLeadPortalView.vue";
+import PartnerLeadThankYouView from "../views/admin-views/PartnerLeadThankYouView.vue";
 import RiskCriteriaView from "../views/admin-views/RiskCriteriaView.vue";
 import HowitWork from "../components/admin-component/HowitWork.vue";
 import Profile from "../components/admin-component/Profile.vue";
@@ -88,6 +91,21 @@ const router = createRouter({
       path: "/pricingplan",
       name: "pricingplan",
       component: PricingplansView,
+    },
+    {
+      path: "/partner",
+      name: "partner",
+      component: PartnerView,
+    },
+    {
+      path: "/partner-lead-portal",
+      name: "partner-lead-portal",
+      component: PartnerLeadPortalView,
+    },
+    {
+      path: "/partner-lead-thankyou",
+      name: "partner-lead-thankyou",
+      component: PartnerLeadThankYouView,
     },
     {
       path: "/vulnerabilityexplorer",
@@ -418,11 +436,6 @@ router.beforeEach((to) => {
   // Unauthenticated users can only access auth/public routes
   if (!isAuthenticated && !isPublicRoute) {
     return { path: "/" };
-  }
-
-  // Authenticated users should not stay on explicit auth forms
-  if (isAuthenticated && (to.path === "/signin" || to.path === "/")) {
-    return { path: "/home" };
   }
 
   return true;

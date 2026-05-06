@@ -295,12 +295,12 @@
                   <div class="d-flex align-items-end justify-content-around gap-2 px-2" style="height: 82px; margin-top: 35px;">
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
                       <span style="font-size:12px; font-weight:800; color:#1f2937;">{{ vulns.critical || 0 }}</span>
-                      <div style="width:100%; border-radius:6px 6px 0 0; background:linear-gradient(180deg,#dc2626,#b91c1c); min-height:4px; transition:height 0.5s ease;"
+                      <div style="width:100%; border-radius:6px 6px 0 0; background:linear-gradient(180deg,#dc2626,#ef4444); min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: totalVulnerabilities ? ((vulns.critical || 0) / totalVulnerabilities * 66) + 'px' : '4px' }"></div>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
                       <span style="font-size:12px; font-weight:800; color:#1f2937;">{{ vulns.high || 0 }}</span>
-                      <div style="width:100%; border-radius:6px 6px 0 0; background:linear-gradient(180deg,#f97316,#ef4444); min-height:4px; transition:height 0.5s ease;"
+                      <div style="width:100%; border-radius:6px 6px 0 0; background:linear-gradient(180deg,#dc2626,#ef4444); min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: totalVulnerabilities ? ((vulns.high || 0) / totalVulnerabilities * 66) + 'px' : '4px' }"></div>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
@@ -317,7 +317,7 @@
                   <div style="border-top: 2px solid #e5e7eb; margin: 0 8px;"></div>
                   <div class="d-flex justify-content-around mt-1 flex-wrap px-1">
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#dc2626;"></span>Critical</div>
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#f97316;"></span>High</div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#dc2626;"></span>High</div>
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#f59e0b;"></span>Medium</div>
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#10b981;"></span>Low</div>
                   </div>
@@ -367,7 +367,7 @@
                         <svg width="66" height="38" viewBox="0 0 72 42">
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none" stroke="#f1f5f9" stroke-width="8" stroke-linecap="round"/>
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none"
-                            :stroke="mitigationPct('high').compliancePct <= 0 ? '#d1d5db' : '#f97316'"
+                            :stroke="mitigationPct('high').compliancePct <= 0 ? '#d1d5db' : '#dc2626'"
                             stroke-width="8" stroke-linecap="round"
                             stroke-dasharray="94"
                             :stroke-dashoffset="94 - (mitigationPct('high').compliancePct / 100 * 94)"/>
@@ -376,7 +376,7 @@
                           <div style="font-size:11px;font-weight:800;color:#1f2937;line-height:1;">{{ mitigation.high || '--' }}</div>
                         </div>
                       </div>
-                      <span class="mitigation-sev-label" style="color:#f97316;">High</span>
+                      <span class="mitigation-sev-label" style="color:#dc2626;">High</span>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1">
                       <div style="position:relative; width:66px; height:38px; overflow:hidden;">
@@ -514,12 +514,12 @@
                   <div class="d-flex align-items-end justify-content-around gap-2 px-3" style="height:80px;">
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
                       <span style="font-size:12px; font-weight:800; color:#1f2937;">{{ vulFixedCritical }}</span>
-                      <div style="width:100%; border-radius:6px 6px 0 0; background:linear-gradient(180deg,#dc2626,#b91c1c); min-height:4px; transition:height 0.5s ease;"
+                      <div style="width:100%; border-radius:6px 6px 0 0; background:linear-gradient(180deg,#dc2626,#ef4444); min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: vulFixedTotal ? (vulFixedCritical / vulFixedTotal * 64) + 'px' : '4px' }"></div>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
                       <span style="font-size:12px; font-weight:800; color:#1f2937;">{{ vulFixedHigh }}</span>
-                      <div style="width:100%; border-radius:6px 6px 0 0; background:linear-gradient(180deg,#f97316,#ef4444); min-height:4px; transition:height 0.5s ease;"
+                      <div style="width:100%; border-radius:6px 6px 0 0; background:linear-gradient(180deg,#dc2626,#ef4444); min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: vulFixedTotal ? (vulFixedHigh / vulFixedTotal * 64) + 'px' : '4px' }"></div>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
@@ -536,7 +536,7 @@
                   <div style="border-top:2px solid #e5e7eb; margin:0 8px;"></div>
                   <div class="d-flex justify-content-around mt-2 flex-wrap px-1">
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#dc2626;"></span>Critical</div>
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#f97316;"></span>High</div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#dc2626;"></span>High</div>
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#f59e0b;"></span>Medium</div>
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#10b981;"></span>Low</div>
                   </div>
@@ -927,79 +927,83 @@
           </div>
 
           <div class="msu-modal-body">
-            <p class="msu-modal-subtitle">Vulnerability patch status by asset group</p>
+            <p class="msu-modal-subtitle">Showing vulnerabilities for team — <strong>{{ selectedTeam }}</strong></p>
 
-            <div v-if="msuGroupedVulns.length === 0" class="msu-modal-empty">
+            <div
+              v-if="msuBySeverity.critical.length === 0 && msuBySeverity.high.length === 0 && msuBySeverity.medium.length === 0 && msuBySeverity.low.length === 0"
+              class="msu-modal-empty"
+            >
               <i class="bi bi-shield-check me-2"></i>No vulnerabilities found for this team.
             </div>
 
-            <div v-for="group in msuGroupedVulns" :key="group.name" class="msu-modal-group mb-4">
-              <div class="msu-modal-group-header">
-                <h6 class="msu-group-title">{{ group.name }}</h6>
-                <span class="msu-group-count">
-                  {{ group.rows.length }} {{ group.rows.length === 1 ? 'asset' : 'assets' }}
-                </span>
+            <template v-for="sev in ['critical','high','medium','low']" :key="sev">
+            <div v-if="msuBySeverity[sev].length > 0" class="mte-severity-card mb-3"
+              :class="`msu-${sev}-card`">
+              <div class="mte-severity-head" @click="toggleMsuSeverity(sev)">
+                <div class="mte-severity-left">
+                  <i class="bi" :class="sev === 'critical' ? 'bi-exclamation-octagon-fill' : sev === 'high' ? 'bi-exclamation-triangle-fill' : sev === 'medium' ? 'bi-exclamation-circle-fill' : 'bi-gear-fill'"></i>
+                  <span>{{ sev.charAt(0).toUpperCase() + sev.slice(1) }} Vulnerabilities</span>
+                  <span class="mte-badge" :class="sev">{{ msuBySeverity[sev].length }} ITEMS</span>
+                </div>
+                <i class="bi" :class="msuOpenSev === sev ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
               </div>
 
-              <div class="msu-modal-table-wrap">
+              <div v-if="msuOpenSev === sev" class="msu-modal-table-wrap">
                 <table class="msu-modal-table">
                   <thead>
                     <tr>
                       <th>Vulnerability Name</th>
                       <th>Asset</th>
                       <th>OS</th>
-                      <th>Severity</th>
                       <th>Status</th>
                       <th></th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="(vuln, index) in group.rows" :key="index">
-                      <td>
-                        <span class="msu-modal-vuln-name" :title="vuln.plugin_name">{{ vuln.plugin_name }}</span>
-                      </td>
-                      <td>
-                        <span class="msu-modal-asset-chip">{{ vuln.host_name }}</span>
-                      </td>
-                      <td>
-                        <span class="msu-modal-os-text" :title="vuln.os">{{ vuln.os || '—' }}</span>
-                      </td>
-                      <td>
-                        <span class="msu-modal-sev-badge" :class="'msu-modal-sev-' + (vuln.risk_factor || '').toLowerCase()">
-                          <span class="msu-modal-sev-dot"></span>
-                          {{ vuln.risk_factor }}
-                        </span>
-                      </td>
-                      <td>
-                        <span class="msu-modal-status-badge"
-                          :class="(getResolvedCvStatus(vuln)?.toLowerCase() === 'open') ? 'msu-modal-status-open' : 'msu-modal-status-closed'">
-                          <span class="msu-modal-status-dot"></span>
-                          <span class="text-capitalize">{{ getResolvedCvStatus(vuln) }}</span>
-                        </span>
-                      </td>
-                      <td>
-                        <router-link :to="vuln.fix_vulnerability_id ? {
-                          name: 'user-remediation-timeline',
-                          params: { reportId: msuReportId || authStore.userLatestReportId, asset: vuln.host_name },
-                          query: { fix_vul_id: vuln.fix_vulnerability_id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor }
-                        } : {
-                          name: 'user-remediation-timeline',
-                          params: { reportId: msuReportId || authStore.userLatestReportId, asset: vuln.host_name },
-                          query: { id: vuln.plugin_id || vuln.id || vuln.nessus_plugin_id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor }
-                        }" class="text-decoration-none">
-                          <button v-if="['closed', 'fixed', 'completed'].includes((vuln.status || '').toLowerCase())" class="msu-modal-view-btn">
-                            View <i class="bi bi-arrow-right-circle-fill ms-1"></i>
-                          </button>
-                          <button v-else class="msu-modal-fixnow-btn">
-                            Fix Now <i class="bi bi-arrow-right-circle-fill ms-1"></i>
-                          </button>
-                        </router-link>
-                      </td>
-                    </tr>
+                    <template v-for="group in getMsuVulnerabilityGroups(sev)" :key="`${sev}-${group.name}`">
+                      <tr class="msu-vuln-group-row" @click="toggleMsuGroup(`${sev}::${group.name}`)">
+                        <td colspan="5">
+                          <div class="msu-vuln-group-head">
+                            <span class="msu-vuln-group-title">{{ group.name }}</span>
+                            <span class="msu-vuln-group-right">
+                              <span class="mte-badge" :class="sev">{{ group.rows.length }} {{ group.rows.length === 1 ? 'asset' : 'assets' }}</span>
+                              <i class="bi" :class="isMsuGroupOpen(`${sev}::${group.name}`) ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr v-for="(vuln, index) in group.rows" :key="`${sev}-${group.name}-${index}`" v-show="isMsuGroupOpen(`${sev}::${group.name}`)">
+                        <td><span class="msu-modal-vuln-name" :title="vuln.plugin_name">{{ vuln.plugin_name }}</span></td>
+                        <td><span class="msu-modal-asset-chip">{{ vuln.host_name }}</span></td>
+                        <td><span class="msu-modal-os-text" :title="vuln.os">{{ vuln.os || '—' }}</span></td>
+                        <td>
+                          <span class="msu-modal-status-badge"
+                            :class="(getResolvedCvStatus(vuln)?.toLowerCase() === 'open') ? 'msu-modal-status-open' : 'msu-modal-status-closed'">
+                            <span class="text-capitalize">{{ getResolvedCvStatus(vuln) }}</span>
+                          </span>
+                        </td>
+                        <td>
+                          <router-link :to="vuln.fix_vulnerability_id ? {
+                            name: 'user-remediation-timeline',
+                            params: { reportId: msuReportId || authStore.userLatestReportId, asset: vuln.host_name },
+                            query: { fix_vul_id: vuln.fix_vulnerability_id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor }
+                          } : {
+                            name: 'user-remediation-timeline',
+                            params: { reportId: msuReportId || authStore.userLatestReportId, asset: vuln.host_name },
+                            query: { id: vuln.plugin_id || vuln.id || vuln.nessus_plugin_id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor }
+                          }" class="text-decoration-none">
+                            <button class="msu-modal-view-btn">
+                              View Now <i class="bi bi-arrow-right-circle-fill ms-1"></i>
+                            </button>
+                          </router-link>
+                        </td>
+                      </tr>
+                    </template>
                   </tbody>
                 </table>
               </div>
             </div>
+            </template>
           </div>
 
           <div class="mte-modal-footer">
@@ -1080,6 +1084,8 @@ export default {
       extPopupOriginalDeadlineDays: null,
       extPopupOptionsLoading: false,
       showMsuModal: false,
+      msuOpenGroup: "",
+      msuOpenSev: null,
       msuReportId: null,
       inProcessCount: 0,
       inProcessItems: [],
@@ -1348,6 +1354,15 @@ export default {
         map.get(key).push(vuln);
       }
       return Array.from(map.entries()).map(([name, rows]) => ({ name, rows }));
+    },
+    msuBySeverity() {
+      const base = { critical: [], high: [], medium: [], low: [] };
+      const vulns = this.mitigationActiveTeamData.vulnerabilities || [];
+      for (const vuln of vulns) {
+        const sev = String(vuln.risk_factor || "").toLowerCase();
+        if (base[sev]) base[sev].push(vuln);
+      }
+      return base;
     },
     meanRemediateHuman() { return this.meanTimeRemediate ?? '0w 0d 0hrs'; },
     meanTimeRemediateWeeks() {
@@ -2028,8 +2043,63 @@ export default {
       // Fetch user vuln register to get closed status (use cache)
       await this.authStore.fetchUserVulnerabilityRegister(false);
       await this.authStore.fetchUserClosedVulns(false);
+      const firstSev = ["critical", "high", "medium", "low"].find((s) => this.msuBySeverity[s]?.length);
+      this.msuOpenSev = firstSev || null;
+      const firstGroup = firstSev ? this.getMsuVulnerabilityGroups(firstSev)[0] : null;
+      this.msuOpenGroup = firstGroup ? `${firstSev}::${firstGroup.name}` : "";
     },
-    closeMsuModal() { this.showMsuModal = false; },
+    closeMsuModal() {
+      this.showMsuModal = false;
+      this.msuOpenGroup = "";
+      this.msuOpenSev = null;
+    },
+    toggleMsuSeverity(severity) {
+      this.msuOpenSev = this.msuOpenSev === severity ? null : severity;
+    },
+    getMsuVulnerabilityGroups(severity) {
+      const rows = this.msuBySeverity[severity] || [];
+      const map = new Map();
+      for (const vuln of rows) {
+        const key = (vuln.plugin_name || "").trim();
+        if (!map.has(key)) map.set(key, []);
+        map.get(key).push(vuln);
+      }
+      return Array.from(map.entries()).map(([name, groupRows]) => ({ name, rows: groupRows }));
+    },
+    toggleMsuGroup(groupName) {
+      this.msuOpenGroup = this.msuOpenGroup === groupName ? "" : groupName;
+    },
+    isMsuGroupOpen(groupName) {
+      return this.msuOpenGroup === groupName;
+    },
+    runLiveDashboardSync(force = true) {
+      const team = this.selectedTeam || "both";
+      return Promise.all([
+        this.loadDashboardSummaryCards(team, force),
+        this.fetchMitigationByTeam(force),
+        this.fetchVulnAssetCount(),
+        this.refreshInProcessCount(),
+        this.loadRiskCriteria(),
+        this.loadMteExtensionData(),
+      ]).catch(() => {});
+    },
+    startLiveDashboardSync() {
+      if (this._liveDashboardTimer) return;
+      this._liveDashboardTimer = setInterval(() => {
+        if (document.hidden) return;
+        void this.runLiveDashboardSync(true);
+      }, 15000);
+    },
+    stopLiveDashboardSync() {
+      if (!this._liveDashboardTimer) return;
+      clearInterval(this._liveDashboardTimer);
+      this._liveDashboardTimer = null;
+    },
+    handleLiveDashboardVisibility() {
+      if (!document.hidden) {
+        void this.runLiveDashboardSync(true);
+      }
+    },
   },
   async mounted() {
     window.addEventListener("resize", this.handleWalkthroughViewportChange);
@@ -2045,14 +2115,9 @@ export default {
 
     // Default to All Teams on load
     this.selectedTeam = 'both';
-    void Promise.all([
-      this.loadDashboardSummaryCards(this.selectedTeam, true),
-      this.fetchMitigationByTeam(true),
-      this.fetchVulnAssetCount(),
-      this.refreshInProcessCount(),
-      this.loadRiskCriteria(),
-      this.loadMteExtensionData(),
-    ]).catch(() => {});
+    void this.runLiveDashboardSync(true);
+    this.startLiveDashboardSync();
+    document.addEventListener("visibilitychange", this.handleLiveDashboardVisibility);
 
     // Close dropdown when clicking outside
     document.addEventListener('click', (e) => {
@@ -2063,19 +2128,16 @@ export default {
     });
   },
   activated() {
-    const team = this.selectedTeam || 'both';
-    void Promise.all([
-      this.loadDashboardSummaryCards(team, true),
-      this.fetchMitigationByTeam(true),
-      this.fetchVulnAssetCount(),
-      this.refreshInProcessCount(),
-    ]).catch(() => {});
+    void this.runLiveDashboardSync(true);
+    this.startLiveDashboardSync();
   },
   beforeUnmount() {
     document.removeEventListener("mousedown", this.handleCommonWalkthroughDocumentClick);
     document.removeEventListener("mousedown", this.handleWalkthroughDocumentClick);
     window.removeEventListener("resize", this.handleWalkthroughViewportChange);
     window.removeEventListener("scroll", this.handleWalkthroughViewportChange, true);
+    this.stopLiveDashboardSync();
+    document.removeEventListener("visibilitychange", this.handleLiveDashboardVisibility);
   },
 };
 </script>
@@ -2416,16 +2478,16 @@ export default {
   border-radius: 4px;
 }
 .cv-tag-red    { background: #fee2e2; color: #dc2626; }
-.cv-tag-orange { background: #fff7ed; color: #f97316; }
+.cv-tag-orange { background: #fff7ed; color: #dc2626; }
 .cv-tag-grey   { background: #f1f5f9; color: #64748b; }
 
 .cv-team-stats { margin: 8px 0 10px; display: flex; flex-direction: column; gap: 4px; }
 .cv-stat-row { display: flex; align-items: center; gap: 6px; }
 .cv-stat-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .cv-dot-critical { background: #dc2626; }
-.cv-dot-high     { background: #f97316; }
-.cv-dot-medium   { background: #d97706; }
-.cv-dot-low      { background: #16a34a; }
+.cv-dot-high     { background: #c2410c; }
+.cv-dot-medium   { background: #f59e0b; }
+.cv-dot-low      { background: #10b981; }
 .cv-stat-label { font-size: 11px; color: #64748b; flex: 1; }
 .cv-stat-val { font-size: 12px; font-weight: 700; color: #1e293b; }
 
@@ -2484,7 +2546,7 @@ export default {
   white-space: nowrap;
 }
 .cv-badge-critical { background: #fee2e2; color: #dc2626; }
-.cv-badge-high     { background: #fff7ed; color: #f97316; }
+.cv-badge-high     { background: #fff7ed; color: #dc2626; }
 .cv-badge-medium   { background: #fefce8; color: #ca8a04; }
 .cv-badge-low      { background: #f0fdf4; color: #16a34a; }
 
@@ -2880,7 +2942,7 @@ export default {
   padding-left: 12px;
 }
 .dash-mte-table th.sev-critical { color: #dc2626; }
-.dash-mte-table th.sev-high { color: #f97316; }
+.dash-mte-table th.sev-high { color: #c2410c; }
 .dash-mte-table th.sev-medium { color: #f59e0b; }
 .dash-mte-table th.sev-low { color: #10b981; }
 .dash-mte-pill {
@@ -2896,7 +2958,7 @@ export default {
   padding: 0 6px;
 }
 .dash-mte-pill.critical { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
-.dash-mte-pill.high     { background: #ffedd5; color: #ea580c; border: 1px solid #fdba74; }
+.dash-mte-pill.high     { background: #f8dede; color: #b42318; border: 1px solid #efb7b1; }
 .dash-mte-pill.medium   { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
 .dash-mte-pill.low      { background: #ccfbf1; color: #0f766e; border: 1px solid #5eead4; }
 
@@ -3112,8 +3174,8 @@ export default {
   font-weight: 700;
 }
 .mte-critical .mte-severity-left { color: #dc2626; }
-.mte-high .mte-severity-left { color: #f97316; }
-.mte-medium .mte-severity-left { color: #f97316; }
+.mte-high .mte-severity-left { color: #dc2626; }
+.mte-medium .mte-severity-left { color: #dc2626; }
 .mte-low .mte-severity-left { color: #16a34a; }
 .mte-critical .mte-severity-head { background: rgba(220, 38, 38, 0.12); border-bottom: 1px solid rgba(220, 38, 38, 0.3); }
 .mte-high .mte-severity-head { background: rgba(249, 115, 22, 0.12); border-bottom: 1px solid rgba(249, 115, 22, 0.3); }
@@ -3127,9 +3189,13 @@ export default {
   padding: 3px 7px;
 }
 .mte-badge.critical { background: #dc2626; color: #fff; }
-.mte-badge.high { background: #f97316; color: #fff; }
-.mte-badge.medium { background: #f59e0b; color: #fff; }
+.mte-badge.high { background: #dc2626; color: #fff; }
+.mte-badge.medium { background: #f7e4bf; color: #d48806; border: 1px solid #f3d79a; }
 .mte-badge.low { background: #10b981; color: #fff; }
+.msu-critical-card { border-color: #fecaca; background: #fff5f5; }
+.msu-high-card { border-color: #fed7aa; background: #fff7ed; }
+.msu-medium-card { border-color: #fde68a; background: #fffdf0; }
+.msu-low-card { border-color: #99f6e4; background: #f0fffe; }
 .mte-table-wrap { overflow-x: auto; border-top: 1px solid #e2e8f0; }
 .mte-table { width: 100%; border-collapse: collapse; min-width: 520px; }
 .mte-table th, .mte-table td {
@@ -3261,6 +3327,28 @@ export default {
 }
 .msu-modal-table tbody tr:last-child td { border-bottom: none; }
 .msu-modal-table tbody tr:hover { background: #fafbfc; }
+.msu-vuln-group-row td {
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0 !important;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+.msu-vuln-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.msu-vuln-group-title {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #1e293b;
+}
+.msu-vuln-group-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
 .msu-modal-vuln-name {
   font-weight: 600;
   color: #241447;
@@ -3304,8 +3392,8 @@ export default {
 }
 .msu-modal-sev-critical { background: #fef2f2; color: #dc2626; }
 .msu-modal-sev-critical .msu-modal-sev-dot { background: #dc2626; }
-.msu-modal-sev-high { background: #fff7ed; color: #c2410c; }
-.msu-modal-sev-high .msu-modal-sev-dot { background: #c2410c; }
+.msu-modal-sev-high { background: #fff7ed; color: #b42318; }
+.msu-modal-sev-high .msu-modal-sev-dot { background: #b42318; }
 .msu-modal-sev-medium { background: #fefce8; color: #a16207; }
 .msu-modal-sev-medium .msu-modal-sev-dot { background: #a16207; }
 .msu-modal-sev-low { background: #f0fdf4; color: #15803d; }

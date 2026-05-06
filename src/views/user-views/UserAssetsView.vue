@@ -635,7 +635,8 @@ export default {
       return this.getStatusLabel(status) === "Closed" ? "status-dot-closed" : "status-dot-open";
     },
     syncTotalAssets() {
-      this.totalAssets = this.assets.length + this.heldAssets.length;
+      // Keep header count aligned with dashboard: only active (non-held) assets.
+      this.totalAssets = this.assets.length;
     },
     async onSupportRequestsTabClick() {
       this.activeTab = "exceptions";

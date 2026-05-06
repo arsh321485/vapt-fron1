@@ -255,7 +255,7 @@
                                   query: { id: getVulRegisterId(v), plugin_name: v.vul_name, risk_factor: v.severity }
                                 }"
                                 class="btn-fix-now text-decoration-none">
-                                Fix Now
+                                View Now
                               </router-link>
                             </div>
                           </div>
@@ -1132,7 +1132,7 @@ export default {
   white-space: nowrap;
 }
 .sev-critical { background: #fee2e2; color: #dc2626; }
-.sev-high     { background: #ffedd5; color: #f97316; }
+.sev-high     { background: #fee2e2; color: #b91c1c; }
 .sev-medium   { background: #fef3c7; color: #f59e0b; }
 .sev-low      { background: #d1fae5; color: #10b981; }
 
@@ -1152,7 +1152,7 @@ export default {
   border-radius: 4px;
 }
 .critical-dot { color: maroon;  background: #fdeaea; }
-.high-dot     { color: red;     background: rgb(246,214,214); }
+.high-dot     { color: #b91c1c; background: #fee2e2; }
 .medium-dot   { color: orange;  background: rgb(249,225,193); }
 .low-dot      { color: #0f696e; background: #dcfce7; }
 
@@ -1363,7 +1363,7 @@ export default {
   font-weight: 700;
 }
 .sev-pill-critical { color: #dc2626; }
-.sev-pill-high     { color: #f97316; }
+.sev-pill-high     { color: #b91c1c; }
 .sev-pill-medium   { color: #f59e0b; }
 /* Same white / gray border as other severity pills; green text only */
 .sev-pill-low { color: #10b981; }
@@ -1395,7 +1395,7 @@ export default {
 
 .vuln-icon { font-size: 1rem; }
 .vuln-icon-critical { color: #ba1a1a; }
-.vuln-icon-high     { color: #ea580c; }
+.vuln-icon-high     { color: #dc2626; }
 .vuln-icon-medium   { color: #ca8a04; }
 .vuln-icon-low      { color: #10b981; }
 

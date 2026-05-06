@@ -289,14 +289,14 @@
                     <!-- Critical -->
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
                       <span style="font-size:12px; font-weight:800; color:#1f2937;">{{ authStore.vulnerabilities.critical || 0 }}</span>
-                      <div style="width:100%; border-radius:6px 6px 0 0; background:linear-gradient(180deg,#dc2626,#b91c1c); min-height:4px; transition:height 0.5s ease;"
+                      <div style="width:100%; border-radius:6px 6px 0 0; background:linear-gradient(180deg,#dc2626,#ef4444); min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: totalVulnerabilities ? ((authStore.vulnerabilities.critical || 0) / totalVulnerabilities * 66) + 'px' : '4px' }">
                       </div>
                     </div>
                     <!-- High -->
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
                       <span style="font-size:12px; font-weight:800; color:#1f2937;">{{ authStore.vulnerabilities.high || 0 }}</span>
-                      <div style="width:100%; border-radius:6px 6px 0 0; background:linear-gradient(180deg,#f97316,#ef4444); min-height:4px; transition:height 0.5s ease;"
+                      <div style="width:100%; border-radius:6px 6px 0 0; background:linear-gradient(180deg,#dc2626,#ef4444); min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: totalVulnerabilities ? ((authStore.vulnerabilities.high || 0) / totalVulnerabilities * 66) + 'px' : '4px' }">
                       </div>
                     </div>
@@ -321,7 +321,7 @@
                   <!-- Legend -->
                   <div class="d-flex justify-content-around mt-1 flex-wrap px-1">
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#dc2626;"></span>Critical</div>
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#f97316;"></span>High</div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#dc2626;"></span>High</div>
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#f59e0b;"></span>Medium</div>
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#10b981;"></span>Low</div>
                   </div>
@@ -376,7 +376,7 @@
                         <svg width="66" height="38" viewBox="0 0 72 42">
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none" stroke="#f1f5f9" stroke-width="8" stroke-linecap="round"/>
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none"
-                            :stroke="mitigationPct('high').compliancePct <= 0 ? '#d1d5db' : '#f97316'"
+                            :stroke="mitigationPct('high').compliancePct <= 0 ? '#d1d5db' : '#dc2626'"
                             stroke-width="8" stroke-linecap="round"
                             stroke-dasharray="94"
                             :stroke-dashoffset="94 - (mitigationPct('high').compliancePct / 100 * 94)"/>
@@ -385,7 +385,7 @@
                           <div style="font-size:11px;font-weight:800;color:#1f2937;line-height:1;">{{ formatTimeline(getMitigationValue('high')) }}</div>
                         </div>
                       </div>
-                      <span class="mitigation-sev-label" style="color:#f97316;">High</span>
+                      <span class="mitigation-sev-label" style="color:#dc2626;">High</span>
                     </div>
 
                     <!-- Medium -->
@@ -545,12 +545,12 @@
                   <div class="d-flex align-items-end justify-content-around gap-2 px-3" style="height:80px;">
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
                       <span style="font-size:12px; font-weight:800; color:#1f2937;">{{ vulFixedCritical }}</span>
-                      <div style="width:100%; border-radius:6px 6px 0 0; background:linear-gradient(180deg,#dc2626,#b91c1c); min-height:4px; transition:height 0.5s ease;"
+                      <div style="width:100%; border-radius:6px 6px 0 0; background:linear-gradient(180deg,#dc2626,#ef4444); min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: vulFixedTotal ? (vulFixedCritical / vulFixedTotal * 64) + 'px' : '4px' }"></div>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
                       <span style="font-size:12px; font-weight:800; color:#1f2937;">{{ vulFixedHigh }}</span>
-                      <div style="width:100%; border-radius:6px 6px 0 0; background:linear-gradient(180deg,#f97316,#ef4444); min-height:4px; transition:height 0.5s ease;"
+                      <div style="width:100%; border-radius:6px 6px 0 0; background:linear-gradient(180deg,#dc2626,#ef4444); min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: vulFixedTotal ? (vulFixedHigh / vulFixedTotal * 64) + 'px' : '4px' }"></div>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
@@ -567,7 +567,7 @@
                   <div style="border-top:2px solid #e5e7eb; margin:0 8px;"></div>
                   <div class="d-flex justify-content-around mt-2 flex-wrap px-1">
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#dc2626;"></span>Critical</div>
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#f97316;"></span>High</div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#dc2626;"></span>High</div>
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#f59e0b;"></span>Medium</div>
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#10b981;"></span>Low</div>
                   </div>
@@ -1229,17 +1229,30 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="vuln in cvModalGroupedVulns.critical" :key="vuln.id || vuln.host_name + vuln.plugin_name">
-                      <td style="font-weight:600; color:#1e293b;">{{ vuln.host_name || '—' }}</td>
-                      <td style="color:#64748b; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" :title="vuln.os || '—'">{{ vuln.os || '—' }}</td>
-                      <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#334155;" :title="vuln.plugin_name">{{ vuln.plugin_name }}</td>
-                      <td><span class="mte-pill" :class="getCvStatusPillClass(getResolvedCvStatus(vuln))">{{ getResolvedCvStatus(vuln) }}</span></td>
-                      <td>
-                        <router-link :to="{ name:'remediation-timeline', params:{ reportId: currentReportId, asset: vuln.host_name }, query:{ id: vuln.id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor } }" class="text-decoration-none" @click="closeCommonVulnModal">
-                          <button class="cv-view-btn">View <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
-                        </router-link>
-                      </td>
-                    </tr>
+                    <template v-for="group in getCvVulnerabilityGroups('critical')" :key="'critical-' + group.name">
+                      <tr class="cv-vuln-group-row" @click="toggleCvModalVuln('critical', group.name)">
+                        <td colspan="5">
+                          <div class="cv-vuln-group-head">
+                            <span class="cv-vuln-group-title">{{ group.name }}</span>
+                            <span class="cv-vuln-group-right">
+                              <span class="mte-badge critical">{{ group.items.length }} {{ group.items.length === 1 ? 'Asset' : 'Assets' }}</span>
+                              <i class="bi" :class="isCvModalVulnOpen('critical', group.name) ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr v-for="vuln in group.items" :key="'critical-' + (vuln.id || vuln.host_name + vuln.plugin_name)" v-show="isCvModalVulnOpen('critical', group.name)">
+                        <td style="font-weight:600; color:#1e293b;">{{ vuln.host_name || '—' }}</td>
+                        <td style="color:#64748b; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" :title="vuln.os || '—'">{{ vuln.os || '—' }}</td>
+                        <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#334155;" :title="vuln.plugin_name">{{ vuln.plugin_name }}</td>
+                        <td><span class="mte-pill" :class="getCvStatusPillClass(getResolvedCvStatus(vuln))">{{ getResolvedCvStatus(vuln) }}</span></td>
+                        <td>
+                          <router-link :to="{ name:'remediation-timeline', params:{ reportId: currentReportId, asset: vuln.host_name }, query:{ id: vuln.id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor } }" class="text-decoration-none" @click="closeCommonVulnModal">
+                            <button class="cv-view-btn">View <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
+                          </router-link>
+                        </td>
+                      </tr>
+                    </template>
                   </tbody>
                 </table>
               </div>
@@ -1248,7 +1261,7 @@
             <!-- High -->
             <div v-if="cvModalGroupedVulns.high.length > 0" class="mte-severity-card cv-high-card">
               <div class="mte-severity-head" @click="toggleCvModalGroup('high')">
-                <div class="mte-severity-left" style="color:#c2410c;">
+                <div class="mte-severity-left" style="color:#b42318;">
                   <i class="bi bi-exclamation-triangle-fill mte-high-icon"></i>
                   <span>High Vulnerabilities</span>
                   <span class="mte-badge high">{{ cvModalGroupedVulns.high.length }} Items</span>
@@ -1259,17 +1272,30 @@
                 <table class="mte-table">
                   <thead><tr><th>Asset (IP)</th><th>OS</th><th>Vulnerability</th><th>Status</th><th></th></tr></thead>
                   <tbody>
-                    <tr v-for="vuln in cvModalGroupedVulns.high" :key="vuln.id || vuln.host_name + vuln.plugin_name">
-                      <td style="font-weight:600; color:#1e293b;">{{ vuln.host_name || '—' }}</td>
-                      <td style="color:#64748b; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" :title="vuln.os || '—'">{{ vuln.os || '—' }}</td>
-                      <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#334155;" :title="vuln.plugin_name">{{ vuln.plugin_name }}</td>
-                      <td><span class="mte-pill" :class="getCvStatusPillClass(getResolvedCvStatus(vuln))">{{ getResolvedCvStatus(vuln) }}</span></td>
-                      <td>
-                        <router-link :to="{ name:'remediation-timeline', params:{ reportId: currentReportId, asset: vuln.host_name }, query:{ id: vuln.id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor } }" class="text-decoration-none" @click="closeCommonVulnModal">
-                          <button class="cv-view-btn">View <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
-                        </router-link>
-                      </td>
-                    </tr>
+                    <template v-for="group in getCvVulnerabilityGroups('high')" :key="'high-' + group.name">
+                      <tr class="cv-vuln-group-row" @click="toggleCvModalVuln('high', group.name)">
+                        <td colspan="5">
+                          <div class="cv-vuln-group-head">
+                            <span class="cv-vuln-group-title">{{ group.name }}</span>
+                            <span class="cv-vuln-group-right">
+                              <span class="mte-badge high">{{ group.items.length }} {{ group.items.length === 1 ? 'Asset' : 'Assets' }}</span>
+                              <i class="bi" :class="isCvModalVulnOpen('high', group.name) ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr v-for="vuln in group.items" :key="'high-' + (vuln.id || vuln.host_name + vuln.plugin_name)" v-show="isCvModalVulnOpen('high', group.name)">
+                        <td style="font-weight:600; color:#1e293b;">{{ vuln.host_name || '—' }}</td>
+                        <td style="color:#64748b; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" :title="vuln.os || '—'">{{ vuln.os || '—' }}</td>
+                        <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#334155;" :title="vuln.plugin_name">{{ vuln.plugin_name }}</td>
+                        <td><span class="mte-pill" :class="getCvStatusPillClass(getResolvedCvStatus(vuln))">{{ getResolvedCvStatus(vuln) }}</span></td>
+                        <td>
+                          <router-link :to="{ name:'remediation-timeline', params:{ reportId: currentReportId, asset: vuln.host_name }, query:{ id: vuln.id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor } }" class="text-decoration-none" @click="closeCommonVulnModal">
+                            <button class="cv-view-btn">View <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
+                          </router-link>
+                        </td>
+                      </tr>
+                    </template>
                   </tbody>
                 </table>
               </div>
@@ -1289,17 +1315,30 @@
                 <table class="mte-table">
                   <thead><tr><th>Asset (IP)</th><th>OS</th><th>Vulnerability</th><th>Status</th><th></th></tr></thead>
                   <tbody>
-                    <tr v-for="vuln in cvModalGroupedVulns.medium" :key="vuln.id || vuln.host_name + vuln.plugin_name">
-                      <td style="font-weight:600; color:#1e293b;">{{ vuln.host_name || '—' }}</td>
-                      <td style="color:#64748b; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" :title="vuln.os || '—'">{{ vuln.os || '—' }}</td>
-                      <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#334155;" :title="vuln.plugin_name">{{ vuln.plugin_name }}</td>
-                      <td><span class="mte-pill" :class="getCvStatusPillClass(getResolvedCvStatus(vuln))">{{ getResolvedCvStatus(vuln) }}</span></td>
-                      <td>
-                        <router-link :to="{ name:'remediation-timeline', params:{ reportId: currentReportId, asset: vuln.host_name }, query:{ id: vuln.id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor } }" class="text-decoration-none" @click="closeCommonVulnModal">
-                          <button class="cv-view-btn">View <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
-                        </router-link>
-                      </td>
-                    </tr>
+                    <template v-for="group in getCvVulnerabilityGroups('medium')" :key="'medium-' + group.name">
+                      <tr class="cv-vuln-group-row" @click="toggleCvModalVuln('medium', group.name)">
+                        <td colspan="5">
+                          <div class="cv-vuln-group-head">
+                            <span class="cv-vuln-group-title">{{ group.name }}</span>
+                            <span class="cv-vuln-group-right">
+                              <span class="mte-badge medium">{{ group.items.length }} {{ group.items.length === 1 ? 'Asset' : 'Assets' }}</span>
+                              <i class="bi" :class="isCvModalVulnOpen('medium', group.name) ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr v-for="vuln in group.items" :key="'medium-' + (vuln.id || vuln.host_name + vuln.plugin_name)" v-show="isCvModalVulnOpen('medium', group.name)">
+                        <td style="font-weight:600; color:#1e293b;">{{ vuln.host_name || '—' }}</td>
+                        <td style="color:#64748b; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" :title="vuln.os || '—'">{{ vuln.os || '—' }}</td>
+                        <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#334155;" :title="vuln.plugin_name">{{ vuln.plugin_name }}</td>
+                        <td><span class="mte-pill" :class="getCvStatusPillClass(getResolvedCvStatus(vuln))">{{ getResolvedCvStatus(vuln) }}</span></td>
+                        <td>
+                          <router-link :to="{ name:'remediation-timeline', params:{ reportId: currentReportId, asset: vuln.host_name }, query:{ id: vuln.id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor } }" class="text-decoration-none" @click="closeCommonVulnModal">
+                            <button class="cv-view-btn">View <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
+                          </router-link>
+                        </td>
+                      </tr>
+                    </template>
                   </tbody>
                 </table>
               </div>
@@ -1319,17 +1358,30 @@
                 <table class="mte-table">
                   <thead><tr><th>Asset (IP)</th><th>OS</th><th>Vulnerability</th><th>Status</th><th></th></tr></thead>
                   <tbody>
-                    <tr v-for="vuln in cvModalGroupedVulns.low" :key="vuln.id || vuln.host_name + vuln.plugin_name">
-                      <td style="font-weight:600; color:#1e293b;">{{ vuln.host_name || '—' }}</td>
-                      <td style="color:#64748b; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" :title="vuln.os || '—'">{{ vuln.os || '—' }}</td>
-                      <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#334155;" :title="vuln.plugin_name">{{ vuln.plugin_name }}</td>
-                      <td><span class="mte-pill" :class="getCvStatusPillClass(getResolvedCvStatus(vuln))">{{ getResolvedCvStatus(vuln) }}</span></td>
-                      <td>
-                        <router-link :to="{ name:'remediation-timeline', params:{ reportId: currentReportId, asset: vuln.host_name }, query:{ id: vuln.id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor } }" class="text-decoration-none" @click="closeCommonVulnModal">
-                          <button class="cv-view-btn">View <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
-                        </router-link>
-                      </td>
-                    </tr>
+                    <template v-for="group in getCvVulnerabilityGroups('low')" :key="'low-' + group.name">
+                      <tr class="cv-vuln-group-row" @click="toggleCvModalVuln('low', group.name)">
+                        <td colspan="5">
+                          <div class="cv-vuln-group-head">
+                            <span class="cv-vuln-group-title">{{ group.name }}</span>
+                            <span class="cv-vuln-group-right">
+                              <span class="mte-badge low">{{ group.items.length }} {{ group.items.length === 1 ? 'Asset' : 'Assets' }}</span>
+                              <i class="bi" :class="isCvModalVulnOpen('low', group.name) ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr v-for="vuln in group.items" :key="'low-' + (vuln.id || vuln.host_name + vuln.plugin_name)" v-show="isCvModalVulnOpen('low', group.name)">
+                        <td style="font-weight:600; color:#1e293b;">{{ vuln.host_name || '—' }}</td>
+                        <td style="color:#64748b; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" :title="vuln.os || '—'">{{ vuln.os || '—' }}</td>
+                        <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#334155;" :title="vuln.plugin_name">{{ vuln.plugin_name }}</td>
+                        <td><span class="mte-pill" :class="getCvStatusPillClass(getResolvedCvStatus(vuln))">{{ getResolvedCvStatus(vuln) }}</span></td>
+                        <td>
+                          <router-link :to="{ name:'remediation-timeline', params:{ reportId: currentReportId, asset: vuln.host_name }, query:{ id: vuln.id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor } }" class="text-decoration-none" @click="closeCommonVulnModal">
+                            <button class="cv-view-btn">View <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
+                          </router-link>
+                        </td>
+                      </tr>
+                    </template>
                   </tbody>
                 </table>
               </div>
@@ -1401,6 +1453,12 @@ export default {
       reasonModalPos: { top: 0, left: 0 },
       showCommonVulnModal: false,
       cvModalOpenSev: 'critical',
+      cvModalOpenVuln: {
+        critical: "",
+        high: "",
+        medium: "",
+        low: "",
+      },
       riskCriteria: { critical: null, high: null, medium: null, low: null },
       modalSeverity: null,
       modalDays: null,
@@ -2078,12 +2136,14 @@ export default {
     async openCommonVulnModal() {
       this.showCommonVulnModal = true;
       this.cvModalOpenSev = 'critical';
+      this.cvModalOpenVuln = { critical: "", high: "", medium: "", low: "" };
       const [mitResult] = await Promise.all([
         this.authStore.fetchMitigationByTeam(true),
         this.authStore.fetchVulnerabilityRegister(true),
       ]);
       if (mitResult.status) {
         this.mitigationByTeamData = mitResult.data;
+        this.setInitialCvModalVulnGroup('critical');
       }
     },
     closeCommonVulnModal() {
@@ -2091,6 +2151,30 @@ export default {
     },
     toggleCvModalGroup(sev) {
       this.cvModalOpenSev = this.cvModalOpenSev === sev ? '' : sev;
+      if (this.cvModalOpenSev) {
+        this.setInitialCvModalVulnGroup(this.cvModalOpenSev);
+      }
+    },
+    getCvVulnerabilityGroups(severity) {
+      const rows = this.cvModalGroupedVulns?.[severity] || [];
+      const grouped = new Map();
+      rows.forEach((row) => {
+        const name = String(row.plugin_name || "Unnamed Vulnerability").trim() || "Unnamed Vulnerability";
+        if (!grouped.has(name)) grouped.set(name, []);
+        grouped.get(name).push(row);
+      });
+      return Array.from(grouped.entries()).map(([name, items]) => ({ name, items }));
+    },
+    setInitialCvModalVulnGroup(severity) {
+      if (this.cvModalOpenVuln[severity]) return;
+      const groups = this.getCvVulnerabilityGroups(severity);
+      this.cvModalOpenVuln[severity] = groups.length ? groups[0].name : "";
+    },
+    toggleCvModalVuln(severity, vulnName) {
+      this.cvModalOpenVuln[severity] = this.cvModalOpenVuln[severity] === vulnName ? "" : vulnName;
+    },
+    isCvModalVulnOpen(severity, vulnName) {
+      return this.cvModalOpenVuln[severity] === vulnName;
     },
     getResolvedCvStatus(vuln) {
       const norm = s => String(s || '').toLowerCase().trim();
@@ -2806,6 +2890,23 @@ export default {
         this.removeReportStatusOverlay();
       }
     },
+    startLiveDashboardSync() {
+      if (this._liveDashboardTimer) return;
+      this._liveDashboardTimer = setInterval(() => {
+        if (document.hidden) return;
+        this.loadDashboardData();
+      }, 15000);
+    },
+    stopLiveDashboardSync() {
+      if (!this._liveDashboardTimer) return;
+      clearInterval(this._liveDashboardTimer);
+      this._liveDashboardTimer = null;
+    },
+    handleLiveDashboardVisibility() {
+      if (!document.hidden) {
+        this.loadDashboardData();
+      }
+    },
   },
 
 mounted() {
@@ -2817,6 +2918,8 @@ mounted() {
   // Fire dashboard APIs immediately; report-status check runs in parallel (no duplicate loadDashboardData).
   this.loadDashboardData();
   void this.initReportStatusCheck();
+  this.startLiveDashboardSync();
+  document.addEventListener("visibilitychange", this.handleLiveDashboardVisibility);
 
   queueMicrotask(() => {
     this.initTestingOverlay();
@@ -2836,6 +2939,8 @@ mounted() {
 
     this.stopReportStatusPolling();
     this.removeReportStatusOverlay();
+    this.stopLiveDashboardSync();
+    document.removeEventListener("visibilitychange", this.handleLiveDashboardVisibility);
   },
   activated() {
     console.log("=== ACTIVATED hook called ===");
@@ -2843,6 +2948,7 @@ mounted() {
     void this.initReportStatusCheck();
     // Refresh every time dashboard is shown again (keep-alive includes vulns-fixed + in-process inside loadDashboardData).
     this.loadDashboardData();
+    this.startLiveDashboardSync();
     this._lastDashboardLoad = Date.now();
   },
 };
@@ -2878,9 +2984,9 @@ mounted() {
 .cv-stat-row { display: flex; align-items: center; gap: 6px; }
 .cv-stat-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .cv-dot-critical { background: #dc2626; }
-.cv-dot-high     { background: #f97316; }
-.cv-dot-medium   { background: #d97706; }
-.cv-dot-low      { background: #16a34a; }
+.cv-dot-high     { background: #c2410c; }
+.cv-dot-medium   { background: #f59e0b; }
+.cv-dot-low      { background: #10b981; }
 .cv-stat-label { font-size: 11px; color: #64748b; flex: 1; }
 .cv-stat-val { font-size: 12px; font-weight: 700; color: #1e293b; }
 .cv-affected-row { display: flex; align-items: center; gap: 6px; margin-top: auto; padding-top: 10px; border-top: 1px solid #f1f5f9; }
@@ -2907,7 +3013,7 @@ mounted() {
 .cv-affected-label { font-size: 11px; color: #64748b; font-weight: 500; }
 .cv-sev-badge { font-size: 9px; font-weight: 800; padding: 2px 7px; border-radius: 4px; letter-spacing: 0.04em; white-space: nowrap; }
 .cv-badge-critical { background: #fee2e2; color: #dc2626; }
-.cv-badge-high     { background: #fff7ed; color: #f97316; }
+.cv-badge-high     { background: #fff7ed; color: #dc2626; }
 .cv-badge-medium   { background: #fefce8; color: #ca8a04; }
 .cv-badge-low      { background: #f0fdf4; color: #16a34a; }
 
@@ -3213,7 +3319,7 @@ mounted() {
   vertical-align: text-top;
 }
 .dash-mte-table th.sev-critical { color: #dc2626; }
-.dash-mte-table th.sev-high { color: #f97316; }
+.dash-mte-table th.sev-high { color: #b42318; }
 .dash-mte-table th.sev-medium { color: #f59e0b; }
 .dash-mte-table th.sev-low { color: #10b981; }
 .dash-mte-pill {
@@ -3229,7 +3335,7 @@ mounted() {
   padding: 0 6px;
 }
 .dash-mte-pill.critical { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
-.dash-mte-pill.high { background: #ffedd5; color: #ea580c; border: 1px solid #fdba74; }
+.dash-mte-pill.high { background: #f8dede; color: #b42318; border: 1px solid #efb7b1; }
 .dash-mte-pill.medium { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
 .dash-mte-pill.low { background: #ccfbf1; color: #0f766e; border: 1px solid #5eead4; }
 
@@ -3364,8 +3470,8 @@ mounted() {
   line-height: 1.25;
 }
 .mte-critical .mte-severity-left { color: #dc2626; }
-.mte-high .mte-severity-left { color: #f97316 !important; }
-.mte-medium .mte-severity-left { color: #f97316 !important; }
+.mte-high .mte-severity-left { color: #dc2626 !important; }
+.mte-medium .mte-severity-left { color: #b45309 !important; }
 .mte-low .mte-severity-left { color: #16a34a !important; }
 .mte-critical .mte-severity-head { background: rgba(220, 38, 38, 0.12); border-bottom: 1px solid rgba(220, 38, 38, 0.3); }
 .mte-high .mte-severity-head { background: rgba(249, 115, 22, 0.12); border-bottom: 1px solid rgba(249, 115, 22, 0.3); }
@@ -3381,8 +3487,8 @@ mounted() {
   padding: 3px 7px;
 }
 .mte-badge.critical { background: #dc2626; color: #fff; }
-.mte-badge.high { background: #f97316; color: #fff; }
-.mte-badge.medium { background: #f59e0b; color: #fff; }
+.mte-badge.high { background: #dc2626; color: #fff; }
+.mte-badge.medium { background: #f7e4bf; color: #d48806; border: 1px solid #f3d79a; }
 .mte-badge.low { background: #10b981; color: #fff; }
 .mte-table-wrap { overflow-x: auto; border-top: 1px solid #e2e8f0; }
 .mte-table { width: 100%; border-collapse: collapse; min-width: 760px; }
@@ -3429,8 +3535,8 @@ mounted() {
   font-weight: 600;
   position: relative;
 }
-.mte-high-icon { color: #f97316; }
-.mte-medium-icon { color: #f97316; }
+.mte-high-icon { color: #dc2626; }
+.mte-medium-icon { color: #b45309; }
 .mte-low-icon { color: #16a34a; }
 .reason-detail-overlay-inner {
   position: absolute;
@@ -3809,14 +3915,14 @@ mounted() {
   overflow: hidden;
 }
 .rsev-badge { padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; display: inline-block; }
-.rsev-maroon, .rsev-critical { background: #dc2626; color: white; }
+.rsev-maroon, .rsev-critical { background:rgb(249, 101, 22); color: white; }
 .rsev-red, .rsev-high { background: red; color: white; }
 .rsev-orange, .rsev-medium { background: goldenrod; color: white; }
 .rsev-darkgreen, .rsev-low { background: green; color: white; }
 .rteam-badge { padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
 .rteam-network { background: #3b82f6; color: white; }
 .rteam-patch { background: #10b981; color: white; }
-.rteam-configuration { background: #f97316; color: white; }
+.rteam-configuration { background: #dc2626; color: white; }
 .rteam-architectural { background: #dc2626; color: white; }
 .rstatus-open { padding: 6px 12px; border-radius: 20px; background: #fee2e2; color: #dc2626; font-size: 0.85rem; font-weight: 600; display: inline-block; }
 .rstatus-closed { padding: 6px 12px; border-radius: 20px; background: #d1fae5; color: #059669; font-size: 0.85rem; font-weight: 600; display: inline-block; }
@@ -3847,7 +3953,7 @@ mounted() {
   border-left: 4px solid transparent;
 }
 .ms-risk-critical { background: #fef2f2; border-left-color: #dc2626; }
-.ms-risk-high     { background: #fff7ed; border-left-color: #c2410c; }
+.ms-risk-high     { background: #fff7ed; border-left-color: #b42318; }
 .ms-risk-medium   { background: #fefce8; border-left-color: #a16207; }
 .ms-risk-low      { background: #f0fdf4; border-left-color: #15803d; }
 
@@ -4025,7 +4131,7 @@ mounted() {
   border: none;
 }
 .sev-critical { background: #fee2e2; color: #dc2626; }
-.sev-high     { background: #ffedd5; color: #c2410c; }
+.sev-high     { background: #ffedd5; color: #b42318; }
 .sev-medium   { background: #fef9c3; color: #854d0e; }
 .sev-low      { background: #ccfbf1; color: #0f696e; }
 
@@ -4166,7 +4272,7 @@ mounted() {
   font-weight: 700;
 }
 .sev-pill-critical { color: #dc2626; }
-.sev-pill-high     { color: #f97316; }
+.sev-pill-high     { color: #dc2626; }
 .sev-pill-medium   { color: #f59e0b; }
 /* Same white / gray border as other pills (base .sev-pill); green text only */
 .sev-pill-low { color: #10b981; }
@@ -4197,7 +4303,7 @@ mounted() {
 
 .vuln-icon { font-size: 1rem; }
 .vuln-icon-critical { color: #dc2626; }
-.vuln-icon-high     { color: #ea580c; }
+.vuln-icon-high     { color: #b91c1c; }
 .vuln-icon-medium   { color: #ca8a04; }
 .vuln-icon-low      { color: #0f696e; }
 
@@ -4414,6 +4520,30 @@ mounted() {
 .cv-pill-open       { background: #fee2e2; color: #dc2626; }
 .cv-pill-closed     { background: #ccfbf1; color: #0f766e; }
 .cv-pill-inprogress { background: #e5e7eb; color: #374151; }
+
+.cv-vuln-group-row td {
+  background: #f8fafc;
+  padding: 10px 14px;
+  border-top: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+  cursor: pointer;
+}
+.cv-vuln-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cv-vuln-group-title {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #1e293b;
+}
+.cv-vuln-group-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
 
 .cv-view-btn {
   background: none;

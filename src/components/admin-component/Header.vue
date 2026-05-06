@@ -30,7 +30,9 @@
               </router-link>
             </li>
             <li class="nav-item">
-              <a class="nav-link text-white" style="font-size: 1rem;" href="#">Partners</a>
+              <router-link to="/partner" style="font-size: 1rem;" class="nav-link text-white text-decoration-none">
+                Partners
+              </router-link>
             </li>
             <!-- <li class="nav-item">
               <router-link to="/vulnerabilityexplorer" style="font-size: 1rem;" class="nav-link text-white text-decoration-none">

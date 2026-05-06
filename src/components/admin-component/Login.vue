@@ -67,7 +67,6 @@ export default {
     handleLogin() {
       this.loading = true;
       this.message = "";
-
       axios
         .post("https://middleware-pn9u.onrender.com/login", {
           email: this.email,

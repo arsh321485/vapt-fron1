@@ -1987,7 +1987,7 @@ export const useAuthStore = defineStore("auth", {
 
         // Reuse existing cache buckets so old keys remain valid.
         this.cachedUserTotalAssets[key] = {
-          ...(this.cachedUserTotalAssets[key] || {}),
+          ...this.cachedUserTotalAssets[key],
           __summary: data,
           total_assets: data?.total_assets?.total_assets ?? 0,
         };

@@ -1265,3 +1265,118 @@ html, body {
   right: 0;
   top: 0;
 }
+
+/* Global Severity Palette (Critical/High/Medium/Low) */
+:root {
+  --sev-critical-text: #dc2626;
+  --sev-critical-bg: #fee2e2;
+  --sev-high-text: #b42318;
+  --sev-high-bg: #f8dede;
+  --sev-medium-text: #d48806;
+  --sev-medium-bg: #f7e4bf;
+  --sev-low-text: #1f7a57;
+  --sev-low-bg: #cfead8;
+}
+
+/* Critical palette (swapped with high) */
+.sev-critical,
+.critical-dot,
+.sev-pill-critical,
+.vuln-icon-critical,
+.msu-modal-sev-critical,
+.footer-critical,
+.tpc-sev-critical {
+  color: var(--sev-critical-text) !important;
+  background: #fee2e2 !important;
+}
+
+/* High palette (swapped with critical) */
+.sev-high,
+.high-dot,
+.sev-pill-high,
+.vuln-icon-high,
+.msu-modal-sev-high,
+.footer-high,
+.tpc-sev-high {
+  color: var(--sev-high-text) !important;
+  background: var(--sev-high-bg) !important;
+}
+
+/* Medium palette */
+.sev-medium,
+.medium-dot,
+.sev-pill-medium,
+.vuln-icon-medium,
+.msu-modal-sev-medium,
+.footer-medium,
+.tpc-sev-medium {
+  color: var(--sev-medium-text) !important;
+  background: var(--sev-medium-bg) !important;
+}
+
+/* Low palette */
+.sev-low,
+.low-dot,
+.sev-pill-low,
+.vuln-icon-low,
+.msu-modal-sev-low,
+.footer-low,
+.tpc-sev-low {
+  color: var(--sev-low-text) !important;
+  background: var(--sev-low-bg) !important;
+}
+
+/* Extended severity mapping across admin/user dashboard components */
+.vr-pill-critical,
+.vr-filter-tag-critical,
+.vr-sev-critical,
+.dash-mte-pill.critical,
+.mte-badge.critical,
+.cv-badge-critical,
+.cv-dot-critical,
+th.sev-critical {
+  color: var(--sev-critical-text) !important;
+  /* background-color: var(--sev-critical-bg) !important; */
+}
+
+.vr-pill-high,
+.vr-filter-tag-high,
+.vr-sev-high,
+.dash-mte-pill.high,
+.mte-badge.high,
+.cv-badge-high,
+.cv-dot-high,
+th.sev-high {
+  color: var(--sev-high-text) !important;
+  /* background-color: var(--sev-high-bg) !important; */
+}
+
+.dot-open,
+.vr-status-open {
+  color: var(--sev-high-text) !important;
+  background-color: var(--sev-high-bg) !important;
+}
+
+.vr-pill-medium,
+.vr-filter-tag-medium,
+.vr-sev-medium,
+.dash-mte-pill.medium,
+.mte-badge.medium,
+.cv-badge-medium,
+.cv-dot-medium,
+th.sev-medium {
+  color: var(--sev-medium-text) !important;
+  /* background-color: var(--sev-medium-bg) !important; */
+}
+
+.vr-pill-low,
+.vr-filter-tag-low,
+.vr-sev-low,
+.dash-mte-pill.low,
+.mte-badge.low,
+.cv-badge-low,
+.cv-dot-low,
+th.sev-low {
+  color: var(--sev-low-text) !important;
+  background-color: var(--sev-low-bg) !important;
+}

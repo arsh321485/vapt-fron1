@@ -40,12 +40,12 @@
               <span class="rc-sev-name">Critical</span>
             </div>
             <label class="rc-field-label">Existing Level</label>
-            <select class="rc-select" v-model="form.critical" :disabled="isLocked">
+            <select class="rc-select" v-model="existingForm.critical" :disabled="isLocked || isEditMode">
               <option value="" disabled>Select</option>
               <option v-for="opt in timeOptions" :key="opt">{{ opt }}</option>
             </select>
-            <label class="rc-field-label mt-3">New Level</label>
-            <select class="rc-select" v-model="form.critical" :disabled="isLocked">
+            <label v-if="isEditMode" class="rc-field-label mt-3">New Level</label>
+            <select v-if="isEditMode" class="rc-select" v-model="newForm.critical" :disabled="isLocked">
               <option value="" disabled>Select</option>
               <option v-for="opt in timeOptions" :key="opt">{{ opt }}</option>
             </select>
@@ -57,15 +57,15 @@
               <span class="rc-sev-bar rc-bar-high"></span>
               <span class="rc-sev-name">High</span>
             </div>
-            <label class="rc-field-label">IMPACT LEVEL</label>
-            <select class="rc-select" v-model="form.high" :disabled="isLocked">
+            <label class="rc-field-label">Existing Level</label>
+            <select class="rc-select" v-model="existingForm.high" :disabled="isLocked || isEditMode">
               <option value="" disabled>Select</option>
-              <option v-for="opt in timeOptions" :key="opt" :disabled="isOptionDisabled(form.critical, opt)">{{ opt }}</option>
+              <option v-for="opt in timeOptions" :key="opt" :disabled="isOptionDisabled(existingForm.critical, opt)">{{ opt }}</option>
             </select>
-            <label class="rc-field-label mt-3">RESPONSE TIME</label>
-            <select class="rc-select" v-model="form.high" :disabled="isLocked">
+            <label v-if="isEditMode" class="rc-field-label mt-3">New Level</label>
+            <select v-if="isEditMode" class="rc-select" v-model="newForm.high" :disabled="isLocked">
               <option value="" disabled>Select</option>
-              <option v-for="opt in timeOptions" :key="opt" :disabled="isOptionDisabled(form.critical, opt)">{{ opt }}</option>
+              <option v-for="opt in timeOptions" :key="opt" :disabled="isOptionDisabled(newForm.critical, opt)">{{ opt }}</option>
             </select>
           </div>
 
@@ -75,15 +75,15 @@
               <span class="rc-sev-bar rc-bar-medium"></span>
               <span class="rc-sev-name">Medium</span>
             </div>
-            <label class="rc-field-label">IMPACT LEVEL</label>
-            <select class="rc-select" v-model="form.medium" :disabled="isLocked">
+            <label class="rc-field-label">Existing Level</label>
+            <select class="rc-select" v-model="existingForm.medium" :disabled="isLocked || isEditMode">
               <option value="" disabled>Select</option>
-              <option v-for="opt in timeOptions" :key="opt" :disabled="isOptionDisabled(form.high, opt)">{{ opt }}</option>
+              <option v-for="opt in timeOptions" :key="opt" :disabled="isOptionDisabled(existingForm.high, opt)">{{ opt }}</option>
             </select>
-            <label class="rc-field-label mt-3">RESPONSE TIME</label>
-            <select class="rc-select" v-model="form.medium" :disabled="isLocked">
+            <label v-if="isEditMode" class="rc-field-label mt-3">New Level</label>
+            <select v-if="isEditMode" class="rc-select" v-model="newForm.medium" :disabled="isLocked">
               <option value="" disabled>Select</option>
-              <option v-for="opt in timeOptions" :key="opt" :disabled="isOptionDisabled(form.high, opt)">{{ opt }}</option>
+              <option v-for="opt in timeOptions" :key="opt" :disabled="isOptionDisabled(newForm.high, opt)">{{ opt }}</option>
             </select>
           </div>
 
@@ -93,15 +93,15 @@
               <span class="rc-sev-bar rc-bar-low"></span>
               <span class="rc-sev-name">Low</span>
             </div>
-            <label class="rc-field-label">IMPACT LEVEL</label>
-            <select class="rc-select" v-model="form.low" :disabled="isLocked">
+            <label class="rc-field-label">Existing Level</label>
+            <select class="rc-select" v-model="existingForm.low" :disabled="isLocked || isEditMode">
               <option value="" disabled>Select</option>
-              <option v-for="opt in timeOptions" :key="opt" :disabled="isOptionDisabled(form.medium, opt)">{{ opt }}</option>
+              <option v-for="opt in timeOptions" :key="opt" :disabled="isOptionDisabled(existingForm.medium, opt)">{{ opt }}</option>
             </select>
-            <label class="rc-field-label mt-3">RESPONSE TIME</label>
-            <select class="rc-select" v-model="form.low" :disabled="isLocked">
+            <label v-if="isEditMode" class="rc-field-label mt-3">New Level</label>
+            <select v-if="isEditMode" class="rc-select" v-model="newForm.low" :disabled="isLocked">
               <option value="" disabled>Select</option>
-              <option v-for="opt in timeOptions" :key="opt" :disabled="isOptionDisabled(form.medium, opt)">{{ opt }}</option>
+              <option v-for="opt in timeOptions" :key="opt" :disabled="isOptionDisabled(newForm.medium, opt)">{{ opt }}</option>
             </select>
           </div>
 
@@ -198,7 +198,13 @@ export default {
         "4 Weeks",
         "5 Weeks",
       ],
-      form: {
+      existingForm: {
+        critical: "",
+        high: "",
+        medium: "",
+        low: "",
+      },
+      newForm: {
         critical: "",
         high: "",
         medium: "",
@@ -226,16 +232,16 @@ export default {
       if (!selectedValue) return false;
       return this.convertToDays(optionValue) < this.convertToDays(selectedValue);
     },
-    validateRiskCriteria() {
-      if (!this.form.critical || !this.form.high || !this.form.medium || !this.form.low) {
+    validateRiskCriteria(formValues) {
+      if (!formValues.critical || !formValues.high || !formValues.medium || !formValues.low) {
         Swal.fire("Missing Fields", "Please select all risk criteria values.", "warning");
         return false;
       }
 
-      const c = this.convertToDays(this.form.critical);
-      const h = this.convertToDays(this.form.high);
-      const m = this.convertToDays(this.form.medium);
-      const l = this.convertToDays(this.form.low);
+      const c = this.convertToDays(formValues.critical);
+      const h = this.convertToDays(formValues.high);
+      const m = this.convertToDays(formValues.medium);
+      const l = this.convertToDays(formValues.low);
 
       if (c > h || h > m || m > l) {
         Swal.fire(
@@ -257,7 +263,8 @@ export default {
         return;
       }
 
-      if (!this.validateRiskCriteria()) return;
+      const submitForm = this.isEditMode ? this.newForm : this.existingForm;
+      if (!this.validateRiskCriteria(submitForm)) return;
 
       try {
         this.loading = true;
@@ -265,7 +272,7 @@ export default {
         // 🔥 EDIT MODE FLOW
         if (this.isEditMode) {
 
-          const res = await auth.updateRiskCriteria(this.form); // PUT API
+          const res = await auth.updateRiskCriteria(submitForm); // PUT API
 
           if (res.status) {
             await Swal.fire({
@@ -284,7 +291,7 @@ export default {
         }
 
         // 🔥 NORMAL CREATE FLOW
-        const res = await auth.addRiskCriteria(this.form);
+        const res = await auth.addRiskCriteria(submitForm);
 
         if (res.status) {
           auth.markStepCompleted(2);
@@ -321,10 +328,14 @@ export default {
               localStorage.setItem("riskCriteriaId", d._id);
             }
             if (d.admin_id) localStorage.setItem("adminId", d.admin_id);
-            this.form.critical = d.critical;
-            this.form.high = d.high;
-            this.form.medium = d.medium;
-            this.form.low = d.low;
+            this.existingForm.critical = d.critical;
+            this.existingForm.high = d.high;
+            this.existingForm.medium = d.medium;
+            this.existingForm.low = d.low;
+            this.newForm.critical = d.critical;
+            this.newForm.high = d.high;
+            this.newForm.medium = d.medium;
+            this.newForm.low = d.low;
             this.isLocked = !this.isEditMode;
           }
           return;
@@ -335,10 +346,14 @@ export default {
 
           if (!d || (!d.critical && !d.high && !d.medium && !d.low)) return;
 
-          this.form.critical = d.critical;
-          this.form.high = d.high;
-          this.form.medium = d.medium;
-          this.form.low = d.low;
+          this.existingForm.critical = d.critical;
+          this.existingForm.high = d.high;
+          this.existingForm.medium = d.medium;
+          this.existingForm.low = d.low;
+          this.newForm.critical = d.critical;
+          this.newForm.high = d.high;
+          this.newForm.medium = d.medium;
+          this.newForm.low = d.low;
 
           if (d._id) {
             localStorage.setItem("riskId", d._id);

@@ -187,7 +187,7 @@ export default {
         }
         const full = match[0];
         if (match[1]) {
-          const label = match[1].replace(/[\[\]]/g, "").toLowerCase();
+          const label = match[1].replace(/[[\]]/g, "").toLowerCase();
           segments.push({ kind: `sev-${label}`, text: full });
         } else if (match[2]) {
           segments.push({ kind: "time-days", text: full });
