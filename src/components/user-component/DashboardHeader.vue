@@ -1,15 +1,15 @@
 <template>
   <main>
-  <div class="row fixed-browser-bar pe-0 me-0 gx-0"> 
+  <div class="row fixed-browser-bar pe-0 me-0 gx-0">
      <div class="col-12 pe-0">
   <div class="d-flex align-items-center justify-content-between gap-4 py-2 px-4">
-    
+
       <div class="browser-bar">
-        <router-link to="/userdashboard">
+        <router-link to="/home">
           <img src="@/assets/images/vaptfix_white.png" alt="">
         </router-link>
       </div>
-  
+
     <!-- Right Section -->
     <div class="d-flex align-items-center gap-2">
       <NotificationPanel recipient-type="user" />
@@ -121,7 +121,7 @@ export default {
   },
   mounted() {
     document.addEventListener("click", this.handleClickOutside);
-    this.fetchUserProfile(); 
+    this.fetchUserProfile();
   },
   beforeUnmount() {
     document.removeEventListener("click", this.handleClickOutside);
@@ -152,7 +152,7 @@ body {
 }
 
 .browser-bar img {
-  height: 40px; 
+  height: 40px;
 }
 
 .dashboard-circle {

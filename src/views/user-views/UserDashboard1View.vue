@@ -209,8 +209,9 @@
                             <defs>
                               <linearGradient id="mttr-grad-user" x1="0%" y1="0%" x2="100%" y2="0%">
                                 <stop offset="0%" stop-color="#10b981"/>
-                                <stop offset="50%" stop-color="#f59e0b"/>
-                                <stop offset="100%" stop-color="#ef4444"/>
+                                <stop offset="33%" stop-color="#f59e0b"/>
+                                <stop offset="66%" stop-color="#b42318"/>
+                                <stop offset="100%" stop-color="#dc2626"/>
                               </linearGradient>
                             </defs>
                             <!-- Background semi-circle (gray) open at bottom -->
@@ -231,7 +232,7 @@
                           </div>
                         </div>
 
-                    
+
                       </div>
 
                       <div class="d-flex justify-content-between align-items-center pt-2" style="border-top:1px solid #f1f5f9; margin-top:8px;">
@@ -294,32 +295,32 @@
                   <!-- Bar Chart -->
                   <div class="d-flex align-items-end justify-content-around gap-2 px-2" style="height: 82px; margin-top: 35px;">
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
-                      <span style="font-size:12px; font-weight:800; color:#1f2937;">{{ vulns.critical || 0 }}</span>
-                      <div style="width:100%; border-radius:6px 6px 0 0; background:linear-gradient(180deg,#dc2626,#ef4444); min-height:4px; transition:height 0.5s ease;"
+                      <span style="font-size:12px; font-weight:800; color:#dc2626;">{{ vulns.critical || 0 }}</span>
+                      <div style="width:100%; border-radius:6px 6px 0 0; background:#dc2626; min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: totalVulnerabilities ? ((vulns.critical || 0) / totalVulnerabilities * 66) + 'px' : '4px' }"></div>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
-                      <span style="font-size:12px; font-weight:800; color:#1f2937;">{{ vulns.high || 0 }}</span>
-                      <div style="width:100%; border-radius:6px 6px 0 0; background:linear-gradient(180deg,#dc2626,#ef4444); min-height:4px; transition:height 0.5s ease;"
+                      <span style="font-size:12px; font-weight:800; color:#b42318;">{{ vulns.high || 0 }}</span>
+                      <div style="width:100%; border-radius:6px 6px 0 0; background:#b42318; min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: totalVulnerabilities ? ((vulns.high || 0) / totalVulnerabilities * 66) + 'px' : '4px' }"></div>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
-                      <span style="font-size:12px; font-weight:800; color:#1f2937;">{{ vulns.medium || 0 }}</span>
-                      <div style="width:100%; border-radius:6px 6px 0 0; background:linear-gradient(180deg,#fbbf24,#f59e0b); min-height:4px; transition:height 0.5s ease;"
+                      <span style="font-size:12px; font-weight:800; color:#b45309;">{{ vulns.medium || 0 }}</span>
+                      <div style="width:100%; border-radius:6px 6px 0 0; background:#f59e0b; min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: totalVulnerabilities ? ((vulns.medium || 0) / totalVulnerabilities * 66) + 'px' : '4px' }"></div>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
-                      <span style="font-size:12px; font-weight:800; color:#1f2937;">{{ vulns.low || 0 }}</span>
-                      <div style="width:100%; border-radius:6px 6px 0 0; background:linear-gradient(180deg,#34d399,#10b981); min-height:4px; transition:height 0.5s ease;"
+                      <span style="font-size:12px; font-weight:800; color:#0f766e;">{{ vulns.low || 0 }}</span>
+                      <div style="width:100%; border-radius:6px 6px 0 0; background:#10b981; min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: totalVulnerabilities ? ((vulns.low || 0) / totalVulnerabilities * 66) + 'px' : '4px' }"></div>
                     </div>
                   </div>
                   <div style="border-top: 2px solid #e5e7eb; margin: 0 8px;"></div>
                   <div class="d-flex justify-content-around mt-1 flex-wrap px-1">
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#dc2626;"></span>Critical</div>
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#dc2626;"></span>High</div>
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#f59e0b;"></span>Medium</div>
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#10b981;"></span>Low</div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#dc2626;"></span><span style="color:#dc2626;">Critical</span></div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#b42318;"></span><span style="color:#b42318;">High</span></div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#f59e0b;"></span><span style="color:#b45309;">Medium</span></div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#10b981;"></span><span style="color:#0f766e;">Low</span></div>
                   </div>
                 </div>
               </div>
@@ -367,7 +368,7 @@
                         <svg width="66" height="38" viewBox="0 0 72 42">
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none" stroke="#f1f5f9" stroke-width="8" stroke-linecap="round"/>
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none"
-                            :stroke="mitigationPct('high').compliancePct <= 0 ? '#d1d5db' : '#dc2626'"
+                            :stroke="mitigationPct('high').compliancePct <= 0 ? '#d1d5db' : '#b42318'"
                             stroke-width="8" stroke-linecap="round"
                             stroke-dasharray="94"
                             :stroke-dashoffset="94 - (mitigationPct('high').compliancePct / 100 * 94)"/>
@@ -376,7 +377,7 @@
                           <div style="font-size:11px;font-weight:800;color:#1f2937;line-height:1;">{{ mitigation.high || '--' }}</div>
                         </div>
                       </div>
-                      <span class="mitigation-sev-label" style="color:#dc2626;">High</span>
+                      <span class="mitigation-sev-label" style="color:#b42318;">High</span>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1">
                       <div style="position:relative; width:66px; height:38px; overflow:hidden;">
@@ -513,32 +514,32 @@
                   </div>
                   <div class="d-flex align-items-end justify-content-around gap-2 px-3" style="height:80px;">
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
-                      <span style="font-size:12px; font-weight:800; color:#1f2937;">{{ vulFixedCritical }}</span>
-                      <div style="width:100%; border-radius:6px 6px 0 0; background:linear-gradient(180deg,#dc2626,#ef4444); min-height:4px; transition:height 0.5s ease;"
+                      <span style="font-size:12px; font-weight:800; color:#dc2626;">{{ vulFixedCritical }}</span>
+                      <div style="width:100%; border-radius:6px 6px 0 0; background:#dc2626; min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: vulFixedTotal ? (vulFixedCritical / vulFixedTotal * 64) + 'px' : '4px' }"></div>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
-                      <span style="font-size:12px; font-weight:800; color:#1f2937;">{{ vulFixedHigh }}</span>
-                      <div style="width:100%; border-radius:6px 6px 0 0; background:linear-gradient(180deg,#dc2626,#ef4444); min-height:4px; transition:height 0.5s ease;"
+                      <span style="font-size:12px; font-weight:800; color:#b42318;">{{ vulFixedHigh }}</span>
+                      <div style="width:100%; border-radius:6px 6px 0 0; background:#b42318; min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: vulFixedTotal ? (vulFixedHigh / vulFixedTotal * 64) + 'px' : '4px' }"></div>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
-                      <span style="font-size:12px; font-weight:800; color:#1f2937;">{{ vulFixedMedium }}</span>
-                      <div style="width:100%; border-radius:6px 6px 0 0; background:linear-gradient(180deg,#fbbf24,#f59e0b); min-height:4px; transition:height 0.5s ease;"
+                      <span style="font-size:12px; font-weight:800; color:#b45309;">{{ vulFixedMedium }}</span>
+                      <div style="width:100%; border-radius:6px 6px 0 0; background:#f59e0b; min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: vulFixedTotal ? (vulFixedMedium / vulFixedTotal * 64) + 'px' : '4px' }"></div>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
-                      <span style="font-size:12px; font-weight:800; color:#1f2937;">{{ vulFixedLow }}</span>
-                      <div style="width:100%; border-radius:6px 6px 0 0; background:linear-gradient(180deg,#34d399,#10b981); min-height:4px; transition:height 0.5s ease;"
+                      <span style="font-size:12px; font-weight:800; color:#0f766e;">{{ vulFixedLow }}</span>
+                      <div style="width:100%; border-radius:6px 6px 0 0; background:#10b981; min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: vulFixedTotal ? (vulFixedLow / vulFixedTotal * 64) + 'px' : '4px' }"></div>
                     </div>
                   </div>
                   <div style="border-top:2px solid #e5e7eb; margin:0 8px;"></div>
                   <div class="d-flex justify-content-around mt-2 flex-wrap px-1">
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#dc2626;"></span>Critical</div>
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#dc2626;"></span>High</div>
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#f59e0b;"></span>Medium</div>
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#10b981;"></span>Low</div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#dc2626;"></span><span style="color:#dc2626;">Critical</span></div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#b42318;"></span><span style="color:#b42318;">High</span></div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#f59e0b;"></span><span style="color:#b45309;">Medium</span></div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#10b981;"></span><span style="color:#0f766e;">Low</span></div>
                   </div>
                 </div>
               </div>
@@ -640,7 +641,7 @@
                       <div class="cv-team-icon-wrap">
                         <i :class="team.icon"></i>
                       </div>
-                      <span class="cv-team-id">{{ team.id }}</span>
+
                     </div>
                     <p class="cv-team-name">{{ team.key }}</p>
                     <h2 class="cv-team-count">{{ team.total }}</h2>
@@ -670,7 +671,6 @@
                     <div class="cv-affected-row">
                       <span class="cv-affected-label">Affected Assets</span>
                       <span class="cv-affected-num">{{ team.affectedAssets }}</span>
-                      <span class="cv-affected-type">{{ team.assetType }}</span>
                     </div>
                   </div>
                 </div>
@@ -691,13 +691,13 @@
                 <div class="col-md-3" v-for="vuln in uniqueVulns.slice(0, 8)" :key="vuln.plugin_name">
                   <div class="cv-vuln-card">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                      <span class="cv-vuln-assets"><i class="bi bi-hdd-network me-1"></i>{{ vulnAssetCountMap[vuln.plugin_name] ?? vuln.assets?.length ?? 1 }} assets</span>
+                      <span class="cv-vuln-assets"><i class="bi bi-hdd-network me-1"></i>{{ getVulnAssetCount(vuln) }} assets</span>
                       <span class="cv-sev-badge" :class="'cv-badge-' + (vuln.risk_factor || '').toLowerCase()">{{ (vuln.risk_factor || '').toUpperCase() }}</span>
                     </div>
                     <h6 class="cv-vuln-name" :title="vuln.plugin_name">{{ vuln.plugin_name }}</h6>
                     <div class="d-flex align-items-center mt-auto pt-2">
                       <i class="bi bi-person me-1" style="color:#94a3b8;font-size:0.78rem;"></i>
-                      <span class="cv-affected-label">{{ vuln.assets?.length ?? 1 }} affected asset{{ (vuln.assets?.length ?? 1) !== 1 ? 's' : '' }}</span>
+                      <span class="cv-affected-label">{{ getVulnAssetCount(vuln) }} affected asset{{ getVulnAssetCount(vuln) !== 1 ? 's' : '' }}</span>
                     </div>
                   </div>
                 </div>
@@ -952,6 +952,7 @@
                 <table class="msu-modal-table">
                   <thead>
                     <tr>
+                      <th style="width:40px;">S.No</th>
                       <th>Vulnerability Name</th>
                       <th>Asset</th>
                       <th>OS</th>
@@ -962,7 +963,7 @@
                   <tbody>
                     <template v-for="group in getMsuVulnerabilityGroups(sev)" :key="`${sev}-${group.name}`">
                       <tr class="msu-vuln-group-row" @click="toggleMsuGroup(`${sev}::${group.name}`)">
-                        <td colspan="5">
+                        <td colspan="6">
                           <div class="msu-vuln-group-head">
                             <span class="msu-vuln-group-title">{{ group.name }}</span>
                             <span class="msu-vuln-group-right">
@@ -973,6 +974,7 @@
                         </td>
                       </tr>
                       <tr v-for="(vuln, index) in group.rows" :key="`${sev}-${group.name}-${index}`" v-show="isMsuGroupOpen(`${sev}::${group.name}`)">
+                        <td style="color:#1e293b; font-size:12px; font-weight:600;">{{ index + 1 }}</td>
                         <td><span class="msu-modal-vuln-name" :title="vuln.plugin_name">{{ vuln.plugin_name }}</span></td>
                         <td><span class="msu-modal-asset-chip">{{ vuln.host_name }}</span></td>
                         <td><span class="msu-modal-os-text" :title="vuln.os">{{ vuln.os || '—' }}</span></td>
@@ -993,7 +995,7 @@
                             query: { id: vuln.plugin_id || vuln.id || vuln.nessus_plugin_id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor }
                           }" class="text-decoration-none">
                             <button class="msu-modal-view-btn">
-                              View Now <i class="bi bi-arrow-right-circle-fill ms-1"></i>
+                              {{ getResolvedCvStatus(vuln)?.toLowerCase() === 'open' ? 'Fix Now' : 'View Now' }} <i class="bi bi-arrow-right-circle-fill ms-1"></i>
                             </button>
                           </router-link>
                         </td>
@@ -1252,10 +1254,13 @@ export default {
       return this.modalSeverity ? map[this.modalSeverity] : '';
     },
     vulnAssetCountMap() {
-      if (!this.vulnAssetCountData?.vulnerabilities) return {};
+      if (!this.vulnAssetCountData?.teams) return {};
       const map = {};
-      for (const v of this.vulnAssetCountData.vulnerabilities) {
-        map[v.plugin_name] = v.asset_count;
+      const norm = (s) => String(s || '').trim().toLowerCase();
+      for (const teamData of Object.values(this.vulnAssetCountData.teams)) {
+        for (const v of (teamData.vulnerabilities || [])) {
+          map[norm(v.plugin_name)] = v.asset_count;
+        }
       }
       return map;
     },
@@ -1619,7 +1624,9 @@ export default {
     },
     async loadDashboardSummaryCards(team, force = false) {
       const store = useAuthStore();
-      this.assetsLoading = true;
+      // Only show loading spinner on first load (when no data yet)
+      const isFirstLoad = this.totalAssets === null;
+      if (isFirstLoad) this.assetsLoading = true;
       const normalizedTeam = team === 'both' ? undefined : team;
       const result = await store.fetchUserDashboardSummary(normalizedTeam, force);
       if (result.status) {
@@ -1631,43 +1638,45 @@ export default {
         const fixed = data.vulnerabilities_fixed || {};
         const vulns = data.vulnerabilities || {};
 
-        this.totalAssets = assets.total_assets ?? null;
-        this.meanTimeRemediate = mttr
-          ? `${mttr.weeks ?? 0}w ${mttr.days ?? 0}d ${mttr.hours_remaining ?? 0}hrs`
-          : null;
-        this.mitigation = {
-          critical: this.formatMitigationDays(mitigation.critical),
-          high: this.formatMitigationDays(mitigation.high),
-          medium: this.formatMitigationDays(mitigation.medium),
-          low: this.formatMitigationDays(mitigation.low),
-        };
-        this.supportReqs = {
-          total: support.total ?? null,
-          pending: support.pending ?? null,
-          closed: support.closed ?? null,
-        };
-        this.vulnsFixed = {
-          total: fixed.total_fixed ?? null,
-          critical: fixed.critical_fixed ?? null,
-          high: fixed.high_fixed ?? null,
-          medium: fixed.medium_fixed ?? null,
-          low: fixed.low_fixed ?? null,
-        };
-        this.vulns = {
-          critical: vulns.critical ?? null,
-          high: vulns.high ?? null,
-          medium: vulns.medium ?? null,
-          low: vulns.low ?? null,
-        };
-      } else {
-        this.totalAssets = null;
-        this.meanTimeRemediate = null;
-        this.mitigation = { critical: null, high: null, medium: null, low: null };
-        this.supportReqs = { total: null, pending: null, closed: null };
-        this.vulnsFixed = { total: null, critical: null, high: null, medium: null, low: null };
-        this.vulns = { critical: null, high: null, medium: null, low: null };
+        // Only update if valid data received - preserve existing on background refresh
+        if (assets.total_assets !== undefined) this.totalAssets = assets.total_assets;
+        if (mttr) this.meanTimeRemediate = `${mttr.weeks ?? 0}w ${mttr.days ?? 0}d ${mttr.hours_remaining ?? 0}hrs`;
+
+        if (mitigation.critical !== undefined || mitigation.high !== undefined) {
+          this.mitigation = {
+            critical: this.formatMitigationDays(mitigation.critical),
+            high: this.formatMitigationDays(mitigation.high),
+            medium: this.formatMitigationDays(mitigation.medium),
+            low: this.formatMitigationDays(mitigation.low),
+          };
+        }
+        if (support.total !== undefined) {
+          this.supportReqs = {
+            total: support.total ?? this.supportReqs.total,
+            pending: support.pending ?? this.supportReqs.pending,
+            closed: support.closed ?? this.supportReqs.closed,
+          };
+        }
+        if (fixed.total_fixed !== undefined) {
+          this.vulnsFixed = {
+            total: fixed.total_fixed ?? this.vulnsFixed.total,
+            critical: fixed.critical_fixed ?? this.vulnsFixed.critical,
+            high: fixed.high_fixed ?? this.vulnsFixed.high,
+            medium: fixed.medium_fixed ?? this.vulnsFixed.medium,
+            low: fixed.low_fixed ?? this.vulnsFixed.low,
+          };
+        }
+        if (vulns.critical !== undefined || vulns.high !== undefined) {
+          this.vulns = {
+            critical: vulns.critical ?? this.vulns.critical,
+            high: vulns.high ?? this.vulns.high,
+            medium: vulns.medium ?? this.vulns.medium,
+            low: vulns.low ?? this.vulns.low,
+          };
+        }
       }
-      this.assetsLoading = false;
+      // On error - do NOT reset to null, preserve existing data
+      if (isFirstLoad) this.assetsLoading = false;
     },
     formatMitigationDays(entry) {
       if (!entry) return null;
@@ -1694,6 +1703,11 @@ export default {
       if (result.status) {
         this.vulnAssetCountData = result.data;
       }
+    },
+    getVulnAssetCount(vuln) {
+      const key = String(vuln?.plugin_name || '').trim().toLowerCase();
+      if (!key) return vuln?.assets?.length ?? 1;
+      return this.vulnAssetCountMap[key] ?? vuln?.assets?.length ?? 1;
     },
     async refreshInProcessCount() {
       const store = useAuthStore();
@@ -2487,7 +2501,7 @@ export default {
 .cv-dot-critical { background: #dc2626; }
 .cv-dot-high     { background: #c2410c; }
 .cv-dot-medium   { background: #f59e0b; }
-.cv-dot-low      { background: #10b981; }
+.cv-dot-low      { background: #0f766e; }
 .cv-stat-label { font-size: 11px; color: #64748b; flex: 1; }
 .cv-stat-val { font-size: 12px; font-weight: 700; color: #1e293b; }
 
@@ -2546,9 +2560,9 @@ export default {
   white-space: nowrap;
 }
 .cv-badge-critical { background: #fee2e2; color: #dc2626; }
-.cv-badge-high     { background: #fff7ed; color: #dc2626; }
-.cv-badge-medium   { background: #fefce8; color: #ca8a04; }
-.cv-badge-low      { background: #f0fdf4; color: #16a34a; }
+.cv-badge-high     { background: #f8dede; color: #b42318; }
+.cv-badge-medium   { background: #fef3c7; color: #b45309; }
+.cv-badge-low      { background: #ccfbf1; color: #0f766e; }
 
 /* Tooltip */
 .ud-tooltip {
@@ -2942,9 +2956,9 @@ export default {
   padding-left: 12px;
 }
 .dash-mte-table th.sev-critical { color: #dc2626; }
-.dash-mte-table th.sev-high { color: #c2410c; }
-.dash-mte-table th.sev-medium { color: #f59e0b; }
-.dash-mte-table th.sev-low { color: #10b981; }
+.dash-mte-table th.sev-high { color: #b42318; }
+.dash-mte-table th.sev-medium { color: #b45309; }
+.dash-mte-table th.sev-low { color: #0f766e; }
 .dash-mte-pill {
   display: inline-flex;
   align-items: center;
@@ -3390,14 +3404,14 @@ export default {
   border-radius: 50%;
   flex-shrink: 0;
 }
-.msu-modal-sev-critical { background: #fef2f2; color: #dc2626; }
+.msu-modal-sev-critical { background: #fee2e2; color: #dc2626; }
 .msu-modal-sev-critical .msu-modal-sev-dot { background: #dc2626; }
-.msu-modal-sev-high { background: #fff7ed; color: #b42318; }
+.msu-modal-sev-high { background: #f8dede; color: #b42318; }
 .msu-modal-sev-high .msu-modal-sev-dot { background: #b42318; }
-.msu-modal-sev-medium { background: #fefce8; color: #a16207; }
-.msu-modal-sev-medium .msu-modal-sev-dot { background: #a16207; }
-.msu-modal-sev-low { background: #f0fdf4; color: #15803d; }
-.msu-modal-sev-low .msu-modal-sev-dot { background: #15803d; }
+.msu-modal-sev-medium { background: #fef3c7; color: #b45309; }
+.msu-modal-sev-medium .msu-modal-sev-dot { background: #b45309; }
+.msu-modal-sev-low { background: #ccfbf1; color: #0f766e; }
+.msu-modal-sev-low .msu-modal-sev-dot { background: #0f766e; }
 .msu-modal-status-badge {
   display: inline-flex;
   align-items: center;

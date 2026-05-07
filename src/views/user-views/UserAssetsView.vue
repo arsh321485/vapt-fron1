@@ -231,7 +231,7 @@
                             <i class="bi bi-chevron-down text-muted"></i>
                           </div>
                         </div>
-                        <div :id="'uvn' + idx" class="accordion-collapse collapse" :class="{ show: idx === 0 }">
+                        <div :id="'uvn' + idx" class="accordion-collapse collapse">
                           <div class="vuln-accordion-body">
                             <div class="vuln-meta-grid">
                               <div class="vuln-meta-cell">
@@ -1118,9 +1118,9 @@ export default {
   white-space: nowrap;
 }
 .sev-critical { background: #fee2e2; color: #dc2626; }
-.sev-high     { background: #ffedd5; color: #f97316; }
-.sev-medium   { background: #fef3c7; color: #f59e0b; }
-.sev-low      { background: #d1fae5; color: #10b981; }
+.sev-high     { background: #f8dede; color: #b42318; }
+.sev-medium   { background: #fef3c7; color: #b45309; }
+.sev-low      { background: #ccfbf1; color: #0f766e; }
 
 .vuln-chip {
   font-size: 0.65rem;
@@ -1137,10 +1137,10 @@ export default {
   padding: 2px 5px;
   border-radius: 4px;
 }
-.critical-dot { color: maroon;  background: #fdeaea; }
-.high-dot     { color: red;     background: rgb(246,214,214); }
-.medium-dot   { color: orange;  background: rgb(249,225,193); }
-.low-dot      { color: #0f696e; background: #dcfce7; }
+.critical-dot { color: #dc2626; background: #fee2e2; }
+.high-dot     { color: #b42318; background: #f8dede; }
+.medium-dot   { color: #b45309; background: #fef3c7; }
+.low-dot      { color: #0f766e; background: #ccfbf1; }
 
 /* Mitigation on hold */
 .mitigation-hold-section {
@@ -1695,10 +1695,10 @@ export default {
   display: inline-block; border-radius: 20px; font-size: 10px; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 8px;
 }
-.ext-sev-critical { background: #fee2e2; color: #b91c1c; }
-.ext-sev-high     { background: #fef3c7; color: #b45309; }
-.ext-sev-medium   { background: #fefce8; color: #92400e; }
-.ext-sev-low      { background: #ccfbf1; color: #0f766e; }
+.ext-sev-critical { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
+.ext-sev-high     { background: #f8dede; color: #b42318; border: 1px solid #efb7b1; }
+.ext-sev-medium   { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
+.ext-sev-low      { background: #ccfbf1; color: #0f766e; border: 1px solid #5eead4; }
 .ext-drawer-divider { height: 1px; background: #e2e8f0; margin: 0; flex-shrink: 0; }
 .ext-section-title {
   font-size: 11px; font-weight: 700; color: #0f696e;
@@ -1729,6 +1729,12 @@ export default {
 .ext-popup-textarea {
   border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 9px 12px;
   font-size: 13px; color: #1e293b; background: #f8fafc; outline: none; width: 100%;
+}
+.ext-popup-select:disabled {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  cursor: default;
 }
 .ext-popup-textarea { resize: vertical; min-height: 90px; }
 .ext-popup-footer {

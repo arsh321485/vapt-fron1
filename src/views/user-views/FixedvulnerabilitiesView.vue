@@ -58,11 +58,6 @@
                 >
                   Low
                 </button>
-                <div v-if="!activeFilters.includes('All')" class="d-flex gap-1 flex-wrap">
-                  <span v-for="f in activeFilters" :key="f" class="fv-filter-tag">
-                    {{ f }} <i class="bi bi-x ms-1 fv-tag-close" @click="setFilter(f)"></i>
-                  </span>
-                </div>
               </div>
               <span class="fv-count-badge">{{ filteredRows.length }} fixed</span>
             </div>
@@ -407,23 +402,27 @@ export default {
 }
 
 .fv-sev-critical {
-  background: #ffdad6;
-  color: #ba1a1a;
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
 }
 
 .fv-sev-high {
-  background: #ffe3df;
-  color: #a02020;
+  background: #f8dede;
+  color: #b42318;
+  border: 1px solid #efb7b1;
 }
 
 .fv-sev-medium {
-  background: #fff4cc;
-  color: #825b00;
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fcd34d;
 }
 
 .fv-sev-low {
-  background: #dcfce7;
-  color: #166534;
+  background: #ccfbf1;
+  color: #0f766e;
+  border: 1px solid #5eead4;
 }
 
 .fv-sev-default {

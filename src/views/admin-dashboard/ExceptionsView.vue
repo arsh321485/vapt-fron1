@@ -67,8 +67,8 @@
                     <option value="all">All Teams</option>
                     <option value="Patch Management">Patch Management</option>
                     <option value="Configuration Management">Configuration Management</option>
-                    <option value="Network Management">Network Management</option>
-                    <option value="Architectural Management">Architectural Management</option>
+                    <option value="Network Security">Network Security</option>
+                    <option value="Architectural Flaws">Architectural Flaws</option>
                   </select>
                 </div>
                 <span class="exc-showing-badge">Showing {{ paginatedSupportRequests.length }} requests</span>
@@ -144,31 +144,7 @@
               </div>
             </div>
 
-            <!-- Insight Cards -->
-            <div class="exc-insights">
-              <div class="exc-insight-card">
-                <div class="exc-insight-bg"></div>
-                <p class="exc-insight-label">Resolution Speed</p>
-                <p class="exc-insight-num">4.2 Days</p>
-                <p class="exc-insight-sub">Average time to close 'High' tickets. <span style="color:#0f696e;">↓ 12% from last month.</span></p>
-              </div>
-              <div class="exc-insight-card">
-                <div class="exc-insight-bg exc-insight-bg-teal"></div>
-                <p class="exc-insight-label">Coverage Gap</p>
-                <p class="exc-insight-num">18 Assets</p>
-                <p class="exc-insight-sub">Critical assets without active support tickets assigned.</p>
-              </div>
-              <div class="exc-insight-card exc-insight-dark">
-                <p class="exc-insight-label" style="color:rgba(165,146,206,0.7);">System Health</p>
-                <div class="d-flex align-items-end gap-2">
-                  <p class="exc-insight-num" style="color:#fff;">94%</p>
-                  <i class="bi bi-trending-up" style="color:#0f696e; margin-bottom:8px;"></i>
-                </div>
-                <div class="exc-health-bar">
-                  <div class="exc-health-fill" style="width:94%;"></div>
-                </div>
-              </div>
-            </div>
+
 
             <!-- Ticket Detail Slide-over -->
             <div v-if="showSlideOver" class="exc-slideover-backdrop" @click.self="closeSlideOver">
@@ -354,6 +330,7 @@ export default {
       .map(s => s.trim());
   },
 
+
   sortedSupportRequests() {
     const sorted = [...this.supportRequests];
 
@@ -371,9 +348,19 @@ export default {
    finalSupportRequests() {
     let rows = this.sortedSupportRequests;
     if (this.selectedTeam !== "all") {
-      rows = rows.filter(req =>
-        req.assigned_team?.toLowerCase() === this.selectedTeam.toLowerCase()
-      );
+      const sel = this.selectedTeam.toLowerCase().trim();
+      rows = rows.filter(req => {
+        // Check all possible team field names from API
+        const teamVal = (
+          req.assigned_team ||
+          req.team_name ||
+          req.team ||
+          req.assigned_to_team ||
+          ''
+        ).toLowerCase().trim();
+        // Flexible match: exact or partial
+        return teamVal === sel || teamVal.includes(sel) || sel.includes(teamVal);
+      });
     }
     if (this.activeTab === "all") return rows;
     return rows.filter((req) => (req.status || "").toLowerCase() === this.activeTab);

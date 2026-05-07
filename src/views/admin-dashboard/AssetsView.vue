@@ -192,7 +192,7 @@
 
                     <div class="d-flex flex-column gap-3">
                       <div v-for="(v, i) in filteredVulnerabilities" :key="i" class="vuln-accordion-item">
-                        <div class="vuln-accordion-header" data-bs-toggle="collapse" :data-bs-target="'#vn' + i" role="button">
+                        <div class="vuln-accordion-header" role="button" @click="expandedVulnIndex = expandedVulnIndex === i ? null : i">
                           <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
                             <i class="bi bi-exclamation-triangle-fill vuln-icon flex-shrink-0"
                               :class="{
@@ -209,10 +209,10 @@
                               <span :class="getStatusDotClass(v.status)"></span>{{ getStatusLabel(v.status) }}
                             </span>
                             <span class="text-muted" style="font-size:0.78rem;">CVSS: {{ v.cvss_score || '-' }}</span>
-                            <i class="bi bi-chevron-down text-muted"></i>
+                            <i class="bi text-muted" :class="expandedVulnIndex === i ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
                           </div>
                         </div>
-                        <div :id="'vn' + i" class="accordion-collapse collapse" :class="{ show: i === 0 }">
+                        <div v-show="expandedVulnIndex === i">
                           <div class="vuln-accordion-body">
                             <div class="vuln-meta-grid">
                               <div class="vuln-meta-cell">
@@ -389,6 +389,7 @@ export default {
       selectedAsset: "",
       activeSeverity: 'All',
       expandedDescriptions: {},
+      expandedVulnIndex: null,
       descriptionPreviewLimit: 280,
       closedFixVulnerabilities: [],
       closedFixCount: 0,
@@ -501,6 +502,12 @@ export default {
     },
   },
   watch: {
+    activeIndex() {
+      this.expandedVulnIndex = null;
+    },
+    activeSeverity() {
+      this.expandedVulnIndex = null;
+    },
     pagedAssets: {
       handler(list) {
         if (list.length && !this.activeIndex) {
@@ -1132,9 +1139,9 @@ export default {
   white-space: nowrap;
 }
 .sev-critical { background: #fee2e2; color: #dc2626; }
-.sev-high     { background: #fee2e2; color: #b91c1c; }
-.sev-medium   { background: #fef3c7; color: #f59e0b; }
-.sev-low      { background: #d1fae5; color: #10b981; }
+.sev-high     { background: #f8dede; color: #b42318; }
+.sev-medium   { background: #fef3c7; color: #b45309; }
+.sev-low      { background: #ccfbf1; color: #0f766e; }
 
 .vuln-chip {
   font-size: 0.65rem;
@@ -1151,10 +1158,10 @@ export default {
   padding: 2px 5px;
   border-radius: 4px;
 }
-.critical-dot { color: maroon;  background: #fdeaea; }
-.high-dot     { color: #b91c1c; background: #fee2e2; }
-.medium-dot   { color: orange;  background: rgb(249,225,193); }
-.low-dot      { color: #0f696e; background: #dcfce7; }
+.critical-dot { color: #dc2626; background: #fee2e2; }
+.high-dot     { color: #b42318; background: #f8dede; }
+.medium-dot   { color: #b45309; background: #fef3c7; }
+.low-dot      { color: #0f766e; background: #ccfbf1; }
 
 /* Mitigation on hold */
 .mitigation-hold-section {

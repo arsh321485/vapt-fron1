@@ -10,26 +10,12 @@
   </div>
 
   <div class="notification-panel" :class="{ open: showNotifications, fullscreen: isFullscreen }">
-    <div class="notif-drawer card border-0 rounded-4 h-100 d-flex flex-column overflow-hidden shadow-lg">
+    <div class="notif-drawer card border-0 rounded-0 h-100 d-flex flex-column overflow-hidden">
       <!-- Header — dashboard purple -->
       <div class="notif-drawer-header card-header border-0 d-flex justify-content-between align-items-center">
         <h5 class="mb-0 fw-bold notif-drawer-title">Notifications</h5>
         <div class="d-flex align-items-center gap-1">
-          <div class="btn-group">
-            <button
-              class="btn btn-sm notif-header-btn dropdown-toggle border-0"
-              type="button"
-              data-bs-toggle="dropdown"
-              aria-expanded="false"
-            >
-              <i class="bi bi-filter"></i>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end">
-              <li><a class="dropdown-item" href="#" @click.prevent="filterType = ''">All</a></li>
-              <li><a class="dropdown-item" href="#" @click.prevent="filterType = 'unread'">Unread</a></li>
-              <li><a class="dropdown-item" href="#" @click.prevent="filterType = 'read'">Read</a></li>
-            </ul>
-          </div>
+
 
           <button type="button" class="btn btn-sm notif-header-btn border-0" aria-label="Toggle fullscreen" @click="toggleFullscreen">
             <i class="bi bi-arrows-fullscreen"></i>
@@ -40,7 +26,7 @@
       </div>
 
       <!-- Body — dashboard grey canvas -->
-      <div class="notif-drawer-body card-body flex-grow-1 px-3 py-3" style="max-height: 500px; overflow-y: auto">
+      <div class="notif-drawer-body card-body flex-grow-1 px-3 py-3" style="overflow-y: auto; flex: 1 1 0; min-height: 0;">
         <div v-if="loading && notifications.length === 0" class="text-center py-5 notif-muted">
           <span class="spinner-border spinner-border-sm me-2" style="color: #0f696e"></span>
           Loading…
@@ -359,7 +345,7 @@ export default {
 
 .notif-drawer-header {
   background: linear-gradient(135deg, #241447 0%, #1a0f38 100%);
-  padding: 0.85rem 1rem;
+  padding: 15px;
 }
 
 .notif-drawer-title {
@@ -537,24 +523,24 @@ export default {
 }
 
 .notif-pill-critical {
-  background: #fef2f2;
-  color: #b91c1c;
-  border: 1px solid #fecaca;
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
 }
 .notif-pill-high {
-  background: #fff7ed;
-  color: #c2410c;
-  border: 1px solid #fed7aa;
+  background: #f8dede;
+  color: #b42318;
+  border: 1px solid #efb7b1;
 }
 .notif-pill-medium {
-  background: #fefce8;
-  color: #a16207;
-  border: 1px solid #fde047;
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fcd34d;
 }
 .notif-pill-low {
   background: #ccfbf1;
-  color: #0f696e;
-  border: 1px solid #99f6e4;
+  color: #0f766e;
+  border: 1px solid #5eead4;
 }
 
 .notif-accent-teal {

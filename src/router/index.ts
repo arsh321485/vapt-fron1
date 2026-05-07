@@ -26,6 +26,7 @@ import PricingplansView from "../views/admin-views/PricingplansView.vue";
 import PartnerView from "../views/admin-views/PartnerView.vue";
 import PartnerLeadPortalView from "../views/admin-views/PartnerLeadPortalView.vue";
 import PartnerLeadThankYouView from "../views/admin-views/PartnerLeadThankYouView.vue";
+import PartnerThankYouView from "../views/admin-views/PartnerThankYouView.vue";
 import RiskCriteriaView from "../views/admin-views/RiskCriteriaView.vue";
 import HowitWork from "../components/admin-component/HowitWork.vue";
 import Profile from "../components/admin-component/Profile.vue";
@@ -110,6 +111,11 @@ const router = createRouter({
       path: "/partner-lead-thankyou",
       name: "partner-lead-thankyou",
       component: PartnerLeadThankYouView,
+    },
+    {
+      path: "/partner-thankyou",
+      name: "partner-thankyou",
+      component: PartnerThankYouView,
     },
     {
       path: "/vulnerabilityexplorer",
@@ -403,6 +409,12 @@ const router = createRouter({
       path: "/user-calendar",
       name: "user-calendar",
       component: UserCalendarView,
+    },
+
+    // Catch-all: redirect any unknown route to /home
+    {
+      path: "/:pathMatch(.*)*",
+      redirect: "/home",
     },
   ],
   scrollBehavior(to, from, savedPosition) {

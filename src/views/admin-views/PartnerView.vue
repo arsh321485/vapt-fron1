@@ -191,7 +191,7 @@ export default {
   components: { Header, Footer },
   methods: {
     goToLeadPortal() {
-      this.$router.push("/partner-lead-portal");
+      this.$router.push("/partner-thankyou");
     },
   },
 };

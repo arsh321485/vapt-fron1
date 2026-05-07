@@ -144,7 +144,7 @@
                       <label class="ext-popup-label">Vulnerability Name</label>
                       <div class="ext-select-wrap">
                         <i class="bi bi-shield-exclamation ext-select-icon ext-icon-vuln"></i>
-                        <select class="ext-popup-select ext-has-icon" v-model="extPopupVulName" :disabled="!extPopupAsset || extPopupOptionsLoading">
+                        <select class="ext-popup-select ext-has-icon" v-model="extPopupVulName" disabled>
                           <option value="">{{ extPopupOptionsLoading ? 'Loading...' : 'Select Vulnerability' }}</option>
                           <option v-for="vn in extPopupVulList" :key="vn" :value="vn">{{ vn }}</option>
                         </select>
@@ -321,7 +321,7 @@
                         <div class="d-flex align-items-center gap-2 rt-task-right">
                           <span v-if="task.status === 'completed'" class="rt-step-status-badge rt-status-done">Completed</span>
                           <span v-else class="rt-step-status-badge rt-status-pending-red">Pending</span>
-                          <div class="rt-task-chevron" :class="{ 'rt-chevron-open': expandedTask === idx }">
+                          <div class="rt-task-chevron" :class="{ 'rt-chevron-open': expandedTasks.includes(idx) }">
                             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                               <path d="M4 6L8 10L12 6" stroke="#94a3b8" stroke-width="1.5"
                                     stroke-linecap="round" stroke-linejoin="round"/>
@@ -331,7 +331,7 @@
                       </div>
 
                       <!-- Expanded detail panel -->
-                      <div v-if="expandedTask === idx" class="rt-task-expanded">
+                      <div v-if="expandedTasks.includes(idx)" class="rt-task-expanded">
 
                         <!-- Meta: Deadline + Criticality + Effort (hidden by request) -->
                         <!-- <div class="rt-expand-meta-row">
@@ -409,13 +409,23 @@
                           class="rt-expand-section"
                         >
                           <span class="rt-expand-label">WHERE TO RUN</span>
-                          <div class="rt-code-block">{{ task.whereToRunLabel || task.whereToRun }}</div>
+                          <div class="rt-code-block rt-code-block-copy">
+                            <span>{{ task.whereToRunLabel || task.whereToRun }}</span>
+                            <button class="rt-copy-icon-btn" @click.stop="copyCommand(task.whereToRunLabel || task.whereToRun)" title="Copy">
+                              <i class="bi bi-clipboard"></i>
+                            </button>
+                          </div>
                         </div>
 
                         <!-- COMMAND TO RUN -->
                         <div v-if="task.command && task.command !== 'N/A'" class="rt-expand-section">
                           <span class="rt-expand-label">COMMAND TO RUN</span>
-                          <div class="rt-code-block" v-text="formatCommandToRun(task.command)"></div>
+                          <div class="rt-code-block rt-code-block-copy">
+                            <span v-text="formatCommandToRun(task.command)"></span>
+                            <button class="rt-copy-icon-btn" @click.stop="copyCommand(formatCommandToRun(task.command))" title="Copy">
+                              <i class="bi bi-clipboard"></i>
+                            </button>
+                          </div>
                         </div>
 
                         <div v-if="task.expectedOutput && task.expectedOutput !== 'N/A'" class="rt-expand-section">
@@ -603,7 +613,7 @@ export default {
       currentStep: 1,
       totalSteps: 0,
       completedSteps: [],
-      expandedTask: null,
+      expandedTasks: [],
       isLoading: false,
       savingStep: false,
       currentStepComment: '',
@@ -732,7 +742,37 @@ export default {
         .join('\n');
     },
     toggleTask(idx) {
-      this.expandedTask = this.expandedTask === idx ? null : idx;
+      const i = this.expandedTasks.indexOf(idx);
+      if (i === -1) {
+        this.expandedTasks.push(idx);
+      } else {
+        this.expandedTasks.splice(i, 1);
+      }
+    },
+    copyCommand(text) {
+      const doFallback = () => {
+        const el = document.createElement('textarea');
+        el.value = text;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        this.showCopyToast();
+      };
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => {
+          this.showCopyToast();
+        }).catch(doFallback);
+      } else {
+        doFallback();
+      }
+    },
+    showCopyToast() {
+      const toast = document.createElement('div');
+      toast.textContent = '✓ Copied to clipboard';
+      toast.style.cssText = 'position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#1e293b;color:#4ade80;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:600;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
+      document.body.appendChild(toast);
+      setTimeout(() => document.body.removeChild(toast), 2000);
     },
     toggleStep(step) {
       if (this.selectedSteps.includes(step)) {
@@ -841,7 +881,9 @@ export default {
       const res = await this.authStore.fetchUserMitigationTimelineExtensionOptions(
         severity,
         asset || undefined,
-        this.currentVuln.assignedTeam || undefined
+        this.currentVuln.assignedTeam || undefined,
+        this.currentVuln.report_id || this.$route.params.reportId || undefined,
+        this.currentVuln.name || undefined
       );
       this.extPopupOptionsLoading = false;
       if (res.status && res.data) {
@@ -1359,11 +1401,11 @@ export default {
   font-weight: 700;
   letter-spacing: 0.04em;
 }
-.rt-chip-risk { color: #7f1d1d; background: #fee2e2; }
-.rt-chip-risk-critical { color: #7f1d1d; background: #fee2e2; }
-.rt-chip-risk-high { color: #dc2626; background: #fee2e2; }
-.rt-chip-risk-medium { color: #854d0e; background: #fef3c7; }
-.rt-chip-risk-low { color: #065f46; background: #d1fae5; }
+.rt-chip-risk { color: #dc2626; background: #fee2e2; }
+.rt-chip-risk-critical { color: #dc2626; background: #fee2e2; }
+.rt-chip-risk-high { color: #b42318; background: #f8dede; }
+.rt-chip-risk-medium { color: #b45309; background: #fef3c7; }
+.rt-chip-risk-low { color: #0f766e; background: #ccfbf1; }
 .rt-chip-status {
   color: #334155;
   background: #e2e8f0;
@@ -1490,6 +1532,7 @@ export default {
 .ext-select-icon { position: absolute; left: 11px; color: #94a3b8; font-size: 13px; pointer-events: none; z-index: 1; }
 .ext-popup-select.ext-has-icon { padding-left: 32px; }
 .ext-popup-select,.ext-popup-textarea { border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 9px 12px; font-size: 13px; color: #1e293b; background: #f8fafc; outline: none; width: 100%; }
+.ext-popup-select:disabled { appearance: none; -webkit-appearance: none; -moz-appearance: none; cursor: default; }
 .ext-popup-textarea { resize: vertical; min-height: 90px; }
 .ext-deadline-chip { display: flex; align-items: center; gap: 7px; border-radius: 8px; padding: 9px 14px; font-size: 13px; font-weight: 600; border: 1.5px solid #e2e8f0; }
 .ext-deadline-original { background: #f1f5f9; color: #475569; }
@@ -1605,6 +1648,34 @@ export default {
 .rt-expand-text  { font-size: 0.84rem; color: #334155; margin: 0; line-height: 1.55; }
 .rt-filepath-box { background: #f8f9fc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; font-family: 'Courier New', Courier, monospace; font-size: 0.8rem; color: #475569; word-break: break-all; line-height: 1.6; }
 .rt-code-block { background: #1e293b; border-radius: 8px; padding: 12px 16px; font-family: 'Courier New', Courier, monospace; font-size: 0.82rem; color: #4ade80; word-break: break-all; line-height: 1.6; white-space: pre-wrap; }
+.rt-code-block-copy {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.rt-code-block-copy span {
+  flex: 1;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+.rt-copy-icon-btn {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: #4ade80;
+  font-size: 0.95rem;
+  cursor: pointer;
+  padding: 0 2px;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+  line-height: 1;
+  margin-top: 1px;
+}
+.rt-copy-icon-btn:hover {
+  opacity: 1;
+}
 .rt-tool-chip { display: inline-block; font-size: 0.72rem; font-weight: 600; background: #f1f5f9; color: #475569; padding: 3px 11px; border-radius: 50px; border: 1px solid #e2e8f0; }
 .rt-consideration-box { display: flex; align-items: flex-start; gap: 6px; font-size: 0.82rem; color: #c2410c; line-height: 1.55; margin-top: 2px; }
 .rt-checklist { display: flex; flex-direction: column; gap: 8px; margin-top: 2px; }

@@ -1169,8 +1169,8 @@ export default {
   border-radius: 8px;
   padding: 2px 10px;
 }
-.velocity-pct-critical { color: #7f1d1d; background: #fef2f2; }
-.velocity-pct-high     { color: #b91c1c; background: #fff1f1; }
+.velocity-pct-critical { color: #dc2626; background: #fef2f2; }
+.velocity-pct-high     { color: #b42318; background: #fff1f1; }
 .velocity-pct-overall  { color: #241447; background: #f4f0ff; }
 
 .velocity-bar-track {
@@ -1184,7 +1184,7 @@ export default {
   border-radius: 999px;
   transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.velocity-fill-critical { background: linear-gradient(90deg, #7f1d1d, #dc2626); }
+.velocity-fill-critical { background: #dc2626; }
 .velocity-fill-high     { background: linear-gradient(90deg, #dc2626, #f87171); }
 .velocity-fill-overall  { background: linear-gradient(90deg, #241447, #0f696e); }
 
@@ -1322,10 +1322,10 @@ export default {
   border-radius: 999px;
   letter-spacing: 0.02em;
 }
-.tpc-sev-critical { background: #fef2f2; color: #9b1c1c; }
-.tpc-sev-high     { background: #fff7ed; color: #c2410c; }
-.tpc-sev-medium   { background: #fefce8; color: #a16207; }
-.tpc-sev-low      { background: #f0fdf4; color: #15803d; }
+.tpc-sev-critical { background: #fee2e2; color: #dc2626; }
+.tpc-sev-high     { background: #f8dede; color: #b42318; }
+.tpc-sev-medium   { background: #fef3c7; color: #b45309; }
+.tpc-sev-low      { background: #ccfbf1; color: #0f766e; }
 
 /* ─────────────────────────────────────────────
    Filter Card
@@ -1518,10 +1518,10 @@ export default {
   font-weight: 800;
   letter-spacing: 0.03em;
 }
-.sev-badge-critical { background: #fef2f2; color: #9b1c1c; }
-.sev-badge-high     { background: #fff7ed; color: #c2410c; }
-.sev-badge-medium   { background: #fefce8; color: #a16207; }
-.sev-badge-low      { background: #f0fdf4; color: #15803d; }
+.sev-badge-critical { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
+.sev-badge-high     { background: #f8dede; color: #b42318; border: 1px solid #efb7b1; }
+.sev-badge-medium   { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
+.sev-badge-low      { background: #ccfbf1; color: #0f766e; border: 1px solid #5eead4; }
 
 /* Status badges */
 .status-open,
@@ -1580,10 +1580,10 @@ export default {
   padding: 3px 11px;
   border-radius: 999px;
 }
-.footer-critical { background: #fef2f2; color: #9b1c1c; }
-.footer-high     { background: #fff7ed; color: #c2410c; }
-.footer-medium   { background: #fefce8; color: #a16207; }
-.footer-low      { background: #f0fdf4; color: #15803d; }
+.footer-critical { color: #dc2626; }
+.footer-high     { color: #b42318; }
+.footer-medium   { color: #b45309; }
+.footer-low      { color: #0f766e; }
 
 /* ─────────────────────────────────────────────
    Responsive

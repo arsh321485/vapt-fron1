@@ -2265,7 +2265,6 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-
     // fetch user vulnerability register data
     async fetchUserVulnerabilityRegister(force = false) {
       if (!force && this.userVulnRegisterFetched && this.cachedUserVulnRegister.length > 0) {
@@ -4182,8 +4181,25 @@ export const useAuthStore = defineStore("auth", {
       severity: string,
       asset?: string,
       team?: string,
+      reportId?: string,
+      vulName?: string,
     ) {
       try {
+        // Use new API endpoint if reportId and vulName are provided
+        if (reportId && asset && vulName) {
+          const params: Record<string, string> = {
+            report_id: reportId,
+            asset: asset,
+            vul_name: vulName,
+          };
+          const res = await endpoint.get(
+            `/api/user/dashboard/mitigation-timeline-extension/options-by-fix/`,
+            { params },
+          );
+          return { status: true, data: res.data };
+        }
+
+        // Otherwise use old API endpoint
         const params: Record<string, string> = { severity };
         if (asset) params.asset = asset;
         if (team) params.team = team;

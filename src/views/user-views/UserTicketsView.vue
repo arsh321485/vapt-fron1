@@ -18,24 +18,44 @@
                         </div>
 
                         <div class="row">
-                            <div class="d-flex flex-row align-items-center justify-content-between mt-3">
-                                <div class="d-flex gap-3">
+                            <div class="exc-table-controls mt-3">
+                                <div class="d-flex gap-3 flex-wrap align-items-center">
                                     <button
-                                        class="btn btn-primary btn-pill fw-semibold"
-                                        :class="{ 'active-tab': activeTab === 'all' }"
+                                        class="exc-tab-btn"
+                                        :class="{ 'exc-tab-active': activeTab === 'all' }"
                                         @click="activeTab = 'all'"
-                                    >All</button>
+                                    >
+                                        All <span class="exc-tab-count">{{ sortedTickets.length }}</span>
+                                    </button>
                                     <button
-                                        class="btn btn-danger btn-pill"
-                                        :class="{ 'active-tab': activeTab === 'open' }"
+                                        class="exc-tab-btn exc-tab-open"
+                                        :class="{ 'exc-tab-active-open': activeTab === 'open' }"
                                         @click="activeTab = 'open'"
-                                    >Open</button>
+                                    >
+                                        Open <span class="exc-tab-count">{{ sortedTickets.filter(t => t.status?.toLowerCase() === 'open').length }}</span>
+                                    </button>
                                     <button
-                                        class="btn btn-success btn-pill"
-                                        :class="{ 'active-tab': activeTab === 'closed' }"
+                                        class="exc-tab-btn exc-tab-closed"
+                                        :class="{ 'exc-tab-active-closed': activeTab === 'closed' }"
                                         @click="activeTab = 'closed'"
-                                    >Closed</button>
+                                    >
+                                        Closed <span class="exc-tab-count">{{ sortedTickets.filter(t => t.status?.toLowerCase() === 'closed').length }}</span>
+                                    </button>
+                                    <button class="exc-btn-filter">
+                                        <i class="bi bi-funnel me-1"></i> Filter View
+                                    </button>
+                                    <button class="exc-btn-sort" @click="toggleSort">
+                                        <i class="bi bi-sort-down me-1"></i> Sort by date
+                                    </button>
+                                    <select v-model="selectedTeam" class="exc-select">
+                                        <option value="all">All Teams</option>
+                                        <option value="Patch Management">Patch Management</option>
+                                        <option value="Configuration Management">Configuration Management</option>
+                                        <option value="Network Security">Network Security</option>
+                                        <option value="Architectural Flaws">Architectural Flaws</option>
+                                    </select>
                                 </div>
+                                <span class="exc-showing-badge">Showing {{ filteredTickets.length }} requests</span>
                             </div>
                         </div>
 
@@ -132,16 +152,40 @@ export default {
             tickets: [],
             loading: false,
             activeTab: 'all',
+            selectedTeam: 'all',
+            sortOrder: 'desc',
             selectedDescription: '',
         };
     },
     computed: {
         sortedTickets() {
-            return [...this.tickets].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            const sorted = [...this.tickets].sort((a, b) => {
+                const diff = new Date(b.created_at) - new Date(a.created_at);
+                return this.sortOrder === 'desc' ? diff : -diff;
+            });
+            return sorted;
         },
         filteredTickets() {
-            if (this.activeTab === 'all') return this.sortedTickets;
-            return this.sortedTickets.filter(t => t.status?.toLowerCase() === this.activeTab);
+            let rows = this.sortedTickets;
+            // Team filter
+            if (this.selectedTeam !== 'all') {
+                const sel = this.selectedTeam.toLowerCase().trim();
+                rows = rows.filter(t => {
+                    const teamVal = (
+                        t.assigned_team ||
+                        t.team_name ||
+                        t.team ||
+                        t.category ||
+                        ''
+                    ).toLowerCase().trim();
+                    return teamVal === sel || teamVal.includes(sel) || sel.includes(teamVal);
+                });
+            }
+            // Tab filter
+            if (this.activeTab !== 'all') {
+                rows = rows.filter(t => t.status?.toLowerCase() === this.activeTab);
+            }
+            return rows;
         },
     },
     async mounted() {
@@ -152,6 +196,9 @@ export default {
         });
     },
     methods: {
+        toggleSort() {
+            this.sortOrder = this.sortOrder === 'desc' ? 'asc' : 'desc';
+        },
         async loadTickets() {
             await this.authStore.fetchUserVulnerabilityRegister();
             const reportId = this.authStore.userLatestReportId;

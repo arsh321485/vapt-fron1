@@ -29,9 +29,6 @@
 
             <div class="st-filter-bar">
               <div class="d-flex gap-2 flex-wrap">
-                <button class="st-btn-filter">
-                  <i class="bi bi-funnel me-1"></i> Filter View
-                </button>
                 <button
                   class="st-tab-btn"
                   :class="{ 'st-tab-active': activeTab === 'all' }"
@@ -56,6 +53,9 @@
                   Closed
                   <span class="st-tab-count">{{ sortedRequests.filter((r) => r.status?.toLowerCase() === 'closed').length }}</span>
                 </button>
+                <button class="st-btn-filter">
+                  <i class="bi bi-funnel me-1"></i> Filter View
+                </button>
                 <button class="st-sort-btn" @click="toggleSort">
                   <i class="bi bi-arrow-down-up me-1"></i>
                   Sort by date
@@ -66,8 +66,8 @@
                   <option value="all">All Teams</option>
                   <option value="Patch Management">Patch Management</option>
                   <option value="Configuration Management">Configuration Management</option>
-                  <option value="Network Management">Network Management</option>
-                  <option value="Architectural Management">Architectural Management</option>
+                  <option value="Network Security">Network Security</option>
+                  <option value="Architectural Flaws">Architectural Flaws</option>
                 </select>
               </div>
               <span class="st-count-badge">{{ filteredRequests.length }} requests</span>
@@ -162,30 +162,7 @@
               </div>
             </div>
 
-            <div class="st-insights">
-              <div class="st-insight-card">
-                <div class="st-insight-bg"></div>
-                <p class="st-insight-label">Resolution Speed</p>
-                <p class="st-insight-num">4.2 Days</p>
-                <p class="st-insight-sub">
-                  Average time to close 'High' tickets.
-                  <span class="st-insight-trend">↓ 12% from last month.</span>
-                </p>
-              </div>
-              <div class="st-insight-card">
-                <div class="st-insight-bg st-insight-bg-teal"></div>
-                <p class="st-insight-label">Coverage Gap</p>
-                <p class="st-insight-num">18 Assets</p>
-                <p class="st-insight-sub">Critical assets without active support tickets assigned.</p>
-              </div>
-              <div class="st-insight-card st-insight-dark">
-                <p class="st-insight-label st-insight-label-dark">System Health</p>
-                <p class="st-insight-num st-insight-num-dark">94%</p>
-                <div class="st-health-bar">
-                  <div class="st-health-fill" style="width: 94%;"></div>
-                </div>
-              </div>
-            </div>
+
 
             <div class="modal fade" id="viewRequestsModal" tabindex="-1" aria-labelledby="viewRequestsModalLabel" aria-hidden="true">
               <div class="modal-dialog modal-dialog-centered">
@@ -398,9 +375,19 @@ export default {
         filteredRequests() {
             let rows = this.sortedRequests;
             if (this.selectedTeam !== 'all') {
-                rows = rows.filter((req) =>
-                    String(req.assigned_team || '').toLowerCase() === this.selectedTeam.toLowerCase()
-                );
+                const sel = this.selectedTeam.toLowerCase().trim();
+                rows = rows.filter(req => {
+                    // Check all possible team field names from API
+                    const teamVal = (
+                        req.assigned_team ||
+                        req.team_name ||
+                        req.team ||
+                        req.assigned_to_team ||
+                        ''
+                    ).toLowerCase().trim();
+                    // Flexible match: exact or partial
+                    return teamVal === sel || teamVal.includes(sel) || sel.includes(teamVal);
+                });
             }
             if (this.activeTab === 'all') return rows;
             return rows.filter((req) => req.status?.toLowerCase() === this.activeTab);

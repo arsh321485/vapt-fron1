@@ -192,7 +192,7 @@
                         <div class="d-flex align-items-center gap-2 rt-task-right">
                           <span v-if="task.status === 'completed'" class="rt-step-status-badge rt-status-done">Completed</span>
                           <span v-else class="rt-step-status-badge rt-status-pending-red">Pending</span>
-                          <div class="rt-task-chevron" :class="{ 'rt-chevron-open': expandedTask === idx }">
+                          <div class="rt-task-chevron" :class="{ 'rt-chevron-open': expandedTasks.includes(idx) }">
                             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                               <path d="M4 6L8 10L12 6" stroke="#94a3b8" stroke-width="1.5"
                                     stroke-linecap="round" stroke-linejoin="round"/>
@@ -202,7 +202,7 @@
                       </div>
 
                       <!-- Expanded detail panel -->
-                      <div v-if="expandedTask === idx" class="rt-task-expanded">
+                      <div v-if="expandedTasks.includes(idx)" class="rt-task-expanded">
 
                         <!-- Meta: Deadline + Criticality + Effort (hidden by request) -->
                         <!-- <div class="rt-expand-meta-row">
@@ -281,13 +281,23 @@
                           class="rt-expand-section"
                         >
                           <span class="rt-expand-label">WHERE TO RUN</span>
-                          <div class="rt-code-block">{{ task.whereToRunLabel || task.whereToRun }}</div>
+                          <div class="rt-code-block rt-code-block-copy">
+                            <span>{{ task.whereToRunLabel || task.whereToRun }}</span>
+                            <button class="rt-copy-icon-btn" @click.stop="copyCommand(task.whereToRunLabel || task.whereToRun)" title="Copy">
+                              <i class="bi bi-clipboard"></i>
+                            </button>
+                          </div>
                         </div>
 
                         <!-- COMMAND TO RUN (full width) -->
                         <div v-if="task.command && task.command !== 'N/A'" class="rt-expand-section">
                           <span class="rt-expand-label">COMMAND TO RUN</span>
-                          <div class="rt-code-block" v-text="formatCommandToRun(task.command)"></div>
+                          <div class="rt-code-block rt-code-block-copy">
+                            <span v-text="formatCommandToRun(task.command)"></span>
+                            <button class="rt-copy-icon-btn" @click.stop="copyCommand(formatCommandToRun(task.command))" title="Copy">
+                              <i class="bi bi-clipboard"></i>
+                            </button>
+                          </div>
                         </div>
 
                         <div v-if="task.expectedOutput && task.expectedOutput !== 'N/A'" class="rt-expand-section">
@@ -441,7 +451,7 @@ export default {
       currentStep: 1,
       totalSteps: 8,
       completedSteps: [],
-      expandedTask: null,
+      expandedTasks: [],
       selectedSteps: [],
       raisedSupportSteps: [],
       supportRequestsByStep: {},
@@ -614,7 +624,37 @@ export default {
       });
     },
     toggleTask(idx) {
-      this.expandedTask = this.expandedTask === idx ? null : idx;
+      const i = this.expandedTasks.indexOf(idx);
+      if (i === -1) {
+        this.expandedTasks.push(idx);
+      } else {
+        this.expandedTasks.splice(i, 1);
+      }
+    },
+    copyCommand(text) {
+      const doFallback = () => {
+        const el = document.createElement('textarea');
+        el.value = text;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        this.showCopyToast();
+      };
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => {
+          this.showCopyToast();
+        }).catch(doFallback);
+      } else {
+        doFallback();
+      }
+    },
+    showCopyToast() {
+      const toast = document.createElement('div');
+      toast.textContent = '✓ Copied to clipboard';
+      toast.style.cssText = 'position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#1e293b;color:#4ade80;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:600;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
+      document.body.appendChild(toast);
+      setTimeout(() => document.body.removeChild(toast), 2000);
     },
     formatTimelineDate(dateStr) {
       if (!dateStr) return '';
@@ -1040,11 +1080,11 @@ export default {
   font-weight: 700;
   letter-spacing: 0.04em;
 }
-.rt-chip-risk { color: #7f1d1d; background: #fee2e2; }
-.rt-chip-risk-critical { color: #7f1d1d; background: #fee2e2; }
-.rt-chip-risk-high { color: #dc2626; background: #fee2e2; }
-.rt-chip-risk-medium { color: #854d0e; background: #fef3c7; }
-.rt-chip-risk-low { color: #065f46; background: #d1fae5; }
+.rt-chip-risk { color: #dc2626; background: #fee2e2; }
+.rt-chip-risk-critical { color: #dc2626; background: #fee2e2; }
+.rt-chip-risk-high { color: #b42318; background: #f8dede; }
+.rt-chip-risk-medium { color: #b45309; background: #fef3c7; }
+.rt-chip-risk-low { color: #0f766e; background: #ccfbf1; }
 .rt-chip-status {
   color: #334155;
   background: #e2e8f0;
@@ -1623,6 +1663,38 @@ export default {
   word-break: break-all;
   line-height: 1.6;
   white-space: pre-wrap;
+}
+
+.rt-code-block-copy {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.rt-code-block-copy span {
+  flex: 1;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.rt-copy-icon-btn {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: #4ade80;
+  font-size: 0.95rem;
+  cursor: pointer;
+  padding: 0 2px;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+  line-height: 1;
+  margin-top: 1px;
+}
+
+.rt-copy-icon-btn:hover {
+  opacity: 1;
 }
 
 

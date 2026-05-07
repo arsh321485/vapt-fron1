@@ -6,7 +6,9 @@
 
           <!-- LOGO -->
           <div class="logo-wrapper">
-            <img src="@/assets/images/vaptfix_white.png" height="38">
+            <router-link to="/home">
+              <img src="@/assets/images/vaptfix_white.png" height="38" style="cursor: pointer;">
+            </router-link>
           </div>
 
           <div class="form-area text-white">
@@ -14,7 +16,7 @@
 
               <!-- SUB TABS -->
               <div class="sub-tabs">
-                <div class="sub-tab" :class="{ active: currentMode === 'set-password' }" @click="switchMode('set-password')">
+                <div class="sub-tab" :class="{ active: currentMode === 'set-password', disabled: !isSetPasswordLink }" @click="isSetPasswordLink ? switchMode('set-password') : null">
                   Set Password
                 </div>
                 <div class="sub-tab" :class="{ active: currentMode === 'signin' }" @click="switchMode('signin')">
@@ -156,7 +158,7 @@ export default {
   name: "AuthView",
   data() {
     return {
-      currentMode: "set-password",
+      currentMode: "signin",
       formData: {
         email: "",
         password: "",
@@ -447,16 +449,24 @@ export default {
   mounted() {
     this.authStore = useAuthStore();
 
-    // Normalize legacy/local alias (?mode=signinlocal) to signin.
-    const rawMode = this.$route.query.mode;
-    const mode = rawMode === 'signinlocal' ? 'signin' : rawMode;
-    if (mode === 'signin' || mode === 'set-password') {
-      this.currentMode = mode;
-    }
-
     // Extract uid/token for set-password flow (user-side email link)
     this.uidb64 = this.$route.query.uid || this.$route.query.uidb64 || "";
     this.token = this.$route.query.token || "";
+
+    // Normalize legacy/local alias (?mode=signinlocal) to signin.
+    const rawMode = this.$route.query.mode;
+    const mode = rawMode === 'signinlocal' ? 'signin' : rawMode;
+
+    // If there's a reset link (uid and token), allow set-password mode
+    // Otherwise, force signin mode
+    if (this.isSetPasswordLink && mode === 'set-password') {
+      this.currentMode = 'set-password';
+    } else if (mode === 'signin') {
+      this.currentMode = 'signin';
+    } else {
+      // Default to signin if no valid reset link
+      this.currentMode = 'signin';
+    }
 
     this.loadRecaptchaScript();
     this.$nextTick(() => { this.startSlider(); });
@@ -569,6 +579,13 @@ export default {
   width: 100%;
   height: 2px;
   background: rgb(90, 68, 255);
+}
+
+.sub-tab.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  pointer-events: none;
+  color: #6b7280;
 }
 
 /* ===== INPUTS ===== */

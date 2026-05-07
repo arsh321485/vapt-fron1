@@ -73,9 +73,14 @@
             </router-link>
 
             <button type="button" class="btn hero-btn text-light text-decoration-none" @click="handleFixNow">
-              Get Started
+             Admin Sign In
               <i class="bi bi-arrow-right-circle-fill fs-5 ms-1"></i>
             </button>
+
+            <router-link to="/signup" class="btn hero-btn text-light text-decoration-none">
+             Get Started
+              <i class="bi bi-arrow-right-circle-fill fs-5 ms-1"></i>
+            </router-link>
           </div>
 
 
@@ -119,7 +124,7 @@ export default {
   },
   methods: {
     handleFixNow() {
-      window.location.assign("/signup");
+      window.location.assign("/signin");
     }
   },
   mounted() {
@@ -135,6 +140,32 @@ export default {
 <style scoped>
 .navbar {
   background-color: #241447 !important;
+}
+
+/* ── Partners dropdown to match website theme ── */
+.dropdown-menu {
+  background: rgba(18, 10, 38, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  padding: 8px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+}
+
+.dropdown-item {
+  color: rgba(255, 255, 255, 0.9);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background: rgba(15, 105, 110, 0.22);
+  color: #ffffff;
+}
+
+.dropdown-item:active {
+  background: rgba(15, 105, 110, 0.35);
+  color: #ffffff;
 }
 
 .hero-btn {

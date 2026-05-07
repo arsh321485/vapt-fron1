@@ -358,9 +358,9 @@
                     selectedEvent.color === 'team-arch'    ? 'rgb(254, 242, 242)' : '#f1f5f9'
                   ) : (
                     selectedEvent.color === 'maroon'    ? '#fee2e2' :
-                    selectedEvent.color === 'dl-blue'   ? '#fff7ed' :
-                    selectedEvent.color === 'dl-orange' ? '#fefce8' :
-                    selectedEvent.color === 'dl-green'  ? '#f0fdf4' : '#f1f5f9'
+                    selectedEvent.color === 'dl-blue'   ? '#f8dede' :
+                    selectedEvent.color === 'dl-orange' ? '#fef3c7' :
+                    selectedEvent.color === 'dl-green'  ? '#ccfbf1' : '#f1f5f9'
                   ),
                   color: selectedEvent.isExtensionEvent ? (
                     selectedEvent.color === 'team-network' ? 'rgb(59, 130, 246)' :
@@ -369,9 +369,9 @@
                     selectedEvent.color === 'team-arch'    ? 'rgb(220, 38, 38)' : '#475569'
                   ) : (
                     selectedEvent.color === 'maroon'    ? '#dc2626' :
-                    selectedEvent.color === 'dl-blue'   ? '#f97316' :
-                    selectedEvent.color === 'dl-orange' ? '#ca8a04' :
-                    selectedEvent.color === 'dl-green'  ? '#16a34a' : '#475569'
+                    selectedEvent.color === 'dl-blue'   ? '#b42318' :
+                    selectedEvent.color === 'dl-orange' ? '#b45309' :
+                    selectedEvent.color === 'dl-green'  ? '#0f766e' : '#475569'
                   )
                 }">
                   {{ selectedEvent.isExtensionEvent ? (
@@ -1235,10 +1235,10 @@ export default {
 .cal-event-green       { background: #dcfce7; color: #15803d; }
 .cal-event-orange      { background: #fff7ed; color: #ea580c; }
 .cal-event-crimson     { background: #fee2e2; color: #b91c1c; }
-.cal-event-maroon      { background: #f9e8ea; color: #800020; }
-.cal-event-dl-blue     { background: #eff6ff; color: rgb(59, 130, 246); }
-.cal-event-dl-green    { background: #ecfdf5; color: rgb(16, 185, 129); }
-.cal-event-dl-orange   { background: #fff7ed; color: rgb(249, 115, 22); }
+.cal-event-maroon      { background: #fee2e2; color: #dc2626; } /* Critical */
+.cal-event-dl-blue     { background: #f8dede; color: #b42318; } /* High */
+.cal-event-dl-orange   { background: #fef3c7; color: #b45309; } /* Medium */
+.cal-event-dl-green    { background: #ccfbf1; color: #0f766e; } /* Low */
 .cal-event-dl-red      { background: #fef2f2; color: rgb(220, 38, 38); }
 .cal-event-team-network { background: rgb(239, 246, 255); color: rgb(59, 130, 246); }
 .cal-event-team-patch   { background: rgb(236, 253, 245); color: rgb(16, 185, 129); }
@@ -1456,17 +1456,16 @@ export default {
 .cal-week-event-card:hover { opacity: 0.85; }
 
 /* Week card colors — severity deadlines */
-.cal-week-card-maroon    { background: #f9e8ea; border-left: 3px solid #800020; }
-.cal-week-card-dl-blue   { background: #eff6ff; border-left: 3px solid rgb(59, 130, 246); }
-.cal-week-card-dl-orange { background: #fff7ed; border-left: 3px solid rgb(249, 115, 22); }
-.cal-week-card-dl-green  { background: #ecfdf5; border-left: 3px solid rgb(16, 185, 129); }
+.cal-week-card-maroon    { background: #fee2e2; color: #dc2626; border-left: 3px solid #fca5a5; } /* Critical */
+.cal-week-card-dl-blue   { background: #f8dede; color: #b42318; border-left: 3px solid #efb7b1; } /* High */
+.cal-week-card-dl-orange { background: #fef3c7; color: #b45309; border-left: 3px solid #fcd34d; } /* Medium */
+.cal-week-card-dl-green  { background: #ccfbf1; color: #0f766e; border-left: 3px solid #5eead4; } /* Low */
 /* Week card colors — team extension events */
 .cal-week-card-team-network { background: rgb(239, 246, 255); border-left: 3px solid rgb(59, 130, 246); }
 .cal-week-card-team-patch   { background: rgb(236, 253, 245); border-left: 3px solid rgb(16, 185, 129); }
 .cal-week-card-team-config  { background: rgb(255, 247, 237); border-left: 3px solid rgb(249, 115, 22); }
 .cal-week-card-team-arch    { background: rgb(254, 242, 242); border-left: 3px solid rgb(220, 38, 38); }
-/* Fallback */
-.cal-week-card-dl-blue { background: #eff6ff; border-left: 3px solid rgb(59, 130, 246); }
+/* Fallback removed — canonical .cal-week-card-dl-blue defined above */
 
 .cal-week-type-badge {
   display: inline-block;
@@ -1478,10 +1477,10 @@ export default {
   margin-bottom: 4px;
 }
 /* Badge colors */
-.cal-badge-maroon    { background: #800020; color: #fff; }
-.cal-badge-dl-blue   { background: rgb(59, 130, 246); color: #fff; }
-.cal-badge-dl-orange { background: rgb(249, 115, 22); color: #fff; }
-.cal-badge-dl-green  { background: rgb(16, 185, 129); color: #fff; }
+.cal-badge-maroon    { background: #dc2626; color: white; } /* Critical */
+.cal-badge-dl-blue   { background: #b42318; color: white; } /* High */
+.cal-badge-dl-orange { background: #b45309; color: white; } /* Medium */
+.cal-badge-dl-green  { background: #0f766e; color: white; } /* Low */
 .cal-badge-team-network { background: rgb(59, 130, 246); color: #fff; }
 .cal-badge-team-patch   { background: rgb(16, 185, 129); color: #fff; }
 .cal-badge-team-config  { background: rgb(249, 115, 22); color: #fff; }
@@ -1572,10 +1571,10 @@ export default {
 .cal-day-event-card:hover { opacity: 0.85; }
 
 /* Day card colors — severity deadlines */
-.cal-day-card-maroon    { background: #f9e8ea; border-left: 4px solid #800020; }
-.cal-day-card-dl-blue   { background: #eff6ff; border-left: 4px solid rgb(59, 130, 246); }
-.cal-day-card-dl-orange { background: #fff7ed; border-left: 4px solid rgb(249, 115, 22); }
-.cal-day-card-dl-green  { background: #ecfdf5; border-left: 4px solid rgb(16, 185, 129); }
+.cal-day-card-maroon    { background: #fee2e2; color: #dc2626; border-left: 4px solid #fca5a5; } /* Critical */
+.cal-day-card-dl-blue   { background: #f8dede; color: #b42318; border-left: 4px solid #efb7b1; } /* High */
+.cal-day-card-dl-orange { background: #fef3c7; color: #b45309; border-left: 4px solid #fcd34d; } /* Medium */
+.cal-day-card-dl-green  { background: #ccfbf1; color: #0f766e; border-left: 4px solid #5eead4; } /* Low */
 /* Day card colors — team extension events */
 .cal-day-card-team-network { background: rgb(239, 246, 255); border-left: 4px solid rgb(59, 130, 246); }
 .cal-day-card-team-patch   { background: rgb(236, 253, 245); border-left: 4px solid rgb(16, 185, 129); }

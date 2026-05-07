@@ -85,7 +85,7 @@ html, body { overflow: hidden; }
 </div>
 </div>
 <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8">
-<button class="w-full sm:w-auto bg-primary text-on-primary px-10 py-4 rounded-full font-headline font-bold text-lg hover:bg-primary-container transition-all scale-95 active:opacity-80" type="button" onclick="window.top.location.href='/admindashboardonboarding'">Return to Dashboard</button>
+<button class="w-full sm:w-auto bg-primary text-on-primary px-10 py-4 rounded-full font-headline font-bold text-lg hover:bg-primary-container transition-all scale-95 active:opacity-80" type="button" onclick="window.top.location.href='/home'">Return to Dashboard</button>
 <button class="w-full sm:w-auto bg-transparent text-secondary border border-outline-variant/30 px-10 py-4 rounded-full font-headline font-bold text-lg hover:bg-secondary-container transition-all" type="button" onclick="window.top.location.href='/partner-lead-portal'">Register Another Lead</button>
 </div>
 </div>

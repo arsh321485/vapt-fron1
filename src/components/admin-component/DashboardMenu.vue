@@ -22,6 +22,7 @@
 
 
 
+
          <!-- SCOPE - Always allowed -->
          <!-- <div>
           <router-link to="/scope">

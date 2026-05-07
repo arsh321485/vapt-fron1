@@ -279,9 +279,9 @@ export default {
   flex-shrink: 0;
 }
 .bar-critical { background: #dc2626; }
-.bar-high     { background: #f97316; }
-.bar-medium   { background: #f59e0b; }
-.bar-low      { background: #10b981; }
+.bar-high     { background: #b42318; }
+.bar-medium   { background: #b45309; }
+.bar-low      { background: #0f766e; }
 
 .msu-accordion-title {
   font-size: 0.95rem;
@@ -362,9 +362,9 @@ export default {
   letter-spacing: 0.04em;
 }
 .msu-sev-critical { background: #fee2e2; color: #dc2626; }
-.msu-sev-high     { background: #fff7ed; color: #f97316; }
-.msu-sev-medium   { background: #fefce8; color: #ca8a04; }
-.msu-sev-low      { background: #f0fdf4; color: #16a34a; }
+.msu-sev-high     { background: #f8dede; color: #b42318; }
+.msu-sev-medium   { background: #fef3c7; color: #b45309; }
+.msu-sev-low      { background: #ccfbf1; color: #0f766e; }
 
 /* Status */
 .msu-status-dot-inline {

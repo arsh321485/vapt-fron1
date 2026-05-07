@@ -6,7 +6,7 @@
   <div class="d-flex align-items-center justify-content-between gap-4 py-2 px-4">
 
    <div class="browser-bar">
-    <router-link to="/admindashboardonboarding">
+    <router-link to="/home">
         <img src="@/assets/images/vaptfix_white.png" alt="">
         </router-link>
       </div>
