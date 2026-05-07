@@ -29,10 +29,29 @@
                 Pricing
               </router-link>
             </li>
-            <li class="nav-item">
-              <router-link to="/partner" style="font-size: 1rem;" class="nav-link text-white text-decoration-none">
+            <li class="nav-item dropdown">
+              <a
+                class="nav-link dropdown-toggle text-white text-decoration-none"
+                href="#"
+                role="button"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+                style="font-size: 1rem;"
+              >
                 Partners
-              </router-link>
+              </a>
+              <ul class="dropdown-menu dropdown-menu-dark">
+                <li>
+                  <router-link class="dropdown-item" to="/partner">
+                    Partner Registration
+                  </router-link>
+                </li>
+                <li>
+                  <router-link class="dropdown-item" to="/partner-lead-portal">
+                    Lead Registration
+                  </router-link>
+                </li>
+              </ul>
             </li>
             <!-- <li class="nav-item">
               <router-link to="/vulnerabilityexplorer" style="font-size: 1rem;" class="nav-link text-white text-decoration-none">

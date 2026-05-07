@@ -1,6 +1,9 @@
 import './assets/main.css'
 import './assets/responsive.css'
 
+// Bootstrap dropdowns/collapse require the JS bundle (includes Popper).
+import 'bootstrap/dist/js/bootstrap.bundle.min.js'
+
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 

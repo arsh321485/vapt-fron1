@@ -70,6 +70,10 @@ const router = createRouter({
 
     {
       path: "/",
+      redirect: "/home",
+    },
+    {
+      path: "/login",
       name: "login",
       component: Login,
     },
@@ -411,34 +415,7 @@ const router = createRouter({
   },
 });
 
-const publicPaths = new Set([
-  "/",
-  "/auth",
-  "/signin",
-  "/signup",
-  "/forgotpassword",
-  "/choose-account",
-  "/microsoft/callback",
-  "/jira/callback",
-  "/slack/callback",
-]);
-
-const isPasswordFlowPath = (path: string) =>
-  path.startsWith("/reset-password/") ||
-  path.startsWith("/set-password/") ||
-  path.startsWith("/user-set-password/");
-
-router.beforeEach((to) => {
-  const hasToken = !!localStorage.getItem("authorization");
-  const isAuthenticated = hasToken && localStorage.getItem("authenticated") === "true";
-  const isPublicRoute = publicPaths.has(to.path) || isPasswordFlowPath(to.path);
-
-  // Unauthenticated users can only access auth/public routes
-  if (!isAuthenticated && !isPublicRoute) {
-    return { path: "/" };
-  }
-
-  return true;
-});
+// NOTE: Auth gating intentionally disabled.
+// The app should land directly on `/home` without requiring credentials.
 
 export default router;

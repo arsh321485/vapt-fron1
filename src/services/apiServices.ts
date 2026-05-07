@@ -92,8 +92,6 @@ endpoint.interceptors.response.use(
       localStorage.removeItem("refreshToken");
       localStorage.removeItem("locations");
 
-      router.push("/signin");
-
       Swal.fire({
         icon: "error",
         title: "Session Expired",
