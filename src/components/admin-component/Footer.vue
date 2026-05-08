@@ -5,7 +5,9 @@
         <div class="container-fluid py-4">
             <div class="row">
                 <div class="col-lg-5 col-md-6 text-white">
-                     <img src="@/assets/images/logo1.png"  alt="logo">
+                     <router-link to="/home">
+                       <img src="@/assets/images/vaptfix_white.png" alt="logo" style="cursor: pointer; height: 38px;">
+                     </router-link>
                     <p class="mt-4">Eliminate Vulnerabilities Before They<br> Become Threats.</p>
                     <!-- <div> -->
                         <img src="@/assets/images/iso-standards/iso1.png" alt="" class="iso-logo me-1">
@@ -32,7 +34,7 @@
                         <p style="font-size: 13px;">Terms of use</p>
                         <p style="font-size: 13px;">Privacy Policy</p>
                     </div>
-                    
+
                 </div>
             </div>
         </div>
@@ -45,6 +47,3 @@ export default {
   name: 'Footer',
 };
 </script>
-
-
-

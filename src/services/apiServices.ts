@@ -19,9 +19,7 @@ const PUBLIC_URL_PATTERNS = [
   "/api/admin/users/reset-password/",
   "/api/admin/users/forgot-password/",
 ];
-const REALTIME_ENDPOINT_PATTERNS = [
-  "/api/notifications/",
-];
+const REALTIME_ENDPOINT_PATTERNS = ["/api/notifications/"];
 
 endpoint.interceptors.request.use(
   (config) => {
@@ -61,7 +59,7 @@ endpoint.interceptors.request.use(
 
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 // ✅ Handle session expiry
@@ -82,7 +80,11 @@ endpoint.interceptors.response.use(
     const requestUrl = error.config?.url || "";
     const isAuthEndpoint = AUTH_ENDPOINTS.some((ep) => requestUrl.includes(ep));
     const currentPath = router.currentRoute.value?.path || "";
-    const isAuthScreen = currentPath === "/" || currentPath === "/signin" || currentPath === "/auth";
+    const isAuthScreen =
+      currentPath === "/" ||
+      currentPath === "/signin" ||
+      currentPath === "/auth" ||
+      currentPath === "/home";
 
     if (error.response?.status === 401 && !isAuthEndpoint && !isAuthScreen) {
       // Clear localStorage directly
@@ -92,14 +94,11 @@ endpoint.interceptors.response.use(
       localStorage.removeItem("refreshToken");
       localStorage.removeItem("locations");
 
-      Swal.fire({
-        icon: "error",
-        title: "Session Expired",
-        text: "Please log in again.",
-      });
+      // Redirect to home page instead of showing modal
+      router.push("/home");
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export default endpoint;
