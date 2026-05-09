@@ -9,15 +9,17 @@
       scrolling="no"
       @load="resizeFrame"
     ></iframe>
+    <Footer />
   </main>
 </template>
 
 <script>
 import Header from "@/components/admin-component/Header.vue";
+import Footer from "@/components/admin-component/Footer.vue";
 
 export default {
   name: "PartnerLeadPortalView",
-  components: { Header },
+  components: { Header, Footer },
   data() {
     return {
       portalHtml: `<!DOCTYPE html>
@@ -99,7 +101,7 @@ body { font-family: 'Inter', sans-serif; }
 <main class="max-w-7xl mx-auto px-8 py-12 md:py-20">
 <header class="mb-16 max-w-2xl">
 <span class="text-secondary font-headline font-bold tracking-widest text-xs uppercase mb-4 block">Strategic Expansion</span>
-<h1 class="text-5xl md:text-6xl font-headline font-extrabold text-primary leading-tight mb-6">Lead Registration Portal</h1>
+<h1 class="text-5xl md:text-6xl font-headline font-extrabold text-primary leading-tight mb-6">Lead Registration </h1>
 <p class="text-on-surface-variant text-lg leading-relaxed">Submit your high-intent prospects into our Intelligence Framework. Accelerated validation and specialist support await.</p>
 </header>
 <form class="space-y-12" action="/partner-lead-thankyou" method="get" target="_top">
@@ -158,7 +160,7 @@ body { font-family: 'Inter', sans-serif; }
 </div>
 </form>
 </main>
-<footer class="bg-[#241447] w-full py-12 px-8 flex flex-col md:flex-row justify-between items-center gap-6 border-t border-white/5">
+<footer style="display:none;" class="bg-[#241447] w-full py-12 px-8 flex flex-col md:flex-row justify-between items-center gap-6 border-t border-white/5">
 <div class="flex flex-col items-center md:items-start gap-2"><div class="text-lg font-bold text-white font-headline">VaptFix Pro</div><p class="font-['Inter'] text-xs font-medium text-slate-300">© 2024 VaptFix Pro. Editorial Intelligence Framework.</p></div>
 <div class="flex flex-wrap justify-center gap-6">
 <a class="font-['Inter'] text-xs font-medium text-slate-300 hover:text-[#a1ecf2] transition-colors" href="#">Privacy Policy</a>

@@ -893,8 +893,8 @@ export default {
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-.st-crit-critical { background: #ffdad6; color: #ba1a1a; }
-.st-crit-high { background: #ffe0c8; color: #9a3412; }
+.st-crit-critical { background: #f8dede; color: #b42318; }
+.st-crit-high { background: #fee2e2; color: #dc2626; }
 .st-crit-medium { background: #fff4cc; color: #a16207; }
 .st-crit-low { background: #d1fae5; color: #10b981; }
 
@@ -1185,12 +1185,12 @@ export default {
 }
 
 .st-so-badge-critical {
-  background: #ffdad6;
-  color: #ba1a1a;
+  background: #f8dede;
+  color: #b42318;
 }
 .st-so-badge-high {
-  background: #ffe0c8;
-  color: #9a3412;
+  background: #fee2e2;
+  color: #dc2626;
 }
 .st-so-badge-medium {
   background: #fff4cc;
@@ -1207,8 +1207,8 @@ export default {
   border-radius: 50%;
   display: inline-block;
 }
-.st-so-dot-critical { background: #ba1a1a; }
-.st-so-dot-high { background: #f2994a; }
+.st-so-dot-critical { background: #b42318; }
+.st-so-dot-high { background: #dc2626; }
 .st-so-dot-medium { background: #f2c94c; }
 .st-so-dot-low { background: #10b981; }
 

@@ -211,7 +211,7 @@
 
                     <div class="d-flex flex-column gap-3">
                       <div v-for="(vuln, idx) in filteredVulnerabilities" :key="idx" class="vuln-accordion-item">
-                        <div class="vuln-accordion-header" data-bs-toggle="collapse" :data-bs-target="'#uvn' + idx" role="button">
+                        <div class="vuln-accordion-header" role="button" @click="expandedVulnIndex = expandedVulnIndex === idx ? null : idx">
                           <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
                             <i class="bi bi-exclamation-triangle-fill vuln-icon flex-shrink-0"
                               :class="{
@@ -227,11 +227,10 @@
                             <span :class="getStatusBadgeClass(vuln.status)">
                               <span :class="getStatusDotClass(vuln.status)"></span>{{ getStatusLabel(vuln.status) }}
                             </span>
-                            <span class="text-muted" style="font-size:0.78rem;">CVSS: {{ vuln.cvss_score || '-' }}</span>
-                            <i class="bi bi-chevron-down text-muted"></i>
+                            <i class="bi text-muted" :class="expandedVulnIndex === idx ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
                           </div>
                         </div>
-                        <div :id="'uvn' + idx" class="accordion-collapse collapse">
+                        <div v-show="expandedVulnIndex === idx">
                           <div class="vuln-accordion-body">
                             <div class="vuln-meta-grid">
                               <div class="vuln-meta-cell">
@@ -536,6 +535,7 @@ export default {
       selectedSupportRequest: null,
       expandedDescriptions: {},
       descriptionPreviewLimit: 280,
+      expandedVulnIndex: null,
       showExtPopup: false,
       extPopupSeverity: "critical",
       extPopupAsset: "",
@@ -1117,8 +1117,8 @@ export default {
   border-radius: 3px;
   white-space: nowrap;
 }
-.sev-critical { background: #fee2e2; color: #dc2626; }
-.sev-high     { background: #f8dede; color: #b42318; }
+.sev-critical { background: #f8dede; color: #b42318; }
+.sev-high     { background: #fee2e2; color: #dc2626; }
 .sev-medium   { background: #fef3c7; color: #b45309; }
 .sev-low      { background: #ccfbf1; color: #0f766e; }
 
@@ -1137,8 +1137,8 @@ export default {
   padding: 2px 5px;
   border-radius: 4px;
 }
-.critical-dot { color: #dc2626; background: #fee2e2; }
-.high-dot     { color: #b42318; background: #f8dede; }
+.critical-dot { color: #b42318 !important; background: #f8dede !important; }
+.high-dot     { color: #dc2626 !important; background: #fee2e2 !important; }
 .medium-dot   { color: #b45309; background: #fef3c7; }
 .low-dot      { color: #0f766e; background: #ccfbf1; }
 
@@ -1251,7 +1251,7 @@ export default {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #dc2626;
+  background: #b42318;
   flex-shrink: 0;
 }
 .status-closed-badge {
@@ -1353,8 +1353,8 @@ export default {
   border-color: #0f696e !important;
   font-weight: 700;
 }
-.sev-pill-critical { color: #dc2626; }
-.sev-pill-high     { color: #f97316; }
+.sev-pill-critical { color: #b42318 !important; background: #f8dede !important; }
+.sev-pill-high     { color: #dc2626 !important; background: #fee2e2 !important; }
 .sev-pill-medium   { color: #f59e0b; }
 /* Same white / gray border as other severity pills; green text only */
 .sev-pill-low { color: #10b981; }
@@ -1695,8 +1695,8 @@ export default {
   display: inline-block; border-radius: 20px; font-size: 10px; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 8px;
 }
-.ext-sev-critical { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
-.ext-sev-high     { background: #f8dede; color: #b42318; border: 1px solid #efb7b1; }
+.ext-sev-critical { background: #f8dede; color: #b42318; border: 1px solid #efb7b1; }
+.ext-sev-high     { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
 .ext-sev-medium   { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
 .ext-sev-low      { background: #ccfbf1; color: #0f766e; border: 1px solid #5eead4; }
 .ext-drawer-divider { height: 1px; background: #e2e8f0; margin: 0; flex-shrink: 0; }

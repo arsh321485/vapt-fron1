@@ -1401,9 +1401,9 @@ export default {
   font-weight: 700;
   letter-spacing: 0.04em;
 }
-.rt-chip-risk { color: #dc2626; background: #fee2e2; }
-.rt-chip-risk-critical { color: #dc2626; background: #fee2e2; }
-.rt-chip-risk-high { color: #b42318; background: #f8dede; }
+.rt-chip-risk { color: #b42318; background: #f8dede; }
+.rt-chip-risk-critical { color: #b42318; background: #f8dede; }
+.rt-chip-risk-high { color: #dc2626; background: #fee2e2; }
 .rt-chip-risk-medium { color: #b45309; background: #fef3c7; }
 .rt-chip-risk-low { color: #0f766e; background: #ccfbf1; }
 .rt-chip-status {
@@ -1581,12 +1581,12 @@ export default {
 .rt-main-col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
 
 /* ─── Tech Card ─────────────────────────────────────────────────────── */
-.rt-tech-card { background: #ffffff; border-radius: 14px; padding: 22px 24px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); border: 1px solid #f1f5f9; border-left: 4px solid #dc2626; }
+.rt-tech-card { background: #ffffff; border-radius: 14px; padding: 22px 24px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); border: 1px solid #f1f5f9; border-left: 4px solid #b42318; }
 .rt-tech-label-wrap { display: inline-flex; align-items: center; gap: 6px; background: #f1f5f9; border-radius: 6px; padding: 4px 10px; margin-bottom: 14px; }
 .rt-tech-label-icon { font-size: 0.78rem; color: #475569; }
 .rt-tech-label-text { font-size: 0.78rem; font-weight: 600; color: #475569; }
 .rt-tech-left   { flex: 1; min-width: 0; }
-.rt-critical-badge { display: inline-block; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; background: #fee2e2; color: #dc2626; padding: 4px 12px; border-radius: 50px; margin-bottom: 10px; }
+.rt-critical-badge { display: inline-block; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; background: #f8dede; color: #b42318; padding: 4px 12px; border-radius: 50px; margin-bottom: 10px; }
 .rt-vuln-name   { font-size: 1.05rem; font-weight: 800; color: #1e293b; margin: 0 0 6px; line-height: 1.3; }
 .rt-label-text  { font-size: 0.8rem; color: #64748b; font-weight: 500; }
 .rt-asset-chip  { display: inline-block; font-size: 0.78rem; font-weight: 600; background: #f1f5f9; color: #334155; padding: 3px 12px; border-radius: 50px; border: 1px solid #e2e8f0; }
@@ -1635,7 +1635,7 @@ export default {
 /* Step status badges */
 .rt-step-status-badge { font-size: 0.68rem; font-weight: 700; padding: 3px 10px; border-radius: 50px; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
 .rt-status-done        { background: #d1fae5; color: #065f46; }
-.rt-status-pending-red { background: #fee2e2; color: #dc2626; }
+.rt-status-pending-red { background: #f8dede; color: #b42318; }
 
 /* Expanded panel */
 .rt-task-expanded { padding: 4px 0 20px 40px; display: flex; flex-direction: column; gap: 16px; }

@@ -204,8 +204,8 @@
                               <linearGradient id="mttr-grad2" x1="0%" y1="0%" x2="100%" y2="0%">
                                 <stop offset="0%" stop-color="#10b981"/>
                                 <stop offset="33%" stop-color="#f59e0b"/>
-                                <stop offset="66%" stop-color="#b42318"/>
-                                <stop offset="100%" stop-color="#dc2626"/>
+                                <stop offset="66%" stop-color="#dc2626"/>
+                                <stop offset="100%" stop-color="#b42318"/>
                               </linearGradient>
                             </defs>
                             <!-- Background semi-circle (gray) open at bottom -->
@@ -289,15 +289,15 @@
                   <div class="d-flex align-items-end justify-content-around gap-2 px-2" style="height: 82px; margin-top: 35px;">
                     <!-- Critical -->
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
-                      <span style="font-size:12px; font-weight:800; color:#dc2626;">{{ authStore.vulnerabilities.critical || 0 }}</span>
-                      <div style="width:100%; border-radius:6px 6px 0 0; background:#dc2626; min-height:4px; transition:height 0.5s ease;"
+                      <span style="font-size:12px; font-weight:800; color:#b42318;">{{ authStore.vulnerabilities.critical || 0 }}</span>
+                      <div style="width:100%; border-radius:6px 6px 0 0; background:#b42318; min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: totalVulnerabilities ? ((authStore.vulnerabilities.critical || 0) / totalVulnerabilities * 66) + 'px' : '4px' }">
                       </div>
                     </div>
                     <!-- High -->
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
-                      <span style="font-size:12px; font-weight:800; color:#b42318;">{{ authStore.vulnerabilities.high || 0 }}</span>
-                      <div style="width:100%; border-radius:6px 6px 0 0; background:#b42318; min-height:4px; transition:height 0.5s ease;"
+                      <span style="font-size:12px; font-weight:800; color:#dc2626;">{{ authStore.vulnerabilities.high || 0 }}</span>
+                      <div style="width:100%; border-radius:6px 6px 0 0; background:#dc2626; min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: totalVulnerabilities ? ((authStore.vulnerabilities.high || 0) / totalVulnerabilities * 66) + 'px' : '4px' }">
                       </div>
                     </div>
@@ -321,8 +321,8 @@
 
                   <!-- Legend -->
                   <div class="d-flex justify-content-around mt-1 flex-wrap px-1">
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#dc2626;"></span><span style="color:#dc2626;">Critical</span></div>
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#b42318;"></span><span style="color:#b42318;">High</span></div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#b42318;"></span><span style="color:#b42318;">Critical</span></div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#dc2626;"></span><span style="color:#dc2626;">High</span></div>
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#f59e0b;"></span><span style="color:#b45309;">Medium</span></div>
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#0f766e;"></span><span style="color:#0f766e;">Low</span></div>
                   </div>
@@ -359,7 +359,7 @@
                         <svg width="66" height="38" viewBox="0 0 72 42">
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none" stroke="#f1f5f9" stroke-width="8" stroke-linecap="round"/>
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none"
-                            :stroke="mitigationPct('critical').compliancePct <= 0 ? '#d1d5db' : '#dc2626'"
+                            :stroke="mitigationPct('critical').compliancePct <= 0 ? '#d1d5db' : '#b42318'"
                             stroke-width="8" stroke-linecap="round"
                             stroke-dasharray="94"
                             :stroke-dashoffset="94 - (mitigationPct('critical').compliancePct / 100 * 94)"/>
@@ -368,7 +368,7 @@
                           <div style="font-size:11px;font-weight:800;color:#1f2937;line-height:1;">{{ formatTimeline(getMitigationValue('critical')) }}</div>
                         </div>
                       </div>
-                      <span class="mitigation-sev-label" style="color:#dc2626;">Critical</span>
+                      <span class="mitigation-sev-label" style="color:#b42318;">Critical</span>
                     </div>
 
                     <!-- High -->
@@ -377,7 +377,7 @@
                         <svg width="66" height="38" viewBox="0 0 72 42">
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none" stroke="#f1f5f9" stroke-width="8" stroke-linecap="round"/>
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none"
-                            :stroke="mitigationPct('high').compliancePct <= 0 ? '#d1d5db' : '#b42318'"
+                            :stroke="mitigationPct('high').compliancePct <= 0 ? '#d1d5db' : '#dc2626'"
                             stroke-width="8" stroke-linecap="round"
                             stroke-dasharray="94"
                             :stroke-dashoffset="94 - (mitigationPct('high').compliancePct / 100 * 94)"/>
@@ -386,7 +386,7 @@
                           <div style="font-size:11px;font-weight:800;color:#1f2937;line-height:1;">{{ formatTimeline(getMitigationValue('high')) }}</div>
                         </div>
                       </div>
-                      <span class="mitigation-sev-label" style="color:#b42318;">High</span>
+                      <span class="mitigation-sev-label" style="color:#dc2626;">High</span>
                     </div>
 
                     <!-- Medium -->
@@ -498,7 +498,7 @@
                             </div>
                           </div>
                           <div class="d-flex align-items-center gap-2">
-                            <div style="height:5px;width:78%;background:#fee2e2;border-radius:4px;overflow:hidden;">
+                            <div style="height:5px;width:78%;background:#f8dede;border-radius:4px;overflow:hidden;">
                               <div :style="{width:supportTotal?(supportPending/supportTotal*100)+'%':'0%',background:'#ef4444',height:'100%',borderRadius:'4px',transition:'width 0.6s ease'}"></div>
                             </div>
                             <span style="font-size:13px;font-weight:800;color:#1f2937;line-height:1;">{{ supportPending }}</span>
@@ -545,13 +545,13 @@
                   </div>
                   <div class="d-flex align-items-end justify-content-around gap-2 px-3" style="height:80px;">
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
-                      <span style="font-size:12px; font-weight:800; color:#dc2626;">{{ vulFixedCritical }}</span>
-                      <div style="width:100%; border-radius:6px 6px 0 0; background:#dc2626; min-height:4px; transition:height 0.5s ease;"
+                      <span style="font-size:12px; font-weight:800; color:#b42318;">{{ vulFixedCritical }}</span>
+                      <div style="width:100%; border-radius:6px 6px 0 0; background:#b42318; min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: vulFixedTotal ? (vulFixedCritical / vulFixedTotal * 64) + 'px' : '4px' }"></div>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
-                      <span style="font-size:12px; font-weight:800; color:#b42318;">{{ vulFixedHigh }}</span>
-                      <div style="width:100%; border-radius:6px 6px 0 0; background:#b42318; min-height:4px; transition:height 0.5s ease;"
+                      <span style="font-size:12px; font-weight:800; color:#dc2626;">{{ vulFixedHigh }}</span>
+                      <div style="width:100%; border-radius:6px 6px 0 0; background:#dc2626; min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: vulFixedTotal ? (vulFixedHigh / vulFixedTotal * 64) + 'px' : '4px' }"></div>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
@@ -567,8 +567,8 @@
                   </div>
                   <div style="border-top:2px solid #e5e7eb; margin:0 8px;"></div>
                   <div class="d-flex justify-content-around mt-2 flex-wrap px-1">
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#dc2626;"></span><span style="color:#dc2626;">Critical</span></div>
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#b42318;"></span><span style="color:#b42318;">High</span></div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#b42318;"></span><span style="color:#b42318;">Critical</span></div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#dc2626;"></span><span style="color:#dc2626;">High</span></div>
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#f59e0b;"></span><span style="color:#b45309;">Medium</span></div>
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#0f766e;"></span><span style="color:#0f766e;">Low</span></div>
                   </div>
@@ -1018,9 +1018,11 @@
               <div class="mte-severity-left">
                 <i class="bi bi-exclamation-circle-fill"></i>
                 <span>Critical Severity Requests</span>
-                <span class="mte-badge critical">{{ mteFilteredData.critical.length }} Items</span>
+                <span class="mte-badge critical">{{ mteFilteredData.critical.length }} ITEMS</span>
               </div>
               <div class="mte-head-right">
+                <span v-if="mteFilteredData.critical.length === 0" class="mte-no-req-msg"><i class="bi bi-inbox"></i> No requests</span>
+                <span v-else class="mte-count-msg">{{ mteFilteredData.critical.length }} {{ mteFilteredData.critical.length === 1 ? 'request' : 'requests' }}</span>
                 <i class="bi" :class="mteOpenSection === 'critical' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
               </div>
             </div>
@@ -1058,9 +1060,11 @@
               <div class="mte-severity-left">
                 <i class="bi bi-exclamation-triangle-fill mte-high-icon"></i>
                 <span>High Severity Requests</span>
-                <span class="mte-badge high">{{ mteFilteredData.high.length }} Items</span>
+                <span class="mte-badge high">{{ mteFilteredData.high.length }} ITEMS</span>
               </div>
               <div class="mte-head-right">
+                <span v-if="mteFilteredData.high.length === 0" class="mte-no-req-msg"><i class="bi bi-inbox"></i> No requests</span>
+                <span v-else class="mte-count-msg">{{ mteFilteredData.high.length }} {{ mteFilteredData.high.length === 1 ? 'request' : 'requests' }}</span>
                 <i class="bi" :class="mteOpenSection === 'high' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
               </div>
             </div>
@@ -1098,9 +1102,11 @@
               <div class="mte-severity-left">
                 <i class="bi bi-exclamation-circle-fill mte-medium-icon"></i>
                 <span>Medium Severity Requests</span>
-                <span class="mte-badge medium">{{ mteFilteredData.medium.length }} Items</span>
+                <span class="mte-badge medium">{{ mteFilteredData.medium.length }} ITEMS</span>
               </div>
               <div class="mte-head-right">
+                <span v-if="mteFilteredData.medium.length === 0" class="mte-no-req-msg"><i class="bi bi-inbox"></i> No requests</span>
+                <span v-else class="mte-count-msg">{{ mteFilteredData.medium.length }} {{ mteFilteredData.medium.length === 1 ? 'request' : 'requests' }}</span>
                 <i class="bi" :class="mteOpenSection === 'medium' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
               </div>
             </div>
@@ -1138,9 +1144,11 @@
               <div class="mte-severity-left">
                 <i class="bi bi-gear-fill mte-low-icon"></i>
                 <span>Low Severity Requests</span>
-                <span class="mte-badge low">{{ mteFilteredData.low.length }} Items</span>
+                <span class="mte-badge low">{{ mteFilteredData.low.length }} ITEMS</span>
               </div>
               <div class="mte-head-right">
+                <span v-if="mteFilteredData.low.length === 0" class="mte-no-req-msg"><i class="bi bi-inbox"></i> No requests</span>
+                <span v-else class="mte-count-msg">{{ mteFilteredData.low.length }} {{ mteFilteredData.low.length === 1 ? 'request' : 'requests' }}</span>
                 <i class="bi" :class="mteOpenSection === 'low' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
               </div>
             </div>
@@ -1264,7 +1272,7 @@
             <!-- High -->
             <div v-if="cvModalGroupedVulns.high.length > 0" class="mte-severity-card cv-high-card">
               <div class="mte-severity-head" @click="toggleCvModalGroup('high')">
-                <div class="mte-severity-left" style="color:#b42318;">
+                <div class="mte-severity-left">
                   <i class="bi bi-exclamation-triangle-fill mte-high-icon"></i>
                   <span>High Vulnerabilities</span>
                   <span class="mte-badge high">{{ cvModalGroupedVulns.high.length }} Items</span>
@@ -1308,7 +1316,7 @@
             <!-- Medium -->
             <div v-if="cvModalGroupedVulns.medium.length > 0" class="mte-severity-card cv-medium-card">
               <div class="mte-severity-head" @click="toggleCvModalGroup('medium')">
-                <div class="mte-severity-left" style="color:#b45309;">
+                <div class="mte-severity-left">
                   <i class="bi bi-exclamation-circle-fill mte-medium-icon"></i>
                   <span>Medium Vulnerabilities</span>
                   <span class="mte-badge medium">{{ cvModalGroupedVulns.medium.length }} Items</span>
@@ -1352,7 +1360,7 @@
             <!-- Low -->
             <div v-if="cvModalGroupedVulns.low.length > 0" class="mte-severity-card cv-low-card">
               <div class="mte-severity-head" @click="toggleCvModalGroup('low')">
-                <div class="mte-severity-left" style="color:#0f766e;">
+                <div class="mte-severity-left">
                   <i class="bi bi-gear-fill mte-low-icon"></i>
                   <span>Low Vulnerabilities</span>
                   <span class="mte-badge low">{{ cvModalGroupedVulns.low.length }} Items</span>
@@ -2230,7 +2238,7 @@ export default {
       return assetsSet.size;
     },
     getMitigationRiskColor(risk) {
-      const map = { Critical: "#dc2626", High: "#f44336", Medium: "#f6b100", Low: "#4caf50" };
+      const map = { Critical: "#b42318", High: "#f44336", Medium: "#f6b100", Low: "#4caf50" };
       return map[risk] || "#666";
     },
     getMitigationDays(sev) {
@@ -2998,8 +3006,8 @@ mounted() {
 .cv-team-stats { margin: 8px 0 10px; display: flex; flex-direction: column; gap: 4px; }
 .cv-stat-row { display: flex; align-items: center; gap: 6px; }
 .cv-stat-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.cv-dot-critical { background: #dc2626; }
-.cv-dot-high     { background: #b42318; }
+.cv-dot-critical { background: #b42318; }
+.cv-dot-high     { background: #dc2626; }
 .cv-dot-medium   { background: #b45309; }
 .cv-dot-low      { background: #0f766e; }
 .cv-stat-label { font-size: 11px; color: #64748b; flex: 1; }
@@ -3027,8 +3035,8 @@ mounted() {
 }
 .cv-affected-label { font-size: 11px; color: #64748b; font-weight: 500; }
 .cv-sev-badge { font-size: 9px; font-weight: 800; padding: 2px 7px; border-radius: 4px; letter-spacing: 0.04em; white-space: nowrap; }
-.cv-badge-critical { background: #fee2e2; color: #dc2626; }
-.cv-badge-high     { background: #f8dede; color: #b42318; }
+.cv-badge-critical { background: #f8dede; color: #b42318; }
+.cv-badge-high     { background: #fee2e2; color: #dc2626; }
 .cv-badge-medium   { background: #fef3c7; color: #b45309; }
 .cv-badge-low      { background: #ccfbf1; color: #0f766e; }
 
@@ -3327,14 +3335,14 @@ mounted() {
   align-items: center;
   justify-content: center;
   margin-left: 4px;
-  color: #dc2626;
+  color: #b42318;
   font-size: 14px;
   font-weight: 900;
-  line-height: 1;
+  cursor: pointer;
   vertical-align: text-top;
 }
-.dash-mte-table th.sev-critical { color: #dc2626; }
-.dash-mte-table th.sev-high { color: #b42318; }
+.dash-mte-table th.sev-critical { color: #b42318; }
+.dash-mte-table th.sev-high { color: #dc2626; }
 .dash-mte-table th.sev-medium { color: #b45309; }
 .dash-mte-table th.sev-low { color: #0f766e; }
 .dash-mte-pill {
@@ -3349,8 +3357,8 @@ mounted() {
   letter-spacing: 0.01em;
   padding: 0 6px;
 }
-.dash-mte-pill.critical { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
-.dash-mte-pill.high { background: #f8dede; color: #b42318; border: 1px solid #efb7b1; }
+.dash-mte-pill.critical { background: #f8dede; color: #b42318; border: 1px solid #fca5a5; }
+.dash-mte-pill.high { background: #fee2e2; color: #dc2626; border: 1px solid #efb7b1; }
 .dash-mte-pill.medium { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
 .dash-mte-pill.low { background: #ccfbf1; color: #0f766e; border: 1px solid #5eead4; }
 
@@ -3435,7 +3443,7 @@ mounted() {
 }
 .mte-status-review   { background: #e0f2fe; color: #0369a1; }
 .mte-status-approved { background: #dcfce7; color: #15803d; }
-.mte-status-rejected { background: #fee2e2; color: #dc2626; }
+.mte-status-rejected { background: #f8dede; color: #b42318; }
 .mte-no-data {
   padding: 18px 20px;
   font-size: 13px;
@@ -3464,10 +3472,10 @@ mounted() {
   background: #fff;
   flex-shrink: 0;
 }
-.mte-critical { border-color: rgba(220, 38, 38, 0.35); background: rgba(220, 38, 38, 0.08); box-shadow: inset 0 0 0 1px rgba(220, 38, 38, 0.12); }
-.mte-high { border-color: rgba(249, 115, 22, 0.35) !important; background: rgba(249, 115, 22, 0.08) !important; box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0.12); }
-.mte-medium { border-color: rgba(249, 115, 22, 0.35) !important; background: rgba(249, 115, 22, 0.10) !important; box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0.14); }
-.mte-low { border-color: rgba(22, 163, 74, 0.35) !important; background: rgba(22, 163, 74, 0.08) !important; box-shadow: inset 0 0 0 1px rgba(22, 163, 74, 0.12); }
+.mte-critical { border-color: #fca5a5; background: #f8dede; box-shadow: inset 0 0 0 1px #fca5a5; }
+.mte-high { border-color: #fdba74 !important; background: #fed7aa !important; box-shadow: inset 0 0 0 1px #fdba74; }
+.mte-medium { border-color: #fcd34d !important; background: #fef3c7 !important; box-shadow: inset 0 0 0 1px #fcd34d; }
+.mte-low { border-color: #86efac !important; background: #d1fae5 !important; box-shadow: inset 0 0 0 1px #86efac; }
 .mte-severity-head {
   padding: 16px 20px;
   display: flex;
@@ -3484,27 +3492,52 @@ mounted() {
   font-weight: 700;
   line-height: 1.25;
 }
-.mte-critical .mte-severity-left { color: #dc2626; }
-.mte-high .mte-severity-left { color: #dc2626 !important; }
-.mte-medium .mte-severity-left { color: #b45309 !important; }
-.mte-low .mte-severity-left { color: #16a34a !important; }
-.mte-critical .mte-severity-head { background: rgba(220, 38, 38, 0.12); border-bottom: 1px solid rgba(220, 38, 38, 0.3); }
-.mte-high .mte-severity-head { background: rgba(249, 115, 22, 0.12); border-bottom: 1px solid rgba(249, 115, 22, 0.3); }
-.mte-medium .mte-severity-head { background: rgba(249, 115, 22, 0.14); border-bottom: 1px solid rgba(249, 115, 22, 0.3); }
-.mte-low .mte-severity-head { background: rgba(22, 163, 74, 0.12); border-bottom: 1px solid rgba(22, 163, 74, 0.3); }
+.mte-critical .mte-severity-left { color: rgb(220, 38, 38); }
+.mte-high .mte-severity-left { color: rgb(180, 35, 24) !important; }
+.mte-medium .mte-severity-left { color: rgb(245, 158, 11) !important; }
+.mte-low .mte-severity-left { color: rgb(16, 185, 129) !important; }
+.mte-critical .mte-severity-head { background: #fecaca; border-bottom: 1px solid #fca5a5; }
+.mte-high .mte-severity-head { background: #fde68a; border-bottom: 1px solid #fdba74; }
+.mte-medium .mte-severity-head { background: #fef9c3; border-bottom: 1px solid #fcd34d; }
+.mte-low .mte-severity-head { background: #bbf7d0; border-bottom: 1px solid #86efac; }
 .mte-badge {
   border-radius: 6px;
   font-size: 11px;
   font-weight: 700;
-  line-height: 1;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   padding: 3px 7px;
 }
-.mte-badge.critical { background: #dc2626; color: #fff; }
-.mte-badge.high { background: #f8dede; color: #b42318; border: 1px solid #efb7b1; }
-.mte-badge.medium { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
-.mte-badge.low { background: #ccfbf1; color: #0f766e; border: 1px solid #5eead4; }
+.mte-no-req-msg {
+  margin-right: 12px;
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+  background: #f1f5f9;
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.mte-count-msg {
+  margin-right: 12px;
+  font-size: 11px;
+  color: #0f766e;
+  font-weight: 600;
+  background: #d1fae5;
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid #86efac;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.mte-badge.critical { background: #f8dede; color: #b42318; border: 1px solid #fca5a5; }
+.mte-badge.high { background: #fde8e8; color: #dc2626; border: 1px solid #f5c6cb; }
+.mte-badge.medium { background: #f7e4bf; color: #d48806; border: 1px solid #f3d79a; }
+.mte-badge.low { background: #d1fae5; color: #0f766e; border: 1px solid #86efac; }
 .mte-table-wrap { overflow-x: auto; border-top: 1px solid #e2e8f0; }
 .mte-table { width: 100%; border-collapse: collapse; min-width: 760px; }
 .mte-table th,
@@ -3537,7 +3570,7 @@ mounted() {
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
-.mte-pill.sev { background: #fee2e2; color: #dc2626; }
+.mte-pill.sev { background: #f8dede; color: #b42318; }
 .mte-pill.status { background: #e5e7eb; color: #374151; }
 .mte-extension { font-weight: 800; color: #1e293b !important; }
 .mte-reason {
@@ -3550,9 +3583,9 @@ mounted() {
   font-weight: 600;
   position: relative;
 }
-.mte-high-icon { color: #b42318; }
-.mte-medium-icon { color: #b45309; }
-.mte-low-icon { color: #0f766e; }
+.mte-high-icon { color: rgb(180, 35, 24); }
+.mte-medium-icon { color: rgb(245, 158, 11); }
+.mte-low-icon { color: rgb(16, 185, 129); }
 .reason-detail-overlay-inner {
   position: absolute;
   inset: 0;
@@ -3830,7 +3863,7 @@ mounted() {
   display: block;
   cursor: pointer;
 }
-.bg-maroon { background-color: #dc2626 !important; }
+.bg-maroon { background-color: #b42318 !important; }
 .bg-red { background-color: red !important; }
 
 .info-tooltip {
@@ -3930,16 +3963,16 @@ mounted() {
   overflow: hidden;
 }
 .rsev-badge { padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; display: inline-block; }
-.rsev-maroon, .rsev-critical { background: #fee2e2; color: #dc2626; }
-.rsev-red, .rsev-high { background: #f8dede; color: #b42318; }
+.rsev-maroon, .rsev-critical { background: #f8dede; color: #b42318; }
+.rsev-red, .rsev-high { background: #fee2e2; color: #dc2626; }
 .rsev-orange, .rsev-medium { background: #fef3c7; color: #b45309; }
 .rsev-darkgreen, .rsev-low { background: #ccfbf1; color: #0f766e; }
 .rteam-badge { padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
 .rteam-network { background: #3b82f6; color: white; }
 .rteam-patch { background: #10b981; color: white; }
-.rteam-configuration { background: #dc2626; color: white; }
-.rteam-architectural { background: #dc2626; color: white; }
-.rstatus-open { padding: 6px 12px; border-radius: 20px; background: #fee2e2; color: #dc2626; font-size: 0.85rem; font-weight: 600; display: inline-block; }
+.rteam-configuration { background: #b42318; color: white; }
+.rteam-architectural { background: #b42318; color: white; }
+.rstatus-open { padding: 6px 12px; border-radius: 20px; background: #f8dede; color: #b42318; font-size: 0.85rem; font-weight: 600; display: inline-block; }
 .rstatus-closed { padding: 6px 12px; border-radius: 20px; background: #d1fae5; color: #059669; font-size: 0.85rem; font-weight: 600; display: inline-block; }
 
 /* ── Mitigation Strategy — Risk Criteria stacked layout ── */
@@ -3967,8 +4000,8 @@ mounted() {
   border-radius: 10px;
   border-left: 4px solid transparent;
 }
-.ms-risk-critical { background: #fef2f2; border-left-color: #dc2626; }
-.ms-risk-high     { background: #fff7ed; border-left-color: #b42318; }
+.ms-risk-critical { background: #fef2f2; border-left-color: #b42318; }
+.ms-risk-high     { background: #fff7ed; border-left-color: #dc2626; }
 .ms-risk-medium   { background: #fefce8; border-left-color: #a16207; }
 .ms-risk-low      { background: #f0fdf4; border-left-color: #15803d; }
 
@@ -4145,8 +4178,8 @@ mounted() {
   white-space: nowrap;
   border: none;
 }
-.sev-critical { background: #fee2e2; color: #dc2626; }
-.sev-high     { background: #f8dede; color: #b42318; }
+.sev-critical { background: #f8dede; color: #b42318; }
+.sev-high     { background: #fee2e2; color: #dc2626; }
 .sev-medium   { background: #fef3c7; color: #b45309; }
 .sev-low      { background: #ccfbf1; color: #0f766e; }
 
@@ -4156,8 +4189,8 @@ mounted() {
   padding: 2px 5px;
   border-radius: 4px;
 }
-.critical-dot { color: #dc2626;  background: #fee2e2; }
-.high-dot     { color: #b42318; background: #f8dede; }
+.critical-dot { color: #b42318;  background: #f8dede; }
+.high-dot     { color: #dc2626; background: #fee2e2; }
 .medium-dot   { color: #b45309; background: #fef3c7; }
 .low-dot      { color: #0f766e; background: #ccfbf1; }
 
@@ -4286,8 +4319,8 @@ mounted() {
   border-color: #0f696e !important;
   font-weight: 700;
 }
-.sev-pill-critical { color: #dc2626; }
-.sev-pill-high     { color: #b42318; }
+.sev-pill-critical { color: #b42318; }
+.sev-pill-high     { color: #dc2626; }
 .sev-pill-medium   { color: #b45309; }
 /* Same white / gray border as other pills (base .sev-pill); green text only */
 .sev-pill-low { color: #0f766e; }
@@ -4317,8 +4350,8 @@ mounted() {
 .vuln-accordion-header:hover { background: #edeef1; }
 
 .vuln-icon { font-size: 1rem; }
-.vuln-icon-critical { color: #dc2626; }
-.vuln-icon-high     { color: #b42318; }
+.vuln-icon-critical { color: #b42318; }
+.vuln-icon-high     { color: #dc2626; }
 .vuln-icon-medium   { color: #b45309; }
 .vuln-icon-low      { color: #0f766e; }
 
@@ -4532,7 +4565,7 @@ mounted() {
 .cv-medium-card { border-color: #fde68a; background: #fffdf0; }
 .cv-low-card    { border-color: #99f6e4; background: #f0fffe; }
 
-.cv-pill-open       { background: #fee2e2; color: #dc2626; }
+.cv-pill-open       { background: #f8dede; color: #b42318; }
 .cv-pill-closed     { background: #ccfbf1; color: #0f766e; }
 .cv-pill-inprogress { background: #e5e7eb; color: #374151; }
 
@@ -4575,12 +4608,12 @@ mounted() {
   transition: background 0.15s, border-color 0.15s;
 }
 .cv-fixnow-btn {
-  border-color: #dc2626 !important;
-  color: #dc2626 !important;
+  border-color: #b42318 !important;
+  color: #b42318 !important;
 }
 .cv-fixnow-btn:hover {
-  background: rgba(220,38,38,0.07) !important;
-  border-color: #dc2626 !important;
+  background: rgba(180,35,24,0.07) !important;
+  border-color: #b42318 !important;
 }
 .cv-view-btn:hover {
   background: rgba(15,105,110,0.07);

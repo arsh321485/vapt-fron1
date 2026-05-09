@@ -1080,9 +1080,9 @@ export default {
   font-weight: 700;
   letter-spacing: 0.04em;
 }
-.rt-chip-risk { color: #dc2626; background: #fee2e2; }
-.rt-chip-risk-critical { color: #dc2626; background: #fee2e2; }
-.rt-chip-risk-high { color: #b42318; background: #f8dede; }
+.rt-chip-risk { color: #b42318; background: #f8dede; }
+.rt-chip-risk-critical { color: #b42318; background: #f8dede; }
+.rt-chip-risk-high { color: #dc2626; background: #fee2e2; }
 .rt-chip-risk-medium { color: #b45309; background: #fef3c7; }
 .rt-chip-risk-low { color: #0f766e; background: #ccfbf1; }
 .rt-chip-status {
@@ -1391,7 +1391,7 @@ export default {
   padding: 22px 24px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   border: 1px solid #f1f5f9;
-  border-left: 4px solid #dc2626;
+  border-left: 4px solid #b42318;
 }
 
 .rt-tech-left {
@@ -1405,8 +1405,8 @@ export default {
   font-weight: 800;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  background: #fee2e2;
-  color: #dc2626;
+  background: #f8dede;
+  color: #b42318;
   padding: 4px 12px;
   border-radius: 50px;
   margin-bottom: 10px;
@@ -1761,7 +1761,7 @@ export default {
   white-space: nowrap;
 }
 .rt-status-done        { background: #d1fae5; color: #065f46; }
-.rt-status-pending-red { background: #fee2e2; color: #dc2626; }
+.rt-status-pending-red { background: #f8dede; color: #b42318; }
 
 /* Completed task row */
 .rt-task-completed {
@@ -2001,7 +2001,7 @@ export default {
 }
 
 .rt-stat-value-red {
-  color: #dc2626;
+  color: #b42318;
 }
 
 .rt-stat-bar {
@@ -2022,7 +2022,7 @@ export default {
 }
 
 .rt-stat-fill-red {
-  background: #dc2626;
+  background: #b42318;
 }
 
 /* ─── Responsive ────────────────────────────────────────────────────── */

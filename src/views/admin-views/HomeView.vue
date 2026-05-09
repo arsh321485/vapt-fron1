@@ -28,13 +28,10 @@
                   <path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
                 </svg>
               </button>
-              <a href="#features" class="hv-btn-outline">View Demo</a>
             </div>
           </div>
           <div class="hv-hero-img-wrap">
-            <div class="hv-hero-img-card">
-              <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuAzNxus6NuktHFh5w7vWzSEaW-RaUMWMTg0IUeZyPx9wj5nc8X2SRjYWXoMwHqkjCiDwt_nXdbmJcg2wJQbs1dKwL6aF_819sEjYffskWbZvY7FvjuG_k-LKtDZV7BTlZ_BEJFwyj3cEicNgv3r8SZqLcQBi2vvSbVB_HmQZmQKN_zHgGi9r7cPS24qAyZVA9iIw-w5uF2p72NfzH8IEK3L079lvDv_Xk68QTKfG60RHVxG0n3LPhTuz1GzVXR3AzoBQMguypLoCC-k" alt="Vaptfix Dashboard" />
-            </div>
+            <AnimatedDashboard />
           </div>
         </div>
       </div>
@@ -95,7 +92,7 @@
           <div class="hv-result-right">
             <p style="font-size:14px; font-weight:500; color:#4b5563; margin-bottom:12px;">Start for free, no obligations.</p>
             <button class="hv-btn-outline-dark" @click="handleFixNow">
-              Fix your vulnerabilities now
+              Get Started
               <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
               </svg>
@@ -237,7 +234,7 @@
         <h2 class="hv-cta-title">Fix Bugs Instantly.</h2>
         <p class="hv-cta-desc">Identify, prioritize, and fix security flaws fast. Reduce risk with zero-friction setup and smart automation.</p>
         <button class="hv-cta-btn" @click="handleFixNow">
-          Fix your vulnerabilities now
+          Get Started
           <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
           </svg>
@@ -246,19 +243,70 @@
     </section>
 
     <Footer />
+
+    <!-- Admin Sign Up Modal -->
+    <AdminSignUpModal
+      :show="showAdminSignUpModal"
+      @close="closeAdminSignUpModal"
+      @open-signin="handleOpenSignInFromAdminSignUp"
+    />
+
+    <!-- Sign In Modal -->
+    <SignUpModal
+      :show="showSignUpModal"
+      :preSelectedType="signUpPreSelectedType"
+      @close="closeSignUpModal"
+      @open-admin-signup="handleOpenAdminSignUpFromSignIn"
+    />
   </div>
 </template>
 
 <script>
 import Header from '@/components/admin-component/Header.vue';
 import Footer from '@/components/admin-component/Footer.vue';
+import AdminSignUpModal from '@/components/admin-component/AdminSignUpModal.vue';
+import SignUpModal from '@/components/admin-component/SignUpModal.vue';
+import AnimatedDashboard from '@/components/home-components/AnimatedDashboard.vue';
 
 export default {
   name: 'HomeView',
-  components: { Header, Footer },
+  components: {
+    Header,
+    Footer,
+    AdminSignUpModal,
+    SignUpModal,
+    AnimatedDashboard
+  },
+  data() {
+    return {
+      showAdminSignUpModal: false,
+      showSignUpModal: false,
+      signUpPreSelectedType: ''
+    };
+  },
   methods: {
     handleFixNow() {
-      window.location.assign("/signup");
+      this.showAdminSignUpModal = true;
+    },
+    closeAdminSignUpModal() {
+      this.showAdminSignUpModal = false;
+    },
+    openSignUpModal() {
+      this.signUpPreSelectedType = '';
+      this.showSignUpModal = true;
+    },
+    closeSignUpModal() {
+      this.showSignUpModal = false;
+      this.signUpPreSelectedType = '';
+    },
+    handleOpenSignInFromAdminSignUp() {
+      this.closeAdminSignUpModal();
+      this.signUpPreSelectedType = '';
+      this.showSignUpModal = true;
+    },
+    handleOpenAdminSignUpFromSignIn() {
+      this.closeSignUpModal();
+      this.showAdminSignUpModal = true;
     }
   }
 };

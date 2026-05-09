@@ -295,13 +295,13 @@
                   <!-- Bar Chart -->
                   <div class="d-flex align-items-end justify-content-around gap-2 px-2" style="height: 82px; margin-top: 35px;">
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
-                      <span style="font-size:12px; font-weight:800; color:#dc2626;">{{ vulns.critical || 0 }}</span>
-                      <div style="width:100%; border-radius:6px 6px 0 0; background:#dc2626; min-height:4px; transition:height 0.5s ease;"
+                      <span style="font-size:12px; font-weight:800; color:#b42318;">{{ vulns.critical || 0 }}</span>
+                      <div style="width:100%; border-radius:6px 6px 0 0; background:#b42318; min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: totalVulnerabilities ? ((vulns.critical || 0) / totalVulnerabilities * 66) + 'px' : '4px' }"></div>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
-                      <span style="font-size:12px; font-weight:800; color:#b42318;">{{ vulns.high || 0 }}</span>
-                      <div style="width:100%; border-radius:6px 6px 0 0; background:#b42318; min-height:4px; transition:height 0.5s ease;"
+                      <span style="font-size:12px; font-weight:800; color:#dc2626;">{{ vulns.high || 0 }}</span>
+                      <div style="width:100%; border-radius:6px 6px 0 0; background:#dc2626; min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: totalVulnerabilities ? ((vulns.high || 0) / totalVulnerabilities * 66) + 'px' : '4px' }"></div>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
@@ -317,8 +317,8 @@
                   </div>
                   <div style="border-top: 2px solid #e5e7eb; margin: 0 8px;"></div>
                   <div class="d-flex justify-content-around mt-1 flex-wrap px-1">
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#dc2626;"></span><span style="color:#dc2626;">Critical</span></div>
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#b42318;"></span><span style="color:#b42318;">High</span></div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#b42318;"></span><span style="color:#b42318;">Critical</span></div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#dc2626;"></span><span style="color:#dc2626;">High</span></div>
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#f59e0b;"></span><span style="color:#b45309;">Medium</span></div>
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#10b981;"></span><span style="color:#0f766e;">Low</span></div>
                   </div>
@@ -352,7 +352,7 @@
                         <svg width="66" height="38" viewBox="0 0 72 42">
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none" stroke="#f1f5f9" stroke-width="8" stroke-linecap="round"/>
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none"
-                            :stroke="mitigationPct('critical').compliancePct <= 0 ? '#d1d5db' : '#dc2626'"
+                            :stroke="mitigationPct('critical').compliancePct <= 0 ? '#d1d5db' : '#b42318'"
                             stroke-width="8" stroke-linecap="round"
                             stroke-dasharray="94"
                             :stroke-dashoffset="94 - (mitigationPct('critical').compliancePct / 100 * 94)"/>
@@ -361,14 +361,14 @@
                           <div style="font-size:11px;font-weight:800;color:#1f2937;line-height:1;">{{ mitigation.critical || '--' }}</div>
                         </div>
                       </div>
-                      <span class="mitigation-sev-label" style="color:#dc2626;">Critical</span>
+                      <span class="mitigation-sev-label" style="color:#b42318;">Critical</span>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1">
                       <div style="position:relative; width:66px; height:38px; overflow:hidden;">
                         <svg width="66" height="38" viewBox="0 0 72 42">
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none" stroke="#f1f5f9" stroke-width="8" stroke-linecap="round"/>
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none"
-                            :stroke="mitigationPct('high').compliancePct <= 0 ? '#d1d5db' : '#b42318'"
+                            :stroke="mitigationPct('high').compliancePct <= 0 ? '#d1d5db' : '#dc2626'"
                             stroke-width="8" stroke-linecap="round"
                             stroke-dasharray="94"
                             :stroke-dashoffset="94 - (mitigationPct('high').compliancePct / 100 * 94)"/>
@@ -377,7 +377,7 @@
                           <div style="font-size:11px;font-weight:800;color:#1f2937;line-height:1;">{{ mitigation.high || '--' }}</div>
                         </div>
                       </div>
-                      <span class="mitigation-sev-label" style="color:#b42318;">High</span>
+                      <span class="mitigation-sev-label" style="color:#dc2626;">High</span>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1">
                       <div style="position:relative; width:66px; height:38px; overflow:hidden;">
@@ -514,13 +514,13 @@
                   </div>
                   <div class="d-flex align-items-end justify-content-around gap-2 px-3" style="height:80px;">
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
-                      <span style="font-size:12px; font-weight:800; color:#dc2626;">{{ vulFixedCritical }}</span>
-                      <div style="width:100%; border-radius:6px 6px 0 0; background:#dc2626; min-height:4px; transition:height 0.5s ease;"
+                      <span style="font-size:12px; font-weight:800; color:#b42318;">{{ vulFixedCritical }}</span>
+                      <div style="width:100%; border-radius:6px 6px 0 0; background:#b42318; min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: vulFixedTotal ? (vulFixedCritical / vulFixedTotal * 64) + 'px' : '4px' }"></div>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
-                      <span style="font-size:12px; font-weight:800; color:#b42318;">{{ vulFixedHigh }}</span>
-                      <div style="width:100%; border-radius:6px 6px 0 0; background:#b42318; min-height:4px; transition:height 0.5s ease;"
+                      <span style="font-size:12px; font-weight:800; color:#dc2626;">{{ vulFixedHigh }}</span>
+                      <div style="width:100%; border-radius:6px 6px 0 0; background:#dc2626; min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: vulFixedTotal ? (vulFixedHigh / vulFixedTotal * 64) + 'px' : '4px' }"></div>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
@@ -536,8 +536,8 @@
                   </div>
                   <div style="border-top:2px solid #e5e7eb; margin:0 8px;"></div>
                   <div class="d-flex justify-content-around mt-2 flex-wrap px-1">
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#dc2626;"></span><span style="color:#dc2626;">Critical</span></div>
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#b42318;"></span><span style="color:#b42318;">High</span></div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#b42318;"></span><span style="color:#b42318;">Critical</span></div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#dc2626;"></span><span style="color:#dc2626;">High</span></div>
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#f59e0b;"></span><span style="color:#b45309;">Medium</span></div>
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#10b981;"></span><span style="color:#0f766e;">Low</span></div>
                   </div>
@@ -756,6 +756,8 @@
                 <span class="mte-badge critical">{{ mteFilteredData.critical.length }} ITEMS</span>
               </div>
               <div class="mte-head-right">
+                <span v-if="mteFilteredData.critical.length === 0" class="mte-no-req-msg"><i class="bi bi-inbox"></i> No requests</span>
+                <span v-else class="mte-count-msg">{{ mteFilteredData.critical.length }} {{ mteFilteredData.critical.length === 1 ? 'request' : 'requests' }}</span>
                 <i class="bi" :class="mteOpenSection === 'critical' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
               </div>
             </div>
@@ -796,6 +798,8 @@
                 <span class="mte-badge high">{{ mteFilteredData.high.length }} ITEMS</span>
               </div>
               <div class="mte-head-right">
+                <span v-if="mteFilteredData.high.length === 0" class="mte-no-req-msg"><i class="bi bi-inbox"></i> No requests</span>
+                <span v-else class="mte-count-msg">{{ mteFilteredData.high.length }} {{ mteFilteredData.high.length === 1 ? 'request' : 'requests' }}</span>
                 <i class="bi" :class="mteOpenSection === 'high' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
               </div>
             </div>
@@ -836,6 +840,8 @@
                 <span class="mte-badge medium">{{ mteFilteredData.medium.length }} ITEMS</span>
               </div>
               <div class="mte-head-right">
+                <span v-if="mteFilteredData.medium.length === 0" class="mte-no-req-msg"><i class="bi bi-inbox"></i> No requests</span>
+                <span v-else class="mte-count-msg">{{ mteFilteredData.medium.length }} {{ mteFilteredData.medium.length === 1 ? 'request' : 'requests' }}</span>
                 <i class="bi" :class="mteOpenSection === 'medium' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
               </div>
             </div>
@@ -876,6 +882,8 @@
                 <span class="mte-badge low">{{ mteFilteredData.low.length }} ITEMS</span>
               </div>
               <div class="mte-head-right">
+                <span v-if="mteFilteredData.low.length === 0" class="mte-no-req-msg"><i class="bi bi-inbox"></i> No requests</span>
+                <span v-else class="mte-count-msg">{{ mteFilteredData.low.length }} {{ mteFilteredData.low.length === 1 ? 'request' : 'requests' }}</span>
                 <i class="bi" :class="mteOpenSection === 'low' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
               </div>
             </div>
@@ -2392,16 +2400,16 @@ export default {
   height: 4px;
   border-radius: 2px;
 }
-.ud-bar-critical { background: #dc2626; }
-.ud-bar-high     { background: #c05000; }
+.ud-bar-critical { background: #b42318; }
+.ud-bar-high     { background: #dc2626; }
 .ud-bar-medium   { background: #8a6000; }
 .ud-bar-low      { background: #0f696e; }
 .ud-sev-label {
   font-size: 10px;
   font-weight: 600;
 }
-.ud-label-critical { color: #dc2626; }
-.ud-label-high     { color: #c05000; }
+.ud-label-critical { color: #b42318; }
+.ud-label-high     { color: #dc2626; }
 .ud-label-medium   { color: #8a6000; }
 .ud-label-low      { color: #0f696e; }
 
@@ -2498,8 +2506,8 @@ export default {
 .cv-team-stats { margin: 8px 0 10px; display: flex; flex-direction: column; gap: 4px; }
 .cv-stat-row { display: flex; align-items: center; gap: 6px; }
 .cv-stat-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.cv-dot-critical { background: #dc2626; }
-.cv-dot-high     { background: #c2410c; }
+.cv-dot-critical { background: #b42318; }
+.cv-dot-high     { background: #dc2626; }
 .cv-dot-medium   { background: #f59e0b; }
 .cv-dot-low      { background: #0f766e; }
 .cv-stat-label { font-size: 11px; color: #64748b; flex: 1; }
@@ -2559,8 +2567,8 @@ export default {
   letter-spacing: 0.04em;
   white-space: nowrap;
 }
-.cv-badge-critical { background: #fee2e2; color: #dc2626; }
-.cv-badge-high     { background: #f8dede; color: #b42318; }
+.cv-badge-critical { background: #f8dede; color: #b42318; }
+.cv-badge-high     { background: #fee2e2; color: #dc2626; }
 .cv-badge-medium   { background: #fef3c7; color: #b45309; }
 .cv-badge-low      { background: #ccfbf1; color: #0f766e; }
 
@@ -2955,10 +2963,10 @@ export default {
   color: #334155;
   padding-left: 12px;
 }
-.dash-mte-table th.sev-critical { color: #dc2626; }
-.dash-mte-table th.sev-high { color: #b42318; }
-.dash-mte-table th.sev-medium { color: #b45309; }
-.dash-mte-table th.sev-low { color: #0f766e; }
+.dash-mte-table th.sev-critical { color: #b42318 !important; background-color: #f8dede !important; }
+.dash-mte-table th.sev-high { color: #dc2626 !important; background-color: #fee2e2 !important; }
+.dash-mte-table th.sev-medium { color: #b45309 !important; background-color: #fef3c7 !important; }
+.dash-mte-table th.sev-low { color: #0f766e !important; background-color: #ccfbf1 !important; }
 .dash-mte-pill {
   display: inline-flex;
   align-items: center;
@@ -2971,8 +2979,8 @@ export default {
   letter-spacing: 0.01em;
   padding: 0 6px;
 }
-.dash-mte-pill.critical { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
-.dash-mte-pill.high     { background: #f8dede; color: #b42318; border: 1px solid #efb7b1; }
+.dash-mte-pill.critical { background: #f8dede !important; color: #b42318 !important; border: 1px solid #efb7b1 !important; }
+.dash-mte-pill.high     { background: #fee2e2 !important; color: #dc2626 !important; border: 1px solid #fca5a5 !important; }
 .dash-mte-pill.medium   { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
 .dash-mte-pill.low      { background: #ccfbf1; color: #0f766e; border: 1px solid #5eead4; }
 
@@ -3068,8 +3076,8 @@ export default {
   position: relative;
 }
 .ext-drawer-accent { height: 5px; width: 100%; flex-shrink: 0; }
-.ext-accent-critical { background: linear-gradient(90deg, #c71616, #ef4444); }
-.ext-accent-high     { background: linear-gradient(90deg, #d97706, #f59e0b); }
+.ext-accent-critical { background: linear-gradient(90deg, #9e1b0d, #b42318); }
+.ext-accent-high     { background: linear-gradient(90deg, #c71616, #ef4444); }
 .ext-accent-medium   { background: linear-gradient(90deg, #b45309, #fbbf24); }
 .ext-accent-low      { background: linear-gradient(90deg, #0f696e, #14b8a6); }
 .ext-drawer-enter-active .ext-popup-box { animation: extDrawerIn 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
@@ -3095,8 +3103,8 @@ export default {
   display: flex; align-items: center; justify-content: center;
   font-size: 18px; flex-shrink: 0; color: #fff;
 }
-.ext-icon-critical { background: rgba(239,68,68,0.25); border-color: rgba(239,68,68,0.4); color: #fca5a5; }
-.ext-icon-high     { background: rgba(245,158,11,0.25); border-color: rgba(245,158,11,0.4); color: #fcd34d; }
+.ext-icon-critical { background: rgba(180,35,24,0.25); border-color: rgba(180,35,24,0.4); color: #f5c6cb; }
+.ext-icon-high     { background: rgba(239,68,68,0.25); border-color: rgba(239,68,68,0.4); color: #fca5a5; }
 .ext-icon-medium   { background: rgba(251,191,36,0.2);  border-color: rgba(251,191,36,0.35); color: #fde68a; }
 .ext-icon-low      { background: rgba(20,184,166,0.25); border-color: rgba(20,184,166,0.4); color: #5eead4; }
 .ext-popup-title { font-size: 17px; font-weight: 700; color: #fff; margin: 0 0 3px; line-height: 1.2; }
@@ -3112,8 +3120,8 @@ export default {
   display: inline-block; border-radius: 20px; font-size: 10px; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 8px;
 }
-.ext-sev-critical { background: #fee2e2; color: #dc2626; }
-.ext-sev-high     { background: #fef3c7; color: #b45309; }
+.ext-sev-critical { background: #f8dede; color: #b42318; }
+.ext-sev-high     { background: #fee2e2; color: #dc2626; }
 .ext-sev-medium   { background: #fefce8; color: #92400e; }
 .ext-sev-low      { background: #ccfbf1; color: #0f766e; }
 .ext-drawer-divider { height: 1px; background: #e2e8f0; margin: 0; flex-shrink: 0; }
@@ -3169,10 +3177,10 @@ export default {
   background: #fff;
   flex-shrink: 0;
 }
-.mte-critical { border-color: rgba(220, 38, 38, 0.35); background: rgba(220, 38, 38, 0.08); box-shadow: inset 0 0 0 1px rgba(220, 38, 38, 0.12); }
-.mte-high { border-color: rgba(249, 115, 22, 0.35); background: rgba(249, 115, 22, 0.08); box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0.12); }
-.mte-medium { border-color: rgba(249, 115, 22, 0.35); background: rgba(249, 115, 22, 0.10); box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0.14); }
-.mte-low { border-color: rgba(22, 163, 74, 0.35); background: rgba(22, 163, 74, 0.08); box-shadow: inset 0 0 0 1px rgba(22, 163, 74, 0.12); }
+.mte-critical { border-color: #efb7b1; background: #f8dede; box-shadow: inset 0 0 0 1px #efb7b1; }
+.mte-high { border-color: #fca5a5; background: #fee2e2; box-shadow: inset 0 0 0 1px #fca5a5; }
+.mte-medium { border-color: #fcd34d; background: #fef3c7; box-shadow: inset 0 0 0 1px #fcd34d; }
+.mte-low { border-color: #86efac; background: #d1fae5; box-shadow: inset 0 0 0 1px #86efac; }
 .mte-severity-head {
   padding: 16px 20px;
   display: flex;
@@ -3187,14 +3195,14 @@ export default {
   font-size: 18px;
   font-weight: 700;
 }
-.mte-critical .mte-severity-left { color: #dc2626; }
-.mte-high .mte-severity-left { color: #dc2626; }
-.mte-medium .mte-severity-left { color: #dc2626; }
-.mte-low .mte-severity-left { color: #16a34a; }
-.mte-critical .mte-severity-head { background: rgba(220, 38, 38, 0.12); border-bottom: 1px solid rgba(220, 38, 38, 0.3); }
-.mte-high .mte-severity-head { background: rgba(249, 115, 22, 0.12); border-bottom: 1px solid rgba(249, 115, 22, 0.3); }
-.mte-medium .mte-severity-head { background: rgba(249, 115, 22, 0.14); border-bottom: 1px solid rgba(249, 115, 22, 0.3); }
-.mte-low .mte-severity-head { background: rgba(22, 163, 74, 0.12); border-bottom: 1px solid rgba(22, 163, 74, 0.3); }
+.mte-critical .mte-severity-left { color: rgb(180, 35, 24); }
+.mte-high .mte-severity-left { color: rgb(220, 38, 38); }
+.mte-medium .mte-severity-left { color: rgb(245, 158, 11); }
+.mte-low .mte-severity-left { color: rgb(16, 185, 129); }
+.mte-critical .mte-severity-head { background: #f8dede; border-bottom: 1px solid #efb7b1; }
+.mte-high .mte-severity-head { background:#fecaca; border-bottom: 1px solid #fca5a5; }
+.mte-medium .mte-severity-head { background: #fef3c7; border-bottom: 1px solid #fcd34d; }
+.mte-low .mte-severity-head { background: #bbf7d0; border-bottom: 1px solid #86efac; }
 .mte-badge {
   border-radius: 6px;
   font-size: 11px;
@@ -3202,10 +3210,36 @@ export default {
   text-transform: uppercase;
   padding: 3px 7px;
 }
-.mte-badge.critical { background: #dc2626; color: #fff; }
-.mte-badge.high { background: #dc2626; color: #fff; }
+.mte-no-req-msg {
+  margin-right: 12px;
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+  background: #f1f5f9;
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.mte-count-msg {
+  margin-right: 12px;
+  font-size: 11px;
+  color: #0f766e;
+  font-weight: 600;
+  background: #d1fae5;
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid #86efac;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.mte-badge.critical { background: #fde8e8; color: #b42318; border: 1px solid #f5c6cb; }
+.mte-badge.high { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
 .mte-badge.medium { background: #f7e4bf; color: #d48806; border: 1px solid #f3d79a; }
-.mte-badge.low { background: #10b981; color: #fff; }
+.mte-badge.low { background: #d1fae5; color: #0f766e; border: 1px solid #86efac; }
 .msu-critical-card { border-color: #fecaca; background: #fff5f5; }
 .msu-high-card { border-color: #fed7aa; background: #fff7ed; }
 .msu-medium-card { border-color: #fde68a; background: #fffdf0; }
@@ -3404,10 +3438,10 @@ export default {
   border-radius: 50%;
   flex-shrink: 0;
 }
-.msu-modal-sev-critical { background: #fee2e2; color: #dc2626; }
-.msu-modal-sev-critical .msu-modal-sev-dot { background: #dc2626; }
-.msu-modal-sev-high { background: #f8dede; color: #b42318; }
-.msu-modal-sev-high .msu-modal-sev-dot { background: #b42318; }
+.msu-modal-sev-critical { background: #f8dede; color: #b42318; }
+.msu-modal-sev-critical .msu-modal-sev-dot { background: #b42318; }
+.msu-modal-sev-high { background: #fee2e2; color: #dc2626; }
+.msu-modal-sev-high .msu-modal-sev-dot { background: #dc2626; }
 .msu-modal-sev-medium { background: #fef3c7; color: #b45309; }
 .msu-modal-sev-medium .msu-modal-sev-dot { background: #b45309; }
 .msu-modal-sev-low { background: #ccfbf1; color: #0f766e; }

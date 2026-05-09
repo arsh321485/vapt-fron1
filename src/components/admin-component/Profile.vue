@@ -7,11 +7,11 @@
 
       <div class="card shadow-lg p-5" style="border-radius: 20px;">
         <div class="text-center mb-4">
-          <img 
-            :src="user.profileImage || 'https://cdn-icons-png.flaticon.com/512/147/147144.png'" 
-            alt="Profile" 
-            class="rounded-circle" 
-            width="80" 
+          <img
+            :src="user.profileImage || 'https://cdn-icons-png.flaticon.com/512/147/147144.png'"
+            alt="Profile"
+            class="rounded-circle"
+            width="80"
             height="80"
           />
           <h4 class="mt-2">{{ user.full_name }}</h4>
@@ -164,7 +164,7 @@
 
 <script>
 import { useAuthStore } from "@/stores/authStore";
-import router from "../../router"; 
+import router from "../../router";
 
 export default {
     name: 'Profile',
@@ -178,7 +178,7 @@ export default {
       user: {
         full_name: "",
         email: "",
-        profileImage: "", 
+        profileImage: "",
       },
       firstName: "",
       lastName: "",
@@ -192,7 +192,7 @@ export default {
       showConfirmPassword: false,
     };
   },
-  
+
   async created() {
   const authStore = useAuthStore();
 
@@ -278,7 +278,7 @@ export default {
       const payload = {
         firstname: this.firstName,
         lastname: this.lastName,
-        organisation_name: this.orgName, 
+        organisation_name: this.orgName,
         organisation_url: this.orgUrl,
       };
 
@@ -375,6 +375,9 @@ export default {
       const authStore = useAuthStore();
 
       const response = await authStore.logout();
+
+      // Clear authenticated tab ID
+      sessionStorage.removeItem('authenticatedTabId');
 
       if (response.status) {
         Swal.fire({

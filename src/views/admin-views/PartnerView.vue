@@ -9,29 +9,13 @@
             <span class="kicker">Ecosystem Expansion</span>
             <h1>
               Powering the <br />
-              <span>Next Frontier</span> of Security.
+              <span>Next Frontier</span> of Vulnerability Management Program.
             </h1>
             <p>
-              Join the VaptFix Pro Partner Network. We are building an editorial intelligence
+              Join the VaptFix  Partner Network. We are building an editorial intelligence
               framework for cybersecurity professionals worldwide.
             </p>
-            <div class="hero-meta">
-              <div class="avatars">
-                <img
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuC-noPJ67kXfJ03ado9WdRKjTaNyrKhdfT5KUmAz3knnS6SWVL_Tp5NoNDYT_Lvj2dW7aLKN_jYejmPM8NWzHCYGrEcxwkDC_xHJPCuki3m2djQjX7F_yWD0VlT9RPNeooIoIKtSkWq87VSBLLEqEEB9ffmZwPQyXV4Myd0H7WrUgrQ_G6W-bxTpIMIMrxuwFOvvOUWqQPoY5lwqcUOP4cHq_J_ljs7niMoWuFzbo3nfNRS_JcKg7eS35NewN1V2XAGkNOdQc5DhajG"
-                  alt="Partner 1"
-                />
-                <img
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuD_I0NKCLCXw6YCsQQU-d_mGGX8uOV4-GsMqc5qyR_HKRDILNJGgqe6NFFLmeLpdhHnVYqEhqQEY7syA7OACd7nw-S86ns38vJoHgD5LHu7S6UeHt0V0jR7vpIIH5X0NWfFOxyFkbj7_8YOdzgDFDFnvfcP02fdszKrPsRoiobg2HkIsuoT5wIaduCtB_KohHfjD-jvvHWOBH-sXWWpKiOx-7aVn41NSSCRTVJn9J3UsD2LWnfGRJYmU33PJiAC8ihnriLzwN-9ZvhK"
-                  alt="Partner 2"
-                />
-                <img
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuChiHZ3oviqoMUmJ0_HbaePV6aVNOAAVswplqHEgU4YPci1ucdqNtel9xoWIiLWhRO0hh4v1cnPyvuSmGwZBaOiIVWFt93WTmC8QtuYLE5g6RT5aKvAk9BDqtQLp6F70w1BLFg8CibgeROOm4HDkspy4K0FF3AEV6eX8t040JxaLpS9tCg5mEn4nGg8FJKWtwAnGQ6fddF0rJEhCUnLNsyEwcYHD2DMzDyabQ8RdvTVWkcOu5YJ4RkZtGww3P_o4Zp08PDc_ExGcPBj"
-                  alt="Partner 3"
-                />
-              </div>
-              <p>Joined by 200+ Global Partners</p>
-            </div>
+          
           </div>
           <div class="partner-tier-card">
             <div class="tier-head">
@@ -123,7 +107,7 @@
               </label>
               <label>
                 Why partner with us?
-                <textarea rows="5" placeholder="Tell us about your interest in VaptFix Pro..."></textarea>
+                <textarea rows="5" placeholder="Tell us about your interest in VaptFix ..."></textarea>
               </label>
               <div class="grid two-col">
                 <label>Markets/Regions <input type="text" placeholder="e.g. North America, EMEA" /></label>
@@ -161,7 +145,7 @@
               <input type="checkbox" />
               <span class="consent-text">
                 I agree to the <a href="#" class="policy-link">Privacy Policy</a> and understand that
-                VaptFix Pro will process my information for partner evaluation.
+                VaptFix  will process my information for partner evaluation.
               </span>
             </label>
             <label class="consent-row">

@@ -625,12 +625,12 @@ export default {
   color: #ffffff;
 }
 .exc-tab-active-open {
-  background: #fdeaea !important;
-  color: #ba1a1a !important;
-  border-color: #ba1a1a !important;
+  background: #f8dede !important;
+  color: #b42318 !important;
+  border-color: #b42318 !important;
 }
 .exc-tab-active-open .exc-tab-count {
-  background: #ba1a1a;
+  background: #b42318;
   color: #ffffff;
 }
 .exc-tab-active-closed {
@@ -667,8 +667,8 @@ export default {
 .exc-vuln-name { font-size: 0.875rem; color: #1e1f1f; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .exc-badge { display: inline-flex; padding: 4px 10px; border-radius: 4px; font-size: 0.68rem; font-weight: 700; }
-.exc-badge-critical { background: #ffdad6; color: #ba1a1a; }
-.exc-badge-high { background: #ffe0c8; color: #f2994a; }
+.exc-badge-critical { background: #f8dede; color: #b42318; }
+.exc-badge-high { background: #fee2e2; color: #dc2626; }
 .exc-badge-medium { background: #fff4cc; color: #f2c94c; }
 .exc-badge-low { background: #d1fae5; color: #10b981; }
 
@@ -684,7 +684,7 @@ export default {
 
 .exc-status { display: inline-flex; align-items: center; gap: 5px; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; }
 .exc-status-dot { width: 6px; height: 6px; border-radius: 50%; }
-.exc-status-open { color: #ba1a1a; } .exc-status-open .exc-status-dot { background: #ba1a1a; }
+.exc-status-open { color: #b42318; } .exc-status-open .exc-status-dot { background: #b42318; }
 .exc-status-closed { color: #16a34a; } .exc-status-closed .exc-status-dot { background: #16a34a; }
 .exc-status-progress { color: #f2994a; } .exc-status-progress .exc-status-dot { background: #f2994a; }
 .exc-status-resolved { color: #0f696e; } .exc-status-resolved .exc-status-dot { background: #0f696e; }
@@ -781,13 +781,13 @@ export default {
   font-size: 0.65rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
 }
 .exc-so-badge-open { background: #a1ecf2; color: #002022; }
-.exc-so-badge-critical { background: #ffdad6; color: #ba1a1a; }
-.exc-so-badge-high { background: #ffe0c8; color: #9a3412; }
+.exc-so-badge-critical { background: #f8dede; color: #b42318; }
+.exc-so-badge-high { background: #fee2e2; color: #dc2626; }
 .exc-so-badge-medium { background: #fff4cc; color: #a16207; }
 .exc-so-badge-low { background: #d1fae5; color: #10b981; }
 .exc-so-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-.exc-so-dot-critical { background: #ba1a1a; }
-.exc-so-dot-high { background: #f2994a; }
+.exc-so-dot-critical { background: #b42318; }
+.exc-so-dot-high { background: #dc2626; }
 .exc-so-dot-medium { background: #f2c94c; }
 .exc-so-dot-low { background: #10b981; }
 

@@ -99,13 +99,23 @@ export default {
       loading: false,
       unreadCount: 0,
       pollTimer: null,
+      isTogglingShowAll: false,
     };
   },
   computed: {
     filteredNotifications() {
       let list = [...this.notifications];
-      if (this.filterType === "unread") list = list.filter((n) => !n.is_read);
-      if (this.filterType === "read") list = list.filter((n) => n.is_read);
+
+      // If specific filterType is set, apply that filter
+      if (this.filterType === "unread") {
+        list = list.filter((n) => !n.is_read);
+      } else if (this.filterType === "read") {
+        list = list.filter((n) => n.is_read);
+      }
+      // else: Show ALL notifications (read + unread) in both modes
+      // The only difference: View Less shows first 4, View All shows everything
+
+      // When showAll is true, show all; otherwise limit to 4
       return this.showAll ? list : list.slice(0, 4);
     },
   },
@@ -227,13 +237,13 @@ export default {
       return `${days} day${days > 1 ? "s" : ""} ago`;
     },
     async fetchNotifications(options = {}) {
-      const { silent = false } = options;
+      const { silent = false, includeRead = false } = options;
       if (!silent) this.loading = true;
       try {
         const res =
           this.recipientType === "user"
-            ? await this.authStore.fetchUserNotifications()
-            : await this.authStore.fetchAdminNotifications();
+            ? await this.authStore.fetchUserNotifications(includeRead)
+            : await this.authStore.fetchAdminNotifications(includeRead);
         const data = res.status ? res.data : null;
         const list = Array.isArray(data?.notifications) ? data.notifications : [];
         this.notifications = list.map((n) => {
@@ -298,14 +308,29 @@ export default {
       if (!res.status) return;
       this.notifications = this.notifications.map((n) => ({ ...n, is_read: true }));
       this.unreadCount = 0;
+
+      // Don't reset showAll - keep notifications visible after marking as read
+      // this.showAll = false; // REMOVED: This was hiding all notifications
     },
-    toggleShowAll() {
+    async toggleShowAll() {
+      // Prevent double-click
+      if (this.isTogglingShowAll) return;
+
+      this.isTogglingShowAll = true;
       this.showAll = !this.showAll;
+
+      // Always fetch ALL notifications (read + unread)
+      // The filtering is done in computed property based on showAll value
+      this.filterType = "";
+      await this.fetchNotifications({ silent: true, includeRead: true });
+
+      this.isTogglingShowAll = false;
     },
     refreshNotifications(options = {}) {
       const { silent = true } = options;
       this.fetchUnreadCount();
-      this.fetchNotifications({ silent });
+      // Always fetch all notifications (read + unread)
+      this.fetchNotifications({ silent, includeRead: true });
     },
     handleWindowFocus() {
       this.refreshNotifications();
@@ -330,7 +355,8 @@ export default {
     this.pollTimer = setInterval(() => {
       this.fetchUnreadCount();
       if (this.showNotifications) {
-        this.fetchNotifications({ silent: true });
+        // Always fetch all notifications (read + unread)
+        this.fetchNotifications({ silent: true, includeRead: true });
       }
     }, 10000);
   },
@@ -428,7 +454,7 @@ export default {
 }
 
 .notif-card--critical.notif-card--unread {
-  border-left-color: #dc2626;
+  border-left-color: #b42318;
 }
 
 .notif-card--high.notif-card--unread {
@@ -523,13 +549,13 @@ export default {
 }
 
 .notif-pill-critical {
-  background: #fee2e2;
-  color: #dc2626;
+  background: #f8dede;
+  color: #b42318;
   border: 1px solid #fca5a5;
 }
 .notif-pill-high {
-  background: #f8dede;
-  color: #b42318;
+  background: #fee2e2;
+  color: #dc2626;
   border: 1px solid #efb7b1;
 }
 .notif-pill-medium {
@@ -587,7 +613,7 @@ export default {
   height: 16px;
   padding: 0 4px;
   border-radius: 999px;
-  background: #dc2626;
+  background: #b42318;
   color: #fff;
   font-size: 10px;
   line-height: 16px;

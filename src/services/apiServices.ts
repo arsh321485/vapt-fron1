@@ -23,7 +23,9 @@ const REALTIME_ENDPOINT_PATTERNS = ["/api/notifications/"];
 
 endpoint.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("authorization");
+    const token =
+      sessionStorage.getItem("authorization") ||
+      localStorage.getItem("authorization");
     const requestUrl = String(config.url || "");
     const isPublic = PUBLIC_URL_PATTERNS.some((p) => config.url?.includes(p));
     const isRealtime = REALTIME_ENDPOINT_PATTERNS.some((p) => requestUrl.includes(p));
@@ -87,7 +89,13 @@ endpoint.interceptors.response.use(
       currentPath === "/home";
 
     if (error.response?.status === 401 && !isAuthEndpoint && !isAuthScreen) {
-      // Clear localStorage directly
+      // Clear both storages to avoid stale auth state across flows
+      sessionStorage.removeItem("authorization");
+      sessionStorage.removeItem("user");
+      sessionStorage.removeItem("authenticated");
+      sessionStorage.removeItem("refreshToken");
+      sessionStorage.removeItem("locations");
+
       localStorage.removeItem("authorization");
       localStorage.removeItem("user");
       localStorage.removeItem("authenticated");

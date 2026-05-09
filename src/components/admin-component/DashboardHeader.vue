@@ -142,14 +142,17 @@ export default {
       const response = await authStore.logout();
 
       if (response.status) {
+        // Clear authenticated tab ID
+        sessionStorage.removeItem('authenticatedTabId');
+
         Swal.fire({
           icon: "success",
           title: "Logged out",
           text: "You have been logged out successfully.",
-          timer: 3000,
+          timer: 2000,
           showConfirmButton: false,
         });
-        router.replace("/signin");
+        router.replace("/home");
       } else {
         Swal.fire({
           icon: "error",

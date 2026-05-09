@@ -208,7 +208,6 @@
                             <span :class="getStatusBadgeClass(v.status)">
                               <span :class="getStatusDotClass(v.status)"></span>{{ getStatusLabel(v.status) }}
                             </span>
-                            <span class="text-muted" style="font-size:0.78rem;">CVSS: {{ v.cvss_score || '-' }}</span>
                             <i class="bi text-muted" :class="expandedVulnIndex === i ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
                           </div>
                         </div>
@@ -624,8 +623,8 @@ export default {
       return "green";
     },
     getSeverityBg(sev) {
-      if (sev === "Critical") return "#fdeaea";
-      if (sev === "High") return "rgb(246 214 214)";
+      if (sev === "Critical") return "#f8dede";
+      if (sev === "High") return "#fee2e2";
       if (sev === "Medium") return "rgb(249 225 193)";
       return "rgb(202 233 204)";
     },
@@ -1138,8 +1137,8 @@ export default {
   border-radius: 3px;
   white-space: nowrap;
 }
-.sev-critical { background: #fee2e2; color: #dc2626; }
-.sev-high     { background: #f8dede; color: #b42318; }
+.sev-critical { background: #f8dede; color: #b42318; }
+.sev-high     { background: #fee2e2; color: #dc2626; }
 .sev-medium   { background: #fef3c7; color: #b45309; }
 .sev-low      { background: #ccfbf1; color: #0f766e; }
 
@@ -1158,8 +1157,8 @@ export default {
   padding: 2px 5px;
   border-radius: 4px;
 }
-.critical-dot { color: #dc2626; background: #fee2e2; }
-.high-dot     { color: #b42318; background: #f8dede; }
+.critical-dot { color: #b42318 !important; background: #f8dede !important; }
+.high-dot     { color: #dc2626 !important; background: #fee2e2 !important; }
 .medium-dot   { color: #b45309; background: #fef3c7; }
 .low-dot      { color: #0f766e; background: #ccfbf1; }
 
@@ -1271,7 +1270,7 @@ export default {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #dc2626;
+  background: #b42318;
   flex-shrink: 0;
 }
 .status-closed-badge {
@@ -1369,8 +1368,8 @@ export default {
   border-color: #0f696e !important;
   font-weight: 700;
 }
-.sev-pill-critical { color: #dc2626; }
-.sev-pill-high     { color: #b91c1c; }
+.sev-pill-critical { color: #b42318 !important; background: #f8dede !important; }
+.sev-pill-high     { color: #dc2626 !important; background: #fee2e2 !important; }
 .sev-pill-medium   { color: #f59e0b; }
 /* Same white / gray border as other severity pills; green text only */
 .sev-pill-low { color: #10b981; }
@@ -1401,7 +1400,7 @@ export default {
 .vuln-accordion-header:hover { background: #edeef1; }
 
 .vuln-icon { font-size: 1rem; }
-.vuln-icon-critical { color: #ba1a1a; }
+.vuln-icon-critical { color: #b42318; }
 .vuln-icon-high     { color: #dc2626; }
 .vuln-icon-medium   { color: #ca8a04; }
 .vuln-icon-low      { color: #10b981; }

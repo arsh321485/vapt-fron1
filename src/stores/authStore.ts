@@ -24,13 +24,13 @@ interface SlackMessageResponse {
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
-    user: localStorage.getItem("user") ? JSON.parse(localStorage.getItem("user")!) : null,
-    token: localStorage.getItem("authorization") ? localStorage.getItem("authorization") : null,
-    authenticated: localStorage.getItem("authenticated")
-      ? JSON.parse(localStorage.getItem("authenticated")!)
+    user: sessionStorage.getItem("user") ? JSON.parse(sessionStorage.getItem("user")!) : null,
+    token: sessionStorage.getItem("authorization") ? sessionStorage.getItem("authorization") : null,
+    authenticated: sessionStorage.getItem("authenticated")
+      ? JSON.parse(sessionStorage.getItem("authenticated")!)
       : false,
-    accessToken: localStorage.getItem("authorization") || null,
-    refreshToken: localStorage.getItem("refreshToken") || null,
+    accessToken: sessionStorage.getItem("authorization") || null,
+    refreshToken: sessionStorage.getItem("refreshToken") || null,
     tickets: [] as any[],
     countries: [] as string[],
     totalAssets: 0 as number,
@@ -110,9 +110,9 @@ export const useAuthStore = defineStore("auth", {
   actions: {
     // ✅ Restore session on reload
     restoreFromStorage() {
-      const access = localStorage.getItem("authorization"); // ✅ FIX
-      const refresh = localStorage.getItem("refreshToken");
-      const user = localStorage.getItem("user");
+      const access = sessionStorage.getItem("authorization");
+      const refresh = sessionStorage.getItem("refreshToken");
+      const user = sessionStorage.getItem("user");
 
       if (access && user) {
         this.token = access;
@@ -120,7 +120,7 @@ export const useAuthStore = defineStore("auth", {
         this.user = JSON.parse(user);
         this.authenticated = true;
 
-        console.log("🔄 Session restored from localStorage");
+        console.log("🔄 Session restored from sessionStorage");
         return true;
       }
 
@@ -131,7 +131,7 @@ export const useAuthStore = defineStore("auth", {
     initFromStorage() {
       try {
         // 1️⃣ Restore user
-        const savedUser = localStorage.getItem("user");
+        const savedUser = sessionStorage.getItem("user");
         if (savedUser) {
           this.user = JSON.parse(savedUser);
           console.log("♻️ Restored user from storage:", this.user);
@@ -336,11 +336,11 @@ export const useAuthStore = defineStore("auth", {
           this.setAuth(data.tokens.access, data.user);
 
           if (data.tokens.refresh) {
-            localStorage.setItem("refreshToken", data.tokens.refresh);
+            sessionStorage.setItem("refreshToken", data.tokens.refresh);
           }
 
-          localStorage.setItem("authenticated", "true");
-          localStorage.setItem("isNewUser", "true");
+          sessionStorage.setItem("authenticated", "true");
+          sessionStorage.setItem("isNewUser", "true");
         }
 
         return { status: true, data, message: data.message };
@@ -365,7 +365,7 @@ export const useAuthStore = defineStore("auth", {
     }) {
       try {
         // Clear any stale token and cached report so it doesn't get attached to the login request
-        localStorage.removeItem("authorization");
+        sessionStorage.removeItem("authorization");
         localStorage.removeItem("reportId");
         this.reportStatus.reportId = null;
         this.reportStatus.checked = false;
@@ -389,11 +389,11 @@ export const useAuthStore = defineStore("auth", {
           this.setAuth(data.tokens.access, data.user);
 
           if (data.tokens.refresh) {
-            localStorage.setItem("refreshToken", data.tokens.refresh);
+            sessionStorage.setItem("refreshToken", data.tokens.refresh);
           }
         }
 
-        localStorage.setItem("isNewUser", "false");
+        sessionStorage.setItem("isNewUser", "false");
 
         return { status: true, data, message: data.message };
       } catch (error: any) {
@@ -432,12 +432,12 @@ export const useAuthStore = defineStore("auth", {
         }
 
         this.setAuth(data.tokens.access, data.user);
-        localStorage.setItem("refreshToken", data.tokens.refresh);
+        sessionStorage.setItem("refreshToken", data.tokens.refresh);
         localStorage.removeItem("reportId");
         this.reportStatus.reportId = null;
         this.reportStatus.checked = false;
 
-        localStorage.setItem("isNewUser", data.is_new_user === true ? "true" : "false");
+        sessionStorage.setItem("isNewUser", data.is_new_user === true ? "true" : "false");
 
         return { status: true, user: data.user, tokens: data.tokens };
       } catch (error: any) {
@@ -526,7 +526,7 @@ export const useAuthStore = defineStore("auth", {
         const data = response.data;
         if (data.status) {
           this.user = data.user;
-          localStorage.setItem("user", JSON.stringify(data.user));
+          sessionStorage.setItem("user", JSON.stringify(data.user));
           return { status: true, data };
         }
         return { status: false, message: data.message };
@@ -1079,12 +1079,12 @@ export const useAuthStore = defineStore("auth", {
         localStorage.setItem("teams_access_token", data.tokens.access);
         localStorage.setItem("teams_refresh_token", data.tokens.refresh);
 
-        // 🔐 Save Django JWT tokens for API Authorization header
+        // 🔐 Save Django JWT tokens for API Authorization header (main auth tokens go to sessionStorage)
         if (data.django_access_token) {
-          localStorage.setItem("access_token", data.django_access_token);
+          sessionStorage.setItem("authorization", data.django_access_token);
         }
         if (data.django_refresh_token) {
-          localStorage.setItem("refresh_token", data.django_refresh_token);
+          sessionStorage.setItem("refreshToken", data.django_refresh_token);
         }
 
         // 👤 Save Microsoft user
@@ -1614,10 +1614,10 @@ export const useAuthStore = defineStore("auth", {
             localStorage.setItem("jira_refresh_token", data.jira_tokens.refresh_token);
           }
           if (data.jwt_tokens?.access) {
-            localStorage.setItem("authorization", data.jwt_tokens.access);
+            sessionStorage.setItem("authorization", data.jwt_tokens.access);
           }
           if (data.jwt_tokens?.refresh) {
-            localStorage.setItem("refresh_token", data.jwt_tokens.refresh);
+            sessionStorage.setItem("refreshToken", data.jwt_tokens.refresh);
           }
           return { status: true, data };
         }
@@ -2168,7 +2168,7 @@ export const useAuthStore = defineStore("auth", {
     // 🔹 USER LOGIN
     async userLogin(payload: { email: string; password: string; recaptcha: string }) {
       try {
-        localStorage.removeItem("authorization");
+        sessionStorage.removeItem("authorization");
         let res;
         try {
           res = await endpoint.post("/api/admin/users/user-login/", payload);
@@ -2185,7 +2185,7 @@ export const useAuthStore = defineStore("auth", {
         if (data.tokens?.access) {
           this.setAuth(data.tokens.access, data.user);
           if (data.tokens.refresh) {
-            localStorage.setItem("refreshToken", data.tokens.refresh);
+            sessionStorage.setItem("refreshToken", data.tokens.refresh);
           }
         }
         return { status: true, data, message: data.message };
@@ -2900,7 +2900,23 @@ export const useAuthStore = defineStore("auth", {
           `/api/user/register/fix-vulnerability/${vulnerabilityId}/raise-support-request/`,
           payload,
         );
-        this.invalidateUserSupportTicketCaches(this.userLatestReportId || undefined);
+        // Clear all user dashboard and support request caches for immediate refresh
+        // This forces the dashboard to fetch fresh data from backend on next load
+        this.cachedUserTotalAssets = {};
+        this.cachedSupportRequests = {};
+        this.cachedUserSupportRequests = {};
+        this.cachedUserOpenTickets = {};
+        this.cachedUserAllTickets = {};
+        this.cachedUserVulnerabilities = {};
+        this.cachedMitigationTimeline = {};
+        this.cachedMeanTime = {};
+
+        // Immediately trigger a fresh fetch to update dashboard if it's currently loaded
+        // This ensures the counts update without needing manual refresh or navigation
+        setTimeout(() => {
+          void this.fetchUserDashboardSummary(undefined, true);
+        }, 500);
+
         return {
           status: true,
           data: res.data.data,
@@ -3543,15 +3559,15 @@ export const useAuthStore = defineStore("auth", {
 
     // ✅ Logout user (frontend-first, backend revoke in background)
     async logout() {
-      const refreshToken = localStorage.getItem("refreshToken");
+      const refreshToken = sessionStorage.getItem("refreshToken");
 
       // Clear local session immediately so signout feels instant.
-      localStorage.removeItem("authorization");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("user");
-      localStorage.removeItem("authenticated");
-      localStorage.removeItem("google_id_token");
-      localStorage.removeItem("isNewUser");
+      sessionStorage.removeItem("authorization");
+      sessionStorage.removeItem("refreshToken");
+      sessionStorage.removeItem("user");
+      sessionStorage.removeItem("authenticated");
+      sessionStorage.removeItem("google_id_token");
+      sessionStorage.removeItem("isNewUser");
       this.user = null;
       this.accessToken = null;
       this.refreshToken = null;
@@ -3579,13 +3595,18 @@ export const useAuthStore = defineStore("auth", {
       this.user = user;
       this.authenticated = true;
 
+      // Primary auth store
+      sessionStorage.setItem("authorization", token);
+      sessionStorage.setItem("user", JSON.stringify(user));
+      sessionStorage.setItem("authenticated", JSON.stringify(true));
+
+      // Backward compatibility for legacy modules that still read localStorage.
       localStorage.setItem("authorization", token);
       localStorage.setItem("user", JSON.stringify(user));
       localStorage.setItem("authenticated", JSON.stringify(true));
-      // localStorage.setItem("locations", JSON.stringify(this.locations));
 
       console.log("Access Token saved:", token);
-      console.log("Refresh Token saved:", localStorage.getItem("refreshToken"));
+      console.log("Refresh Token saved:", sessionStorage.getItem("refreshToken"));
       // console.log("✅ Locations saved in localStorage:", this.locations);
       // console.log("✅ Auth set successfully:", this.user, this.locations);
     },
@@ -3598,7 +3619,7 @@ export const useAuthStore = defineStore("auth", {
     _stepsKey(): string {
       const user =
         this.user ||
-        (localStorage.getItem("user") ? JSON.parse(localStorage.getItem("user")!) : null);
+        (sessionStorage.getItem("user") ? JSON.parse(sessionStorage.getItem("user")!) : null);
       const uid = user?.id || user?.email || "";
       return uid ? `completedSteps_${uid}` : "completedSteps";
     },
@@ -3715,10 +3736,15 @@ export const useAuthStore = defineStore("auth", {
     },
 
     // Admin notifications list
-    async fetchAdminNotifications() {
+    async fetchAdminNotifications(includeRead = false) {
       try {
+        const params: any = { _ts: Date.now() };
+        // If includeRead is true, request all notifications (read + unread)
+        if (includeRead) {
+          params.status = "all";
+        }
         const res = await endpoint.get(`/api/notifications/admin/list/`, {
-          params: { _ts: Date.now() },
+          params,
         });
         return {
           status: true,
@@ -3737,10 +3763,15 @@ export const useAuthStore = defineStore("auth", {
     },
 
     // User notifications list
-    async fetchUserNotifications() {
+    async fetchUserNotifications(includeRead = false) {
       try {
+        const params: any = { _ts: Date.now() };
+        // If includeRead is true, request all notifications (read + unread)
+        if (includeRead) {
+          params.status = "all";
+        }
         const res = await endpoint.get(`/api/notifications/user/list/`, {
-          params: { _ts: Date.now() },
+          params,
         });
         return {
           status: true,

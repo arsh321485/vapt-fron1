@@ -68,19 +68,23 @@
 
 
           <div class="header-cta d-flex align-items-center gap-3">
-            <router-link to="/auth?mode=signin" class="signin-btn text-decoration-none">
+            <!-- <button type="button" class="signin-btn text-decoration-none" @click="openSignInModal('user')">
               <i class="bi bi-person me-1"></i> User Sign In
-            </router-link>
+            </button>
 
-            <button type="button" class="btn hero-btn text-light text-decoration-none" @click="handleFixNow">
+            <button type="button" class="btn hero-btn text-light text-decoration-none" @click="openSignInModal('admin')">
              Admin Sign In
+              <i class="bi bi-arrow-right-circle-fill fs-5 ms-1"></i>
+            </button> -->
+
+            <button type="button" class="btn hero-btn text-light text-decoration-none" @click="openAdminSignUpModal">
+             Get Started
               <i class="bi bi-arrow-right-circle-fill fs-5 ms-1"></i>
             </button>
 
-            <router-link to="/signup" class="btn hero-btn text-light text-decoration-none">
-             Get Started
-              <i class="bi bi-arrow-right-circle-fill fs-5 ms-1"></i>
-            </router-link>
+            <button type="button" class="btn signup-modal-btn text-light text-decoration-none" @click="openSignUpModal">
+              <i class="bi bi-person-plus-fill me-1"></i> Sign In
+            </button>
           </div>
 
 
@@ -111,20 +115,72 @@
         </div>
       </div>
     </nav>
+
+    <!-- Sign In Modal -->
+    <SignUpModal
+      :show="showSignUpModal"
+      :preSelectedType="signUpPreSelectedType"
+      @close="closeSignUpModal"
+      @open-signin="handleOpenSignInFromSignUp"
+      @open-admin-signup="handleOpenAdminSignUpFromSignIn"
+    />
+
+    <!-- Admin Sign Up Modal -->
+    <AdminSignUpModal
+      :show="showAdminSignUpModal"
+      @close="closeAdminSignUpModal"
+      @open-signin="handleOpenSignInFromAdminSignUp"
+    />
+
   </main>
 </template>
 
 <script>
+import SignUpModal from './SignUpModal.vue';
+import AdminSignUpModal from './AdminSignUpModal.vue';
+
 export default {
   name: 'Header',
+  components: {
+    SignUpModal,
+    AdminSignUpModal
+  },
   data() {
     return {
       user: null,
+      showSignUpModal: false,
+      signUpPreSelectedType: '',
+      showAdminSignUpModal: false
     };
   },
   methods: {
-    handleFixNow() {
-      window.location.assign("/signin");
+    openSignUpModal() {
+      this.signUpPreSelectedType = '';
+      this.showSignUpModal = true;
+    },
+    closeSignUpModal() {
+      this.showSignUpModal = false;
+      this.signUpPreSelectedType = '';
+    },
+    openAdminSignUpModal() {
+      this.showAdminSignUpModal = true;
+    },
+    closeAdminSignUpModal() {
+      this.showAdminSignUpModal = false;
+    },
+    handleOpenSignInFromSignUp() {
+      this.closeSignUpModal();
+      this.signUpPreSelectedType = '';
+      this.showSignUpModal = true;
+    },
+    handleOpenSignInFromAdminSignUp() {
+      this.closeAdminSignUpModal();
+      this.signUpPreSelectedType = '';
+      this.showSignUpModal = true;
+    },
+    handleOpenAdminSignUpFromSignIn() {
+      this.closeSignUpModal();
+      this.showAdminSignUpModal = true;
     }
   },
   mounted() {
@@ -205,5 +261,34 @@ export default {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.55);
   color: #ffffff;
+}
+
+/* ── Sign Up Modal Button ── */
+.signup-modal-btn {
+  background: linear-gradient(135deg, #0f696e 0%, #0a5458 100%);
+  border: none;
+  border-radius: 999px;
+  color: #FFFFFF;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 6px 18px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(15, 105, 110, 0.25);
+}
+
+.signup-modal-btn:hover {
+  background: linear-gradient(135deg, #0a5458 0%, #083f43 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(15, 105, 110, 0.35);
+  color: #FFFFFF;
+}
+
+.signup-modal-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(15, 105, 110, 0.2);
 }
 </style>

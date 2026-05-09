@@ -19,13 +19,26 @@
                 </div>
                 <div class="col-lg-7 col-md-6 text-white d-flex flex-column justify-content-end">
                     <div>
-                        <ul class="d-flex justify-content-between list-unstyled">
-                            <router-link to="/vulnerabilityexplorer" style="text-decoration: none;"><li>Vulnerability Explorer</li></router-link>
-                            <li>Partners</li>
-                            <!-- <li>Pricing</li> -->
-                             <router-link to="/pricingplan" style="text-decoration: none;"><li>Pricing</li></router-link>
+                        <ul class="d-flex justify-content-between list-unstyled footer-nav-links">
+                            <li class="footer-partners-group">
+                                <span class="footer-link-title">Partners</span>
+                                <ul class="list-unstyled footer-partners-submenu mt-2">
+                                    <li>
+                                        <router-link to="/partner" class="footer-sub-link text-decoration-none">
+                                            Partner Registration
+                                        </router-link>
+                                    </li>
+                                    <li>
+                                        <router-link to="/partner-lead-portal" class="footer-sub-link text-decoration-none">
+                                            Lead Registration
+                                        </router-link>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li>
+                                <router-link to="/pricingplan" style="text-decoration: none; color: #ffffff;">Pricing</router-link>
+                            </li>
                             <li>Features</li>
-                            <!-- <li>Insights</li> -->
                         </ul>
                     </div>
 
@@ -47,3 +60,27 @@ export default {
   name: 'Footer',
 };
 </script>
+
+<style scoped>
+.footer-nav-links {
+  align-items: flex-start;
+}
+
+.footer-link-title {
+  font-weight: 500;
+}
+
+.footer-partners-submenu {
+  display: grid;
+  gap: 10px;
+}
+
+.footer-sub-link {
+  color: #ffffff;
+  font-size: 14px;
+}
+
+.footer-sub-link:hover {
+  text-decoration: underline !important;
+}
+</style>

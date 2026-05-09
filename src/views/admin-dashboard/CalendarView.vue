@@ -239,7 +239,7 @@
                         <span
                           v-if="evt.status"
                           class="cal-day-event-status"
-                          :style="{ color: evt.status === 'approved' ? '#16a34a' : evt.status === 'rejected' ? '#dc2626' : '#f97316' }"
+                          :style="{ color: evt.status === 'approved' ? '#16a34a' : evt.status === 'rejected' ? '#b42318' : '#f97316' }"
                         >{{ evt.status }}</span>
                       </div>
                       <div v-if="evt.asset || evt.extended" class="cal-day-event-team mt-1">
@@ -372,8 +372,8 @@
                     selectedEvent.color === 'team-config'  ? 'rgb(249, 115, 22)' :
                     selectedEvent.color === 'team-arch'    ? 'rgb(220, 38, 38)' : '#475569'
                   ) : (
-                    selectedEvent.color === 'maroon'    ? '#dc2626' :
-                    selectedEvent.color === 'dl-blue'   ? '#b42318' :
+                    selectedEvent.color === 'maroon'    ? '#b42318' :
+                    selectedEvent.color === 'dl-blue'   ? '#dc2626' :
                     selectedEvent.color === 'dl-orange' ? '#b45309' :
                     selectedEvent.color === 'dl-green'  ? '#0f766e' : '#475569'
                   )
@@ -427,7 +427,7 @@
                     <span>Extended by: {{ selectedEvent.extended }}</span>
                   </div>
                   <div v-if="selectedEvent.status" class="cal-popup-row">
-                    <i class="bi bi-check-circle" :style="{ color: selectedEvent.status === 'approved' ? '#16a34a' : selectedEvent.status === 'rejected' ? '#dc2626' : '#f97316' }"></i>
+                    <i class="bi bi-check-circle" :style="{ color: selectedEvent.status === 'approved' ? '#16a34a' : selectedEvent.status === 'rejected' ? '#b42318' : '#f97316' }"></i>
                     <span style="text-transform:capitalize;">{{ selectedEvent.status }}</span>
                   </div>
                 </div>
@@ -1290,18 +1290,18 @@ export default {
   transition: opacity 0.15s;
 }
 .cal-event-pill:hover { opacity: 0.8; }
-.cal-event-red    { background: #fee2e2; color: #dc2626; }
+.cal-event-red    { background: #f8dede; color: #b42318; }
 .cal-event-teal   { background: #ccfbf1; color: #0f696e; }
 .cal-event-purple { background: #241447; color: #ffffff; }
 .cal-event-blue   { background: #dbeafe; color: #1d4ed8; }
 .cal-event-green  { background: #dcfce7; color: #15803d; }
 .cal-event-orange { background: #fff7ed; color: #ea580c; }
 .cal-event-crimson{ background: #fee2e2; color: #b91c1c; }
-.cal-event-maroon    { background: #fee2e2; color: #dc2626; } /* Critical */
-.cal-event-dl-blue   { background: #f8dede; color: #b42318; } /* High */
+.cal-event-maroon    { background: #f8dede; color: #b42318; } /* Critical */
+.cal-event-dl-blue   { background: #fee2e2; color: #dc2626; } /* High */
 .cal-event-dl-orange { background: #fef3c7; color: #b45309; } /* Medium */
 .cal-event-dl-green  { background: #ccfbf1; color: #0f766e; } /* Low */
-.cal-event-dl-red    { background: #fee2e2; color: #dc2626; }
+.cal-event-dl-red    { background: #f8dede; color: #b42318; }
 /* Team-based extension event colors */
 .cal-event-team-network { background: rgb(239, 246, 255); color: rgb(59, 130, 246); }
 .cal-event-team-patch   { background: rgb(236, 253, 245); color: rgb(16, 185, 129); }
@@ -1527,16 +1527,16 @@ export default {
   transition: opacity 0.15s;
 }
 .cal-week-event-card:hover { opacity: 0.85; }
-.cal-week-card-red    { background: #fff0f0; border-left: 3px solid #dc2626; }
+.cal-week-card-red    { background: #f8dede; border-left: 3px solid #b42318; }
 .cal-week-card-teal   { background: #f0fdf9; border-left: 3px solid #0f696e; }
 .cal-week-card-purple { background: #f3f0ff; border-left: 3px solid #241447; }
 .cal-week-card-grey   { background: #f8f9fc; border-left: 3px solid #94a3b8; }
 /* Severity deadline colors */
-.cal-week-card-maroon    { background: #fee2e2; color: #dc2626; border-left: 3px solid #fca5a5; } /* Critical */
-.cal-week-card-dl-blue   { background: #f8dede; color: #b42318; border-left: 3px solid #efb7b1; } /* High */
+.cal-week-card-maroon    { background: #f8dede; color: #b42318; border-left: 3px solid #efb7b1; } /* Critical */
+.cal-week-card-dl-blue   { background: #fee2e2; color: #dc2626; border-left: 3px solid #fca5a5; } /* High */
 .cal-week-card-dl-orange { background: #fef3c7; color: #b45309; border-left: 3px solid #fcd34d; } /* Medium */
 .cal-week-card-dl-green  { background: #ccfbf1; color: #0f766e; border-left: 3px solid #5eead4; } /* Low */
-.cal-week-card-dl-red   { background: #fef2f2; border-left: 3px solid #dc2626; }
+.cal-week-card-dl-red   { background: #f8dede; border-left: 3px solid #b42318; }
 /* Team-based extension event colors */
 .cal-week-card-team-network { background: rgb(239, 246, 255); border-left: 3px solid rgb(59, 130, 246); }
 .cal-week-card-team-patch   { background: rgb(236, 253, 245); border-left: 3px solid rgb(16, 185, 129); }
