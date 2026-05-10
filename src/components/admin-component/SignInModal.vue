@@ -381,7 +381,7 @@ export default {
           this.userForm.answer = '';
           this.userForm.password = '';
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error('User login error:', err);
         const errorMsg = err?.response?.data?.detail || err?.response?.data?.message || err?.message || 'Login request failed. Please try again.';
         Swal.fire({
@@ -433,7 +433,7 @@ export default {
           this.adminForm.password = '';
           window.grecaptcha?.reset(this.recaptchaWidgetId);
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error('Admin login error:', err);
         const errorMsg = err?.response?.data?.detail || err?.response?.data?.message || err?.message || 'Login request failed. Please try again.';
         Swal.fire({
