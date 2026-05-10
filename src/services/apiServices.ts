@@ -18,19 +18,22 @@ const PUBLIC_URL_PATTERNS = [
   "/api/admin/users/user-set-password/",
   "/api/admin/users/reset-password/",
   "/api/admin/users/forgot-password/",
+  "/api/admin/users/login/",
+  "/api/admin/users/user-login/",
+  "/api/admin/users/signup/send-otp/",
+  "/api/admin/users/signup/verify-otp/",
 ];
 const REALTIME_ENDPOINT_PATTERNS = ["/api/notifications/"];
 
 endpoint.interceptors.request.use(
   (config) => {
-    const token =
-      sessionStorage.getItem("authorization") ||
-      localStorage.getItem("authorization");
+    const token = sessionStorage.getItem("authorization") || localStorage.getItem("authorization");
     const requestUrl = String(config.url || "");
     const isPublic = PUBLIC_URL_PATTERNS.some((p) => config.url?.includes(p));
     const isRealtime = REALTIME_ENDPOINT_PATTERNS.some((p) => requestUrl.includes(p));
     const method = String(config.method || "get").toLowerCase();
 
+    // Don't attach token to public endpoints (login, signup, password reset, etc)
     if (token && token !== "null" && token !== "undefined" && !isPublic) {
       config.headers["Authorization"] = `Bearer ${token}`;
     }

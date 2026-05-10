@@ -22,6 +22,21 @@ interface SlackMessageResponse {
   message?: string;
 }
 
+// Helper function to clear all auth tokens
+function clearAllAuthTokens() {
+  // Clear sessionStorage
+  sessionStorage.removeItem("authorization");
+  sessionStorage.removeItem("refreshToken");
+  sessionStorage.removeItem("user");
+  sessionStorage.removeItem("authenticated");
+
+  // Clear localStorage
+  localStorage.removeItem("authorization");
+  localStorage.removeItem("refreshToken");
+  localStorage.removeItem("user");
+  localStorage.removeItem("authenticated");
+}
+
 export const useAuthStore = defineStore("auth", {
   state: () => ({
     user: sessionStorage.getItem("user") ? JSON.parse(sessionStorage.getItem("user")!) : null,
@@ -364,8 +379,8 @@ export const useAuthStore = defineStore("auth", {
       testing_type?: string[];
     }) {
       try {
-        // Clear any stale token and cached report so it doesn't get attached to the login request
-        sessionStorage.removeItem("authorization");
+        // Clear any stale token and cached data so it doesn't get attached to the login request
+        clearAllAuthTokens();
         localStorage.removeItem("reportId");
         this.reportStatus.reportId = null;
         this.reportStatus.checked = false;
@@ -2166,9 +2181,11 @@ export const useAuthStore = defineStore("auth", {
     },
 
     // 🔹 USER LOGIN
-    async userLogin(payload: { email: string; password: string; recaptcha: string }) {
+    async userLogin(payload: { email: string; password: string; recaptcha?: string }) {
       try {
-        sessionStorage.removeItem("authorization");
+        // Clear all stale tokens before login
+        clearAllAuthTokens();
+
         let res;
         try {
           res = await endpoint.post("/api/admin/users/user-login/", payload);
@@ -3562,10 +3579,7 @@ export const useAuthStore = defineStore("auth", {
       const refreshToken = sessionStorage.getItem("refreshToken");
 
       // Clear local session immediately so signout feels instant.
-      sessionStorage.removeItem("authorization");
-      sessionStorage.removeItem("refreshToken");
-      sessionStorage.removeItem("user");
-      sessionStorage.removeItem("authenticated");
+      clearAllAuthTokens();
       sessionStorage.removeItem("google_id_token");
       sessionStorage.removeItem("isNewUser");
       this.user = null;

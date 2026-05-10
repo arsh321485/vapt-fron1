@@ -361,31 +361,38 @@ export default {
         const authStore = useAuthStore();
         const result = await authStore.userLogin({
           email: this.userForm.email,
-          password: this.userForm.password
+          password: this.userForm.password,
+          recaptcha: '' // User login doesn't require recaptcha
         });
 
         if (result.status) {
           this.$emit('close');
           this.$router.push('/auth?mode=signin');
         } else {
+          // Show detailed error message from backend
+          const errorMsg = result.message || result.details?.detail || result.details?.non_field_errors?.[0] || 'Invalid credentials';
           Swal.fire({
             icon: 'error',
             title: 'Login Failed',
-            text: result.message || 'Invalid credentials',
+            text: errorMsg,
             confirmButtonColor: '#241447'
           });
           this.refreshUserCaptcha();
           this.userForm.answer = '';
+          this.userForm.password = '';
         }
-      } catch (err) {
+      } catch (err: any) {
+        console.error('User login error:', err);
+        const errorMsg = err?.response?.data?.detail || err?.response?.data?.message || err?.message || 'Login request failed. Please try again.';
         Swal.fire({
           icon: 'error',
           title: 'Error',
-          text: 'Login request failed. Please try again.',
+          text: errorMsg,
           confirmButtonColor: '#241447'
         });
         this.refreshUserCaptcha();
         this.userForm.answer = '';
+        this.userForm.password = '';
       } finally {
         this.userLoading = false;
       }
@@ -416,20 +423,23 @@ export default {
           this.$emit('close');
           await this.checkAndRedirectAdmin();
         } else {
+          const errorMsg = result.message || result.details?.detail || result.details?.non_field_errors?.[0] || 'Invalid credentials';
           Swal.fire({
             icon: 'error',
             title: 'Login Failed',
-            text: result.message || 'Invalid credentials',
+            text: errorMsg,
             confirmButtonColor: '#241447'
           });
           this.adminForm.password = '';
           window.grecaptcha?.reset(this.recaptchaWidgetId);
         }
-      } catch (err) {
+      } catch (err: any) {
+        console.error('Admin login error:', err);
+        const errorMsg = err?.response?.data?.detail || err?.response?.data?.message || err?.message || 'Login request failed. Please try again.';
         Swal.fire({
           icon: 'error',
           title: 'Error',
-          text: 'Login request failed. Please try again.',
+          text: errorMsg,
           confirmButtonColor: '#241447'
         });
         this.adminForm.password = '';
