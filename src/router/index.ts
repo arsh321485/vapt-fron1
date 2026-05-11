@@ -63,6 +63,7 @@ import RemediationTimelineView from "../views/admin-dashboard/RemediationTimelin
 import UserRemediationTimelineView from "../views/user-views/UserRemediationTimelineView.vue";
 import CalendarView from "../views/admin-dashboard/CalendarView.vue";
 import UserCalendarView from "../views/user-views/UserCalendarView.vue";
+import { tryShowPostLoginSuccessAlert } from "../utils/postLoginSuccess";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -425,6 +426,10 @@ const router = createRouter({
     // For other routes, preserve default behavior
     return false;
   },
+});
+
+router.afterEach(() => {
+  tryShowPostLoginSuccessAlert();
 });
 
 // NOTE: Auth gating intentionally disabled.

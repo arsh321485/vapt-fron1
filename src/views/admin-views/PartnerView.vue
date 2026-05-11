@@ -50,7 +50,7 @@
             <div class="grid two-col">
               <label>Full Name <input type="text" placeholder="Enter your name" /></label>
               <label>Job Title <input type="text" placeholder="e.g. CEO, Director of Sales" /></label>
-              <label>Work Email <input type="email" placeholder="email@company.com" /></label>
+              <label>Work Email <input type="email" placeholder="email@company.com" v-model="partnerEmail" /></label>
               <label>Phone Number <input type="tel" placeholder="+1 (555) 000-0000" /></label>
               <label class="full">LinkedIn Profile <input type="url" placeholder="https://linkedin.com/in/username" /></label>
             </div>
@@ -173,9 +173,17 @@ import Footer from "@/components/admin-component/Footer.vue";
 export default {
   name: "PartnerView",
   components: { Header, Footer },
+  data() {
+    return {
+      partnerEmail: ''
+    };
+  },
   methods: {
     goToLeadPortal() {
-      this.$router.push("/partner-thankyou");
+      if (this.partnerEmail) {
+        localStorage.setItem('partnerEmail', this.partnerEmail);
+      }
+      this.$router.push("/partner-lead-portal");
     },
   },
 };

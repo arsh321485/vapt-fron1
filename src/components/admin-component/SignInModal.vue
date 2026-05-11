@@ -215,6 +215,7 @@
 
 <script>
 import { useAuthStore } from '@/stores/authStore';
+import { markPostLoginSuccess } from '@/utils/postLoginSuccess';
 import Swal from 'sweetalert2';
 
 export default {
@@ -421,6 +422,7 @@ export default {
 
         if (result.status) {
           this.$emit('close');
+          markPostLoginSuccess(result.message);
           await this.checkAndRedirectAdmin();
         } else {
           const errorMsg = result.message || result.details?.detail || result.details?.non_field_errors?.[0] || 'Invalid credentials';

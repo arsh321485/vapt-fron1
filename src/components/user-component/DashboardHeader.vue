@@ -155,7 +155,11 @@ body {
 }
 
 .browser-bar img {
-  height: 40px;
+  height: 36px;
+  width: auto;
+  max-width: 148px;
+  object-fit: contain;
+  object-position: left center;
 }
 
 .dashboard-circle {

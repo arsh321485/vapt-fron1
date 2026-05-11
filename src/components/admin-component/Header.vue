@@ -83,7 +83,8 @@
             </button>
 
             <button type="button" class="btn signup-modal-btn text-light text-decoration-none" @click="openSignUpModal">
-              <i class="bi bi-person-plus-fill me-1"></i> Sign In
+              Sign In
+              <i class="bi bi-arrow-right-circle-fill fs-5 ms-1"></i>
             </button>
           </div>
 
@@ -120,6 +121,9 @@
     <SignUpModal
       :show="showSignUpModal"
       :preSelectedType="signUpPreSelectedType"
+      :userInitialTab="signUpUserInitialTab"
+      :setPasswordUidb64="setPasswordUidb64"
+      :setPasswordToken="setPasswordToken"
       @close="closeSignUpModal"
       @open-signin="handleOpenSignInFromSignUp"
       @open-admin-signup="handleOpenAdminSignUpFromSignIn"
@@ -150,17 +154,71 @@ export default {
       user: null,
       showSignUpModal: false,
       signUpPreSelectedType: '',
+      signUpUserInitialTab: '',
+      setPasswordUidb64: '',
+      setPasswordToken: '',
       showAdminSignUpModal: false
     };
   },
+  watch: {
+    $route: {
+      handler() {
+        this.applyUserSetPasswordDeepLink();
+      },
+      immediate: false
+    }
+  },
   methods: {
+    /**
+     * Email "Set password" opens: /home → User Sign In modal → Set Password tab.
+     * Supported URLs:
+     * - Backend: /home?action=set-password&uid=...&token=...
+     * - Legacy:   /home?signin=user&tab=set-password&uidb64=...&token=... (uid / setPassword tab variants ok)
+     */
+    applyUserSetPasswordDeepLink() {
+      if (this.$route.path !== '/home') return;
+      const q = this.$route.query || {};
+      const pick = (v) => {
+        if (v === undefined || v === null) return '';
+        return (Array.isArray(v) ? v[0] : v).toString().trim();
+      };
+      const token = pick(q.token);
+      const uid = pick(q.uidb64) || pick(q.uid);
+
+      const actionRaw = pick(q.action).toLowerCase();
+      const backendSetPassword = actionRaw === 'set-password' || actionRaw === 'setpassword';
+
+      const tabVal = pick(q.tab);
+      const tabRaw = tabVal.toLowerCase();
+      const signin = pick(q.signin);
+      const legacyTab =
+        signin === 'user' && (tabRaw === 'set-password' || tabVal === 'setPassword');
+
+      if (!token || !uid) return;
+      if (!backendSetPassword && !legacyTab) return;
+
+      this.signUpPreSelectedType = 'user';
+      this.signUpUserInitialTab = 'setPassword';
+      this.setPasswordUidb64 = uid;
+      this.setPasswordToken = token;
+      this.showSignUpModal = true;
+      this.$nextTick(() => {
+        this.$router.replace({ path: '/home' });
+      });
+    },
     openSignUpModal() {
       this.signUpPreSelectedType = '';
+      this.signUpUserInitialTab = '';
+      this.setPasswordUidb64 = '';
+      this.setPasswordToken = '';
       this.showSignUpModal = true;
     },
     closeSignUpModal() {
       this.showSignUpModal = false;
       this.signUpPreSelectedType = '';
+      this.signUpUserInitialTab = '';
+      this.setPasswordUidb64 = '';
+      this.setPasswordToken = '';
     },
     openAdminSignUpModal() {
       this.showAdminSignUpModal = true;
@@ -171,11 +229,17 @@ export default {
     handleOpenSignInFromSignUp() {
       this.closeSignUpModal();
       this.signUpPreSelectedType = '';
+      this.signUpUserInitialTab = '';
+      this.setPasswordUidb64 = '';
+      this.setPasswordToken = '';
       this.showSignUpModal = true;
     },
     handleOpenSignInFromAdminSignUp() {
       this.closeAdminSignUpModal();
       this.signUpPreSelectedType = '';
+      this.signUpUserInitialTab = '';
+      this.setPasswordUidb64 = '';
+      this.setPasswordToken = '';
       this.showSignUpModal = true;
     },
     handleOpenAdminSignUpFromSignIn() {
@@ -188,6 +252,7 @@ export default {
     if (savedUser) {
       this.user = JSON.parse(savedUser);
     }
+    this.applyUserSetPasswordDeepLink();
   },
 };
 </script>
@@ -196,6 +261,14 @@ export default {
 <style scoped>
 .navbar {
   background-color: #241447 !important;
+}
+
+.navbar img[alt="logo"] {
+  height: 34px;
+  width: auto;
+  max-width: 150px;
+  object-fit: contain;
+  object-position: left center;
 }
 
 /* ── Partners dropdown to match website theme ── */
@@ -229,7 +302,7 @@ export default {
   border-radius: 999px;
   /* padding: 0.8rem 1.5rem; */
   padding: 4px 12px;
-  color: #FFFFFF;
+  color: #ffffff;
   font-size: 1rem;
   border: none;
   cursor: pointer;
@@ -265,30 +338,22 @@ export default {
 
 /* ── Sign Up Modal Button ── */
 .signup-modal-btn {
-  background: linear-gradient(135deg, #0f696e 0%, #0a5458 100%);
+  background-color: #0f696e;
   border: none;
   border-radius: 999px;
-  color: #FFFFFF;
-  font-size: 0.9rem;
-  font-weight: 600;
-  padding: 6px 18px;
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 400;
+  padding: 4px 12px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: background-color 0.3s ease;
   display: inline-flex;
   align-items: center;
   white-space: nowrap;
-  box-shadow: 0 4px 12px rgba(15, 105, 110, 0.25);
 }
 
 .signup-modal-btn:hover {
-  background: linear-gradient(135deg, #0a5458 0%, #083f43 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(15, 105, 110, 0.35);
-  color: #FFFFFF;
-}
-
-.signup-modal-btn:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(15, 105, 110, 0.2);
+  background-color: #0a4e52;
+  color: #ffffff;
 }
 </style>

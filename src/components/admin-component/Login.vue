@@ -2,7 +2,7 @@
     <main>
         <div class="container mt-5">
     <div class="text-center">
-      <img src="@/assets/images/smaller-logo.png" alt="Logo" class="mb-3" />
+      <img src="@/assets/images/smaller-logo.png" alt="Logo" class="mb-3 login-brand-logo" />
 
       <div
         class="card shadow p-4"
@@ -97,3 +97,13 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+.login-brand-logo {
+  width: auto;
+  max-width: 168px;
+  height: auto;
+  max-height: 48px;
+  object-fit: contain;
+}
+</style>

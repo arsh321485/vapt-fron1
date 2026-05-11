@@ -98,6 +98,7 @@
 
 <script>
 import { useAuthStore } from '@/stores/authStore'
+import { markPostLoginSuccess } from '@/utils/postLoginSuccess'
 import Swal from 'sweetalert2'
 
 export default {
@@ -131,6 +132,7 @@ export default {
         })
 
         if (result.status) {
+          markPostLoginSuccess(result.message)
           await this.checkAndRedirect()
         } else {
           Swal.fire('Error', result.message || 'Login failed', 'error')
@@ -154,6 +156,7 @@ export default {
           Swal.fire('Error', result.message || 'Google login failed', 'error')
           return
         }
+        markPostLoginSuccess(result.message)
         await this.checkAndRedirect()
       } catch (error) {
         Swal.fire('Error', 'Something went wrong during Google login', 'error')

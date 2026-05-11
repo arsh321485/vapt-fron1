@@ -152,6 +152,8 @@
 
 <script>
 import { useAuthStore } from "@/stores/authStore";
+import { markPostLoginSuccess } from "@/utils/postLoginSuccess";
+import router from "@/router";
 import Swal from 'sweetalert2';
 
 export default {
@@ -330,15 +332,12 @@ export default {
         });
 
         if (result.status) {
-          // Non-blocking toast; navigate immediately for faster perceived login.
-          void Swal.fire({
-            icon: 'success',
-            title: 'Login Successful',
-            text: result.message || 'Welcome!',
-            timer: 1200,
-            showConfirmButton: false
-          });
-          this.$router.replace('/userdashboard');
+          markPostLoginSuccess(result.message);
+          try {
+            await router.replace({ path: '/userdashboard' });
+          } catch {
+            await router.push({ path: '/userdashboard' });
+          }
         } else {
           Swal.fire('Login Failed', result.message || 'Invalid credentials', 'error');
           this.resetRecaptcha();

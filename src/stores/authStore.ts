@@ -2198,14 +2198,27 @@ export const useAuthStore = defineStore("auth", {
             throw primaryError;
           }
         }
-        const data = res.data;
-        if (data.tokens?.access) {
-          this.setAuth(data.tokens.access, data.user);
-          if (data.tokens.refresh) {
-            sessionStorage.setItem("refreshToken", data.tokens.refresh);
-          }
+        const raw: any = res.data;
+        const data = raw && typeof raw === "object" && raw.data != null ? raw.data : raw;
+        const tokens = (data && (data.tokens || data.jwt)) || {};
+        const access: string | undefined =
+          tokens.access || data?.access || data?.access_token || (typeof data?.token === "string" ? data.token : undefined);
+        const refreshToken = tokens.refresh || data?.refresh || data?.refresh_token;
+        const userObj = data?.user ?? data?.profile ?? null;
+
+        if (!access || typeof access !== "string") {
+          return {
+            status: false,
+            message: data?.message || data?.detail || raw?.message || "Login response missing access token.",
+            details: raw,
+          };
         }
-        return { status: true, data, message: data.message };
+
+        this.setAuth(access, userObj || {});
+        if (refreshToken) {
+          sessionStorage.setItem("refreshToken", refreshToken);
+        }
+        return { status: true, data: raw, message: raw?.message || data?.message };
       } catch (error: any) {
         const msg = error.response?.data?.message || error.response?.data?.detail || "Login failed";
         return { status: false, message: msg, details: error.response?.data || null };

@@ -120,7 +120,7 @@
 
             <div class="dash-card p-0 mb-4">
             <div class="row my-4 px-4">
-              <div class="col-10">
+              <div class="col-12">
                 <div class="d-flex justify-content-between tab-wrapper position-relative">
                   <p v-for="(tab, index) in tabs" :key="index" class="nav-item" :class="{ active: activeTab === index }"
                     :style="{ width: '25%', color: activeTab === index ? '#0f696e' : '#64748b' }"
@@ -134,8 +134,8 @@
 
                 </div>
               </div>
-            
-              <div class="col-10 mt-4">
+
+              <div class="col-12 mt-4">
                 <!-- Dynamic Content per Tab -->
                 <div v-for="(tab, index) in tabs" :key="index" v-show="activeTab === index">
                   
@@ -1305,7 +1305,8 @@ async deleteRoleFromUser(user, roleToRemove) {
   font-weight: 500;
   position: relative;
   z-index: 1;
-  font-size: 18px;
+  font-size: 14px;
+  white-space: nowrap;
 }
 
 .nav-item.active {

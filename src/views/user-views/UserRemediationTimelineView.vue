@@ -301,10 +301,18 @@
                       :key="task.id"
                       class="rt-task-item"
                       :class="{ 'rt-task-completed': task.status === 'completed' }"
-                      @click="toggleTask(idx)"
                     >
-                      <!-- Task summary row -->
-                      <div class="rt-task-row">
+                      <!-- Task summary row: whole header toggles; expanded body is separate -->
+                      <div
+                        class="rt-task-row"
+                        role="button"
+                        tabindex="0"
+                        :aria-expanded="expandedTasks.includes(idx) ? 'true' : 'false'"
+                        :aria-label="'Toggle details for ' + (task.name || 'step')"
+                        @click="toggleTask(idx)"
+                        @keydown.enter.prevent="toggleTask(idx)"
+                        @keydown.space.prevent="toggleTask(idx)"
+                      >
                         <div class="rt-task-left">
                           <div
                             class="rt-task-circle"
@@ -322,7 +330,7 @@
                           <span v-if="task.status === 'completed'" class="rt-step-status-badge rt-status-done">Completed</span>
                           <span v-else class="rt-step-status-badge rt-status-pending-red">Pending</span>
                           <div class="rt-task-chevron" :class="{ 'rt-chevron-open': expandedTasks.includes(idx) }">
-                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                               <path d="M4 6L8 10L12 6" stroke="#94a3b8" stroke-width="1.5"
                                     stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
@@ -331,7 +339,7 @@
                       </div>
 
                       <!-- Expanded detail panel -->
-                      <div v-if="expandedTasks.includes(idx)" class="rt-task-expanded">
+                      <div v-if="expandedTasks.includes(idx)" class="rt-task-expanded" @click.stop>
 
                         <!-- Meta: Deadline + Criticality + Effort (hidden by request) -->
                         <!-- <div class="rt-expand-meta-row">
@@ -1609,7 +1617,23 @@ export default {
 .rt-task-item:last-child { border-bottom: none; }
 .rt-task-item:hover { background: #f8f9fc; }
 .rt-task-completed { background: #f0fdf4; }
-.rt-task-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; }
+.rt-task-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 8px;
+  margin: 0 -4px;
+  cursor: pointer;
+  user-select: none;
+  border-radius: 8px;
+}
+.rt-task-row:hover {
+  background: rgba(15, 105, 110, 0.06);
+}
+.rt-task-row:focus-visible {
+  outline: 2px solid #0f696e;
+  outline-offset: 2px;
+}
 .rt-task-right { position: relative; }
 .rt-inline-complete-btn {
   border: none;
@@ -1629,7 +1653,14 @@ export default {
 .rt-task-info { display: flex; flex-direction: column; gap: 2px; }
 .rt-task-name     { font-size: 0.875rem; font-weight: 600; color: #1e293b; }
 .rt-task-assignee { font-size: 0.75rem; color: #94a3b8; }
-.rt-task-chevron  { display: flex; align-items: center; transition: transform 0.2s; color: #94a3b8; }
+.rt-task-chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+  color: #94a3b8;
+  pointer-events: none;
+}
 .rt-chevron-open  { transform: rotate(180deg); }
 
 /* Step status badges */

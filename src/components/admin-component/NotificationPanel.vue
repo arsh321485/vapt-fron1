@@ -67,11 +67,10 @@
       </div>
 
       <!-- Footer -->
-      <div class="notif-drawer-footer card-footer border-0 d-flex flex-wrap justify-content-between gap-2">
+      <div class="notif-drawer-footer card-footer border-0 d-flex flex-wrap justify-content-end gap-2">
         <button type="button" class="btn btn-sm notif-btn-primary" @click="toggleShowAll">
           {{ showAll ? "View Less" : "View All Notifications" }}
         </button>
-        <button type="button" class="btn btn-sm notif-btn-outline" @click="markAllAsRead">Mark All as Read</button>
       </div>
     </div>
   </div>
@@ -237,7 +236,8 @@ export default {
       return `${days} day${days > 1 ? "s" : ""} ago`;
     },
     async fetchNotifications(options = {}) {
-      const { silent = false, includeRead = false } = options;
+      // Default true: backend unread-only list becomes empty after "mark all read" — user should still see read items.
+      const { silent = false, includeRead = true } = options;
       if (!silent) this.loading = true;
       try {
         const res =
@@ -294,23 +294,11 @@ export default {
       this.showNotifications = !this.showNotifications;
       if (this.showNotifications) {
         this.fetchUnreadCount();
-        this.fetchNotifications();
+        this.fetchNotifications({ includeRead: true });
       }
     },
     toggleFullscreen() {
       this.isFullscreen = !this.isFullscreen;
-    },
-    async markAllAsRead() {
-      const res =
-        this.recipientType === "user"
-          ? await this.authStore.markAllUserNotificationsRead()
-          : await this.authStore.markAllAdminNotificationsRead();
-      if (!res.status) return;
-      this.notifications = this.notifications.map((n) => ({ ...n, is_read: true }));
-      this.unreadCount = 0;
-
-      // Don't reset showAll - keep notifications visible after marking as read
-      // this.showAll = false; // REMOVED: This was hiding all notifications
     },
     async toggleShowAll() {
       // Prevent double-click
@@ -416,21 +404,6 @@ export default {
 .notif-btn-primary:hover {
   background: #1a0f38;
   color: #fff;
-}
-
-.notif-btn-outline {
-  background: #fff;
-  color: #241447;
-  border: 1px solid rgba(36, 20, 71, 0.35);
-  font-weight: 600;
-  border-radius: 8px;
-  padding: 0.45rem 0.9rem;
-}
-
-.notif-btn-outline:hover {
-  background: #f4f7fe;
-  color: #241447;
-  border-color: #241447;
 }
 
 .notif-card {

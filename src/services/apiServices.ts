@@ -13,6 +13,37 @@ const endpoint = axios.create({
   },
 });
 
+/** User-portal routes: do not force /home on 401 (avoids bounce when one call fails right after login). */
+function isUserAppRoute(path: string) {
+  if (!path) return false;
+  const prefixes = [
+    "/userdashboard",
+    "/userassets",
+    "/userexception",
+    "/userVulnerabilityregister",
+    "/delayedvulnerabilities",
+    "/delayedvulnerabilitycard",
+    "/fixedvulnerabilities",
+    "/pendingvulnerabilities",
+    "/pendingvulnerabilitycard",
+    "/usermissingsecurityupdates",
+    "/user-tickets",
+    "/user-calendar",
+  ];
+  for (const p of prefixes) {
+    if (path === p || path.startsWith(`${p}/`)) return true;
+  }
+  if (
+    path.startsWith("/user-ticket/") ||
+    path.startsWith("/user-vulnerabilitycard/") ||
+    path.startsWith("/user-remediation-timeline/") ||
+    path.startsWith("/user-set-password/")
+  ) {
+    return true;
+  }
+  return false;
+}
+
 // ✅ Add token to requests (if exists)
 const PUBLIC_URL_PATTERNS = [
   "/api/admin/users/user-set-password/",
@@ -91,7 +122,18 @@ endpoint.interceptors.response.use(
       currentPath === "/auth" ||
       currentPath === "/home";
 
-    if (error.response?.status === 401 && !isAuthEndpoint && !isAuthScreen) {
+    // Public marketing / partner flows: never kick user to /home on 401 (background calls may be unauthenticated).
+    const noRedirect401Paths = new Set([
+      "/pricingplan",
+      "/partner",
+      "/partner-lead-portal",
+      "/partner-lead-thankyou",
+      "/partner-thankyou",
+    ]);
+    const skip401Redirect =
+      isAuthScreen || noRedirect401Paths.has(currentPath) || isUserAppRoute(currentPath);
+
+    if (error.response?.status === 401 && !isAuthEndpoint && !skip401Redirect) {
       // Clear both storages to avoid stale auth state across flows
       sessionStorage.removeItem("authorization");
       sessionStorage.removeItem("user");

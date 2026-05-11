@@ -327,13 +327,13 @@ export default {
   background-color: #ffffff;
   background-image: radial-gradient(#ebe6f3 1px, transparent 1px);
   background-size: 20px 20px;
-  padding: 40px 0 80px;
+  padding: 20px 0 30px;
   margin-top: 72px;
 }
 
 .hv-hero-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1.3fr;
   gap: 60px;
   align-items: center;
 }
@@ -354,11 +354,11 @@ export default {
 
 .hv-hero-title {
   font-family: 'Manrope', sans-serif;
-  font-size: 52px;
+  font-size: 40px;
   font-weight: 800;
   color: #111827;
   line-height: 1.15;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .hv-gradient-text {
@@ -369,10 +369,10 @@ export default {
 }
 
 .hv-hero-sub {
-  font-size: 18px;
+  font-size: 15px;
   color: #6b7280;
-  line-height: 1.7;
-  margin-bottom: 36px;
+  line-height: 1.6;
+  margin-bottom: 24px;
 }
 
 .hv-hero-btns {
@@ -412,7 +412,13 @@ export default {
 }
 .hv-btn-outline:hover { background: #f9fafb; }
 
-.hv-hero-img-wrap { position: relative; }
+.hv-hero-img-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
 
 .hv-hero-img-card {
   background: #fff;
@@ -782,6 +788,7 @@ export default {
   .hv-hero { padding: 100px 0 60px; }
   .hv-hero-title { font-size: 38px; }
   .hv-pillars-grid { grid-template-columns: repeat(2, 1fr); }
+  .hv-hero-img-wrap { min-height: unset; }
 }
 
 @media (max-width: 768px) {

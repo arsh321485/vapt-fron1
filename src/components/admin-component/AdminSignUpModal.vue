@@ -1,61 +1,58 @@
 <template>
-  <div v-if="show" class="modal-backdrop" @click="closeModal">
-    <div class="modal-dialog" @click.stop>
+  <div v-if="show" class="signup-overlay" @click="closeModal">
+    <div class="signup-panel" @click.stop>
       <div class="modal-content">
 
         <!-- Close Button -->
-        <button type="button" class="btn-close" @click="closeModal">
+        <button type="button" class="btn-close-x" @click="closeModal">
           <i class="bi bi-x-lg"></i>
         </button>
 
         <!-- Sign Up Form -->
         <div v-if="!otpSent" class="form-container">
-          <div class="text-center mb-4 signup-header">
+          <div class="signup-header">
             <h3 class="form-title">Get Started</h3>
             <p class="form-subtitle">Create your VaptFix account to begin your security engagement</p>
           </div>
+          <hr class="form-divider" />
 
           <form @submit.prevent="handleSignup">
 
             <!-- Email -->
-            <div class="form-group">
-              <label class="form-label">EMAIL ADDRESS</label>
-              <div class="input-wrapper">
-                <i class="bi bi-at input-icon"></i>
+            <div class="field-group">
+              <label class="field-label">Email Address</label>
+              <div class="input-row">
+                <i class="bi bi-at field-icon"></i>
                 <input
-                  type="email"
-                  class="form-control modal-input"
+                  type="text"
+                  class="field-input"
                   v-model="form.email"
                   placeholder="name@vaptfix.com"
-                  autocomplete="off"
+                  autocomplete="new-password"
                   required
                 />
               </div>
             </div>
 
             <!-- Password -->
-            <div class="form-group">
-              <label class="form-label">PASSWORD</label>
-              <div class="input-wrapper">
-                <i class="bi bi-lock input-icon"></i>
+            <div class="field-group">
+              <label class="field-label">Password</label>
+              <div class="input-row">
+                <i class="bi bi-lock field-icon"></i>
                 <input
                   :type="showPassword ? 'text' : 'password'"
-                  class="form-control modal-input"
+                  class="field-input"
                   v-model="form.password"
                   placeholder="••••••••"
                   autocomplete="new-password"
                   @input="validatePassword"
                   required
                 />
-                <i
-                  class="bi password-toggle"
-                  :class="showPassword ? 'bi-eye-slash' : 'bi-eye'"
-                  @click="showPassword = !showPassword"
-                ></i>
+                <i class="bi password-toggle" :class="showPassword ? 'bi-eye-slash' : 'bi-eye'" @click="showPassword = !showPassword"></i>
               </div>
 
-              <!-- Password Rules -->
-              <div v-if="form.password && form.password.length > 0" class="pwd-rules mt-2">
+              <!-- Password Rules — hide once all pass -->
+              <div v-if="form.password && form.password.length > 0 && !allPwdRulesPass" class="pwd-rules">
                 <div class="pwd-rule" :class="pwdRules.minLength ? 'pwd-rule-pass' : 'pwd-rule-fail'">
                   <i class="bi" :class="pwdRules.minLength ? 'bi-check-circle-fill' : 'bi-x-circle-fill'"></i>
                   At least 8 characters
@@ -80,41 +77,37 @@
             </div>
 
             <!-- Confirm Password -->
-            <div class="form-group">
-              <label class="form-label">CONFIRM PASSWORD</label>
-              <div class="input-wrapper">
-                <i class="bi bi-lock input-icon"></i>
+            <div class="field-group">
+              <label class="field-label">Confirm Password</label>
+              <div class="input-row">
+                <i class="bi bi-lock field-icon"></i>
                 <input
                   :type="showConfirmPassword ? 'text' : 'password'"
-                  class="form-control modal-input"
+                  class="field-input"
                   v-model="form.confirm_password"
                   placeholder="••••••••"
                   autocomplete="new-password"
                   required
                 />
-                <i
-                  class="bi password-toggle"
-                  :class="showConfirmPassword ? 'bi-eye-slash' : 'bi-eye'"
-                  @click="showConfirmPassword = !showConfirmPassword"
-                ></i>
+                <i class="bi password-toggle" :class="showConfirmPassword ? 'bi-eye-slash' : 'bi-eye'" @click="showConfirmPassword = !showConfirmPassword"></i>
               </div>
             </div>
 
             <!-- reCAPTCHA -->
-            <div class="form-group mb-3">
-              <div :id="recaptchaContainerId" :key="recaptchaKey" class="recaptcha-wrapper"></div>
+            <div class="recaptcha-field">
+              <div :id="recaptchaContainerId" :key="recaptchaKey" class="recaptcha-wrap"></div>
             </div>
 
             <!-- Submit Button -->
-            <button type="submit" class="btn submit-btn" :disabled="loading || !recaptchaToken || !allPwdRulesPass">
+            <button type="submit" class="submit-btn" :disabled="loading || !recaptchaToken || !allPwdRulesPass">
               <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
-              SEND OTP
+              Send OTP
             </button>
 
             <!-- Already have account -->
-            <p class="text-center mt-3 signin-text">
+            <p class="footer-text">
               Already have an account?
-              <a href="#" @click.prevent="goToSignIn" class="signin-link">Sign In</a>
+              <a href="#" @click.prevent="goToSignIn" class="footer-link">Sign In</a>
             </p>
 
           </form>
@@ -122,10 +115,11 @@
 
         <!-- OTP Verification -->
         <div v-if="otpSent" class="form-container otp-container">
-          <div class="text-center mb-4">
+          <div class="signup-header">
             <h3 class="form-title">OTP Verification</h3>
-            <p class="otp-description">Your One-Time Password (OTP) for VAPTFIX Admin Signup has been sent to <strong>{{ form.email }}</strong></p>
+            <p class="form-subtitle">Your One-Time Password has been sent to <strong>{{ form.email }}</strong></p>
           </div>
+          <hr class="form-divider" />
 
           <div class="otp-inputs d-flex justify-content-center gap-2 mb-4">
             <input
@@ -133,7 +127,7 @@
               :key="index"
               type="text"
               inputmode="numeric"
-              class="form-control otp-box text-center"
+              class="otp-box text-center"
               maxlength="1"
               :value="otpDigits[index]"
               @input="handleOtpInput($event, index)"
@@ -151,17 +145,13 @@
             </p>
           </div>
 
-          <button
-            class="btn submit-btn w-100 mb-3"
-            @click="handleVerifyOtp"
-            :disabled="loading || otp.length < 6"
-          >
+          <button class="submit-btn" @click="handleVerifyOtp" :disabled="loading || otp.length < 6">
             <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
-            VERIFY & CONTINUE
+            Verify & Continue
           </button>
 
-          <p class="text-center">
-            <a href="#" class="back-link" @click.prevent="goBackToSignup">
+          <p class="footer-text" style="margin-top: 12px;">
+            <a href="#" class="footer-link" @click.prevent="goBackToSignup">
               <i class="bi bi-arrow-left me-1"></i>Back to Sign Up
             </a>
           </p>
@@ -186,11 +176,7 @@ export default {
   },
   data() {
     return {
-      form: {
-        email: '',
-        password: '',
-        confirm_password: ''
-      },
+      form: { email: '', password: '', confirm_password: '' },
       showPassword: false,
       showConfirmPassword: false,
       loading: false,
@@ -227,9 +213,7 @@ export default {
   watch: {
     show(newVal) {
       if (newVal) {
-        this.$nextTick(() => {
-          this.renderRecaptcha();
-        });
+        this.$nextTick(() => this.renderRecaptcha());
       }
     }
   },
@@ -249,9 +233,7 @@ export default {
       this.showPassword = false;
       this.showConfirmPassword = false;
     },
-    validatePassword() {
-      // Computed property handles this
-    },
+    validatePassword() {},
     loadRecaptchaScript() {
       if (window.grecaptcha) return;
       const script = document.createElement('script');
@@ -265,22 +247,15 @@ export default {
         setTimeout(() => this.renderRecaptcha(), 500);
         return;
       }
-
       window.grecaptcha.ready(() => {
         const container = document.getElementById(this.recaptchaContainerId);
         if (!container) return;
-
         container.innerHTML = '';
-
         try {
           this.recaptchaWidgetId = window.grecaptcha.render(container, {
             sitekey: this.recaptchaSiteKey,
-            callback: (token) => {
-              this.recaptchaToken = token;
-            },
-            'expired-callback': () => {
-              this.recaptchaToken = '';
-            }
+            callback: (token) => { this.recaptchaToken = token; },
+            'expired-callback': () => { this.recaptchaToken = ''; }
           });
         } catch (e) {
           console.error('reCAPTCHA render error:', e);
@@ -289,35 +264,17 @@ export default {
     },
     async handleSignup() {
       if (!this.allPwdRulesPass) {
-        Swal.fire({
-          icon: 'warning',
-          title: 'Weak Password',
-          text: 'Password does not meet all requirements',
-          confirmButtonColor: '#241447'
-        });
+        Swal.fire({ icon: 'warning', title: 'Weak Password', text: 'Password does not meet all requirements', confirmButtonColor: '#241447' });
         return;
       }
-
       if (this.form.password !== this.form.confirm_password) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Password Mismatch',
-          text: 'Passwords do not match',
-          confirmButtonColor: '#241447'
-        });
+        Swal.fire({ icon: 'error', title: 'Password Mismatch', text: 'Passwords do not match', confirmButtonColor: '#241447' });
         return;
       }
-
       if (!this.recaptchaToken) {
-        Swal.fire({
-          icon: 'warning',
-          title: 'Verification Required',
-          text: 'Please complete the reCAPTCHA',
-          confirmButtonColor: '#241447'
-        });
+        Swal.fire({ icon: 'warning', title: 'Verification Required', text: 'Please complete the reCAPTCHA', confirmButtonColor: '#241447' });
         return;
       }
-
       this.loading = true;
       try {
         const authStore = useAuthStore();
@@ -327,38 +284,17 @@ export default {
           confirm_password: this.form.confirm_password,
           recaptcha: this.recaptchaToken
         });
-
         if (result.status) {
           this.otpSent = true;
           this.otpDigits = ['', '', '', '', '', ''];
-
-          Swal.fire({
-            icon: 'success',
-            title: 'OTP Sent!',
-            text: 'Please check your email for the verification code.',
-            timer: 2500,
-            showConfirmButton: false
-          });
-
-          this.$nextTick(() => {
-            if (this.otpRefs[0]) this.otpRefs[0].focus();
-          });
+          Swal.fire({ icon: 'success', title: 'OTP Sent!', text: 'Please check your email for the verification code.', timer: 2500, showConfirmButton: false });
+          this.$nextTick(() => { if (this.otpRefs[0]) this.otpRefs[0].focus(); });
         } else {
-          Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: result.message || 'Failed to send OTP',
-            confirmButtonColor: '#241447'
-          });
+          Swal.fire({ icon: 'error', title: 'Error', text: result.message || 'Failed to send OTP', confirmButtonColor: '#241447' });
           this.resetRecaptcha();
         }
       } catch (error) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: error.message || 'Something went wrong',
-          confirmButtonColor: '#241447'
-        });
+        Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'Something went wrong', confirmButtonColor: '#241447' });
         this.resetRecaptcha();
       } finally {
         this.loading = false;
@@ -366,48 +302,22 @@ export default {
     },
     async handleVerifyOtp() {
       if (this.otp.length < 6) {
-        Swal.fire({
-          icon: 'warning',
-          title: 'Incomplete OTP',
-          text: 'Please enter the complete 6-digit OTP',
-          confirmButtonColor: '#241447'
-        });
+        Swal.fire({ icon: 'warning', title: 'Incomplete OTP', text: 'Please enter the complete 6-digit OTP', confirmButtonColor: '#241447' });
         return;
       }
-
       this.loading = true;
       try {
         const authStore = useAuthStore();
-        const result = await authStore.signupVerifyOtp({
-          email: this.form.email,
-          otp: this.otp
-        });
-
+        const result = await authStore.signupVerifyOtp({ email: this.form.email, otp: this.otp });
         if (result.status) {
           this.$emit('close');
-          Swal.fire({
-            icon: 'success',
-            title: 'Signup Successful!',
-            text: 'Your account has been created successfully.',
-            timer: 2000,
-            showConfirmButton: false
-          });
+          Swal.fire({ icon: 'success', title: 'Signup Successful!', text: 'Your account has been created successfully.', timer: 2000, showConfirmButton: false });
           this.$router.push('/scoping-form-2');
         } else {
-          Swal.fire({
-            icon: 'error',
-            title: 'Invalid OTP',
-            text: result.message || 'Invalid OTP. Please try again.',
-            confirmButtonColor: '#241447'
-          });
+          Swal.fire({ icon: 'error', title: 'Invalid OTP', text: result.message || 'Invalid OTP. Please try again.', confirmButtonColor: '#241447' });
         }
       } catch (error) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: error.message || 'Something went wrong',
-          confirmButtonColor: '#241447'
-        });
+        Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'Something went wrong', confirmButtonColor: '#241447' });
       } finally {
         this.loading = false;
       }
@@ -415,41 +325,29 @@ export default {
     handleOtpInput(event, index) {
       const value = event.target.value.replace(/\D/g, '');
       this.otpDigits.splice(index, 1, value ? value[0] : '');
-
       if (value && index < 5) {
-        this.$nextTick(() => {
-          if (this.otpRefs[index + 1]) this.otpRefs[index + 1].focus();
-        });
+        this.$nextTick(() => { if (this.otpRefs[index + 1]) this.otpRefs[index + 1].focus(); });
       }
     },
     handleOtpKeydown(event, index) {
       if (event.key === 'Backspace') {
         if (!this.otpDigits[index] && index > 0) {
           this.otpDigits.splice(index - 1, 1, '');
-          this.$nextTick(() => {
-            if (this.otpRefs[index - 1]) this.otpRefs[index - 1].focus();
-          });
+          this.$nextTick(() => { if (this.otpRefs[index - 1]) this.otpRefs[index - 1].focus(); });
         }
       }
     },
     handleOtpPaste(event, index) {
       event.preventDefault();
-      const pasted = (event.clipboardData || window.clipboardData)
-        .getData('text')
-        .replace(/\D/g, '')
-        .slice(0, 6);
+      const pasted = (event.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
       if (!pasted) return;
-
       const newDigits = [...this.otpDigits];
       for (let i = 0; i < pasted.length; i++) {
         if (index + i < 6) newDigits[index + i] = pasted[i];
       }
       this.otpDigits.splice(0, 6, ...newDigits);
-
       const nextFocus = Math.min(index + pasted.length, 5);
-      this.$nextTick(() => {
-        if (this.otpRefs[nextFocus]) this.otpRefs[nextFocus].focus();
-      });
+      this.$nextTick(() => { if (this.otpRefs[nextFocus]) this.otpRefs[nextFocus].focus(); });
     },
     goBackToSignup() {
       this.otpSent = false;
@@ -468,349 +366,267 @@ export default {
   },
   beforeUnmount() {
     try {
-      if (window.grecaptcha && this.recaptchaWidgetId !== null) {
-        window.grecaptcha.reset(this.recaptchaWidgetId);
-      }
+      if (window.grecaptcha && this.recaptchaWidgetId !== null) window.grecaptcha.reset(this.recaptchaWidgetId);
     } catch (e) {}
   }
 };
 </script>
 
 <style scoped>
-/* Same styles as SignUpModal - reusing */
-.modal-backdrop {
+/* Overlay — top-right, same as SignIn */
+.signup-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(2px);
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding-top: 68px;
+  padding-right: 24px;
   z-index: 9999;
-  animation: fadeIn 0.2s ease;
+  animation: fadeIn 0.15s ease;
 }
 
 @keyframes fadeIn {
   from { opacity: 0; }
-  to { opacity: 1; }
+  to   { opacity: 1; }
 }
 
-.modal-dialog {
-  width: 90%;
-  max-width: 600px;
-  max-height: 90vh;
-  animation: slideUp 0.3s ease;
+/* Panel */
+.signup-panel {
+  width: 100%;
+  max-width: 440px;
+  animation: slideDown 0.22s ease;
 }
 
-@keyframes slideUp {
-  from {
-    transform: translateY(50px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+@keyframes slideDown {
+  from { transform: translateY(-12px); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
 }
 
+/* Modal Content */
 .modal-content {
-  background: #FFFFFF;
+  background: #ffffff;
   border-radius: 20px;
-  padding: 32px;
+  padding: 20px 28px 24px;
+  padding-top: 38px;
   position: relative;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  max-height: 92vh;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
-.btn-close {
+.modal-content::-webkit-scrollbar { width: 4px; }
+.modal-content::-webkit-scrollbar-track { background: transparent; }
+.modal-content::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 10px; }
+.modal-content { scrollbar-width: thin; scrollbar-color: rgba(0,0,0,0.12) transparent; }
+
+/* Close Button */
+.btn-close-x {
   position: absolute;
-  top: 20px;
-  right: 20px;
+  top: 12px;
+  right: 12px;
   background: transparent;
   border: none;
-  font-size: 24px;
-  color: #666;
+  font-size: 16px;
+  color: #9ca3af;
   cursor: pointer;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
   transition: all 0.2s;
+  z-index: 10;
 }
+.btn-close-x:hover { background: #f3f4f6; color: #374151; }
 
-.btn-close:hover {
-  background: #f0f0f0;
-  color: #333;
-}
-
-.form-container {
-  max-height: 80vh;
-  overflow-y: auto;
-  padding-right: 8px;
-}
-
-.form-container::-webkit-scrollbar {
-  width: 6px;
-}
-
-.form-container::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 10px;
-}
-
-.form-container::-webkit-scrollbar-thumb {
-  background: #241447;
-  border-radius: 10px;
-}
-
+/* Header */
 .signup-header {
-  margin-bottom: 24px;
-}
-
-.form-title {
-  font-size: 24px;
-  font-weight: 700;
-  color: #0f172a;
+  text-align: center;
   margin-bottom: 8px;
 }
-
+.form-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 6px;
+}
 .form-subtitle {
-  font-size: 14px;
+  font-size: 13px;
   color: #6b7280;
   margin: 0;
 }
 
-.form-group {
-  margin-bottom: 20px;
+/* Divider */
+.form-divider {
+  border: none;
+  border-top: 2px solid #241447;
+  margin: 0 0 14px 0;
+  opacity: 1;
 }
 
-.form-label {
+/* Form Container */
+.form-container {
+  overflow-y: visible;
+  padding-right: 0;
+}
+
+/* Field Group */
+.field-group { margin-bottom: 12px; }
+
+.field-label {
   display: block;
   font-size: 11px;
   font-weight: 700;
-  color: #666;
-  margin-bottom: 8px;
-  letter-spacing: 0.5px;
+  color: #41454b;
   text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
 }
 
-.input-wrapper {
+/* Input Row */
+.input-row {
   position: relative;
   display: flex;
   align-items: center;
 }
-
-.input-icon {
+.field-icon {
   position: absolute;
-  left: 16px;
-  color: #999;
-  font-size: 18px;
+  left: 14px;
+  color: #9ca3af;
+  font-size: 16px;
   z-index: 1;
+  pointer-events: none;
 }
-
-.modal-input {
+.field-input {
   width: 100%;
-  padding: 14px 16px 14px 48px;
-  border: 1px solid #ddd;
-  border-radius: 12px;
-  font-size: 15px;
-  background: #f8f9fa;
-  transition: all 0.3s;
+  height: 48px;
+  padding: 0 16px 0 42px;
+  background: #f3f4f6;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #111827;
+  transition: all 0.2s;
 }
-
-.modal-input:focus {
+.field-input:focus {
   outline: none;
-  border-color: #241447;
-  background: #fff;
-  box-shadow: 0 0 0 3px rgba(36, 20, 71, 0.1);
+  background: #ededf8;
+  box-shadow: 0 0 0 2px rgba(36, 20, 71, 0.15);
 }
+.field-input::placeholder { color: #9ca3af; }
 
 .password-toggle {
   position: absolute;
-  right: 16px;
-  color: #999;
-  font-size: 18px;
+  right: 14px;
+  color: #9ca3af;
+  font-size: 16px;
   cursor: pointer;
   transition: color 0.2s;
   z-index: 1;
 }
+.password-toggle:hover { color: #6b7280; }
 
-.password-toggle:hover {
-  color: #666;
-}
-
+/* Password Rules */
 .pwd-rules {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   font-size: 12px;
+  margin-top: 8px;
 }
+.pwd-rule { display: flex; align-items: center; gap: 6px; transition: all 0.2s; }
+.pwd-rule-fail { color: #dc3545; }
+.pwd-rule-pass { color: #28a745; }
+.pwd-rule i { font-size: 13px; }
 
-.pwd-rule {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.2s;
-}
+/* reCAPTCHA */
+.recaptcha-field { margin-bottom: 14px; }
+.recaptcha-wrap { display: flex; justify-content: center; }
 
-.pwd-rule-fail {
-  color: #dc3545;
-}
-
-.pwd-rule-pass {
-  color: #28a745;
-}
-
-.pwd-rule i {
-  font-size: 14px;
-}
-
-.recaptcha-wrapper {
-  display: flex;
-  justify-content: center;
-}
-
+/* Submit Button */
 .submit-btn {
   width: 100%;
-  padding: 14px;
+  height: 52px;
   background: #241447;
-  color: white;
+  color: #ffffff;
   border: none;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  cursor: pointer;
-  transition: all 0.3s;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 16px rgba(36, 20, 71, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+.submit-btn:hover:not(:disabled) { background: #1a0f38; }
+.submit-btn:disabled { background: #241447; opacity: 1; cursor: not-allowed; }
 
-.submit-btn:hover:not(:disabled) {
-  background: #1a0f38;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(36, 20, 71, 0.3);
-}
-
-.submit-btn:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.submit-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.signin-text {
-  font-size: 14px;
-  color: #666;
+/* Footer */
+.footer-text {
+  text-align: center;
+  font-size: 12px;
+  color: #6b7280;
   margin: 0;
 }
-
-.signin-link {
-  color: #241447;
-  text-decoration: none;
-  font-weight: 600;
-  transition: color 0.2s;
-}
-
-.signin-link:hover {
+.footer-link {
   color: #0f696e;
-  text-decoration: underline;
-}
-
-.back-link {
-  color: #241447;
+  font-weight: 700;
   text-decoration: none;
-  font-size: 14px;
-  font-weight: 600;
 }
+.footer-link:hover { text-decoration: underline; }
 
-.back-link:hover {
-  text-decoration: underline;
-}
-
-/* OTP Styles */
-.otp-container {
-  text-align: center;
-}
-
-.otp-description {
-  font-size: 14px;
-  color: #6b7280;
-  margin-bottom: 24px;
-  line-height: 1.6;
-}
-
-.otp-description strong {
-  color: #241447;
-  font-weight: 600;
-}
-
-.otp-inputs {
-  margin: 24px 0;
-}
+/* OTP */
+.otp-container { text-align: center; }
 
 .otp-box {
-  width: 50px;
-  height: 56px;
-  font-size: 24px;
+  width: 48px;
+  height: 52px;
+  font-size: 22px;
   font-weight: 700;
-  border: 2px solid #ddd;
-  border-radius: 12px;
-  background: #f8f9fa;
-  transition: all 0.3s;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f3f4f6;
+  transition: all 0.2s;
   color: #241447;
 }
-
 .otp-box:focus {
   outline: none;
   border-color: #241447;
-  background: #fff;
-  box-shadow: 0 0 0 3px rgba(36, 20, 71, 0.1);
+  background: #ededf8;
+  box-shadow: 0 0 0 2px rgba(36, 20, 71, 0.15);
 }
 
 .otp-note {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: 10px;
   background: #fef3c7;
-  padding: 12px 16px;
-  border-radius: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
   border: 1px solid #fde047;
-}
-
-.otp-note-icon {
-  color: #f59e0b;
-  font-size: 18px;
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.otp-note-text {
-  font-size: 13px;
-  color: #92400e;
-  margin: 0;
-  line-height: 1.5;
   text-align: left;
 }
-
-.otp-note-text strong {
-  font-weight: 700;
-}
+.otp-note-icon { color: #f59e0b; font-size: 16px; flex-shrink: 0; margin-top: 2px; }
+.otp-note-text { font-size: 12px; color: #92400e; margin: 0; line-height: 1.5; }
+.otp-note-text strong { font-weight: 700; }
 
 @media (max-width: 576px) {
-  .modal-content {
-    padding: 24px;
-  }
-
-  .otp-box {
-    width: 45px;
-    height: 50px;
-    font-size: 20px;
-  }
+  .signup-overlay { padding-right: 12px; padding-left: 12px; justify-content: center; }
+  .signup-panel { max-width: 100%; }
+  .modal-content { padding: 28px 20px; padding-top: 44px; }
+  .otp-box { width: 42px; height: 46px; font-size: 18px; }
 }
 </style>

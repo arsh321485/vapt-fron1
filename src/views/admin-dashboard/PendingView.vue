@@ -169,7 +169,7 @@
               </div>
               <div class="chat-right">
                 <div class="text-center mb-4">
-                  <img src="@/assets/images/smaller-logo.png" alt="" class="mt-2" />
+                  <img src="@/assets/images/smaller-logo.png" alt="" class="mt-2" style="max-width: 140px; width: auto; height: auto; object-fit: contain;" />
                   <div class="d-flex justify-content-end me-4">
                     <div class="avatar-container">
                       <div class="avatar ava-green" ref="germany">PM</div>
