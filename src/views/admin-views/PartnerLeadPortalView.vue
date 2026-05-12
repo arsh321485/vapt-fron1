@@ -6,7 +6,7 @@
       <!-- Page Header -->
       <header class="portal-hero">
         <span class="portal-kicker">Strategic Expansion</span>
-        <h1 class="portal-title">Lead Registration Portal</h1>
+        <h1 class="portal-title">Lead Registration</h1>
         <p class="portal-desc">Submit your high-intent prospects into our Intelligence Framework. Accelerated validation and specialist support await.</p>
       </header>
 
@@ -241,7 +241,7 @@ export default {
 .lead-portal-body {
   max-width: 900px;
   margin: 0 auto;
-  padding: 100px 24px 80px;
+  padding: 100px clamp(14px, 4vw, 24px) 80px;
 }
 
 /* Hero */
@@ -281,7 +281,7 @@ export default {
   background: #fff;
   border: 1px solid rgba(203,196,208,0.3);
   border-radius: 16px;
-  padding: 32px;
+  padding: clamp(20px, 4vw, 32px);
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 .verify-title {
@@ -391,6 +391,7 @@ export default {
 /* Tabs */
 .lead-tabs {
   display: flex;
+  flex-wrap: wrap;
   border-bottom: 1px solid rgba(203,196,208,0.3);
   background: #f2f3f6;
 }
@@ -548,8 +549,24 @@ select.lead-input { cursor: pointer; }
 @media (max-width: 640px) {
   .lead-grid { grid-template-columns: 1fr; }
   .lead-form-body { padding: 24px 20px; }
-  .lead-tab { padding: 14px 16px; font-size: 12px; }
+  .lead-tab {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 14px 12px;
+    font-size: 11px;
+    text-align: center;
+  }
   .verify-field-row { flex-direction: column; }
   .verify-btn { width: 100%; justify-content: center; display: flex; }
+  .verify-input { min-width: 0; width: 100%; }
+  .submit-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .tab-back-btn,
+  .submit-btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
 </style>

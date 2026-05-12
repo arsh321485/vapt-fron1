@@ -12,7 +12,7 @@
               <span>Next Frontier</span> of Vulnerability Management Program.
             </h1>
             <p>
-              Join the VaptFix  Partner Network. We are building an editorial intelligence
+              Join the VaptFix.ai. We are building an editorial intelligence
               framework for cybersecurity professionals worldwide.
             </p>
           
@@ -516,6 +516,35 @@ textarea {
 
   .split {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 576px) {
+  .partner-hero {
+    padding: 96px 0 48px;
+  }
+
+  .partner-form-section {
+    padding: 0 0 64px;
+  }
+
+  .form-card {
+    padding: 20px 18px;
+    border-radius: 18px;
+  }
+
+  .partner-tier-card {
+    max-width: none;
+    width: 100%;
+  }
+
+  .container {
+    width: min(1100px, 94%);
+  }
+
+  .submit-btn {
+    font-size: 1rem;
+    padding: 14px 16px;
   }
 }
 </style>

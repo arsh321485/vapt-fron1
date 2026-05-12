@@ -21,6 +21,19 @@ body {
   overflow-x: hidden;
 }
 
+/* Legal pages: sticky sidebar/header — `overflow-x: hidden` on html/body breaks `position: sticky` in Chromium */
+html.legal-doc-sticky-context,
+html.legal-doc-sticky-context body {
+  overflow-x: visible;
+}
+
+@supports (overflow: clip) {
+  html.legal-doc-sticky-context,
+  html.legal-doc-sticky-context body {
+    overflow-x: clip;
+  }
+}
+
 /* navbar */
 .navbar {
   padding: 2vh 5vw;
@@ -513,7 +526,7 @@ body {
   left: 40px;
   width: 200px;
   height: 200px;
-  background: rgba(90, 68, 255, 1);
+  background: rgba(15, 105, 110, 0.8);
   filter: blur(120px);
   z-index: 0;
 }
@@ -529,8 +542,14 @@ body {
 }
 
 .iso-logo {
-  width: 80px;
-  height: 80px;
+  width: 72px;
+  height: 72px;
+  max-width: 72px;
+  max-height: 72px;
+  object-fit: contain;
+  object-position: center;
+  vertical-align: middle;
+  flex-shrink: 0;
 }
 
 .footer ul li {
@@ -1194,21 +1213,48 @@ body {
 }
 
 .vuln-exp-heading {
-  font-size: 48px;
-  font-weight: 500;
-  color: rgba(0, 0, 0, 0.87);
+  font-size: clamp(1.75rem, 5vw, 3rem);
+  font-weight: 800;
+  color: #241447;
+  line-height: 1.15;
 }
 
 .vuln-exp-subhead {
-  font-size: 16px;
-  font-weight: 500;
-  color: rgba(0, 0, 0, 0.6);
+  font-size: 15px;
+  font-weight: 400;
+  color: #49454f;
+  line-height: 1.65;
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Public marketing + legal shells: extra-narrow phones */
+@media (max-width: 480px) {
+  .legal-page-root {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .legal-page-frame {
+    padding-left: clamp(12px, 4vw, 20px);
+    padding-right: clamp(12px, 4vw, 20px);
+    border-radius: 10px;
+  }
+
+  .legal-page-root .ld-content {
+    overflow-wrap: break-word;
+  }
+
+  .legal-page-root .ld-data-table td {
+    word-break: break-word;
+  }
 }
 
 /* pricing page */
 .pricing-card-subhead {
-  color: rgba(0, 0, 0, 0.6);
-  font-weight: 500;
+  color: #49454f;
+  font-weight: 400;
   font-size: 15px;
 }
 
@@ -1375,4 +1421,9 @@ th.sev-medium {
 th.sev-low {
   color: var(--sev-low-text) !important;
   background-color: var(--sev-low-bg) !important;
+}
+
+/* SweetAlert2 above fixed nav / sign-in overlay (overlay z-index ~9999–10000) */
+.swal2-container {
+  z-index: 20000 !important;
 }

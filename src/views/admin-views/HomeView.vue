@@ -24,9 +24,7 @@
             <div class="hv-hero-btns">
               <button class="hv-btn-primary" @click="handleFixNow">
                 Get Started
-                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-                </svg>
+                <i class="bi bi-arrow-right-circle-fill ms-1 fs-5" aria-hidden="true"></i>
               </button>
             </div>
           </div>
@@ -41,13 +39,13 @@
     <section class="hv-problem" id="problem">
       <div class="hv-container">
         <div class="hv-section-label">
-          <svg width="18" height="18" fill="none" stroke="#6366f1" viewBox="0 0 24 24">
+          <svg width="18" height="18" fill="none" stroke="#0f696e" viewBox="0 0 24 24">
             <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
           </svg>
-          <span style="color:#6366f1; font-weight:600; text-transform:uppercase; font-size:13px; letter-spacing:1px;">The Problem</span>
+          <span style="color:#0f696e; font-weight:600; text-transform:uppercase; font-size:13px; letter-spacing:1px;">The Problem</span>
         </div>
         <div class="hv-problem-top">
-          <h2 class="hv-section-title">Why post VAPT Remediation is broken</h2>
+          <h2 class="hv-section-title">Why post <span style="color:#0f696e;">VAPT Remediation</span> is broken</h2>
           <p class="hv-section-desc">Most cybersecurity teams run a VAPT exercise and stop at the report. But what happens after the vulnerabilities are discovered? They sit in spreadsheets, lost in handoffs, or ignored in long development cycles.</p>
         </div>
         <div class="hv-cards-3">
@@ -82,20 +80,18 @@
         <div class="hv-result-box">
           <div class="hv-result-left">
             <div class="hv-section-label">
-              <svg width="16" height="16" fill="none" stroke="#6366f1" viewBox="0 0 24 24">
+              <svg width="16" height="16" fill="none" stroke="#0f696e" viewBox="0 0 24 24">
                 <path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
               </svg>
-              <span style="color:#6366f1; font-weight:600; text-transform:uppercase; font-size:13px; letter-spacing:1px;">The Result?</span>
+              <span style="color:#0f696e; font-weight:600; text-transform:uppercase; font-size:13px; letter-spacing:1px;">The Result?</span>
             </div>
             <p>Most cybersecurity teams run a VAPT exercise and stop at the report. Vulnerabilities sit in spreadsheets, lost in handoffs, or ignored in long development cycles.</p>
           </div>
           <div class="hv-result-right">
-            <p style="font-size:14px; font-weight:500; color:#4b5563; margin-bottom:12px;">Start for free, no obligations.</p>
+            <p style="font-size:15px; font-weight:400; color:#49454f; margin-bottom:12px;">Start for free, no obligations.</p>
             <button class="hv-btn-outline-dark" @click="handleFixNow">
               Get Started
-              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-              </svg>
+              <i class="bi bi-arrow-right-circle-fill ms-1 fs-5" aria-hidden="true"></i>
             </button>
           </div>
         </div>
@@ -107,10 +103,10 @@
       <div class="hv-container">
         <div class="hv-section-header-center">
           <div class="hv-section-label" style="justify-content:center;">
-            <span class="hv-dot" style="background:#806ab2;"></span>
-            <span style="color:#644e96; font-weight:600; text-transform:uppercase; font-size:13px; letter-spacing:1px;">Our Solution</span>
+            <span class="hv-dot" style="background:#0f696e;"></span>
+            <span style="color:#0f696e; font-weight:600; text-transform:uppercase; font-size:13px; letter-spacing:1px;">Our Solution</span>
           </div>
-          <h2 class="hv-section-title" style="text-align:center;">Foundations of a Mature<br/>Vulnerability Management Program Remediation</h2>
+          <h2 class="hv-section-title" style="text-align:center;">Foundations of a Mature<br/><span style="color:#0f696e;">Vulnerability Management</span> Program Remediation</h2>
         </div>
         <div class="hv-cards-2">
           <div class="hv-feature-item">
@@ -151,29 +147,29 @@
         <div class="hv-human-grid">
           <div class="hv-human-left">
             <div class="hv-section-label">
-              <span class="hv-dot" style="background:#6366f1;"></span>
-              <span style="color:#6366f1; font-weight:600; text-transform:uppercase; font-size:13px; letter-spacing:1px;">Our Approach</span>
+              <span class="hv-dot" style="background:#0f696e;"></span>
+              <span style="color:#0f696e; font-weight:600; text-transform:uppercase; font-size:13px; letter-spacing:1px;">Our Approach</span>
             </div>
             <h2 class="hv-section-title">
               Automation is not enough,
-              <span style="color:#513d7c;">Human intelligence matters</span>
+              <span style="color:#0f696e;">Human intelligence matters</span>
             </h2>
             <p class="hv-section-desc">While automation speeds up repetitive tasks, remediation requires human judgment. Our platform acts as your co-pilot:</p>
             <ul class="hv-check-list">
               <li>
-                <svg width="22" height="22" fill="none" stroke="#644e96" viewBox="0 0 24 24">
+                <svg width="22" height="22" fill="none" stroke="#0f696e" viewBox="0 0 24 24">
                   <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
                 </svg>
                 AI offers initial triage and suggested fixes.
               </li>
               <li>
-                <svg width="22" height="22" fill="none" stroke="#644e96" viewBox="0 0 24 24">
+                <svg width="22" height="22" fill="none" stroke="#0f696e" viewBox="0 0 24 24">
                   <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
                 </svg>
                 Security experts validate and refine recommendations.
               </li>
               <li>
-                <svg width="22" height="22" fill="none" stroke="#644e96" viewBox="0 0 24 24">
+                <svg width="22" height="22" fill="none" stroke="#0f696e" viewBox="0 0 24 24">
                   <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
                 </svg>
                 Teams get precise, actionable steps they can trust.
@@ -195,8 +191,8 @@
       <div class="hv-container">
         <div class="hv-section-header-center">
           <div class="hv-section-label" style="justify-content:center;">
-            <span class="hv-dot" style="background:#6366f1;"></span>
-            <span style="color:#6366f1; font-weight:600; text-transform:uppercase; font-size:13px; letter-spacing:1px;">Our Solution</span>
+            <span class="hv-dot" style="background:#0f696e;"></span>
+            <span style="color:#0f696e; font-weight:600; text-transform:uppercase; font-size:13px; letter-spacing:1px;">Our Solution</span>
           </div>
           <h2 class="hv-section-title" style="text-align:center; color:#fff;">Flexible Assessment Scheduling</h2>
         </div>
@@ -235,9 +231,7 @@
         <p class="hv-cta-desc">Identify, prioritize, and fix security flaws fast. Reduce risk with zero-friction setup and smart automation.</p>
         <button class="hv-cta-btn" @click="handleFixNow">
           Get Started
-          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-          </svg>
+          <i class="bi bi-arrow-right-circle-fill ms-1 fs-5" aria-hidden="true"></i>
         </button>
       </div>
     </section>
@@ -275,7 +269,7 @@ export default {
     Footer,
     AdminSignUpModal,
     SignUpModal,
-    AnimatedDashboard
+    AnimatedDashboard,
   },
   data() {
     return {
@@ -319,13 +313,13 @@ export default {
 .hv-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 clamp(14px, 4vw, 24px);
 }
 
 /* ===== HERO ===== */
 .hv-hero {
   background-color: #ffffff;
-  background-image: radial-gradient(#ebe6f3 1px, transparent 1px);
+  background-image: radial-gradient(#ebe6f3 1px, #ffffff 1px);
   background-size: 20px 20px;
   padding: 20px 0 30px;
   margin-top: 72px;
@@ -336,6 +330,10 @@ export default {
   grid-template-columns: 1fr 1.3fr;
   gap: 60px;
   align-items: center;
+}
+
+.hv-hero-content {
+  min-width: 0;
 }
 
 .hv-badge {
@@ -353,24 +351,22 @@ export default {
 }
 
 .hv-hero-title {
-  font-family: 'Manrope', sans-serif;
-  font-size: 40px;
+  font-family: 'Inter', sans-serif;
+  font-size: clamp(2rem, 4vw, 3.4rem);
   font-weight: 800;
-  color: #111827;
+  color: #241447;
   line-height: 1.15;
   margin-bottom: 16px;
 }
 
 .hv-gradient-text {
-  background: linear-gradient(135deg, #3A2A5E, #6366f1);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #0f696e;
 }
 
 .hv-hero-sub {
   font-size: 15px;
-  color: #6b7280;
+  font-weight: 400;
+  color: #49454f;
   line-height: 1.6;
   margin-bottom: 24px;
 }
@@ -384,24 +380,25 @@ export default {
 .hv-btn-primary {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  background: #3A2A5E;
+  background: #0f696e;
   color: #fff;
   border: none;
-  padding: 14px 32px;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 600;
+  padding: 12px 28px;
+  border-radius: 999px;
+  font-size: 1rem;
+  font-weight: 400;
   cursor: pointer;
   transition: background 0.2s;
 }
-.hv-btn-primary:hover { background: #2f234c; }
+.hv-btn-primary:hover { background: #0a4e52; }
 
 .hv-btn-outline {
   display: inline-flex;
   align-items: center;
   background: #fff;
-  color: #374151;
+  color: #49454f;
   border: 1px solid #d1d5db;
   padding: 14px 32px;
   border-radius: 12px;
@@ -418,6 +415,8 @@ export default {
   align-items: center;
   justify-content: center;
   overflow: visible;
+  min-width: 0;
+  width: 100%;
 }
 
 .hv-hero-img-card {
@@ -452,7 +451,7 @@ export default {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #806ab2;
+  background: #0f696e;
   display: inline-block;
 }
 
@@ -465,17 +464,18 @@ export default {
 }
 
 .hv-section-title {
-  font-family: 'Manrope', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 36px;
   font-weight: 800;
-  color: #111827;
+  color: #241447;
   line-height: 1.25;
   margin: 0 0 16px;
 }
 
 .hv-section-desc {
-  font-size: 16px;
-  color: #6b7280;
+  font-size: 15px;
+  font-weight: 400;
+  color: #49454f;
   line-height: 1.7;
   margin: 0;
 }
@@ -509,16 +509,17 @@ export default {
 }
 
 .hv-card h3 {
-  font-family: 'Manrope', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 18px;
   font-weight: 700;
-  color: #111827;
+  color: #241447;
   margin: 0 0 10px;
 }
 
 .hv-card p {
-  font-size: 14px;
-  color: #6b7280;
+  font-size: 15px;
+  font-weight: 400;
+  color: #49454f;
   line-height: 1.65;
   margin: 0;
 }
@@ -536,7 +537,7 @@ export default {
 }
 
 .hv-result-left { flex: 1; }
-.hv-result-left p { font-size: 15px; color: #6b7280; line-height: 1.65; margin: 8px 0 0; }
+.hv-result-left p { font-size: 15px; font-weight: 400; color: #49454f; line-height: 1.65; margin: 8px 0 0; }
 
 .hv-result-right {
   background: #f1f3f9;
@@ -550,19 +551,19 @@ export default {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: #fff;
-  color: #111827;
-  border: 1px solid #d1d5db;
-  padding: 12px 20px;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 600;
+  background: #0f696e;
+  color: #fff;
+  border: none;
+  padding: 12px 22px;
+  border-radius: 999px;
+  font-size: 1rem;
+  font-weight: 400;
   cursor: pointer;
   width: 100%;
   justify-content: center;
   transition: background 0.2s;
 }
-.hv-btn-outline-dark:hover { background: #f9fafb; }
+.hv-btn-outline-dark:hover { background: #0a4e52; }
 
 /* ===== FEATURES ===== */
 .hv-features {
@@ -600,16 +601,17 @@ export default {
 }
 
 .hv-feature-title {
-  font-family: 'Manrope', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 22px;
   font-weight: 700;
-  color: #111827;
+  color: #241447;
   margin: 0 0 10px;
 }
 
 .hv-feature-desc {
   font-size: 15px;
-  color: #6b7280;
+  font-weight: 400;
+  color: #49454f;
   line-height: 1.7;
   margin: 0;
 }
@@ -643,14 +645,14 @@ export default {
   align-items: center;
   gap: 12px;
   font-size: 15px;
-  color: #374151;
+  color: #49454f;
 }
 
 .hv-quote {
   font-size: 15px;
-  color: #6b7280;
+  color: #49454f;
   font-style: italic;
-  border-left: 4px solid #d5cce6;
+  border-left: 4px solid #0f696e;
   padding: 8px 0 8px 16px;
   margin: 0;
 }
@@ -712,7 +714,7 @@ export default {
 }
 
 .hv-pillar h3 {
-  font-family: 'Manrope', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 16px;
   font-weight: 700;
   color: #fff;
@@ -752,15 +754,17 @@ export default {
 }
 
 .hv-cta-title {
-  font-family: 'Manrope', sans-serif;
-  font-size: 36px;
+  font-family: 'Inter', sans-serif;
+  font-size: clamp(1.5rem, 5vw, 2.25rem);
   font-weight: 700;
   color: #fff;
   margin: 0 0 12px;
+  line-height: 1.2;
 }
 
 .hv-cta-desc {
-  font-size: 17px;
+  font-size: 15px;
+  font-weight: 400;
   color: #9ca3af;
   margin: 0 0 32px;
 }
@@ -768,27 +772,28 @@ export default {
 .hv-cta-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  background: #fff;
-  color: #1d1433;
+  background: #0f696e;
+  color: #fff;
   border: none;
-  padding: 14px 28px;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 700;
+  padding: 12px 28px;
+  border-radius: 999px;
+  font-size: 1rem;
+  font-weight: 400;
   cursor: pointer;
   transition: background 0.2s;
 }
-.hv-cta-btn:hover { background: #f3f4f6; }
+.hv-cta-btn:hover { background: #0a4e52; }
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 992px) {
   .hv-hero-grid,
-  .hv-human-grid { grid-template-columns: 1fr; }
-  .hv-hero { padding: 100px 0 60px; }
-  .hv-hero-title { font-size: 38px; }
+  .hv-human-grid { grid-template-columns: 1fr; gap: 32px; }
+  .hv-hero { padding: 28px 0 48px; }
   .hv-pillars-grid { grid-template-columns: repeat(2, 1fr); }
   .hv-hero-img-wrap { min-height: unset; }
+  .hv-cards-2 { gap: 32px 40px; }
 }
 
 @media (max-width: 768px) {
@@ -798,7 +803,15 @@ export default {
   .hv-result-box { flex-direction: column; }
   .hv-result-right { min-width: unset; width: 100%; }
   .hv-pillars-grid { grid-template-columns: 1fr; }
-  .hv-section-title { font-size: 28px; }
-  .hv-hero-title { font-size: 32px; }
+  .hv-section-title { font-size: clamp(1.35rem, 5vw, 1.75rem); }
+  .hv-problem,
+  .hv-features,
+  .hv-human,
+  .hv-pillars { padding: 56px 0; }
+  .hv-section-header-center { margin-bottom: 40px; }
+  .hv-card { padding: 24px; }
+  .hv-result-box { padding: 28px 24px; gap: 24px; }
+  .hv-human-grid { gap: 32px; }
+  .hv-cta { padding: 56px 0; }
 }
 </style>

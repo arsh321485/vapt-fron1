@@ -2250,7 +2250,37 @@ export const useAuthStore = defineStore("auth", {
           password,
           confirm_password,
         });
-        return { status: true, data: res.data, message: res.data?.message || res.data?.msg };
+        const raw: any = res.data;
+        const data = raw && typeof raw === "object" && raw.data != null ? raw.data : raw;
+        const tokens = (data && (data.tokens || data.jwt)) || {};
+        const access: string | undefined =
+          tokens.access ||
+          data?.access ||
+          data?.access_token ||
+          (typeof data?.token === "string" ? data.token : undefined);
+        const refreshToken = tokens.refresh || data?.refresh || data?.refresh_token;
+        const userObj = data?.user ?? data?.profile ?? null;
+
+        if (access && typeof access === "string") {
+          clearAllAuthTokens();
+          this.setAuth(access, userObj || {});
+          if (refreshToken) {
+            sessionStorage.setItem("refreshToken", refreshToken);
+          }
+          return {
+            status: true as const,
+            data: raw,
+            message: raw?.message || data?.message || res.data?.msg,
+            loggedIn: true as const,
+          };
+        }
+
+        return {
+          status: true as const,
+          data: raw,
+          message: res.data?.message || res.data?.msg,
+          loggedIn: false as const,
+        };
       } catch (error: any) {
         const msg =
           error.response?.data?.message ||

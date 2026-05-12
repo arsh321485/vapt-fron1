@@ -102,9 +102,9 @@
               <i class="bi bi-info-circle mock-info-ico" aria-hidden="true"></i>
             </div>
             <div class="mock-register-header-actions">
-              <button type="button" class="mock-btn-report">
-                <i class="bi bi-eye"></i>
-                View Report
+              <button type="button" class="mock-btn-report" aria-label="View Report">
+                <i class="bi bi-eye" aria-hidden="true"></i>
+                <span class="mock-btn-report-label">View Report</span>
               </button>
               <div class="mock-header-notify-profile">
                 <span class="mock-bell-wrap">
@@ -125,15 +125,15 @@
             </div>
           </div>
           <template v-else>
-            <div class="mock-header-row mock-header-row-top">
+            <div class="mock-header-row mock-header-row-top mock-header-default-top">
               <div class="mock-title-group">
                 <h1 class="mock-page-title">Vulnerability Management Program</h1>
                 <i class="bi bi-info-circle mock-info-ico" aria-hidden="true"></i>
               </div>
               <div class="mock-register-header-actions">
-                <button type="button" class="mock-btn-report">
-                  <i class="bi bi-eye"></i>
-                  View Report
+                <button type="button" class="mock-btn-report" aria-label="View Report">
+                  <i class="bi bi-eye" aria-hidden="true"></i>
+                  <span class="mock-btn-report-label">View Report</span>
                 </button>
                 <div class="mock-header-notify-profile">
                   <span class="mock-bell-wrap">
@@ -661,7 +661,7 @@
                                 <span class="teams-name-txt">User vapt</span>
                               </div>
                             </td>
-                            <td class="teams-td-mail">uservaptfix@gmail.com</td>
+                            <td class="teams-td-mail">user@company.com</td>
                             <td>
                               <select class="teams-role-dd" aria-label="Role">
                                 <option>AF</option>
@@ -1013,20 +1013,20 @@ export default {
         {
           id: 1,
           asset: '192.168.0.26',
-          assetEmail: 'dikshika2019@gmail.com',
+          assetEmail: 'abc@company.com',
           vuln: 'Redis Server Unprotected b...',
           criticality: 'HIGH',
-          requestedBy: 'dikshika2019@gmail.com',
+          requestedBy: 'abc@company.com',
           raised: 'May 8, 2026',
           status: 'OPEN'
         },
         {
           id: 2,
           asset: '192.168.0.26',
-          assetEmail: 'dikshika2019@gmail.com',
+          assetEmail: 'abc@company.com',
           vuln: 'SSL Certificate Cannot Be T...',
           criticality: 'MEDIUM',
-          requestedBy: 'dikshika2019@gmail.com',
+          requestedBy: 'abc@company.com',
           raised: 'May 8, 2026',
           status: 'OPEN'
         },
@@ -1063,10 +1063,10 @@ export default {
         {
           id: 6,
           asset: '192.168.0.26',
-          assetEmail: 'dikshika2019@gmail.com',
+          assetEmail: 'abc@company.com',
           vuln: 'Default Credentials on Admin...',
           criticality: 'HIGH',
-          requestedBy: 'dikshika2019@gmail.com',
+          requestedBy: 'abc@company.com',
           raised: 'May 8, 2026',
           status: 'OPEN'
         }
@@ -1519,6 +1519,10 @@ export default {
   border: 1px solid #e5e7eb;
   border-radius: 999px;
   cursor: default;
+}
+
+.mock-btn-report-label {
+  display: inline;
 }
 
 .mock-bell-wrap {
@@ -3835,7 +3839,8 @@ export default {
 
 @media (max-width: 768px) {
   .dashboard-mockup {
-    height: 560px;
+    height: 520px;
+    max-width: 100%;
   }
 
   .dashboard-sidebar {
@@ -3848,6 +3853,34 @@ export default {
 
   .mock-page-title {
     font-size: 13px;
+  }
+
+  /* Register + default dashboard header: title and actions stack so nothing overlaps */
+  .mock-header-register-row,
+  .mock-header-default-top {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .mock-header--register .mock-title-group-register,
+  .mock-header-default-top .mock-title-group {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .mock-header--register .mock-register-header-actions,
+  .mock-header-default-top .mock-register-header-actions {
+    width: 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .mock-header-register-row .mock-page-title,
+  .mock-header-default-top .mock-page-title {
+    font-size: 12px;
+    line-height: 1.35;
   }
 
   .assets-split {
@@ -3864,6 +3897,28 @@ export default {
 
   .perf-pro-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-mockup {
+    height: 460px;
+    border-radius: 14px;
+  }
+
+  .animated-dashboard {
+    padding: 12px;
+  }
+
+  /* Very narrow: icon-only report button so bell/avatar stay clear */
+  .mock-header-register-row .mock-btn-report-label,
+  .mock-header-default-top .mock-btn-report-label {
+    display: none;
+  }
+
+  .mock-header-register-row .mock-btn-report,
+  .mock-header-default-top .mock-btn-report {
+    padding: 8px 10px;
   }
 }
 </style>

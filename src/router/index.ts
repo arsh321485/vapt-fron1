@@ -27,6 +27,11 @@ import PartnerView from "../views/admin-views/PartnerView.vue";
 import PartnerLeadPortalView from "../views/admin-views/PartnerLeadPortalView.vue";
 import PartnerLeadThankYouView from "../views/admin-views/PartnerLeadThankYouView.vue";
 import PartnerThankYouView from "../views/admin-views/PartnerThankYouView.vue";
+import PrivacyPolicyView from "../views/admin-views/PrivacyPolicyView.vue";
+import TermsOfServiceView from "../views/admin-views/TermsOfServiceView.vue";
+import SecurityStatementView from "../views/admin-views/SecurityStatementView.vue";
+import DataProcessingAgreementView from "../views/admin-views/DataProcessingAgreementView.vue";
+import SupportCenterView from "../views/admin-views/SupportCenterView.vue";
 import RiskCriteriaView from "../views/admin-views/RiskCriteriaView.vue";
 import HowitWork from "../components/admin-component/HowitWork.vue";
 import Profile from "../components/admin-component/Profile.vue";
@@ -85,6 +90,31 @@ const router = createRouter({
       component: HomeView,
     },
     {
+      path: "/privacy",
+      name: "privacy",
+      component: PrivacyPolicyView,
+    },
+    {
+      path: "/terms",
+      name: "terms",
+      component: TermsOfServiceView,
+    },
+    {
+      path: "/security",
+      name: "security",
+      component: SecurityStatementView,
+    },
+    {
+      path: "/support",
+      name: "public-support",
+      component: SupportCenterView,
+    },
+    {
+      path: "/dpa",
+      name: "dpa",
+      component: DataProcessingAgreementView,
+    },
+    {
       path: "/choose-account",
       redirect: "/auth",
     },
@@ -127,6 +157,7 @@ const router = createRouter({
       path: "/communication",
       name: "communication",
       component: LocationView,
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/microsoft/callback",
@@ -137,6 +168,7 @@ const router = createRouter({
       path: "/riskcriteria",
       name: "riskcriteria",
       component: RiskCriteriaView,
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     // {
     //   path: '/uploadreport',
@@ -147,42 +179,50 @@ const router = createRouter({
       path: "/onboarding1",
       name: "onboarding1",
       component: Onboarding1View,
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/admindashboardonboarding",
       name: "admindashboardonboarding",
       component: AdminDashboardOnboardingView,
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/scope",
       name: "scope",
       component: ScopeView,
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/mitigationstrategy",
       name: "mitigationstrategy",
       component: MitigationStrategyView,
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/remediation-timeline/:reportId/:asset",
       name: "remediation-timeline",
       component: RemediationTimelineView,
       props: true,
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/calendar",
       name: "calendar",
       component: CalendarView,
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/missingsecurityupdates",
       name: "missingsecurityupdates",
       component: MissingSecurityUpdatesView,
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/usermissingsecurityupdates",
       name: "usermissingsecurityupdates",
       component: UserMissingSecurityUpdatesView,
+      meta: { requiresAuth: true },
     },
     // {
     //   path: '/vulnerabilitycard',
@@ -194,6 +234,7 @@ const router = createRouter({
       name: "VulFix",
       component: VulnerabilityCardView,
       props: true,
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/signup",
@@ -214,6 +255,7 @@ const router = createRouter({
       path: "/dashboard1",
       name: "dashboard1",
       component: Dashboard1View,
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
 
     // {
@@ -225,6 +267,7 @@ const router = createRouter({
       path: "/ticket/:reportId/:fixVulId/:asset?/:ticketId?",
       name: "CreateTicket",
       component: CreateNewTicketView,
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     // {
     //   path: '/supportticket',
@@ -237,61 +280,73 @@ const router = createRouter({
       name: "supportticket",
       component: SupportTicketView,
       props: true,
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/pending",
       name: "pending",
       component: PendingView,
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/fixes",
       name: "fixes",
       component: FixesView,
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/supportrequests",
       name: "exceptions",
       component: ExceptionsView,
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/vulnerabilityregister",
       name: "vulnerabilityregister",
       component: VulnerabilityRegisterView,
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/report",
       name: "report",
       component: ReportView,
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/assets",
       name: "assets",
       component: AssetsView,
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/performance-monitoring",
       name: "performance-monitoring",
       component: PerformanceMonitoringView,
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/viewreport",
       name: "viewreport",
       component: ViewReportPage,
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/scoping-form",
       name: "scoping-form",
       component: ScopingFormView,
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/scoping-form-2",
       name: "scoping-form-2",
       component: ScopingFormView2,
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/yourteam",
       name: "yourteam",
       component: YourTeamView,
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/howitwork",
@@ -302,6 +357,7 @@ const router = createRouter({
       path: "/profile",
       name: "profile",
       component: Profile,
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/set-password/:uidb64/:token",
@@ -322,6 +378,7 @@ const router = createRouter({
       path: "/notification",
       name: "notification",
       component: NotificationPanel,
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/jira/callback",
@@ -343,73 +400,87 @@ const router = createRouter({
       path: "/userdashboard",
       name: "userdashboard1",
       component: UserDashboard1View,
+      meta: { requiresAuth: true },
     },
     {
       path: "/userassets",
       name: "userassets",
       component: UserAssetsView,
+      meta: { requiresAuth: true },
     },
     {
       path: "/delayedvulnerabilities",
       name: "delayedvulnerabilities",
       component: DelayedvulnerabilitiesView,
+      meta: { requiresAuth: true },
     },
     {
       path: "/delayedvulnerabilitycard",
       name: "delayedvulnerabilitycard",
       component: DelayedvulnerabilitycardView,
+      meta: { requiresAuth: true },
     },
     {
       path: "/userexception",
       name: "userexception",
       component: UserExceptionsView,
+      meta: { requiresAuth: true },
     },
     {
       path: "/fixedvulnerabilities",
       name: "fixedvulnerabilities",
       component: FixedvulnerabilitiesView,
+      meta: { requiresAuth: true },
     },
     {
       path: "/pendingvulnerabilities",
       name: "pendingvulnerabilities",
       component: PendingvulnerabilitiesView,
+      meta: { requiresAuth: true },
     },
     {
       path: "/pendingvulnerabilitycard",
       name: "pendingvulnerabilitycard",
       component: PendingvulnerabilitycardView,
+      meta: { requiresAuth: true },
     },
     {
       path: "/userVulnerabilityregister",
       name: "userVulnerabilityregister",
       component: UserVulnerabilityregisterView,
+      meta: { requiresAuth: true },
     },
     {
       path: "/user-vulnerabilitycard/:reportId/:asset",
       name: "UserVulFix",
       component: UserVulnerabilityCardView,
       props: true,
+      meta: { requiresAuth: true },
     },
     {
       path: "/user-ticket/:reportId/:fixVulId/:asset?/:ticketId?",
       name: "UserCreateTicket",
       component: UserCreateTicketView,
+      meta: { requiresAuth: true },
     },
     {
       path: "/user-tickets",
       name: "UserTickets",
       component: UserTicketsView,
+      meta: { requiresAuth: true },
     },
     {
       path: "/user-remediation-timeline/:reportId/:asset",
       name: "user-remediation-timeline",
       component: UserRemediationTimelineView,
       props: true,
+      meta: { requiresAuth: true },
     },
     {
       path: "/user-calendar",
       name: "user-calendar",
       component: UserCalendarView,
+      meta: { requiresAuth: true },
     },
 
     // Catch-all: redirect any unknown route to /home
@@ -428,11 +499,34 @@ const router = createRouter({
   },
 });
 
+router.beforeEach((to, _from, next) => {
+  if (!to.meta.requiresAuth) return next();
+
+  const token =
+    sessionStorage.getItem("authorization") || localStorage.getItem("authorization");
+
+  if (!token) {
+    return next("/home");
+  }
+
+  if (to.meta.requiresAdmin) {
+    try {
+      const raw = sessionStorage.getItem("user") || localStorage.getItem("user");
+      const user = raw ? JSON.parse(raw) : null;
+      // Team-member accounts carry a Member_role array; admin accounts do not.
+      if (user && Array.isArray(user.Member_role)) {
+        return next("/home");
+      }
+    } catch {
+      // Unparseable user object — let the page's own API call surface the 401.
+    }
+  }
+
+  return next();
+});
+
 router.afterEach(() => {
   tryShowPostLoginSuccessAlert();
 });
-
-// NOTE: Auth gating intentionally disabled.
-// The app should land directly on `/home` without requiring credentials.
 
 export default router;

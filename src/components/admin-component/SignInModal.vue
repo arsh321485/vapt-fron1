@@ -662,8 +662,8 @@ export default {
 }
 
 .auth-tab.active {
-  color: #241447;
-  border-bottom-color: #241447;
+  color: #0f696e;
+  border-bottom-color: #0f696e;
 }
 
 .auth-tab:hover:not(.active) {
@@ -841,7 +841,7 @@ export default {
 .submit-btn {
   width: 100%;
   padding: 14px;
-  background: #241447;
+  background: #0f696e;
   color: white;
   border: none;
   border-radius: 12px;
@@ -854,9 +854,9 @@ export default {
 }
 
 .submit-btn:hover:not(:disabled) {
-  background: #1a0f38;
+  background: #0a4e52;
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(36, 20, 71, 0.3);
+  box-shadow: 0 6px 20px rgba(15, 105, 110, 0.35);
 }
 
 .submit-btn:active:not(:disabled) {

@@ -307,6 +307,9 @@ export default {
   border: none;
   cursor: pointer;
   transition: background-color 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
 }
 
 .hero-btn:hover {

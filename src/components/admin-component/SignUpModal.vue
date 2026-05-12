@@ -521,8 +521,19 @@ export default {
               confirm_password: this.userSetPasswordForm.confirmPassword
             });
         if (result.status) {
-          await Swal.fire({ icon: 'success', title: 'Password Set Successfully!', text: result.message || 'You can now sign in with your new password', confirmButtonColor: '#241447', confirmButtonText: 'Continue to Sign In' });
           this.userSetPasswordForm = { newPassword: '', confirmPassword: '' };
+          await Swal.fire({
+            icon: 'success',
+            title: 'Password Set Successfully!',
+            timer: 2000,
+            timerProgressBar: true,
+            showConfirmButton: false,
+            allowOutsideClick: false,
+            didOpen: () => {
+              const container = document.querySelector('.swal2-container');
+              if (container) container.style.zIndex = '10001';
+            }
+          });
           this.userActiveTab = 'signIn';
         } else {
           await Swal.fire({ icon: 'error', title: 'Failed to Set Password', text: result.message || 'Unable to set password. Please try again.', confirmButtonColor: '#241447', confirmButtonText: 'Try Again', allowOutsideClick: false });
