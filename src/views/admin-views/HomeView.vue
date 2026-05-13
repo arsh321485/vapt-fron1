@@ -35,6 +35,44 @@
       </div>
     </section>
 
+    <!-- Highlights marquee (below hero) -->
+    <section
+      class="hv-highlights-slider"
+      aria-label="Product highlights"
+      @mouseenter="pauseHighlightSlider"
+      @mouseleave="resumeHighlightSlider"
+    >
+      <div class="hv-container">
+        <div class="hv-slider-viewport">
+          <div
+            class="hv-slider-track hv-slider-track--marquee"
+            :class="{ 'hv-slider-track--paused': highlightSliderPaused }"
+            :style="highlightMarqueeTrackStyle"
+          >
+            <template v-for="loop in 2" :key="'marquee-loop-' + loop">
+              <div
+                v-for="(card, index) in highlightCards"
+                :key="loop + '-' + index"
+                class="hv-slider-slide"
+                :style="highlightMarqueeSlideStyle"
+              >
+                <article
+                  class="hv-slider-card"
+                  :class="{
+                    'hv-slider-card--navy': card.tone === 'navy',
+                    'hv-slider-card--green': card.tone === 'green',
+                  }"
+                >
+                  <h2 class="hv-slider-card-title">{{ card.title }}</h2>
+                  <p class="hv-slider-card-text">{{ card.body }}</p>
+                </article>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- PROBLEM SECTION -->
     <section class="hv-problem" id="problem">
       <div class="hv-container">
@@ -186,6 +224,70 @@
       </div>
     </section>
 
+    <!-- CUSTOMER REVIEWS -->
+    <section
+      class="hv-reviews"
+      aria-labelledby="hv-reviews-heading"
+      @mouseenter="pauseReviewSlider"
+      @mouseleave="resumeReviewSlider"
+    >
+      <div class="hv-container">
+        <h2 id="hv-reviews-heading" class="hv-reviews-title">Customer Review</h2>
+        <div class="hv-reviews-slider-wrap">
+          <button
+            type="button"
+            class="hv-reviews-nav hv-reviews-nav--prev"
+            aria-label="Previous reviews"
+            @click="prevReviewSlide"
+          >
+            ‹
+          </button>
+          <div class="hv-reviews-viewport">
+            <div class="hv-reviews-track" :style="reviewTrackStyle">
+              <div
+                v-for="(item, idx) in customerReviews"
+                :key="idx"
+                class="hv-review-slide"
+                :style="reviewSlideStyle"
+              >
+                <article class="hv-review-card">
+                  <span class="hv-review-quote" aria-hidden="true">“</span>
+                  <p class="hv-review-text">{{ item.quote }}</p>
+                  <div class="hv-review-footer">
+                    <div class="hv-review-avatar" aria-hidden="true">{{ item.initials }}</div>
+                    <div>
+                      <p class="hv-review-name">{{ item.name }}</p>
+                      <p class="hv-review-role">{{ item.role }}</p>
+                    </div>
+                  </div>
+                </article>
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="hv-reviews-nav hv-reviews-nav--next"
+            aria-label="Next reviews"
+            @click="nextReviewSlide"
+          >
+            ›
+          </button>
+        </div>
+        <div class="hv-reviews-dots" role="tablist" aria-label="Review slides">
+          <button
+            v-for="page in reviewPageCount"
+            :key="'rdot-' + page"
+            type="button"
+            class="hv-reviews-dot"
+            :class="{ 'hv-reviews-dot--active': page - 1 === reviewSlideIndex }"
+            :aria-label="'Slide ' + page"
+            :aria-selected="page - 1 === reviewSlideIndex"
+            @click="goToReviewSlide(page - 1)"
+          />
+        </div>
+      </div>
+    </section>
+
     <!-- SCHEDULING PILLARS SECTION -->
     <section class="hv-pillars">
       <div class="hv-container">
@@ -275,10 +377,197 @@ export default {
     return {
       showAdminSignUpModal: false,
       showSignUpModal: false,
-      signUpPreSelectedType: ''
+      signUpPreSelectedType: '',
+      highlightSliderPaused: false,
+      highlightWindowWidth: 1200,
+      reviewSlideIndex: 0,
+      reviewSliderPaused: false,
+      reviewSliderTimer: null,
+      highlightCards: [
+        {
+          title: 'From Chaos to Clarity',
+          body:
+            'VAPTFIX turns vulnerability chaos into a clear chain of accountability — your CISO knows the risk, your teams know their role, and your auditors know the numbers.',
+          tone: 'navy',
+        },
+        {
+          title: 'Not a Project. A Partnership.',
+          body:
+            'Most tools scan and walk away. VAPTFIX stays — scanning, remediating, escalating, and even building compensatory controls until every vulnerability is closed.',
+          tone: 'green',
+        },
+        {
+          title: "The Regulator's Ready Report",
+          body:
+            'From discovery to compliance report in one platform — VAPTFIX gives you audit-ready vulnerability documentation the moment your regulator asks for it.',
+          tone: 'navy',
+        },
+        {
+          title: 'Fix It Faster. Prove It Faster.',
+          body:
+            'Your IT team gets exact remediation steps and human support. Your CISO gets real-time fix timelines. Your auditors get the evidence. Everyone wins.',
+          tone: 'green',
+        },
+        {
+          title: 'Assign It in Slack or Teams. Track It to Done.',
+          body:
+            "VAPTFIX meets your teams where they already work — assign vulnerabilities via Slack or Teams, and track every fix to closure, whether it's your engineer or a third-party vendor.",
+          tone: 'navy',
+        },
+        {
+          title: 'Evidence That Holds Up',
+          body:
+            'Every remediation tracked with owners and timestamps — audit trails stay complete without extra spreadsheets.',
+          tone: 'green',
+        },
+      ],
+      customerReviews: [
+        {
+          quote:
+            'VAPTFIX is the single platform where every vulnerability gets an owner, a deadline, a fix, and a paper trail — from first scan to final sign-off.',
+          name: 'Security Director',
+          role: 'Financial services',
+          initials: 'SD',
+        },
+        {
+          quote:
+            'From the moment a vulnerability is found to the moment it\'s proven closed, VAPTFIX keeps your teams accountable, your leadership informed, and your regulators satisfied.',
+          name: 'Head of IT Risk',
+          role: 'Technology',
+          initials: 'IR',
+        },
+        {
+          quote:
+            'VAPTFIX transforms vulnerability management from a one-off IT headache into a continuous, measurable, boardroom-ready security operation.',
+          name: 'VP Engineering',
+          role: 'SaaS',
+          initials: 'VE',
+        },
+        {
+          quote:
+            'One platform. Every vulnerability tracked, every team accountable, every regulator answered, every risk closed — that\'s VAPTFIX.',
+          name: 'Compliance Lead',
+          role: 'Regulated industry',
+          initials: 'CL',
+        },
+        {
+          quote:
+            'VAPTFIX is the only vulnerability management platform that doesn\'t stop at detection — it drives every fix to completion with the people, process, and proof your organization demands.',
+          name: 'CISO',
+          role: 'Enterprise',
+          initials: 'CI',
+        },
+      ],
     };
   },
+  computed: {
+    /** Cards visible at once (matches CSS breakpoints). */
+    highlightVisibleCount() {
+      const w = this.highlightWindowWidth;
+      if (w < 576) return 1;
+      if (w < 768) return 2;
+      if (w < 1200) return 3;
+      return 4;
+    },
+    /** Doubled row for seamless infinite scroll */
+    highlightMarqueeTrackStyle() {
+      const n = this.highlightCards.length;
+      const v = this.highlightVisibleCount;
+      if (!n || !v) return {};
+      return {
+        width: `calc(100% * ${2 * n} / ${v})`,
+      };
+    },
+    highlightMarqueeSlideStyle() {
+      const n = this.highlightCards.length;
+      if (!n) return {};
+      return { flex: `0 0 calc(100% / ${2 * n})` };
+    },
+    /** Customer reviews: 3-up desktop, 2 tablet, 1 mobile */
+    reviewVisibleCount() {
+      const w = this.highlightWindowWidth;
+      if (w < 576) return 1;
+      if (w < 992) return 2;
+      return 3;
+    },
+    reviewMaxSlideIndex() {
+      const n = this.customerReviews.length;
+      const v = this.reviewVisibleCount;
+      if (!n || !v) return 0;
+      return Math.max(0, n - v);
+    },
+    reviewPageCount() {
+      return this.reviewMaxSlideIndex + 1;
+    },
+    reviewTrackStyle() {
+      const n = this.customerReviews.length;
+      const v = this.reviewVisibleCount;
+      if (!n || !v) return {};
+      return {
+        width: `calc(100% * ${n} / ${v})`,
+        transform: `translateX(-${(this.reviewSlideIndex * 100) / n}%)`,
+      };
+    },
+    reviewSlideStyle() {
+      const n = this.customerReviews.length;
+      if (!n) return {};
+      return { flex: `0 0 calc(100% / ${n})` };
+    },
+  },
+  mounted() {
+    this.highlightWindowWidth = window.innerWidth;
+    window.addEventListener('resize', this.onHighlightResize);
+    this.startReviewSlider();
+  },
+  beforeUnmount() {
+    window.removeEventListener('resize', this.onHighlightResize);
+    this.stopReviewSlider();
+  },
   methods: {
+    onHighlightResize() {
+      this.highlightWindowWidth = window.innerWidth;
+      this.reviewSlideIndex = Math.min(this.reviewSlideIndex, this.reviewMaxSlideIndex);
+    },
+    pauseHighlightSlider() {
+      this.highlightSliderPaused = true;
+    },
+    resumeHighlightSlider() {
+      this.highlightSliderPaused = false;
+    },
+    startReviewSlider() {
+      this.stopReviewSlider();
+      this.reviewSliderTimer = window.setInterval(() => {
+        if (!this.reviewSliderPaused) {
+          this.nextReviewSlide();
+        }
+      }, 5000);
+    },
+    stopReviewSlider() {
+      if (this.reviewSliderTimer != null) {
+        clearInterval(this.reviewSliderTimer);
+        this.reviewSliderTimer = null;
+      }
+    },
+    nextReviewSlide() {
+      const max = this.reviewMaxSlideIndex;
+      if (max < 0) return;
+      this.reviewSlideIndex = this.reviewSlideIndex >= max ? 0 : this.reviewSlideIndex + 1;
+    },
+    prevReviewSlide() {
+      const max = this.reviewMaxSlideIndex;
+      if (max < 0) return;
+      this.reviewSlideIndex = this.reviewSlideIndex <= 0 ? max : this.reviewSlideIndex - 1;
+    },
+    goToReviewSlide(index) {
+      const max = this.reviewMaxSlideIndex;
+      this.reviewSlideIndex = Math.min(Math.max(0, index), max);
+    },
+    pauseReviewSlider() {
+      this.reviewSliderPaused = true;
+    },
+    resumeReviewSlider() {
+      this.reviewSliderPaused = false;
+    },
     handleFixNow() {
       this.showAdminSignUpModal = true;
     },
@@ -316,6 +605,132 @@ export default {
   padding: 0 clamp(14px, 4vw, 24px);
 }
 
+/* ===== HIGHLIGHTS SLIDER (above hero) ===== */
+.hv-highlights-slider {
+  margin-top: 0;
+  padding: 6px 0 18px;
+  background-color: #ffffff;
+  background-image: radial-gradient(#ebe6f3 1px, #ffffff 1px);
+  background-size: 20px 20px;
+  overflow-x: clip;
+}
+
+.hv-slider-viewport {
+  overflow: hidden;
+  width: 100%;
+}
+
+.hv-slider-track {
+  display: flex;
+  align-items: stretch;
+}
+
+.hv-slider-track--marquee {
+  will-change: transform;
+  animation: hv-highlight-marquee 32s linear infinite;
+}
+
+.hv-slider-track--marquee.hv-slider-track--paused {
+  animation-play-state: paused;
+}
+
+@keyframes hv-highlight-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hv-slider-track--marquee {
+    animation: none;
+  }
+}
+
+.hv-slider-slide {
+  box-sizing: border-box;
+  padding: 0 4px;
+  min-width: 0;
+}
+
+.hv-slider-card {
+  width: 100%;
+  height: 100%;
+  min-height: 108px;
+  max-height: min(20vw, 168px);
+  max-width: none;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 9px 10px;
+  border-radius: 11px;
+  background: #fff;
+  border: 1px solid rgba(15, 105, 110, 0.28);
+  box-shadow: 0 3px 12px rgba(36, 20, 71, 0.05);
+  overflow: hidden;
+}
+
+@media (max-width: 991.98px) {
+  .hv-slider-card {
+    max-height: min(26vw, 178px);
+    min-height: 112px;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .hv-slider-card {
+    max-height: min(38vw, 200px);
+    min-height: 120px;
+    padding: 10px 11px;
+  }
+}
+
+.hv-slider-card--navy {
+  background: #241447;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-left: 3px solid #0f696e;
+}
+
+.hv-slider-card--green {
+  background: #0f696e;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-left: 3px solid #0a4e52;
+  box-shadow: 0 3px 14px rgba(15, 105, 110, 0.28);
+}
+
+.hv-slider-card-title {
+  font-family: 'Inter', sans-serif;
+  font-size: clamp(0.72rem, 1.65vw, 0.88rem);
+  font-weight: 800;
+  line-height: 1.2;
+  margin: 0 0 5px;
+  color: #241447;
+}
+
+.hv-slider-card--navy .hv-slider-card-title,
+.hv-slider-card--green .hv-slider-card-title {
+  color: #fff;
+}
+
+.hv-slider-card-text {
+  margin: 0;
+  font-size: clamp(10.5px, 1.5vw, 12.5px);
+  line-height: 1.4;
+  color: #49454f;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  overflow: hidden;
+}
+
+.hv-slider-card--navy .hv-slider-card-text,
+.hv-slider-card--green .hv-slider-card-text {
+  color: rgba(255, 255, 255, 0.92);
+}
+
 /* ===== HERO ===== */
 .hv-hero {
   background-color: #ffffff;
@@ -323,6 +738,7 @@ export default {
   background-size: 20px 20px;
   padding: 20px 0 30px;
   margin-top: 72px;
+  overflow-x: clip;
 }
 
 .hv-hero-grid {
@@ -672,19 +1088,220 @@ export default {
   display: block;
 }
 
-/* ===== PILLARS ===== */
+/* ===== CUSTOMER REVIEWS (teal-first — matches highlight “green” cards) ===== */
+.hv-reviews {
+  background: linear-gradient(165deg, #1a1530 0%, #063d41 22%, #0f696e 46%, #0f7569 70%, #1a2740 100%);
+  padding: 80px 0 88px;
+  position: relative;
+}
+
+.hv-reviews::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(100% 85% at 50% 0%, rgba(36, 20, 71, 0.55) 0%, transparent 58%),
+    radial-gradient(90% 80% at 0% 100%, rgba(36, 20, 71, 0.42) 0%, transparent 54%),
+    radial-gradient(90% 80% at 100% 100%, rgba(36, 20, 71, 0.38) 0%, transparent 54%),
+    radial-gradient(70% 55% at 100% 85%, rgba(24, 40, 72, 0.3) 0%, transparent 48%);
+}
+
+.hv-reviews .hv-container {
+  position: relative;
+  z-index: 1;
+}
+
+.hv-reviews-title {
+  font-family: 'Inter', sans-serif;
+  text-align: center;
+  color: #fff;
+  font-size: clamp(1.45rem, 3.2vw, 2rem);
+  font-weight: 800;
+  line-height: 1.2;
+  margin: 0 auto 44px;
+  max-width: 720px;
+  letter-spacing: -0.02em;
+}
+
+.hv-reviews-slider-wrap {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.hv-reviews-viewport {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.hv-reviews-track {
+  display: flex;
+  align-items: stretch;
+  transition: transform 0.45s ease-out;
+}
+
+.hv-review-slide {
+  box-sizing: border-box;
+  padding: 0 11px;
+  min-width: 0;
+  display: flex;
+}
+
+.hv-reviews-nav {
+  flex-shrink: 0;
+  align-self: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 1.65rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.hv-reviews-nav:hover {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+.hv-reviews-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-bottom: 2px;
+}
+
+.hv-reviews-dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  transition: transform 0.2s, background 0.2s;
+}
+
+.hv-reviews-dot:hover {
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.hv-reviews-dot--active {
+  background: #fff;
+  transform: scale(1.12);
+}
+
+.hv-review-card {
+  background: #fff;
+  border-radius: 18px;
+  padding: 26px 24px 22px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.14);
+  display: flex;
+  flex-direction: column;
+  min-height: 280px;
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.hv-review-quote {
+  display: block;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 3rem;
+  line-height: 0.85;
+  color: rgba(15, 105, 110, 0.35);
+  margin-bottom: 6px;
+  user-select: none;
+}
+
+.hv-review-text {
+  margin: 0 0 22px;
+  font-size: 15px;
+  line-height: 1.62;
+  color: #475569;
+  font-style: italic;
+  flex: 1;
+}
+
+.hv-review-footer {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.hv-review-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #0f696e, #241447);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+
+.hv-review-name {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.hv-review-role {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+@media (max-width: 575.98px) {
+  .hv-reviews-nav {
+    display: none;
+  }
+
+  .hv-reviews-slider-wrap {
+    gap: 0;
+  }
+
+  .hv-review-slide {
+    padding: 0 6px;
+  }
+
+  .hv-review-card {
+    min-height: 260px;
+  }
+}
+
+/* ===== PILLARS (purple / navy — cooler blue at bottom vs reviews teal) ===== */
 .hv-pillars {
-  background: #2f234c;
+  background:
+    radial-gradient(115% 75% at 50% 100%, rgba(15, 105, 110, 0.32) 0%, transparent 60%),
+    radial-gradient(55% 50% at 10% 12%, rgba(15, 105, 110, 0.18) 0%, transparent 50%),
+    radial-gradient(50% 40% at 92% 25%, rgba(15, 105, 110, 0.12) 0%, transparent 48%),
+    linear-gradient(180deg, #231a3d 0%, #2f234c 45%, #253652 100%);
   padding: 96px 0;
   position: relative;
   overflow: hidden;
+  border-top: 1px solid rgba(15, 105, 110, 0.52);
 }
 
 .hv-pillars::before {
   content: '';
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(rgba(255,255,255,0.1) 1px, transparent 1px);
+  pointer-events: none;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
   background-size: 30px 30px;
 }
 
@@ -803,6 +1420,7 @@ export default {
   .hv-result-box { flex-direction: column; }
   .hv-result-right { min-width: unset; width: 100%; }
   .hv-pillars-grid { grid-template-columns: 1fr; }
+  .hv-reviews { padding: 56px 0 64px; }
   .hv-section-title { font-size: clamp(1.35rem, 5vw, 1.75rem); }
   .hv-problem,
   .hv-features,

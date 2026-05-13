@@ -5,6 +5,7 @@
     <section class="vulnerability-explorer">
       <div class="container-fluid py-4 py-md-5">
         <div class="container mt-2 mt-md-3 pt-1">
+          <!-- Pricing page intro — temporarily hidden
           <div class="row text-center mt-4 mt-md-5">
             <div class="col-12">
               <h2 class="vuln-exp-heading mb-3 mb-md-4">Pricing plans</h2>
@@ -14,6 +15,13 @@
               </p>
             </div>
           </div>
+          -->
+          <div class="row justify-content-center mb-2 py-4 py-md-5 mt-4 mt-md-5">
+            <div class="col-12 text-center">
+              <p class="pricing-coming-soon mb-0">!! Coming Soon</p>
+            </div>
+          </div>
+          <!-- Pricing cards (Basic / Plus / Pro) — temporarily hidden
           <div class="row g-4 justify-content-center mb-2">
             <div class="col-12 col-md-6 col-xl-4">
               <div class="card text-start shadow h-100 pricing-card">
@@ -118,8 +126,10 @@
               </div>
             </div>
           </div>
+          -->
         </div>
 
+        <!-- Trusted by + client logos — temporarily hidden
         <div class="row my-4 my-md-5 justify-content-center">
           <div class="col-12">
             <p class="text-center mt-3 mt-md-5 trusted-line">Trusted by 30+ companies</p>
@@ -152,6 +162,7 @@
             </div>
           </div>
         </div>
+        -->
       </div>
     </section>
 
@@ -227,6 +238,14 @@ export default {
 <style scoped>
 .pricing-page {
   overflow-x: hidden;
+}
+
+.pricing-coming-soon {
+  font-size: clamp(3rem, 12vw, 5.5rem);
+  font-weight: 800;
+  color: #241447;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
 }
 
 .pricing-card {
