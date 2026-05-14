@@ -86,27 +86,27 @@
           <div class="sup-sla-cell">
             <div class="sup-sla-plan">Free</div>
             <div class="sup-sla-time">72h</div>
-            <div class="sup-sla-label">Email only · Business hours</div>
+            <div class="sup-sla-label">Email support with standard response handling during business hours.</div>
           </div>
           <div class="sup-sla-cell">
             <div class="sup-sla-plan">Starter</div>
             <div class="sup-sla-time">24h</div>
-            <div class="sup-sla-label">Email + Live chat · Business hours</div>
+            <div class="sup-sla-label">Email and Microsoft Teams support with business-hours remediation coordination.</div>
           </div>
           <div class="sup-sla-cell">
             <div class="sup-sla-plan">Pro</div>
             <div class="sup-sla-time">8h</div>
-            <div class="sup-sla-label">Email, chat, priority queue</div>
+            <div class="sup-sla-label">Email, Microsoft Teams, and Slack support with priority response handling.</div>
           </div>
           <div class="sup-sla-cell">
             <div class="sup-sla-plan">Business</div>
             <div class="sup-sla-time">4h</div>
-            <div class="sup-sla-label">All channels · Dedicated CSM</div>
+            <div class="sup-sla-label">All communication channels with dedicated remediation coordination and faster escalation handling.</div>
           </div>
           <div class="sup-sla-cell">
             <div class="sup-sla-plan">Enterprise</div>
             <div class="sup-sla-time">1h</div>
-            <div class="sup-sla-label">24/7 · Critical: 30min · Slack</div>
+            <div class="sup-sla-label">24/7 priority support across Email, Microsoft Teams, and Slack with critical vulnerability escalation management.</div>
           </div>
         </div>
 
@@ -117,12 +117,12 @@
             <div class="sup-doc-cat-title">Getting Started</div>
             <div class="sup-doc-cat-links">
               <a href="#" @click.prevent>Platform overview</a>
-              <a href="#" @click.prevent>Creating your first scan</a>
+              <!-- <a href="#" @click.prevent>Creating your first scan</a>
               <a href="#" @click.prevent>API key setup</a>
-              <a href="#" @click.prevent>Team &amp; permissions</a>
+              <a href="#" @click.prevent>Team &amp; permissions</a> -->
             </div>
           </div>
-          <div class="sup-doc-cat">
+          <!-- <div class="sup-doc-cat">
             <div class="sup-doc-cat-title">Scanning &amp; Assessment</div>
             <div class="sup-doc-cat-links">
               <a href="#" @click.prevent>Scan types explained</a>
@@ -130,7 +130,7 @@
               <a href="#" @click.prevent>Scheduled scans</a>
               <a href="#" @click.prevent>Scan exclusions &amp; scope</a>
             </div>
-          </div>
+          </div> -->
           <div class="sup-doc-cat">
             <div class="sup-doc-cat-title">Reports &amp; Findings</div>
             <div class="sup-doc-cat-links">
@@ -140,7 +140,7 @@
               <a href="#" @click.prevent>Remediation tracking</a>
             </div>
           </div>
-          <div class="sup-doc-cat">
+          <!-- <div class="sup-doc-cat">
             <div class="sup-doc-cat-title">Integrations &amp; API</div>
             <div class="sup-doc-cat-links">
               <a href="#" @click.prevent>REST API reference</a>
@@ -148,7 +148,7 @@
               <a href="#" @click.prevent>Jira integration</a>
               <a href="#" @click.prevent>Slack notifications</a>
             </div>
-          </div>
+          </div> -->
           <div class="sup-doc-cat">
             <div class="sup-doc-cat-title">Account &amp; Billing</div>
             <div class="sup-doc-cat-links">
@@ -158,7 +158,7 @@
               <a href="#" @click.prevent>Cancelling subscription</a>
             </div>
           </div>
-          <div class="sup-doc-cat">
+          <!-- <div class="sup-doc-cat">
             <div class="sup-doc-cat-title">Security &amp; Compliance</div>
             <div class="sup-doc-cat-links">
               <a href="#" @click.prevent>SSO / SAML setup</a>
@@ -166,14 +166,14 @@
               <a href="#" @click.prevent>Audit log access</a>
               <a href="#" @click.prevent>Data residency options</a>
             </div>
-          </div>
+          </div> -->
         </div>
 
         <div id="faq" class="sup-faq-wrap">
           <div class="sup-section-label">FAQ</div>
           <h2 class="sup-section-title">Frequently Asked Questions</h2>
           <div class="sup-faq-grid">
-            <div class="sup-faq-item">
+            <!-- <div class="sup-faq-item">
               <div class="sup-faq-q">Can I scan any system with VaptFix.ai?</div>
               <div class="sup-faq-a">
                 No. You may only scan systems you own or have explicit written authorization to test. Unauthorized
@@ -181,7 +181,7 @@
                 <router-link to="/terms">Terms of Service</router-link>
                 and may constitute a criminal offense.
               </div>
-            </div>
+            </div> -->
             <div class="sup-faq-item">
               <div class="sup-faq-q">What scan types does VaptFix.ai support?</div>
               <div class="sup-faq-a">
@@ -215,14 +215,14 @@
                 <a href="mailto:legal@vaptfix.ai">legal@vaptfix.ai</a>.
               </div>
             </div>
-            <div class="sup-faq-item">
+            <!-- <div class="sup-faq-item">
               <div class="sup-faq-q">Does VaptFix.ai have a bug bounty program?</div>
               <div class="sup-faq-a">
                 We operate a responsible disclosure program. Report security issues to
                 <a href="mailto:security@vaptfix.ai">security@vaptfix.ai</a>. We review all reports and respond within
                 24 hours. A formal bounty program is planned for a future release.
               </div>
-            </div>
+            </div> -->
             <div class="sup-faq-item">
               <div class="sup-faq-q">How do I cancel my subscription?</div>
               <div class="sup-faq-a">
@@ -505,6 +505,9 @@ export default {
 .sup-sla-cell {
   background: #f6f4fa;
   padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 180px;
 }
 
 .sup-sla-plan {
@@ -528,10 +531,11 @@ export default {
 
 .sup-sla-label {
   font-family: 'Inter', sans-serif;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 400;
   color: #49454f;
-  line-height: 1.65;
+  line-height: 1.5;
+  margin-top: 0.5rem;
 }
 
 .sup-doc-grid {

@@ -515,7 +515,7 @@
             </table>
           </section>
 
-          <section id="signatures">
+          <!-- <section id="signatures">
             <div class="ld-section-number">SIGNATURES</div>
             <h2>Execution</h2>
             <p>By signing below, or by accepting the Terms of Service which incorporate this DPA, both parties agree to be bound by the terms of this Data Processing Agreement and all applicable jurisdiction-specific addenda.</p>
@@ -543,6 +543,9 @@
                 <div class="ld-sig-label">Date</div>
               </div>
             </div>
+          </section> -->
+
+          <section>
             <div class="ld-callout">
               <p>For Enterprise customers requiring a countersigned DPA, or a DPA incorporating jurisdiction-specific schedules not covered above, contact <a href="mailto:legal@vaptfix.ai">legal@vaptfix.ai</a>. Processing begins within 3 business days of receipt.</p>
               <p>Customers processing data under multiple jurisdictions may request a consolidated jurisdiction-specific addendum package at no additional cost.</p>

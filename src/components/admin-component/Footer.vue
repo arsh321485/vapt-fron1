@@ -129,12 +129,14 @@ export default {
   align-items: center;
   justify-content: flex-start;
   gap: 0.75rem 1.5rem;
+  padding-right: 90px;
 }
 
 @media (min-width: 768px) {
   .footer-legal-links {
     justify-content: flex-end;
     flex: 0 1 auto;
+    padding-right: 90px;
   }
 }
 

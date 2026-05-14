@@ -47,7 +47,7 @@
 
           <h3>Account &amp; Identity Data</h3>
           <ul>
-            <li>Full name, email address, job title, and organization name</li>
+            <li>Full name, email address, and organization name</li>
             <li>Billing address and payment information (processed via PCI-DSS-compliant processors)</li>
             <li>Authentication credentials — passwords stored in hashed form only, never in plaintext</li>
             <li>Profile preferences, notification settings, and language/locale</li>
