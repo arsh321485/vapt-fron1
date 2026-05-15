@@ -212,127 +212,93 @@
                       <!-- Expanded detail panel -->
                       <div v-if="expandedTasks.includes(idx)" class="rt-task-expanded" @click.stop>
 
-                        <!-- Meta: Deadline + Criticality + Effort (hidden by request) -->
-                        <!-- <div class="rt-expand-meta-row">
-                          <div v-if="task.deadline" class="rt-expand-meta-item">
-                            <i class="bi bi-calendar3 me-1"></i>
-                            <span class="rt-expand-label">Deadline:</span>
-                            <span class="rt-expand-meta-val">{{ task.deadline }}</span>
-                          </div>
-                          <div v-if="task.criticality" class="rt-expand-meta-item">
-                            <i class="bi bi-exclamation-circle me-1"></i>
-                            <span class="rt-expand-label">Criticality:</span>
-                            <span class="rt-expand-meta-val" :class="{
-                              'text-danger': task.criticality === 'Critical',
-                              'text-warning': task.criticality === 'High',
-                            }">{{ task.criticality }}</span>
-                          </div>
-                          <div v-if="task.effortEstimate" class="rt-expand-meta-item">
-                            <i class="bi bi-clock me-1"></i>
-                            <span class="rt-expand-label">Effort:</span>
-                            <span class="rt-expand-meta-val">{{ task.effortEstimate }}</span>
-                          </div>
-                        </div> -->
-
-                        <!-- Assigned Members (highlighted, moved above action) -->
-                        <div v-if="task.members && task.members.length" class="rt-expand-section rt-assigned-highlight">
-                          <span class="rt-expand-label">ASSIGNED MEMBERS</span>
-                          <div class="d-flex flex-wrap gap-2 mt-1">
-                            <span v-for="m in task.members" :key="m.user_id" class="rt-member-chip">
-                              <i class="bi bi-person-fill me-1"></i>{{ m.name }}
-                            </span>
-                          </div>
-                        </div>
-
-                        <!-- ROW 1: ACTION + FILE PATH side by side -->
-                        <div class="rt-expand-row-2">
-                          <div class="rt-expand-section">
-                            <span class="rt-expand-label">ACTION</span>
-                            <p class="rt-expand-text">{{ task.action }}</p>
+                        <!-- ROW 1: ACTION | ASSIGNED TO -->
+                        <div class="rt-exp-row2">
+                          <div class="rt-exp-cell">
+                            <span class="rt-exp-label">ACTION</span>
+                            <p class="rt-exp-text rt-exp-pretext">{{ cleanText(task.action) }}</p>
                             <!-- SUB-TASKS under ACTION -->
                             <div v-if="task.subTasks && task.subTasks.length" class="mt-3">
-                              <span class="rt-expand-label">SUB-TASKS</span>
+                              <span class="rt-exp-label">SUB-TASKS</span>
                               <div class="rt-subtask-list mt-1">
-                                <div
-                                  v-for="(sub, si) in task.subTasks"
-                                  :key="si"
-                                  class="rt-subtask-entry"
-                                  @click.stop
-                                >
+                                <div v-for="(sub, si) in task.subTasks" :key="si" class="rt-subtask-entry" @click.stop>
                                   <div v-if="!sub.items || sub.items.length === 0" class="rt-subtask-dash">-</div>
                                   <div v-else class="d-flex align-items-center gap-2">
                                     <input type="checkbox" class="rt-checkbox" />
                                     <span class="rt-subtask-desc">{{ sub.description }}</span>
                                   </div>
                                   <div v-if="sub.items && sub.items.length > 0" class="rt-checklist mt-1 ps-4">
-                                    <label
-                                      v-for="(item, ii) in sub.items"
-                                      :key="ii"
-                                      class="rt-check-item"
-                                    >
-                                      <input type="checkbox" class="rt-checkbox" />
-                                      <span>{{ item }}</span>
+                                    <label v-for="(item, ii) in sub.items" :key="ii" class="rt-check-item">
+                                      <input type="checkbox" class="rt-checkbox" /><span>{{ item }}</span>
                                     </label>
                                   </div>
                                 </div>
                               </div>
                             </div>
                           </div>
-                          <div v-if="task.filePath && task.filePath !== 'N/A'" class="rt-expand-section">
-                            <span class="rt-expand-label">FILE PATH</span>
-                            <div class="rt-filepath-box">{{ task.filePath }}</div>
+                          <div class="rt-exp-cell rt-exp-cell-divider" v-if="task.assignedTeam || (task.members && task.members.length)">
+                            <span class="rt-exp-label">ASSIGNED TO</span>
+                            <p class="rt-exp-text" v-if="task.assignedTeam">{{ task.assignedTeam }}</p>
+                            <div v-if="task.members && task.members.length" class="d-flex flex-wrap gap-2 mt-2">
+                              <span v-for="m in task.members" :key="m.user_id" class="rt-member-chip">
+                                <i class="bi bi-person-fill me-1"></i>{{ m.name }}
+                              </span>
+                            </div>
                           </div>
                         </div>
 
-                        <div
-                          v-if="(task.whereToRunLabel || task.whereToRun) && (task.whereToRunLabel || task.whereToRun) !== 'N/A'"
-                          class="rt-expand-section"
-                        >
-                          <span class="rt-expand-label">WHERE TO RUN</span>
-                          <div class="rt-code-block rt-code-block-copy">
-                            <span>{{ task.whereToRunLabel || task.whereToRun }}</span>
-                            <button class="rt-copy-icon-btn" @click.stop="copyCommand(task.whereToRunLabel || task.whereToRun)" title="Copy">
-                              <i class="bi bi-clipboard"></i>
-                            </button>
-                          </div>
+                        <!-- FILE PATH -->
+                        <div v-if="task.filePath && task.filePath !== 'N/A'" class="rt-exp-section">
+                          <span class="rt-exp-label">FILE PATH</span>
+                          <div class="rt-exp-filepath">{{ task.filePath }}</div>
                         </div>
 
-                        <!-- COMMAND TO RUN (full width) -->
-                        <div v-if="task.command && task.command !== 'N/A'" class="rt-expand-section">
-                          <span class="rt-expand-label">COMMAND TO RUN</span>
-                          <div class="rt-code-block rt-code-block-copy">
+                        <!-- WHERE TO RUN -->
+                        <div v-if="(task.whereToRunLabel || task.whereToRun) && (task.whereToRunLabel || task.whereToRun) !== 'N/A'" class="rt-exp-section">
+                          <span class="rt-exp-label">WHERE TO RUN</span>
+                          <p class="rt-exp-text">{{ task.whereToRunLabel || task.whereToRun }}</p>
+                        </div>
+
+                        <!-- COMMAND TO RUN -->
+                        <div v-if="task.command && task.command !== 'N/A'" class="rt-exp-section">
+                          <span class="rt-exp-label">COMMAND TO RUN</span>
+                          <div class="rt-exp-code-block rt-exp-code-copy">
                             <span v-text="formatCommandToRun(task.command)"></span>
-                            <button class="rt-copy-icon-btn" @click.stop="copyCommand(formatCommandToRun(task.command))" title="Copy">
+                            <button class="rt-exp-copy-btn" @click.stop="copyCommand(formatCommandToRun(task.command))" title="Copy">
                               <i class="bi bi-clipboard"></i>
                             </button>
                           </div>
                         </div>
 
-                        <div v-if="task.expectedOutput && task.expectedOutput !== 'N/A'" class="rt-expand-section">
-                          <span class="rt-expand-label">EXPECTED OUTPUT</span>
-                          <div class="rt-code-block">{{ task.expectedOutput }}</div>
-                        </div>
-                        <div v-if="task.verificationCheck && task.verificationCheck !== 'N/A'" class="rt-expand-section">
-                          <span class="rt-expand-label">VERIFICATION CHECK</span>
-                          <div class="rt-code-block">{{ task.verificationCheck }}</div>
+                        <!-- ROW 2: EXPECTED OUTPUT | VERIFICATION CHECK -->
+                        <div class="rt-exp-row2" v-if="(task.expectedOutput && task.expectedOutput !== 'N/A') || (task.verificationCheck && task.verificationCheck !== 'N/A')">
+                          <div class="rt-exp-cell" v-if="task.expectedOutput && task.expectedOutput !== 'N/A'">
+                            <span class="rt-exp-label">EXPECTED OUTPUT</span>
+                            <p class="rt-exp-text rt-exp-pretext">{{ cleanText(task.expectedOutput) }}</p>
+                          </div>
+                          <div class="rt-exp-cell rt-exp-cell-divider" v-if="task.verificationCheck && task.verificationCheck !== 'N/A'">
+                            <span class="rt-exp-label">VERIFICATION CHECK</span>
+                            <p class="rt-exp-text rt-exp-pretext">{{ cleanText(task.verificationCheck) }}</p>
+                          </div>
                         </div>
 
-                        <!-- ROW 2: TOOLS + CONSIDERATION side by side -->
-                        <div class="rt-expand-row-2">
-                          <div v-if="task.tools && task.tools.length" class="rt-expand-section">
-                            <span class="rt-expand-label">ARTIFACTS / TOOLS USED</span>
-                            <div class="d-flex flex-wrap gap-2 mt-1">
-                              <span v-for="tool in task.tools" :key="tool" class="rt-tool-chip">{{ tool }}</span>
-                            </div>
-                          </div>
-                          <div v-if="task.consideration" class="rt-expand-section">
-                            <span class="rt-expand-label">IMPORTANT CONSIDERATION</span>
-                            <div class="rt-consideration-box">
-                              <i class="bi bi-exclamation-triangle-fill" style="color:#f97316; flex-shrink:0;"></i>
-                              <span>{{ task.consideration }}</span>
-                            </div>
+                        <!-- ARTEFACTS & TOOLS -->
+                        <div v-if="task.tools && task.tools.length" class="rt-exp-section">
+                          <span class="rt-exp-label">ARTEFACTS &amp; TOOLS USED</span>
+                          <div class="d-flex flex-wrap gap-2 mt-1">
+                            <span v-for="tool in task.tools" :key="tool" class="rt-tool-chip">{{ tool }}</span>
                           </div>
                         </div>
+
+                        <!-- IMPORTANT CONSIDERATIONS -->
+                        <div v-if="task.consideration" class="rt-exp-consideration">
+                          <div class="rt-exp-consideration-hd">
+                            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                            IMPORTANT CONSIDERATIONS
+                          </div>
+                          <p class="rt-exp-consideration-text rt-exp-pretext">{{ cleanText(task.consideration) }}</p>
+                        </div>
+
                       </div>
                     </div>
                   </div>
@@ -493,23 +459,26 @@ export default {
   },
 
   methods: {
+    cleanText(text) {
+      if (!text) return '';
+      return String(text)
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<[^>]+>/g, '')
+        .trim();
+    },
     formatCommandToRun(commandValue) {
-      const commandParts = Array.isArray(commandValue)
-        ? commandValue
-          .map(item => String(item || '').trim())
-          .filter(Boolean)
-        : String(commandValue || '')
-          .split(/\r?\n|,/)
-          .map(item => item.trim())
-          .filter(Boolean);
+      let raw = Array.isArray(commandValue)
+        ? commandValue.map(item => String(item || '').trim()).join('\n')
+        : String(commandValue || '');
 
-      if (commandParts.length <= 1) {
-        return commandParts[0] || String(commandValue || '');
-      }
+      // Strip markdown code fences (```python, ```bash, ``` etc.)
+      raw = raw.replace(/^```[\w]*\s*/i, '').replace(/\s*```$/i, '');
+      // Replace <br> tags with newlines
+      raw = raw.replace(/<br\s*\/?>/gi, '\n');
+      // Strip any remaining HTML tags
+      raw = raw.replace(/<[^>]+>/g, '');
 
-      return commandParts
-        .map((part, index) => (index === commandParts.length - 1 ? part : `${part},`))
-        .join('\n');
+      return raw.trim();
     },
     toggleStep(step) {
       if (this.selectedSteps.includes(step)) {
@@ -1421,7 +1390,7 @@ export default {
 }
 
 .rt-vuln-name {
-  font-size: 1.05rem;
+  font-size: 1.3rem;
   font-weight: 800;
   color: #1e293b;
   margin: 0 0 6px;
@@ -1429,20 +1398,21 @@ export default {
 }
 
 .rt-label-text {
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   color: #64748b;
   font-weight: 500;
 }
 
 .rt-asset-chip {
   display: inline-block;
-  font-size: 0.78rem;
-  font-weight: 600;
-  background: #f1f5f9;
-  color: #334155;
-  padding: 3px 12px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  background: #e0f2fe;
+  color: #0369a1;
+  padding: 4px 14px;
   border-radius: 50px;
-  border: 1px solid #e2e8f0;
+  border: 1.5px solid #bae6fd;
+  letter-spacing: 0.01em;
 }
 
 .rt-tech-right {
@@ -1627,54 +1597,76 @@ export default {
   transform: rotate(180deg);
 }
 
-/* Expanded detail panel */
+/* ─── Expanded detail panel (new rt-exp-* design) ───────────────────── */
 .rt-task-expanded {
-  padding: 4px 0 20px 40px;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 0;
+  border-top: 1px solid #f1f5f9;
 }
 
-.rt-expand-row-2 {
+/* 2-column row (ACTION/ASSIGNED TO, EXPECTED OUTPUT/VERIFICATION) */
+.rt-exp-row2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  border-bottom: 1px solid #f1f5f9;
 }
 
-.rt-expand-section {
+.rt-exp-cell {
+  padding: 16px 20px;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.rt-expand-label {
+.rt-exp-cell-divider {
+  border-left: 1px solid #f1f5f9;
+}
+
+/* Full-width section block */
+.rt-exp-section {
+  padding: 14px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+/* Section header label (tiny uppercase) */
+.rt-exp-label {
   font-size: 0.6rem;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #94a3b8;
+  margin-bottom: 2px;
 }
 
-.rt-expand-text {
+/* Body text inside sections */
+.rt-exp-text {
   font-size: 0.84rem;
   color: #334155;
   margin: 0;
   line-height: 1.55;
 }
+.rt-exp-pretext { white-space: pre-line; }
 
-.rt-filepath-box {
-  background: #f8f9fc;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 10px 14px;
+/* Purple monospace filepath */
+.rt-exp-filepath {
+  background: #f5f3ff;
+  border: 1px solid #e9d5ff;
+  border-radius: 6px;
+  padding: 8px 14px;
   font-family: 'Courier New', Courier, monospace;
   font-size: 0.8rem;
-  color: #475569;
+  color: #7c3aed;
   word-break: break-all;
   line-height: 1.6;
 }
 
-.rt-code-block {
+/* Dark terminal code block */
+.rt-exp-code-block {
   background: #1e293b;
   border-radius: 8px;
   padding: 12px 16px;
@@ -1686,21 +1678,22 @@ export default {
   white-space: pre-wrap;
 }
 
-.rt-code-block-copy {
-  position: relative;
+/* Flex wrapper for code block + copy button (both classes on same element) */
+.rt-exp-code-copy {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
 }
 
-.rt-code-block-copy span {
+.rt-exp-code-copy span {
   flex: 1;
   word-break: break-all;
   white-space: pre-wrap;
 }
 
-.rt-copy-icon-btn {
+/* Clipboard copy button inside code block */
+.rt-exp-copy-btn {
   flex-shrink: 0;
   background: transparent;
   border: none;
@@ -1714,8 +1707,36 @@ export default {
   margin-top: 1px;
 }
 
-.rt-copy-icon-btn:hover {
+.rt-exp-copy-btn:hover {
   opacity: 1;
+}
+
+/* Amber IMPORTANT CONSIDERATIONS box */
+.rt-exp-consideration {
+  margin: 14px 20px 18px;
+  background: #fffbeb;
+  border: 1px solid #fbbf24;
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+.rt-exp-consideration-hd {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #b45309;
+  margin-bottom: 6px;
+}
+
+.rt-exp-consideration-text {
+  font-size: 0.82rem;
+  color: #c2410c;
+  line-height: 1.55;
+  margin: 0;
 }
 
 

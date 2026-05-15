@@ -12,14 +12,57 @@
 
           <div class="col-11 vr-content">
 
-            <!-- Sticky Top Header -->
+            <!-- Sticky Top Header — Dark Banner -->
             <div class="report-sticky-header">
+              <!-- Back button -->
               <button class="btn-back" @click="$router.back()">
-                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:6px;"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:5px;"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
                 Back
               </button>
+
+              <!-- Centre: badge + title + subtitle -->
+              <div class="rsh-main">
+                <div class="rsh-info">
+                  <div class="rsh-risk-badge" v-if="hasOverdueFindings">
+                    <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="vertical-align:-1px;"><path stroke-linecap="round" stroke-linejoin="round" d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>
+                    High Risk — Action Required
+                  </div>
+                  <div class="rsh-title">NFH Vulnerability Mitigation Portal</div>
+                  <div class="rsh-subtitle">
+                    Internal Network
+                    <span class="rsh-dot">·</span>
+                    January 2026 Nessus Assessment
+                    <span class="rsh-dot">·</span>
+                    {{ uniqueHostsCount }} hosts
+                    <span class="rsh-dot">·</span>
+                    {{ totalVulnerabilities }} actionable findings
+                  </div>
+                </div>
+
+                <!-- Right: severity counts -->
+                <div class="rsh-counts">
+                  <div class="rsh-count-item">
+                    <div class="rsh-count-num rsh-critical">{{ vulnStats.critical }}</div>
+                    <div class="rsh-count-lbl">Critical</div>
+                  </div>
+                  <div class="rsh-count-item">
+                    <div class="rsh-count-num rsh-high">{{ vulnStats.high }}</div>
+                    <div class="rsh-count-lbl">High</div>
+                  </div>
+                  <div class="rsh-count-item">
+                    <div class="rsh-count-num rsh-medium">{{ vulnStats.medium }}</div>
+                    <div class="rsh-count-lbl">Medium</div>
+                  </div>
+                  <div class="rsh-count-item">
+                    <div class="rsh-count-num rsh-low">{{ vulnStats.low }}</div>
+                    <div class="rsh-count-lbl">Low</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Export button -->
               <button class="btn-export" @click="downloadReport">
-                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:7px;"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:7px;"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
                 Export PDF
               </button>
             </div>
@@ -27,380 +70,508 @@
             <!-- Report Body -->
             <div class="report-body" ref="reportWrap">
 
-              <!-- Page Title -->
-              <div class="page-title-block">
-                <h1 class="page-main-title">Vulnerability Management Report</h1>
-                <p class="page-subtitle">
-                  <svg width="14" height="14" fill="none" stroke="#7c6fa0" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:5px;"><rect x="3" y="4" width="18" height="18" rx="2"/><path stroke-linecap="round" d="M16 2v4M8 2v4M3 10h18"/></svg>
-                  Audit Period: Oct 01 – Oct 31, 2023
-                </p>
+              <!-- ═══ TABS NAVIGATION ═══ -->
+              <div class="tabs-nav-wrap">
+                <div class="tabs-nav">
+                  <button
+                    v-for="tab in tabs"
+                    :key="tab.id"
+                    :class="['tab-btn', { 'tab-btn-active': isTabActive(tab.id) }]"
+                    @click="toggleTab(tab.id)"
+                  >
+                    <span class="tab-icon-wrap">{{ tab.icon }}</span>
+                    <span class="tab-label-text">{{ tab.label }}</span>
+                    <span v-if="isTabActive(tab.id)" class="tab-active-dot"></span>
+                  </button>
+                </div>
+                <div class="tabs-multi-hint" v-if="activeTabs.length > 1">
+                  <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-1px;margin-right:4px;"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 8v4m0 4h.01"/></svg>
+                  {{ activeTabs.length }} sections active
+                </div>
               </div>
 
               <!-- ═══════════════════════════════════════════════════════
-                   SECTION 1 — Executive Summary Bento Grid
+                   TAB 1 — Executive Summary
               ═══════════════════════════════════════════════════════ -->
-              <div class="section-label">
-                <span class="section-label-pip"></span>
-                Executive Summary
-              </div>
-              <div class="bento-grid-12 mb-section">
+              <div v-show="isTabActive('executive-summary')" class="tab-section-wrap">
 
-                <!-- Left: Total Vulns -->
-                <div class="bento-card bento-col-4 bento-total-card">
-                  <div class="bento-total-eyebrow">Total Vulnerabilities Discovered</div>
-                  <div class="bento-total-number">{{ totalVulnerabilities }}</div>
-                  <div class="bento-total-trend">
-                    <span class="trend-icon trend-up">
-                      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>
-                    </span>
-                    <span class="trend-text">vs last month</span>
+                <!-- Alert Banner -->
+                <div class="alert-overdue-banner" v-if="hasOverdueFindings">
+                  <div class="alert-banner-icon-wrap">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                   </div>
-                  <div class="bento-total-chart-area">
-                    <canvas id="rTotalVulnsChart" style="max-height:130px;"></canvas>
+                  <div class="alert-banner-body">
+                    <div class="alert-banner-title">All critical, high, and medium findings are past their remediation deadline</div>
+                    <div class="alert-banner-desc">The January 2026 scan identified findings that required immediate action. Critical items were due within 48 hours of discovery. Escalation and resource prioritisation is required immediately.</div>
                   </div>
                 </div>
 
-                <!-- Right: Severity Breakdown -->
-                <div class="bento-card bento-col-8 bento-severity-card">
-                  <div class="bento-severity-header">
-                    <div class="bento-severity-title">Severity Breakdown</div>
-                    <div class="sev-legend">
-                      <span class="sev-legend-dot" style="background:#7f1d1d;"></span><span>Critical</span>
-                      <span class="sev-legend-dot" style="background:#dc2626;"></span><span>High</span>
-                      <span class="sev-legend-dot" style="background:#d97706;"></span><span>Medium</span>
-                      <span class="sev-legend-dot" style="background:#16a34a;"></span><span>Low</span>
+                <!-- SLA Stats Row -->
+                <div class="sla-stats-row mb-section">
+                  <div class="sla-stat-card">
+                    <div class="sla-stat-number sla-num-critical">{{ vulnStats.critical }}</div>
+                    <div class="sla-stat-label">Critical</div>
+                    <div class="sla-stat-badge sla-badge-overdue">
+                      <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>
+                      Overdue
                     </div>
                   </div>
-                  <div class="severity-sub-grid">
-                    <div class="severity-sub-card sev-sub-critical">
-                      <div class="sev-sub-dot" style="background:#7f1d1d;"></div>
-                      <div class="sev-sub-label">Critical</div>
-                      <div class="sev-sub-number">{{ vulnStats.critical }}</div>
-                      <div class="sev-sub-caption">Immediate action</div>
-                    </div>
-                    <div class="severity-sub-card sev-sub-high">
-                      <div class="sev-sub-dot" style="background:#dc2626;"></div>
-                      <div class="sev-sub-label">High</div>
-                      <div class="sev-sub-number">{{ vulnStats.high }}</div>
-                      <div class="sev-sub-caption">Urgent remediation</div>
-                    </div>
-                    <div class="severity-sub-card sev-sub-medium">
-                      <div class="sev-sub-dot" style="background:#d97706;"></div>
-                      <div class="sev-sub-label">Medium</div>
-                      <div class="sev-sub-number">{{ vulnStats.medium }}</div>
-                      <div class="sev-sub-caption">Scheduled patching</div>
-                    </div>
-                    <div class="severity-sub-card sev-sub-low">
-                      <div class="sev-sub-dot" style="background:#16a34a;"></div>
-                      <div class="sev-sub-label">Low</div>
-                      <div class="sev-sub-number">{{ vulnStats.low }}</div>
-                      <div class="sev-sub-caption">Monitor &amp; log</div>
+                  <div class="sla-stat-card">
+                    <div class="sla-stat-number sla-num-high">{{ vulnStats.high }}</div>
+                    <div class="sla-stat-label">High</div>
+                    <div class="sla-stat-badge sla-badge-overdue">
+                      <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>
+                      Overdue
                     </div>
                   </div>
-                  <!-- hidden canvas for doughnut (used by initCharts) -->
-                  <canvas id="rCriticalityStatusChart" style="display:none;"></canvas>
+                  <div class="sla-stat-card">
+                    <div class="sla-stat-number sla-num-medium">{{ vulnStats.medium }}</div>
+                    <div class="sla-stat-label">Medium</div>
+                    <div class="sla-stat-badge sla-badge-overdue">
+                      <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>
+                      Overdue
+                    </div>
+                  </div>
+                  <div class="sla-stat-card">
+                    <div class="sla-stat-number sla-num-low">{{ vulnStats.low }}</div>
+                    <div class="sla-stat-label">Low</div>
+                    <div class="sla-stat-badge sla-badge-inwindow">Due Apr 2026</div>
+                  </div>
+                  <div class="sla-stat-card">
+                    <div class="sla-stat-number sla-num-hosts">{{ uniqueHostsCount }}</div>
+                    <div class="sla-stat-label">Hosts scanned</div>
+                    <div class="sla-stat-badge sla-badge-neutral">Internal only</div>
+                  </div>
                 </div>
 
-              </div>
+                <!-- Section Label -->
+                <div class="section-label">
+                  <span class="section-label-pip"></span>
+                  Executive Summary
+                </div>
+                <div class="bento-grid-12 mb-section">
+
+                  <!-- Left: Total Vulns -->
+                  <div class="bento-card bento-col-4 bento-total-card">
+                    <div class="bento-total-eyebrow">Total Vulnerabilities Discovered</div>
+                    <div class="bento-total-number">{{ totalVulnerabilities }}</div>
+                    <div class="bento-total-trend">
+                      <span class="trend-icon trend-up">
+                        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>
+                      </span>
+                      <span class="trend-text">vs last month</span>
+                    </div>
+                    <div class="bento-total-chart-area">
+                      <canvas id="rTotalVulnsChart" style="max-height:130px;"></canvas>
+                    </div>
+                  </div>
+
+                  <!-- Right: Severity Breakdown -->
+                  <div class="bento-card bento-col-8 bento-severity-card">
+                    <div class="bento-severity-header">
+                      <div class="bento-severity-title">Severity Breakdown</div>
+                      <div class="sev-legend">
+                        <span class="sev-legend-dot" style="background:#7f1d1d;"></span><span>Critical</span>
+                        <span class="sev-legend-dot" style="background:#dc2626;"></span><span>High</span>
+                        <span class="sev-legend-dot" style="background:#d97706;"></span><span>Medium</span>
+                        <span class="sev-legend-dot" style="background:#16a34a;"></span><span>Low</span>
+                      </div>
+                    </div>
+                    <div class="severity-sub-grid">
+                      <div class="severity-sub-card sev-sub-critical">
+                        <div class="sev-sub-dot" style="background:#7f1d1d;"></div>
+                        <div class="sev-sub-label">Critical</div>
+                        <div class="sev-sub-number">{{ vulnStats.critical }}</div>
+                        <div class="sev-sub-caption">Immediate action</div>
+                      </div>
+                      <div class="severity-sub-card sev-sub-high">
+                        <div class="sev-sub-dot" style="background:#dc2626;"></div>
+                        <div class="sev-sub-label">High</div>
+                        <div class="sev-sub-number">{{ vulnStats.high }}</div>
+                        <div class="sev-sub-caption">Urgent remediation</div>
+                      </div>
+                      <div class="severity-sub-card sev-sub-medium">
+                        <div class="sev-sub-dot" style="background:#d97706;"></div>
+                        <div class="sev-sub-label">Medium</div>
+                        <div class="sev-sub-number">{{ vulnStats.medium }}</div>
+                        <div class="sev-sub-caption">Scheduled patching</div>
+                      </div>
+                      <div class="severity-sub-card sev-sub-low">
+                        <div class="sev-sub-dot" style="background:#16a34a;"></div>
+                        <div class="sev-sub-label">Low</div>
+                        <div class="sev-sub-number">{{ vulnStats.low }}</div>
+                        <div class="sev-sub-caption">Monitor &amp; log</div>
+                      </div>
+                    </div>
+                    <canvas id="rCriticalityStatusChart" style="display:none;"></canvas>
+                  </div>
+
+                </div>
+
+              </div><!-- /executive-summary -->
 
               <!-- ═══════════════════════════════════════════════════════
-                   SECTION 2 — Secondary Analytics
+                   TAB 2 — Business Risk
               ═══════════════════════════════════════════════════════ -->
-              <div class="section-label">
-                <span class="section-label-pip"></span>
-                Distribution &amp; Velocity
-              </div>
-              <div class="bento-grid-12 mb-section">
+              <div v-show="isTabActive('business-risk')" class="tab-section-wrap">
+                <div class="section-label">
+                  <span class="section-label-pip"></span>
+                  Business Risk — If We Do Not Act
+                </div>
+                <div class="business-risk-grid mb-section">
+                  <div class="risk-card risk-critical">
+                    <div class="risk-card-top">
+                      <span class="risk-icon-wrap risk-icon-critical">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                      </span>
+                      <span class="risk-card-title">Full server takeover — 3 servers at risk</span>
+                    </div>
+                    <p class="risk-card-desc">Three servers have vulnerabilities that allow any attacker on the network to take complete control with a single automated tool. No password required. An attacker could deploy ransomware, exfiltrate all data, or use the servers to attack other internal systems.</p>
+                  </div>
+                  <div class="risk-card risk-high">
+                    <div class="risk-card-top">
+                      <span class="risk-icon-wrap risk-icon-high">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                      </span>
+                      <span class="risk-card-title">Database and application data exposure</span>
+                    </div>
+                    <p class="risk-card-desc">The MongoDB database server is leaking memory fragments to anyone who can reach it on the network. Application servers with outdated frameworks are vulnerable to code injection. Business and customer data may be at risk of unauthorised access.</p>
+                  </div>
+                  <div class="risk-card risk-medium">
+                    <div class="risk-card-top">
+                      <span class="risk-icon-wrap risk-icon-medium">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                      </span>
+                      <span class="risk-card-title">Encrypted connections cannot be trusted</span>
+                    </div>
+                    <p class="risk-card-desc">60 SSL/TLS certificate issues across 30 servers mean encrypted traffic cannot be verified. Deprecated TLS 1.0/1.1 allows protocol downgrade attacks. Missing security headers expose users to clickjacking and session theft.</p>
+                  </div>
+                </div>
+              </div><!-- /business-risk -->
 
-                <!-- Left: Team Distribution Donut -->
-                <div class="bento-card bento-col-6 bento-chart-card">
-                  <div class="bento-chart-title">Distribution by Team</div>
-                  <div class="chart-donut-wrap">
-                    <canvas id="rTeamDistributionChart" style="max-height:200px;max-width:200px;"></canvas>
-                    <div class="team-dist-legend">
-                      <div
-                        v-for="cfg in teamCardConfigs"
-                        :key="cfg.name"
-                        class="dist-legend-row"
-                      >
-                        <span class="dist-legend-dot" :style="{ background: cfg.color }"></span>
-                        <span class="dist-legend-name">{{ cfg.name }}</span>
-                        <span class="dist-legend-count">
-                          {{ (teamDetail[cfg.name] || {}).total ?? '—' }}
-                        </span>
+              <!-- ═══════════════════════════════════════════════════════
+                   TAB 3 — Remediation Schedule & SLA
+              ═══════════════════════════════════════════════════════ -->
+              <div v-show="isTabActive('remediation-schedule')" class="tab-section-wrap">
+                <div class="section-label">
+                  <span class="section-label-pip"></span>
+                  Remediation Schedule &amp; SLA Status
+                </div>
+                <div class="remediation-table-card mb-section">
+                  <div class="remediation-table-scroll">
+                    <table class="remediation-table">
+                      <thead>
+                        <tr>
+                          <th>Severity</th>
+                          <th>Findings</th>
+                          <th>What Needs to Happen</th>
+                          <th>Original Deadline</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="row in remediationSchedule" :key="row.severity">
+                          <td>
+                            <span :class="['rem-sev-badge', 'rem-sev-' + row.severity.toLowerCase()]">{{ row.severity }}</span>
+                          </td>
+                          <td class="rem-findings-cell">{{ vulnStats[row.sevKey] }} {{ row.findingsSuffix }}</td>
+                          <td class="rem-action-cell">{{ row.action }}</td>
+                          <td :class="['rem-deadline-cell', row.status === 'Overdue' ? 'rem-deadline-overdue' : '']">{{ row.deadline }}</td>
+                          <td>
+                            <span :class="['rem-status-badge', row.status === 'Overdue' ? 'rem-status-overdue' : 'rem-status-inwindow']">{{ row.status }}</span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div class="section-label">
+                  <span class="section-label-pip"></span>
+                  Resource and Approval Asks
+                </div>
+                <div class="resource-asks-grid mb-section">
+                  <div class="resource-ask-card">
+                    <div class="resource-ask-header">
+                      <svg width="11" height="11" fill="currentColor" viewBox="0 0 24 24" style="margin-right:7px;flex-shrink:0;"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                      This week
+                    </div>
+                    <ul class="resource-ask-list">
+                      <li>Approve emergency firewall changes for 3 critical hosts</li>
+                      <li>Assign App Server Admin to Struts 6.4.0 upgrade</li>
+                      <li>Network team to VLAN-isolate 192.168.254.13</li>
+                    </ul>
+                  </div>
+                  <div class="resource-ask-card">
+                    <div class="resource-ask-header">
+                      <svg width="11" height="11" fill="currentColor" viewBox="0 0 24 24" style="margin-right:7px;flex-shrink:0;"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                      30 days
+                    </div>
+                    <ul class="resource-ask-list">
+                      <li>Budget for enterprise certificate management tool</li>
+                      <li>Dedicate resource for ~30-host certificate replacement</li>
+                      <li>CAB approval for all production service patches</li>
+                    </ul>
+                  </div>
+                  <div class="resource-ask-card">
+                    <div class="resource-ask-header">
+                      <svg width="11" height="11" fill="currentColor" viewBox="0 0 24 24" style="margin-right:7px;flex-shrink:0;"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                      Ongoing
+                    </div>
+                    <ul class="resource-ask-list">
+                      <li>Weekly progress review against finding IDs</li>
+                      <li>Schedule post-remediation re-scan</li>
+                      <li>Establish bi-weekly continuous scanning schedule</li>
+                    </ul>
+                  </div>
+                </div>
+              </div><!-- /remediation-schedule -->
+
+              <!-- ═══════════════════════════════════════════════════════
+                   TAB 4 — Distribution & Velocity
+              ═══════════════════════════════════════════════════════ -->
+              <div v-show="isTabActive('distribution-velocity')" class="tab-section-wrap">
+                <div class="section-label">
+                  <span class="section-label-pip"></span>
+                  Distribution &amp; Velocity
+                </div>
+                <div class="bento-grid-12 mb-section">
+
+                  <!-- Left: Team Distribution Donut -->
+                  <div class="bento-card bento-col-6 bento-chart-card">
+                    <div class="bento-chart-title">Distribution by Team</div>
+                    <div class="chart-donut-wrap">
+                      <canvas id="rTeamDistributionChart" style="max-height:200px;max-width:200px;"></canvas>
+                      <div class="team-dist-legend">
+                        <div v-for="cfg in teamCardConfigs" :key="cfg.name" class="dist-legend-row">
+                          <span class="dist-legend-dot" :style="{ background: cfg.color }"></span>
+                          <span class="dist-legend-name">{{ cfg.name }}</span>
+                          <span class="dist-legend-count">{{ (teamDetail[cfg.name] || {}).total ?? '—' }}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
+
+                  <!-- Right: Remediation Velocity -->
+                  <div class="bento-card bento-col-6 bento-velocity-card">
+                    <div class="bento-chart-title">Remediation Velocity</div>
+                    <p class="velocity-sub">Closure rate by severity tier across all teams</p>
+
+                    <div class="velocity-item">
+                      <div class="velocity-row-top">
+                        <span class="velocity-label"><span class="velocity-dot" style="background:#7f1d1d;"></span>Critical</span>
+                        <span class="velocity-pct velocity-pct-critical">{{ teamClosureRate('Architectural Flaws') }}%</span>
+                      </div>
+                      <div class="velocity-bar-track">
+                        <div class="velocity-bar-fill velocity-fill-critical" :style="{ width: teamClosureRate('Architectural Flaws') + '%' }"></div>
+                      </div>
+                    </div>
+
+                    <div class="velocity-item">
+                      <div class="velocity-row-top">
+                        <span class="velocity-label"><span class="velocity-dot" style="background:#dc2626;"></span>High</span>
+                        <span class="velocity-pct velocity-pct-high">{{ teamClosureRate('Network Security') }}%</span>
+                      </div>
+                      <div class="velocity-bar-track">
+                        <div class="velocity-bar-fill velocity-fill-high" :style="{ width: teamClosureRate('Network Security') + '%' }"></div>
+                      </div>
+                    </div>
+
+                    <div class="velocity-item">
+                      <div class="velocity-row-top">
+                        <span class="velocity-label"><span class="velocity-dot" style="background:#241447;"></span>Overall</span>
+                        <span class="velocity-pct velocity-pct-overall">
+                          {{
+                            totalVulnerabilities
+                              ? Math.round(
+                                  (teamCardConfigs.reduce((s, c) => { const t = teamDetail[c.name]; return s + (t ? t.closed : 0); }, 0) /
+                                    teamCardConfigs.reduce((s, c) => { const t = teamDetail[c.name]; return s + (t ? t.total : 0); }, 0)) * 100
+                                )
+                              : 0
+                          }}%
+                        </span>
+                      </div>
+                      <div class="velocity-bar-track">
+                        <div
+                          class="velocity-bar-fill velocity-fill-overall"
+                          :style="{
+                            width: (totalVulnerabilities
+                              ? Math.round(
+                                  (teamCardConfigs.reduce((s, c) => { const t = teamDetail[c.name]; return s + (t ? t.closed : 0); }, 0) /
+                                    teamCardConfigs.reduce((s, c) => { const t = teamDetail[c.name]; return s + (t ? t.total : 0); }, 0)) * 100
+                                )
+                              : 0) + '%'
+                          }"
+                        ></div>
+                      </div>
+                    </div>
+
+                    <div class="velocity-note">
+                      <svg width="13" height="13" fill="none" stroke="#7c6fa0" stroke-width="2" viewBox="0 0 24 24" style="margin-right:5px;vertical-align:-2px;"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 8v4m0 4h.01"/></svg>
+                      Based on current audit cycle data
+                    </div>
+                  </div>
+
                 </div>
-
-                <!-- Right: Remediation Velocity -->
-                <div class="bento-card bento-col-6 bento-velocity-card">
-                  <div class="bento-chart-title">Remediation Velocity</div>
-                  <p class="velocity-sub">Closure rate by severity tier across all teams</p>
-
-                  <!-- Critical bar -->
-                  <div class="velocity-item">
-                    <div class="velocity-row-top">
-                      <span class="velocity-label">
-                        <span class="velocity-dot" style="background:#7f1d1d;"></span>Critical
-                      </span>
-                      <span class="velocity-pct velocity-pct-critical">
-                        {{ teamClosureRate('Architectural Flaws') }}%
-                      </span>
-                    </div>
-                    <div class="velocity-bar-track">
-                      <div
-                        class="velocity-bar-fill velocity-fill-critical"
-                        :style="{ width: teamClosureRate('Architectural Flaws') + '%' }"
-                      ></div>
-                    </div>
-                  </div>
-
-                  <!-- High bar -->
-                  <div class="velocity-item">
-                    <div class="velocity-row-top">
-                      <span class="velocity-label">
-                        <span class="velocity-dot" style="background:#dc2626;"></span>High
-                      </span>
-                      <span class="velocity-pct velocity-pct-high">
-                        {{ teamClosureRate('Network Security') }}%
-                      </span>
-                    </div>
-                    <div class="velocity-bar-track">
-                      <div
-                        class="velocity-bar-fill velocity-fill-high"
-                        :style="{ width: teamClosureRate('Network Security') + '%' }"
-                      ></div>
-                    </div>
-                  </div>
-
-                  <!-- Overall bar -->
-                  <div class="velocity-item">
-                    <div class="velocity-row-top">
-                      <span class="velocity-label">
-                        <span class="velocity-dot" style="background:#241447;"></span>Overall
-                      </span>
-                      <span class="velocity-pct velocity-pct-overall">
-                        {{
-                          totalVulnerabilities
-                            ? Math.round(
-                                (teamCardConfigs.reduce((s, c) => {
-                                  const t = teamDetail[c.name];
-                                  return s + (t ? t.closed : 0);
-                                }, 0) /
-                                  teamCardConfigs.reduce((s, c) => {
-                                    const t = teamDetail[c.name];
-                                    return s + (t ? t.total : 0);
-                                  }, 0)) * 100
-                              )
-                            : 0
-                        }}%
-                      </span>
-                    </div>
-                    <div class="velocity-bar-track">
-                      <div
-                        class="velocity-bar-fill velocity-fill-overall"
-                        :style="{
-                          width: (totalVulnerabilities
-                            ? Math.round(
-                                (teamCardConfigs.reduce((s, c) => {
-                                  const t = teamDetail[c.name];
-                                  return s + (t ? t.closed : 0);
-                                }, 0) /
-                                  teamCardConfigs.reduce((s, c) => {
-                                    const t = teamDetail[c.name];
-                                    return s + (t ? t.total : 0);
-                                  }, 0)) * 100
-                              )
-                            : 0) + '%'
-                        }"
-                      ></div>
-                    </div>
-                  </div>
-
-                  <div class="velocity-note">
-                    <svg width="13" height="13" fill="none" stroke="#7c6fa0" stroke-width="2" viewBox="0 0 24 24" style="margin-right:5px;vertical-align:-2px;"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 8v4m0 4h.01"/></svg>
-                    Based on current audit cycle data
-                  </div>
-                </div>
-
-              </div>
+              </div><!-- /distribution-velocity -->
 
               <!-- ═══════════════════════════════════════════════════════
-                   SECTION 3 — Team Performance Grid
+                   TAB 3 — Team Performance
               ═══════════════════════════════════════════════════════ -->
-              <div class="section-label">
-                <span class="section-label-pip"></span>
-                Team Performance
-              </div>
-              <div class="team-perf-grid mb-section">
-                <div
-                  v-for="cfg in teamCardConfigs"
-                  :key="cfg.name"
-                  class="team-perf-card"
-                >
-                  <!-- Card top row: icon + closure badge -->
-                  <div class="tpc-top-row">
-                    <div class="tpc-icon" :style="{ background: cfg.gradient }">{{ cfg.icon }}</div>
-                    <span
-                      class="closure-badge"
-                      :class="teamClosureRate(cfg.name) >= 60 ? 'closure-good' : 'closure-warn'"
-                    >
-                      {{ teamClosureRate(cfg.name) }}% closed
+              <div v-show="isTabActive('team-performance')" class="tab-section-wrap">
+                <div class="section-label">
+                  <span class="section-label-pip"></span>
+                  Team Performance
+                </div>
+                <div class="team-perf-grid mb-section">
+                  <div v-for="cfg in teamCardConfigs" :key="cfg.name" class="team-perf-card">
+                    <div class="tpc-top-row">
+                      <div class="tpc-icon" :style="{ background: cfg.gradient }">{{ cfg.icon }}</div>
+                      <span class="closure-badge" :class="teamClosureRate(cfg.name) >= 60 ? 'closure-good' : 'closure-warn'">
+                        {{ teamClosureRate(cfg.name) }}% closed
+                      </span>
+                    </div>
+                    <div class="tpc-team-name">{{ cfg.name }}</div>
+                    <div class="tpc-counts-row">
+                      <div class="tpc-count-block">
+                        <div class="tpc-count-num tpc-open">{{ (teamDetail[cfg.name] || {}).open ?? '—' }}</div>
+                        <div class="tpc-count-lbl">Open</div>
+                      </div>
+                      <div class="tpc-count-divider"></div>
+                      <div class="tpc-count-block">
+                        <div class="tpc-count-num tpc-closed">{{ (teamDetail[cfg.name] || {}).closed ?? '—' }}</div>
+                        <div class="tpc-count-lbl">Closed</div>
+                      </div>
+                      <div class="tpc-count-divider"></div>
+                      <div class="tpc-count-block">
+                        <div class="tpc-count-num" :style="{ color: cfg.color }">{{ (teamDetail[cfg.name] || {}).total ?? '—' }}</div>
+                        <div class="tpc-count-lbl">Total</div>
+                      </div>
+                    </div>
+                    <div class="tpc-progress-track">
+                      <div class="tpc-progress-fill" :style="{ width: teamClosureRate(cfg.name) + '%', background: cfg.color }"></div>
+                    </div>
+                    <div class="tpc-sev-row">
+                      <span class="tpc-sev-chip tpc-sev-critical">{{ ((teamDetail[cfg.name] || {}).by_risk || {}).Critical ?? 0 }} Crit</span>
+                      <span class="tpc-sev-chip tpc-sev-high">{{ ((teamDetail[cfg.name] || {}).by_risk || {}).High ?? 0 }} High</span>
+                      <span class="tpc-sev-chip tpc-sev-medium">{{ ((teamDetail[cfg.name] || {}).by_risk || {}).Medium ?? 0 }} Med</span>
+                      <span class="tpc-sev-chip tpc-sev-low">{{ ((teamDetail[cfg.name] || {}).by_risk || {}).Low ?? 0 }} Low</span>
+                    </div>
+                  </div>
+                </div>
+              </div><!-- /team-performance -->
+
+              <!-- ═══════════════════════════════════════════════════════
+                   TAB 4 — Detailed Vulnerability Log
+              ═══════════════════════════════════════════════════════ -->
+              <div v-show="isTabActive('vulnerability-log')" class="tab-section-wrap">
+                <div class="section-label">
+                  <span class="section-label-pip"></span>
+                  Detailed Vulnerability Log
+                </div>
+
+                <!-- Filters Row -->
+                <div class="filter-card mb-filter">
+                  <div class="filter-left">
+                    <svg width="15" height="15" fill="none" stroke="#7c6fa0" stroke-width="2" viewBox="0 0 24 24" style="margin-right:6px;vertical-align:-2px;flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h18M7 10h10M11 16h2"/></svg>
+                    <span class="filter-label-text">Filters</span>
+                  </div>
+                  <div class="filter-controls">
+                    <div class="filter-group">
+                      <label class="filter-group-label">Team</label>
+                      <select v-model="teamFilter" class="filter-select">
+                        <option value="all">All Teams</option>
+                        <option value="network">Network Security</option>
+                        <option value="patch">Patch Management</option>
+                        <option value="configuration">Configuration Management</option>
+                        <option value="architectural">Architectural Flaws</option>
+                      </select>
+                    </div>
+                    <div class="filter-group">
+                      <label class="filter-group-label">Severity</label>
+                      <select v-model="severityFilter" class="filter-select">
+                        <option value="all">All</option>
+                        <option value="critical">Critical</option>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                      </select>
+                    </div>
+                    <div class="filter-group">
+                      <label class="filter-group-label">Status</label>
+                      <select v-model="statusFilter" class="filter-select">
+                        <option value="all">All</option>
+                        <option value="open">Open</option>
+                        <option value="closed">Closed</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Table Card -->
+                <div class="vuln-table-card">
+                  <div class="vuln-table-scroll">
+                    <table class="vuln-table">
+                      <thead>
+                        <tr>
+                          <th>S.No.</th>
+                          <th>Vulnerability Name</th>
+                          <th>Asset</th>
+                          <th>Team</th>
+                          <th>Severity</th>
+                          <th>Found Date</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-if="tableLoading">
+                          <td colspan="7" class="table-empty-cell">
+                            <span class="table-loading-spinner"></span>
+                            Loading vulnerabilities…
+                          </td>
+                        </tr>
+                        <tr v-else-if="filteredData.length === 0">
+                          <td colspan="7" class="table-empty-cell">No vulnerabilities match the selected filters.</td>
+                        </tr>
+                        <tr v-for="row in filteredData" :key="row.id" v-else class="vuln-table-row">
+                          <td><span class="cell-id">#{{ row.id }}</span></td>
+                          <td><span class="cell-vuln-name">{{ row.name }}</span></td>
+                          <td><span class="cell-asset">{{ row.asset }}</span></td>
+                          <td><span :class="['team-badge', 'team-' + row.team]">{{ row.teamLabel }}</span></td>
+                          <td>
+                            <span :class="['sev-badge-pill', 'sev-badge-' + row.severity]">
+                              {{ row.severity.charAt(0).toUpperCase() + row.severity.slice(1) }}
+                            </span>
+                          </td>
+                          <td class="cell-date">{{ row.found }}</td>
+                          <td>
+                            <span v-if="row.status === 'open'" class="status-open">
+                              <span class="status-dot status-dot-open"></span>Open
+                            </span>
+                            <span v-else class="status-closed">
+                              <span class="status-dot status-dot-closed"></span>Closed
+                            </span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <!-- Pagination footer -->
+                  <div class="table-footer">
+                    <span class="table-footer-text">
+                      Showing <strong>{{ filteredData.length }}</strong> of <strong>{{ tableData.length }}</strong> vulnerabilities
                     </span>
-                  </div>
-
-                  <!-- Team name -->
-                  <div class="tpc-team-name">{{ cfg.name }}</div>
-
-                  <!-- Open / Closed counts -->
-                  <div class="tpc-counts-row">
-                    <div class="tpc-count-block">
-                      <div class="tpc-count-num tpc-open">{{ (teamDetail[cfg.name] || {}).open ?? '—' }}</div>
-                      <div class="tpc-count-lbl">Open</div>
-                    </div>
-                    <div class="tpc-count-divider"></div>
-                    <div class="tpc-count-block">
-                      <div class="tpc-count-num tpc-closed">{{ (teamDetail[cfg.name] || {}).closed ?? '—' }}</div>
-                      <div class="tpc-count-lbl">Closed</div>
-                    </div>
-                    <div class="tpc-count-divider"></div>
-                    <div class="tpc-count-block">
-                      <div class="tpc-count-num" :style="{ color: cfg.color }">{{ (teamDetail[cfg.name] || {}).total ?? '—' }}</div>
-                      <div class="tpc-count-lbl">Total</div>
+                    <div class="table-footer-badges">
+                      <span class="footer-sev-pill footer-critical">{{ vulnStats.critical }} Critical</span>
+                      <span class="footer-sev-pill footer-high">{{ vulnStats.high }} High</span>
+                      <span class="footer-sev-pill footer-medium">{{ vulnStats.medium }} Medium</span>
+                      <span class="footer-sev-pill footer-low">{{ vulnStats.low }} Low</span>
                     </div>
                   </div>
-
-                  <!-- Progress bar -->
-                  <div class="tpc-progress-track">
-                    <div
-                      class="tpc-progress-fill"
-                      :style="{ width: teamClosureRate(cfg.name) + '%', background: cfg.color }"
-                    ></div>
-                  </div>
-
-                  <!-- Severity mini-badges -->
-                  <div class="tpc-sev-row">
-                    <span class="tpc-sev-chip tpc-sev-critical">{{ ((teamDetail[cfg.name] || {}).by_risk || {}).Critical ?? 0 }} Crit</span>
-                    <span class="tpc-sev-chip tpc-sev-high">{{ ((teamDetail[cfg.name] || {}).by_risk || {}).High ?? 0 }} High</span>
-                    <span class="tpc-sev-chip tpc-sev-medium">{{ ((teamDetail[cfg.name] || {}).by_risk || {}).Medium ?? 0 }} Med</span>
-                    <span class="tpc-sev-chip tpc-sev-low">{{ ((teamDetail[cfg.name] || {}).by_risk || {}).Low ?? 0 }} Low</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- ═══════════════════════════════════════════════════════
-                   SECTION 4 — Detailed Vulnerability Log
-              ═══════════════════════════════════════════════════════ -->
-              <div class="section-label">
-                <span class="section-label-pip"></span>
-                Detailed Vulnerability Log
-              </div>
-
-              <!-- Filters Row -->
-              <div class="filter-card mb-filter">
-                <div class="filter-left">
-                  <svg width="15" height="15" fill="none" stroke="#7c6fa0" stroke-width="2" viewBox="0 0 24 24" style="margin-right:6px;vertical-align:-2px;flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h18M7 10h10M11 16h2"/></svg>
-                  <span class="filter-label-text">Filters</span>
-                </div>
-                <div class="filter-controls">
-                  <div class="filter-group">
-                    <label class="filter-group-label">Team</label>
-                    <select v-model="teamFilter" class="filter-select">
-                      <option value="all">All Teams</option>
-                      <option value="network">Network Security</option>
-                      <option value="patch">Patch Management</option>
-                      <option value="configuration">Configuration Management</option>
-                      <option value="architectural">Architectural Flaws</option>
-                    </select>
-                  </div>
-                  <div class="filter-group">
-                    <label class="filter-group-label">Severity</label>
-                    <select v-model="severityFilter" class="filter-select">
-                      <option value="all">All</option>
-                      <option value="critical">Critical</option>
-                      <option value="high">High</option>
-                      <option value="medium">Medium</option>
-                      <option value="low">Low</option>
-                    </select>
-                  </div>
-                  <div class="filter-group">
-                    <label class="filter-group-label">Status</label>
-                    <select v-model="statusFilter" class="filter-select">
-                      <option value="all">All</option>
-                      <option value="open">Open</option>
-                      <option value="closed">Closed</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Table Card -->
-              <div class="vuln-table-card">
-                <div class="vuln-table-scroll">
-                  <table class="vuln-table">
-                    <thead>
-                      <tr>
-                        <th>S.No.</th>
-                        <th>Vulnerability Name</th>
-                        <th>Asset</th>
-                        <th>Team</th>
-                        <th>Severity</th>
-                        <th>Found Date</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-if="tableLoading">
-                        <td colspan="7" class="table-empty-cell">
-                          <span class="table-loading-spinner"></span>
-                          Loading vulnerabilities…
-                        </td>
-                      </tr>
-                      <tr v-else-if="filteredData.length === 0">
-                        <td colspan="7" class="table-empty-cell">No vulnerabilities match the selected filters.</td>
-                      </tr>
-                      <tr v-for="row in filteredData" :key="row.id" v-else class="vuln-table-row">
-                        <td><span class="cell-id">#{{ row.id }}</span></td>
-                        <td><span class="cell-vuln-name">{{ row.name }}</span></td>
-                        <td><span class="cell-asset">{{ row.asset }}</span></td>
-                        <td><span :class="['team-badge', 'team-' + row.team]">{{ row.teamLabel }}</span></td>
-                        <td>
-                          <span :class="['sev-badge-pill', 'sev-badge-' + row.severity]">
-                            {{ row.severity.charAt(0).toUpperCase() + row.severity.slice(1) }}
-                          </span>
-                        </td>
-                        <td class="cell-date">{{ row.found }}</td>
-                        <td>
-                          <span v-if="row.status === 'open'" class="status-open">
-                            <span class="status-dot status-dot-open"></span>Open
-                          </span>
-                          <span v-else class="status-closed">
-                            <span class="status-dot status-dot-closed"></span>Closed
-                          </span>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
                 </div>
 
-                <!-- Pagination footer -->
-                <div class="table-footer">
-                  <span class="table-footer-text">
-                    Showing
-                    <strong>{{ filteredData.length }}</strong>
-                    of
-                    <strong>{{ tableData.length }}</strong>
-                    vulnerabilities
-                  </span>
-                  <div class="table-footer-badges">
-                    <span class="footer-sev-pill footer-critical">{{ vulnStats.critical }} Critical</span>
-                    <span class="footer-sev-pill footer-high">{{ vulnStats.high }} High</span>
-                    <span class="footer-sev-pill footer-medium">{{ vulnStats.medium }} Medium</span>
-                    <span class="footer-sev-pill footer-low">{{ vulnStats.low }} Low</span>
-                  </div>
-                </div>
-              </div>
+              </div><!-- /vulnerability-log -->
 
             </div><!-- /report-body -->
           </div><!-- /col-11 -->
@@ -432,6 +603,49 @@ export default {
       teamDetail: {},
       tableLoading: false,
       tableData: [],
+      activeTabs: ['executive-summary'],
+      tabs: [
+        { id: 'executive-summary',    label: 'Executive Summary',          icon: '📊' },
+        { id: 'business-risk',        label: 'Business Risk',              icon: '⚠️' },
+        { id: 'remediation-schedule', label: 'Remediation Schedule & SLA', icon: '📅' },
+        { id: 'distribution-velocity',label: 'Distribution & Velocity',    icon: '📈' },
+        { id: 'team-performance',     label: 'Team Performance',           icon: '👥' },
+        { id: 'vulnerability-log',    label: 'Detailed Vulnerability Log', icon: '🔍' },
+      ],
+      remediationSchedule: [
+        {
+          severity: 'Critical',
+          findingsSuffix: 'findings / 3 hosts',
+          action: 'Firewall, patch, or isolate 3 hosts. Exploit log audit before patching.',
+          deadline: '18 Jan 2026',
+          status: 'Overdue',
+          sevKey: 'critical',
+        },
+        {
+          severity: 'High',
+          findingsSuffix: 'findings / 4 hosts',
+          action: 'Upgrade Apache Struts 6.4.0 on 4 servers. Upgrade MongoDB on 1 server.',
+          deadline: '23 Jan 2026',
+          status: 'Overdue',
+          sevKey: 'high',
+        },
+        {
+          severity: 'Medium',
+          findingsSuffix: 'findings / ~30 hosts',
+          action: 'SSL certificate replacement project. Disable TLS 1.0/1.1. Security headers. SMB signing.',
+          deadline: '16 Feb 2026',
+          status: 'Overdue',
+          sevKey: 'medium',
+        },
+        {
+          severity: 'Low',
+          findingsSuffix: 'findings / 22+ hosts',
+          action: 'Firewall rule for ICMP (automated). Weak crypto fix alongside M1.',
+          deadline: '16 Apr 2026',
+          status: 'In window',
+          sevKey: 'low',
+        },
+      ],
     };
   },
 
@@ -447,12 +661,19 @@ export default {
       const { critical, high, medium, low } = this.vulnStats;
       return critical + high + medium + low;
     },
+    uniqueHostsCount() {
+      const assets = new Set(this.tableData.map(row => row.asset).filter(Boolean));
+      return assets.size || 0;
+    },
+    hasOverdueFindings() {
+      return this.vulnStats.critical > 0 || this.vulnStats.high > 0 || this.vulnStats.medium > 0;
+    },
     teamCardConfigs() {
       return [
-        { name: 'Network Security',        color: '#3b82f6', gradient: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', icon: '🔗' },
-        { name: 'Patch Management',        color: '#10b981', gradient: 'linear-gradient(135deg, #10b981, #059669)', icon: '🔧' },
-        { name: 'Configuration Management',color: '#f97316', gradient: 'linear-gradient(135deg, #f97316, #ea580c)', icon: '⚙️' },
-        { name: 'Architectural Flaws',     color: '#dc2626', gradient: 'linear-gradient(135deg, #dc2626, #b91c1c)', icon: '🏗️' },
+        { name: 'Network Security',         color: '#3b82f6', gradient: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', icon: '🔗' },
+        { name: 'Patch Management',         color: '#10b981', gradient: 'linear-gradient(135deg, #10b981, #059669)', icon: '🔧' },
+        { name: 'Configuration Management', color: '#f97316', gradient: 'linear-gradient(135deg, #f97316, #ea580c)', icon: '⚙️' },
+        { name: 'Architectural Flaws',      color: '#dc2626', gradient: 'linear-gradient(135deg, #dc2626, #b91c1c)', icon: '🏗️' },
       ];
     },
   },
@@ -470,6 +691,21 @@ export default {
   },
 
   methods: {
+    toggleTab(tabId) {
+      const idx = this.activeTabs.indexOf(tabId);
+      if (idx === -1) {
+        this.activeTabs.push(tabId);
+      } else {
+        if (this.activeTabs.length > 1) {
+          this.activeTabs.splice(idx, 1);
+        }
+      }
+    },
+
+    isTabActive(tabId) {
+      return this.activeTabs.includes(tabId);
+    },
+
     async fetchDetailedVulnerabilities() {
       this.tableLoading = true;
       const store = useAuthStore();
@@ -604,16 +840,20 @@ export default {
       const reportContent = this.$refs.reportWrap;
       if (!reportContent) return;
 
-      // Clone DOM so we can modify without affecting the live page
       const clone = reportContent.cloneNode(true);
-      // Remove all padding — no fixed header in the downloaded file
       clone.style.padding = '0';
 
-      // Remove sticky header from clone so it doesn't appear in export
       const clonedHeader = clone.querySelector('.report-sticky-header');
       if (clonedHeader) clonedHeader.remove();
 
-      // Convert canvas elements → <img> with base64 data URLs so charts are preserved
+      const clonedTabsNav = clone.querySelector('.tabs-nav-wrap');
+      if (clonedTabsNav) clonedTabsNav.remove();
+
+      // Show all tab sections in export regardless of active state
+      clone.querySelectorAll('.tab-section-wrap').forEach(el => {
+        el.style.display = 'block';
+      });
+
       const liveCanvases = reportContent.querySelectorAll('canvas');
       const clonedCanvases = clone.querySelectorAll('canvas');
       liveCanvases.forEach((canvas, i) => {
@@ -631,40 +871,33 @@ export default {
         }
       });
 
-      // Add data attributes to each table row so vanilla JS can filter them in the download
       const clonedRows = clone.querySelectorAll('.vuln-table tbody tr');
       clonedRows.forEach(tr => {
-        // Team: read from the team-badge span class e.g. "team-badge team-network"
         const teamSpan = tr.querySelector('[class*="team-"]');
         if (teamSpan) {
           const teamClass = Array.from(teamSpan.classList).find(c => c.startsWith('team-') && c !== 'team-badge');
           if (teamClass) tr.setAttribute('data-team', teamClass.replace('team-', ''));
         }
-        // Severity: read from sev-badge span class e.g. "sev-badge sev-critical"
         const sevSpan = tr.querySelector('[class*="sev-badge"]');
         if (sevSpan) {
           const sevClass = Array.from(sevSpan.classList).find(c => c.startsWith('sev-') && c !== 'sev-badge');
           if (sevClass) tr.setAttribute('data-severity', sevClass.replace('sev-', ''));
         }
-        // Status: read from status-open / status-closed span
         const statusSpan = tr.querySelector('.status-open, .status-closed');
         if (statusSpan) {
           tr.setAttribute('data-status', statusSpan.classList.contains('status-open') ? 'open' : 'closed');
         }
       });
 
-      // Wire filter selects in the clone to use id attributes for vanilla JS
       const clonedSelects = clone.querySelectorAll('.filter-group select');
       if (clonedSelects[0]) clonedSelects[0].setAttribute('id', 'dl-team-filter');
       if (clonedSelects[1]) clonedSelects[1].setAttribute('id', 'dl-sev-filter');
       if (clonedSelects[2]) clonedSelects[2].setAttribute('id', 'dl-status-filter');
 
-      // Extract all CSS from page stylesheets and strip Vue scoped attribute selectors
       let cssText = '';
       Array.from(document.styleSheets).forEach(sheet => {
         try {
           Array.from(sheet.cssRules || []).forEach(rule => {
-            // Skip media queries — we'll override grid layouts explicitly
             if (rule.type === CSSRule.MEDIA_RULE) return;
             cssText += rule.cssText.replace(/\[data-v-[a-zA-Z0-9]+\]/g, '') + '\n';
           });
@@ -679,21 +912,19 @@ export default {
   <title>Vulnerability Management Report</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body { font-family: 'Inter', sans-serif; background: #f8f9fc; padding: 0; margin: 0; }
     .report-download-wrapper { width: 100%; max-width: 1400px; margin: 0 auto; padding: 48px 56px; }
     ${cssText}
-    /* ── Download layout overrides — always show full grids regardless of viewport ── */
     .report-sticky-header { display: none !important; }
+    .tabs-nav-wrap { display: none !important; }
+    .tab-section-wrap { display: block !important; }
     .report-body { padding: 0 !important; margin-top: 0 !important; }
     .vuln-table-scroll { max-height: none !important; overflow-y: visible !important; }
     .table-footer { position: static !important; }
     .page-title-block { padding-top: 0 !important; }
     img { max-height: 240px !important; width: 100% !important; height: auto !important; object-fit: contain !important; }
-    .bento-total-card img { max-height: 150px !important; }
-    .bento-severity-card img { display: none !important; }
     .bento-card { overflow: visible !important; }
     .section-label { margin-top: 24px !important; }
     .bento-grid-12 { display: grid !important; grid-template-columns: repeat(12, 1fr) !important; gap: 20px !important; }
@@ -702,6 +933,9 @@ export default {
     .bento-col-8 { grid-column: span 8 !important; }
     .team-perf-grid { display: grid !important; grid-template-columns: repeat(4, 1fr) !important; gap: 16px !important; }
     .severity-sub-grid { display: grid !important; grid-template-columns: repeat(4, 1fr) !important; gap: 12px !important; }
+    .business-risk-grid { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 16px !important; }
+    .resource-asks-grid { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 16px !important; }
+    .sla-stats-row { display: grid !important; grid-template-columns: repeat(5, 1fr) !important; gap: 14px !important; }
     .bento-card, .team-perf-card, .vuln-table-card { break-inside: avoid; page-break-inside: avoid; }
   </style>
 </head>
@@ -719,26 +953,11 @@ export default {
         var matchTeam = team === 'all' || tr.getAttribute('data-team') === team;
         var matchSev  = sev  === 'all' || tr.getAttribute('data-severity') === sev;
         var matchStat = stat === 'all' || tr.getAttribute('data-status') === stat;
-        if (matchTeam && matchSev && matchStat) {
-          tr.style.display = '';
-          visible++;
-        } else {
-          tr.style.display = 'none';
-        }
+        if (matchTeam && matchSev && matchStat) { tr.style.display = ''; visible++; }
+        else { tr.style.display = 'none'; }
       });
-      var noRow = document.getElementById('dl-no-results');
-      if (noRow) noRow.style.display = visible === 0 ? '' : 'none';
     }
-
     window.addEventListener('DOMContentLoaded', function () {
-      var tbody = document.querySelector('.vuln-table tbody');
-      if (tbody) {
-        var tr = document.createElement('tr');
-        tr.id = 'dl-no-results';
-        tr.style.display = 'none';
-        tr.innerHTML = '<td colspan="7" style="text-align:center;padding:24px;color:#94a3b8;">No vulnerabilities match the selected filters.</td>';
-        tbody.appendChild(tr);
-      }
       ['dl-team-filter', 'dl-sev-filter', 'dl-status-filter'].forEach(function (id) {
         var el = document.getElementById(id);
         if (el) el.addEventListener('change', applyFilters);
@@ -774,90 +993,362 @@ export default {
 }
 
 /* ─────────────────────────────────────────────
-   Sticky Header
+   Sticky Header — Dark Banner
 ───────────────────────────────────────────── */
 .report-sticky-header {
   position: fixed;
-  top: 60px;
+  top: 52px;
   left: 8.333%;
   right: 0;
   z-index: 200;
-  background: #ffffff;
-  border-bottom: 1.5px solid #ede9f6;
-  padding: 12px 32px;
+  background: #111827;
+  padding: 12px 28px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  box-shadow: 0 2px 12px rgba(36,20,71,0.06);
+  gap: 18px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
 }
 
+/* Fills the gap between DashboardHeader bottom and this header */
+.report-sticky-header::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: 0;
+  right: 0;
+  height: 10px;
+  background: #111827;
+}
+
+/* Back button — ghost on dark */
 .btn-back {
   display: inline-flex;
   align-items: center;
-  background: #ffffff;
-  border: 1.5px solid #e2e8f0;
+  flex-shrink: 0;
+  background: transparent;
+  border: 1.5px solid rgba(255,255,255,0.18);
   border-radius: 999px;
-  padding: 9px 22px;
-  font-size: 0.84rem;
+  padding: 8px 18px;
+  font-size: 0.80rem;
   font-weight: 700;
-  color: #241447;
+  color: rgba(255,255,255,0.75);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  transition: background 0.15s, border-color 0.15s;
   letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 .btn-back:hover {
-  background: #f4f0ff;
-  border-color: #7c6fa0;
-  box-shadow: 0 2px 8px rgba(36,20,71,0.09);
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.38);
+  color: #ffffff;
 }
 
+/* Export button — white pill on dark */
 .btn-export {
   display: inline-flex;
   align-items: center;
-  background: #241447;
-  color: #ffffff;
+  flex-shrink: 0;
+  background: #ffffff;
+  color: #241447;
   border: none;
   border-radius: 999px;
-  padding: 10px 26px;
-  font-size: 0.84rem;
-  font-weight: 700;
+  padding: 9px 22px;
+  font-size: 0.80rem;
+  font-weight: 800;
   cursor: pointer;
   transition: background 0.15s, box-shadow 0.15s;
   letter-spacing: 0.01em;
-  box-shadow: 0 2px 10px rgba(36,20,71,0.18);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+  white-space: nowrap;
 }
 .btn-export:hover {
-  background: #3b1f7a;
-  box-shadow: 0 4px 16px rgba(36,20,71,0.28);
+  background: #f0ecff;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.35);
+}
+
+/* Centre section */
+.rsh-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  overflow: hidden;
+}
+
+.rsh-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.rsh-risk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #dc2626;
+  color: #ffffff;
+  font-size: 0.58rem;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: 5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  width: fit-content;
+  margin-bottom: 1px;
+}
+
+.rsh-title {
+  font-size: 0.97rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rsh-subtitle {
+  font-size: 0.70rem;
+  color: rgba(255,255,255,0.42);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rsh-dot {
+  margin: 0 5px;
+  opacity: 0.5;
+}
+
+/* Severity count chips */
+.rsh-counts {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  flex-shrink: 0;
+}
+.rsh-count-item {
+  text-align: center;
+}
+.rsh-count-num {
+  font-size: 1.55rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -1px;
+}
+.rsh-critical { color: #ef4444; }
+.rsh-high     { color: #f97316; }
+.rsh-medium   { color: #fbbf24; }
+.rsh-low      { color: #22c55e; }
+
+.rsh-count-lbl {
+  font-size: 0.58rem;
+  color: rgba(255,255,255,0.40);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-top: 2px;
 }
 
 /* ─────────────────────────────────────────────
    Report Body
 ───────────────────────────────────────────── */
 .report-body {
-  padding: 88px 32px 56px;
+  padding: 158px 32px 56px;
 }
 
 /* ─────────────────────────────────────────────
-   Page Title Block
+   Tabs Navigation
 ───────────────────────────────────────────── */
-.page-title-block {
-  margin-bottom: 32px;
+.tabs-nav-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
 }
-.page-main-title {
-  font-size: 2rem;
-  font-weight: 800;
+
+.tabs-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1.5px solid #e8e2f5;
+  border-radius: 20px;
+  padding: 10px;
+  box-shadow: 0 6px 28px rgba(36,20,71,0.13), 0 1px 4px rgba(36,20,71,0.06);
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: transparent;
+  border: none;
+  border-radius: 11px;
+  padding: 9px 18px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+  white-space: nowrap;
+  position: relative;
+}
+.tab-btn:hover {
+  background: #f4f0ff;
   color: #241447;
-  letter-spacing: -0.5px;
-  margin: 0 0 6px;
-  line-height: 1.15;
 }
-.page-subtitle {
-  font-size: 0.875rem;
+.tab-btn-active {
+  background: #241447;
+  color: #ffffff;
+  box-shadow: 0 3px 12px rgba(36,20,71,0.25);
+}
+.tab-btn-active:hover {
+  background: #3b1f7a;
+  color: #ffffff;
+}
+
+.tab-icon-wrap {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+.tab-label-text {
+  line-height: 1;
+}
+.tab-active-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.65);
+  flex-shrink: 0;
+}
+
+.tabs-multi-hint {
+  font-size: 0.72rem;
+  font-weight: 600;
   color: #7c6fa0;
+  background: #f4f0ff;
+  border: 1px solid #e9e5f3;
+  border-radius: 999px;
+  padding: 5px 13px;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+}
+
+.tab-section-wrap {
+  animation: fadeTabIn 0.22s ease;
+}
+@keyframes fadeTabIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─────────────────────────────────────────────
+   Alert Banner
+───────────────────────────────────────────── */
+.alert-overdue-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: #fff5f5;
+  border: 1.5px solid #fca5a5;
+  border-left: 4px solid #dc2626;
+  border-radius: 14px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+.alert-banner-icon-wrap {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #fee2e2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #dc2626;
+  margin-top: 1px;
+}
+.alert-banner-body {
+  flex: 1;
+}
+.alert-banner-title {
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: #991b1b;
+  margin-bottom: 4px;
+  line-height: 1.35;
+}
+.alert-banner-desc {
+  font-size: 0.78rem;
+  color: #b91c1c;
   font-weight: 500;
+  line-height: 1.5;
   margin: 0;
 }
+
+/* ─────────────────────────────────────────────
+   SLA Stats Row
+───────────────────────────────────────────── */
+.sla-stats-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+}
+
+.sla-stat-card {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 20px 18px 16px;
+  border: 1.5px solid #ede9f6;
+  box-shadow: 0 2px 10px rgba(36,20,71,0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+}
+
+.sla-stat-number {
+  font-size: 2.8rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -1.5px;
+}
+.sla-num-critical { color: #7f1d1d; }
+.sla-num-high     { color: #dc2626; }
+.sla-num-medium   { color: #d97706; }
+.sla-num-low      { color: #16a34a; }
+.sla-num-hosts    { color: #241447; }
+
+.sla-stat-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.sla-stat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+  margin-top: 2px;
+}
+.sla-badge-overdue  { background: #fee2e2; color: #dc2626; }
+.sla-badge-inwindow { background: #dcfce7; color: #15803d; }
+.sla-badge-neutral  { background: #f1f5f9; color: #64748b; }
 
 /* ─────────────────────────────────────────────
    Section Labels
@@ -887,6 +1378,196 @@ export default {
 ───────────────────────────────────────────── */
 .mb-section { margin-bottom: 36px; }
 .mb-filter  { margin-bottom: 14px; }
+
+/* ─────────────────────────────────────────────
+   Business Risk Grid
+───────────────────────────────────────────── */
+.business-risk-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.risk-card {
+  border-radius: 18px;
+  padding: 20px 20px 18px;
+  border: 1.5px solid transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.risk-critical {
+  background: #fff5f5;
+  border-color: #fca5a5;
+}
+.risk-high {
+  background: #fffbeb;
+  border-color: #fcd34d;
+}
+.risk-medium {
+  background: #fefce8;
+  border-color: #fde68a;
+}
+
+.risk-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.risk-icon-wrap {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+}
+.risk-icon-critical { background: #fee2e2; color: #dc2626; }
+.risk-icon-high     { background: #fef3c7; color: #b45309; }
+.risk-icon-medium   { background: #fef9c3; color: #a16207; }
+
+.risk-card-title {
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: #1e293b;
+  line-height: 1.35;
+  flex: 1;
+}
+.risk-card-desc {
+  font-size: 0.78rem;
+  color: #64748b;
+  line-height: 1.6;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* ─────────────────────────────────────────────
+   Remediation Table
+───────────────────────────────────────────── */
+.remediation-table-card {
+  background: #ffffff;
+  border-radius: 20px;
+  border: 1.5px solid #ede9f6;
+  box-shadow: 0 2px 10px rgba(36,20,71,0.05);
+  overflow: hidden;
+}
+.remediation-table-scroll {
+  overflow-x: auto;
+}
+.remediation-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.remediation-table thead {
+  background: #f2f3f6;
+}
+.remediation-table th {
+  padding: 13px 20px;
+  text-align: left;
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  border-bottom: 1.5px solid #ede9f6;
+  white-space: nowrap;
+}
+.remediation-table td {
+  padding: 16px 20px;
+  border-bottom: 1px solid #f4f2f9;
+  vertical-align: middle;
+  color: #475569;
+}
+.remediation-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.remediation-table tbody tr:hover td {
+  background: #faf9ff;
+}
+
+.rem-sev-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.rem-sev-critical { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
+.rem-sev-high     { background: #f8dede; color: #b42318; border: 1px solid #efb7b1; }
+.rem-sev-medium   { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
+.rem-sev-low      { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+
+.rem-findings-cell { font-weight: 600; color: #1e293b; white-space: nowrap; }
+.rem-action-cell   { color: #475569; line-height: 1.5; max-width: 380px; }
+.rem-deadline-cell { font-weight: 700; white-space: nowrap; }
+.rem-deadline-overdue { color: #dc2626; }
+
+.rem-status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.rem-status-overdue  { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
+.rem-status-inwindow { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+
+/* ─────────────────────────────────────────────
+   Resource Asks Grid
+───────────────────────────────────────────── */
+.resource-asks-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.resource-ask-card {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 20px 20px 18px;
+  border: 1.5px solid #ede9f6;
+  box-shadow: 0 2px 8px rgba(36,20,71,0.05);
+}
+
+.resource-ask-header {
+  display: flex;
+  align-items: center;
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: #241447;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1.5px solid #f1f5f9;
+}
+
+.resource-ask-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.resource-ask-list li {
+  font-size: 0.78rem;
+  color: #1d4ed8;
+  font-weight: 500;
+  line-height: 1.45;
+  padding-left: 14px;
+  position: relative;
+}
+.resource-ask-list li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: #7c6fa0;
+  font-weight: 900;
+}
 
 /* ─────────────────────────────────────────────
    Bento Grid — 12 columns
@@ -1084,7 +1765,6 @@ export default {
   margin-bottom: 6px;
 }
 
-/* ── Team Distribution ── */
 .chart-donut-wrap {
   display: flex;
   align-items: center;
@@ -1246,14 +1926,8 @@ export default {
   border-radius: 999px;
   letter-spacing: 0.02em;
 }
-.closure-good {
-  background: #dcfce7;
-  color: #15803d;
-}
-.closure-warn {
-  background: #fee2e2;
-  color: #b91c1c;
-}
+.closure-good { background: #dcfce7; color: #15803d; }
+.closure-warn { background: #fee2e2; color: #b91c1c; }
 
 .tpc-team-name {
   font-size: 0.875rem;
@@ -1418,13 +2092,11 @@ export default {
   border-collapse: collapse;
   font-size: 0.82rem;
 }
-
 .vuln-table thead {
   position: sticky;
   top: 0;
   z-index: 2;
 }
-
 .vuln-table th {
   background: #f2f3f6;
   padding: 14px 24px;
@@ -1437,7 +2109,6 @@ export default {
   border-bottom: 1.5px solid #ede9f6;
   white-space: nowrap;
 }
-
 .vuln-table td {
   padding: 18px 24px;
   border-bottom: 1px solid #f4f2f9;
@@ -1468,64 +2139,25 @@ export default {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Table cell helpers */
-.cell-id {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: #b8b0cc;
-  font-variant-numeric: tabular-nums;
-}
-.cell-vuln-name {
-  font-weight: 700;
-  color: #241447;
-}
-.cell-asset {
-  display: inline-block;
-  background: #f0ecff;
-  color: #241447;
-  font-size: 0.72rem;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: 8px;
-}
-.cell-date {
-  font-size: 0.78rem;
-  color: #64748b;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
+.cell-id { font-size: 0.72rem; font-weight: 700; color: #b8b0cc; font-variant-numeric: tabular-nums; }
+.cell-vuln-name { font-weight: 700; color: #241447; }
+.cell-asset { display: inline-block; background: #f0ecff; color: #241447; font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 8px; }
+.cell-date { font-size: 0.78rem; color: #64748b; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
-/* Team badges */
-.team-badge {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 8px;
-  font-size: 0.72rem;
-  font-weight: 700;
-}
+.team-badge { display: inline-block; padding: 3px 10px; border-radius: 8px; font-size: 0.72rem; font-weight: 700; }
 .team-network       { background: #dbeafe; color: #1d4ed8; }
 .team-patch         { background: #d1fae5; color: #059669; }
 .team-configuration { background: #ffedd5; color: #c2410c; }
 .team-architectural { background: #fee2e2; color: #b91c1c; }
 .team-unassigned    { background: #f3f4f6; color: #6b7280; }
 
-/* Severity pill badges */
-.sev-badge-pill {
-  display: inline-block;
-  padding: 4px 12px;
-  border-radius: 999px;
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.03em;
-}
+.sev-badge-pill { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.03em; }
 .sev-badge-critical { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
 .sev-badge-high     { background: #f8dede; color: #b42318; border: 1px solid #efb7b1; }
 .sev-badge-medium   { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
 .sev-badge-low      { background: #ccfbf1; color: #0f766e; border: 1px solid #5eead4; }
 
-/* Status badges */
-.status-open,
-.status-closed {
+.status-open, .status-closed {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1537,12 +2169,7 @@ export default {
 .status-open   { background: #fee2e2; color: #dc2626; }
 .status-closed { background: #dcfce7; color: #15803d; }
 
-.status-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
+.status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .status-dot-open   { background: #dc2626; }
 .status-dot-closed { background: #15803d; }
 
@@ -1559,27 +2186,10 @@ export default {
   flex-wrap: wrap;
   gap: 12px;
 }
-.table-footer-text {
-  font-size: 0.78rem;
-  color: #64748b;
-  font-weight: 500;
-}
-.table-footer-text strong {
-  color: #241447;
-  font-weight: 800;
-}
-.table-footer-badges {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.footer-sev-pill {
-  font-size: 0.65rem;
-  font-weight: 800;
-  padding: 3px 11px;
-  border-radius: 999px;
-}
+.table-footer-text { font-size: 0.78rem; color: #64748b; font-weight: 500; }
+.table-footer-text strong { color: #241447; font-weight: 800; }
+.table-footer-badges { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.footer-sev-pill { font-size: 0.65rem; font-weight: 800; padding: 3px 11px; border-radius: 999px; }
 .footer-critical { color: #dc2626; }
 .footer-high     { color: #b42318; }
 .footer-medium   { color: #b45309; }
@@ -1593,19 +2203,30 @@ export default {
   .bento-col-8 { grid-column: span 6; }
   .team-perf-grid { grid-template-columns: repeat(2, 1fr); }
   .severity-sub-grid { grid-template-columns: repeat(2, 1fr); }
+  .business-risk-grid { grid-template-columns: repeat(2, 1fr); }
+  .sla-stats-row { grid-template-columns: repeat(3, 1fr); }
+  .resource-asks-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 900px) {
-  .bento-col-4,
-  .bento-col-6,
-  .bento-col-8 { grid-column: span 12; }
+  .bento-col-4, .bento-col-6, .bento-col-8 { grid-column: span 12; }
   .team-perf-grid { grid-template-columns: 1fr; }
   .severity-sub-grid { grid-template-columns: repeat(2, 1fr); }
-  .report-body { padding: 88px 16px 40px; }
-  .report-sticky-header { padding: 10px 16px; }
+  .business-risk-grid { grid-template-columns: 1fr; }
+  .sla-stats-row { grid-template-columns: repeat(2, 1fr); }
+  .resource-asks-grid { grid-template-columns: 1fr; }
+  .report-body { padding: 158px 16px 40px; }
+  .report-sticky-header { padding: 10px 16px; gap: 10px; }
+  .rsh-counts { gap: 14px; }
+  .rsh-count-num { font-size: 1.2rem; }
+  .tabs-nav { gap: 4px; }
+  .tab-btn { padding: 8px 12px; font-size: 0.75rem; }
 }
 @media (max-width: 600px) {
   .severity-sub-grid { grid-template-columns: 1fr 1fr; }
+  .sla-stats-row { grid-template-columns: 1fr 1fr; }
   .filter-controls { flex-direction: column; align-items: flex-start; }
   .bento-total-number { font-size: 3rem; }
+  .tab-label-text { display: none; }
+  .tab-icon-wrap { font-size: 1.2rem; }
 }
 </style>

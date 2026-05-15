@@ -341,63 +341,23 @@
                       <!-- Expanded detail panel -->
                       <div v-if="expandedTasks.includes(idx)" class="rt-task-expanded" @click.stop>
 
-                        <!-- Meta: Deadline + Criticality + Effort (hidden by request) -->
-                        <!-- <div class="rt-expand-meta-row">
-                          <div v-if="task.deadline" class="rt-expand-meta-item">
-                            <i class="bi bi-calendar3 me-1"></i>
-                            <span class="rt-expand-label">Deadline:</span>
-                            <span class="rt-expand-meta-val">{{ task.deadline }}</span>
-                          </div>
-                          <div v-if="task.criticality" class="rt-expand-meta-item">
-                            <i class="bi bi-exclamation-circle me-1"></i>
-                            <span class="rt-expand-label">Criticality:</span>
-                            <span class="rt-expand-meta-val" :class="{
-                              'text-danger': task.criticality === 'Critical',
-                              'text-warning': task.criticality === 'High',
-                            }">{{ task.criticality }}</span>
-                          </div>
-                          <div v-if="task.effortEstimate" class="rt-expand-meta-item">
-                            <i class="bi bi-clock me-1"></i>
-                            <span class="rt-expand-label">Effort:</span>
-                            <span class="rt-expand-meta-val">{{ task.effortEstimate }}</span>
-                          </div>
-                        </div> -->
-
-                        <!-- Assigned Members (highlighted, moved above action) -->
-                        <div v-if="task.members && task.members.length" class="rt-expand-section rt-assigned-highlight">
-                          <span class="rt-expand-label">ASSIGNED MEMBERS</span>
-                          <div class="d-flex flex-wrap gap-2 mt-1">
-                            <span v-for="m in task.members" :key="m.user_id" class="rt-member-chip">
-                              <i class="bi bi-person-fill me-1"></i>{{ m.name }}
-                            </span>
-                          </div>
-                        </div>
-
-                        <!-- ACTION + FILE PATH -->
-                        <div class="rt-expand-row-2">
-                          <div class="rt-expand-section">
-                            <span class="rt-expand-label">ACTION</span>
-                            <p class="rt-expand-text">{{ task.action }}</p>
+                        <!-- ROW 1: ACTION | ASSIGNED TO -->
+                        <div class="rt-exp-row2">
+                          <div class="rt-exp-cell">
+                            <span class="rt-exp-label">ACTION</span>
+                            <p class="rt-exp-text rt-exp-pretext">{{ cleanText(task.action) }}</p>
+                            <!-- SUB-TASKS under ACTION -->
                             <div v-if="task.subTasks && task.subTasks.length" class="mt-3">
-                              <span class="rt-expand-label">SUB-TASKS</span>
+                              <span class="rt-exp-label">SUB-TASKS</span>
                               <div class="rt-subtask-list mt-1">
-                                <div
-                                  v-for="(sub, si) in task.subTasks"
-                                  :key="si"
-                                  class="rt-subtask-entry"
-                                  @click.stop
-                                >
+                                <div v-for="(sub, si) in task.subTasks" :key="si" class="rt-subtask-entry" @click.stop>
                                   <div v-if="!sub.items || sub.items.length === 0" class="rt-subtask-dash">-</div>
                                   <div v-else class="d-flex align-items-center gap-2">
                                     <input type="checkbox" class="rt-checkbox" />
                                     <span class="rt-subtask-desc">{{ sub.description }}</span>
                                   </div>
                                   <div v-if="sub.items && sub.items.length > 0" class="rt-checklist mt-1 ps-4">
-                                    <label
-                                      v-for="(item, ii) in sub.items"
-                                      :key="ii"
-                                      class="rt-check-item"
-                                    >
+                                    <label v-for="(item, ii) in sub.items" :key="ii" class="rt-check-item">
                                       <input type="checkbox" class="rt-checkbox" />
                                       <span>{{ item }}</span>
                                     </label>
@@ -406,61 +366,69 @@
                               </div>
                             </div>
                           </div>
-                          <div v-if="task.filePath && task.filePath !== 'N/A'" class="rt-expand-section">
-                            <span class="rt-expand-label">FILE PATH</span>
-                            <div class="rt-filepath-box">{{ task.filePath }}</div>
+                          <div class="rt-exp-cell rt-exp-cell-divider" v-if="task.members && task.members.length">
+                            <span class="rt-exp-label">ASSIGNED TO</span>
+                            <div class="d-flex flex-wrap gap-2 mt-2">
+                              <span v-for="m in task.members" :key="m.user_id" class="rt-member-chip">
+                                <i class="bi bi-person-fill me-1"></i>{{ m.name }}
+                              </span>
+                            </div>
                           </div>
                         </div>
 
-                        <div
-                          v-if="(task.whereToRunLabel || task.whereToRun) && (task.whereToRunLabel || task.whereToRun) !== 'N/A'"
-                          class="rt-expand-section"
-                        >
-                          <span class="rt-expand-label">WHERE TO RUN</span>
-                          <div class="rt-code-block rt-code-block-copy">
-                            <span>{{ task.whereToRunLabel || task.whereToRun }}</span>
-                            <button class="rt-copy-icon-btn" @click.stop="copyCommand(task.whereToRunLabel || task.whereToRun)" title="Copy">
-                              <i class="bi bi-clipboard"></i>
-                            </button>
-                          </div>
+                        <!-- FILE PATH -->
+                        <div v-if="task.filePath && task.filePath !== 'N/A'" class="rt-exp-section">
+                          <span class="rt-exp-label">FILE PATH</span>
+                          <div class="rt-exp-filepath">{{ task.filePath }}</div>
+                        </div>
+
+                        <!-- WHERE TO RUN -->
+                        <div v-if="(task.whereToRunLabel || task.whereToRun) && (task.whereToRunLabel || task.whereToRun) !== 'N/A'" class="rt-exp-section">
+                          <span class="rt-exp-label">WHERE TO RUN</span>
+                          <p class="rt-exp-text">{{ task.whereToRunLabel || task.whereToRun }}</p>
                         </div>
 
                         <!-- COMMAND TO RUN -->
-                        <div v-if="task.command && task.command !== 'N/A'" class="rt-expand-section">
-                          <span class="rt-expand-label">COMMAND TO RUN</span>
-                          <div class="rt-code-block rt-code-block-copy">
+                        <div v-if="task.command && task.command !== 'N/A'" class="rt-exp-section">
+                          <span class="rt-exp-label">COMMAND TO RUN</span>
+                          <div class="rt-exp-code-block rt-exp-code-copy">
                             <span v-text="formatCommandToRun(task.command)"></span>
-                            <button class="rt-copy-icon-btn" @click.stop="copyCommand(formatCommandToRun(task.command))" title="Copy">
+                            <button class="rt-exp-copy-btn" @click.stop="copyCommand(formatCommandToRun(task.command))" title="Copy">
                               <i class="bi bi-clipboard"></i>
                             </button>
                           </div>
                         </div>
 
-                        <div v-if="task.expectedOutput && task.expectedOutput !== 'N/A'" class="rt-expand-section">
-                          <span class="rt-expand-label">EXPECTED OUTPUT</span>
-                          <div class="rt-code-block">{{ task.expectedOutput }}</div>
-                        </div>
-                        <div v-if="task.verificationCheck && task.verificationCheck !== 'N/A'" class="rt-expand-section">
-                          <span class="rt-expand-label">VERIFICATION CHECK</span>
-                          <div class="rt-code-block">{{ task.verificationCheck }}</div>
+                        <!-- ROW 2: EXPECTED OUTPUT | VERIFICATION CHECK -->
+                        <div class="rt-exp-row2" v-if="(task.expectedOutput && task.expectedOutput !== 'N/A') || (task.verificationCheck && task.verificationCheck !== 'N/A')">
+                          <div class="rt-exp-cell" v-if="task.expectedOutput && task.expectedOutput !== 'N/A'">
+                            <span class="rt-exp-label">EXPECTED OUTPUT</span>
+                            <p class="rt-exp-text rt-exp-pretext">{{ cleanText(task.expectedOutput) }}</p>
+                          </div>
+                          <div class="rt-exp-cell rt-exp-cell-divider" v-if="task.verificationCheck && task.verificationCheck !== 'N/A'">
+                            <span class="rt-exp-label">VERIFICATION CHECK</span>
+                            <p class="rt-exp-text rt-exp-pretext">{{ cleanText(task.verificationCheck) }}</p>
+                          </div>
                         </div>
 
-                        <!-- TOOLS + CONSIDERATION -->
-                        <div class="rt-expand-row-2">
-                          <div v-if="task.tools && task.tools.length" class="rt-expand-section">
-                            <span class="rt-expand-label">ARTIFACTS / TOOLS USED</span>
-                            <div class="d-flex flex-wrap gap-2 mt-1">
-                              <span v-for="tool in task.tools" :key="tool" class="rt-tool-chip">{{ tool }}</span>
-                            </div>
-                          </div>
-                          <div v-if="task.consideration" class="rt-expand-section">
-                            <span class="rt-expand-label">IMPORTANT CONSIDERATION</span>
-                            <div class="rt-consideration-box">
-                              <i class="bi bi-exclamation-triangle-fill" style="color:#f97316; flex-shrink:0;"></i>
-                              <span>{{ task.consideration }}</span>
-                            </div>
+                        <!-- ARTEFACTS & TOOLS -->
+                        <div v-if="task.tools && task.tools.length" class="rt-exp-section">
+                          <span class="rt-exp-label">ARTEFACTS &amp; TOOLS USED</span>
+                          <div class="d-flex flex-wrap gap-2 mt-1">
+                            <span v-for="tool in task.tools" :key="tool" class="rt-tool-chip">{{ tool }}</span>
                           </div>
                         </div>
+
+                        <!-- IMPORTANT CONSIDERATIONS -->
+                        <div v-if="task.consideration" class="rt-exp-consideration">
+                          <div class="rt-exp-consideration-hd">
+                            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                            IMPORTANT CONSIDERATIONS
+                          </div>
+                          <p class="rt-exp-consideration-text rt-exp-pretext">{{ cleanText(task.consideration) }}</p>
+                        </div>
+
+                        <!-- COMPLETE STEP (user only) -->
                         <div v-if="task.status !== 'completed'" class="rt-inline-complete-wrap">
                           <button
                             class="rt-inline-complete-btn"
@@ -731,23 +699,26 @@ export default {
   },
 
   methods: {
+    cleanText(text) {
+      if (!text) return '';
+      return String(text)
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<[^>]+>/g, '')
+        .trim();
+    },
     formatCommandToRun(commandValue) {
-      const commandParts = Array.isArray(commandValue)
-        ? commandValue
-          .map(item => String(item || '').trim())
-          .filter(Boolean)
-        : String(commandValue || '')
-          .split(/\r?\n|,/)
-          .map(item => item.trim())
-          .filter(Boolean);
+      let raw = Array.isArray(commandValue)
+        ? commandValue.map(item => String(item || '').trim()).join('\n')
+        : String(commandValue || '');
 
-      if (commandParts.length <= 1) {
-        return commandParts[0] || String(commandValue || '');
-      }
+      // Strip markdown code fences (```python, ```bash, ``` etc.)
+      raw = raw.replace(/^```[\w]*\s*/i, '').replace(/\s*```$/i, '');
+      // Replace <br> tags with newlines
+      raw = raw.replace(/<br\s*\/?>/gi, '\n');
+      // Strip any remaining HTML tags
+      raw = raw.replace(/<[^>]+>/g, '');
 
-      return commandParts
-        .map((part, index) => (index === commandParts.length - 1 ? part : `${part},`))
-        .join('\n');
+      return raw.trim();
     },
     toggleTask(idx) {
       const i = this.expandedTasks.indexOf(idx);
@@ -1595,9 +1566,9 @@ export default {
 .rt-tech-label-text { font-size: 0.78rem; font-weight: 600; color: #475569; }
 .rt-tech-left   { flex: 1; min-width: 0; }
 .rt-critical-badge { display: inline-block; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; background: #f8dede; color: #b42318; padding: 4px 12px; border-radius: 50px; margin-bottom: 10px; }
-.rt-vuln-name   { font-size: 1.05rem; font-weight: 800; color: #1e293b; margin: 0 0 6px; line-height: 1.3; }
-.rt-label-text  { font-size: 0.8rem; color: #64748b; font-weight: 500; }
-.rt-asset-chip  { display: inline-block; font-size: 0.78rem; font-weight: 600; background: #f1f5f9; color: #334155; padding: 3px 12px; border-radius: 50px; border: 1px solid #e2e8f0; }
+.rt-vuln-name   { font-size: 1.3rem; font-weight: 800; color: #1e293b; margin: 0 0 6px; line-height: 1.3; }
+.rt-label-text  { font-size: 0.82rem; color: #64748b; font-weight: 500; }
+.rt-asset-chip  { display: inline-block; font-size: 0.92rem; font-weight: 700; background: #e0f2fe; color: #0369a1; padding: 4px 14px; border-radius: 50px; border: 1.5px solid #bae6fd; letter-spacing: 0.01em; }
 .rt-tech-right  { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; margin-left: 24px; }
 .rt-progress-label { font-size: 0.6rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #94a3b8; }
 .rt-progress-num { font-size: 2.5rem; font-weight: 800; color: #241447; line-height: 1.1; }
@@ -1668,30 +1639,43 @@ export default {
 .rt-status-done        { background: #d1fae5; color: #065f46; }
 .rt-status-pending-red { background: #f8dede; color: #b42318; }
 
-/* Expanded panel */
-.rt-task-expanded { padding: 4px 0 20px 40px; display: flex; flex-direction: column; gap: 16px; }
-.rt-expand-meta-row { display: flex; flex-wrap: wrap; gap: 16px; background: #f8f9fc; border-radius: 8px; padding: 10px 14px; }
-.rt-expand-meta-item { display: flex; align-items: center; gap: 4px; font-size: 0.78rem; color: #475569; }
-.rt-expand-meta-val  { font-weight: 600; color: #1e293b; }
-.rt-expand-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.rt-expand-section { display: flex; flex-direction: column; gap: 6px; }
-.rt-expand-label { font-size: 0.6rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #94a3b8; }
-.rt-expand-text  { font-size: 0.84rem; color: #334155; margin: 0; line-height: 1.55; }
-.rt-filepath-box { background: #f8f9fc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; font-family: 'Courier New', Courier, monospace; font-size: 0.8rem; color: #475569; word-break: break-all; line-height: 1.6; }
-.rt-code-block { background: #1e293b; border-radius: 8px; padding: 12px 16px; font-family: 'Courier New', Courier, monospace; font-size: 0.82rem; color: #4ade80; word-break: break-all; line-height: 1.6; white-space: pre-wrap; }
-.rt-code-block-copy {
-  position: relative;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-}
-.rt-code-block-copy span {
-  flex: 1;
+/* ─── Expanded detail panel (rt-exp-* design) ───────────────────────── */
+.rt-task-expanded { padding: 0; display: flex; flex-direction: column; gap: 0; border-top: 1px solid #f1f5f9; }
+
+.rt-exp-row2 { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid #f1f5f9; }
+.rt-exp-cell { padding: 16px 20px; display: flex; flex-direction: column; gap: 6px; }
+.rt-exp-cell-divider { border-left: 1px solid #f1f5f9; }
+.rt-exp-section { padding: 14px 20px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid #f1f5f9; }
+.rt-exp-label { font-size: 0.6rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #94a3b8; margin-bottom: 2px; }
+.rt-exp-text  { font-size: 0.84rem; color: #334155; margin: 0; line-height: 1.55; }
+.rt-exp-pretext { white-space: pre-line; }
+
+.rt-exp-filepath {
+  background: #f5f3ff;
+  border: 1px solid #e9d5ff;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.8rem;
+  color: #7c3aed;
   word-break: break-all;
+  line-height: 1.6;
+}
+
+.rt-exp-code-block {
+  background: #1e293b;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.82rem;
+  color: #4ade80;
+  word-break: break-all;
+  line-height: 1.6;
   white-space: pre-wrap;
 }
-.rt-copy-icon-btn {
+.rt-exp-code-copy { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.rt-exp-code-copy span { flex: 1; word-break: break-all; white-space: pre-wrap; }
+.rt-exp-copy-btn {
   flex-shrink: 0;
   background: transparent;
   border: none;
@@ -1704,11 +1688,13 @@ export default {
   line-height: 1;
   margin-top: 1px;
 }
-.rt-copy-icon-btn:hover {
-  opacity: 1;
-}
+.rt-exp-copy-btn:hover { opacity: 1; }
+
+.rt-exp-consideration { margin: 14px 20px 18px; background: #fffbeb; border: 1px solid #fbbf24; border-radius: 8px; padding: 12px 16px; }
+.rt-exp-consideration-hd { display: flex; align-items: center; gap: 6px; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #b45309; margin-bottom: 6px; }
+.rt-exp-consideration-text { font-size: 0.82rem; color: #c2410c; line-height: 1.55; margin: 0; }
+
 .rt-tool-chip { display: inline-block; font-size: 0.72rem; font-weight: 600; background: #f1f5f9; color: #475569; padding: 3px 11px; border-radius: 50px; border: 1px solid #e2e8f0; }
-.rt-consideration-box { display: flex; align-items: flex-start; gap: 6px; font-size: 0.82rem; color: #c2410c; line-height: 1.55; margin-top: 2px; }
 .rt-checklist { display: flex; flex-direction: column; gap: 8px; margin-top: 2px; }
 .rt-check-item { display: flex; align-items: center; gap: 10px; font-size: 0.84rem; color: #334155; cursor: pointer; user-select: none; }
 .rt-checkbox { width: 16px; height: 16px; border-radius: 4px; accent-color: #0f696e; cursor: pointer; flex-shrink: 0; }
@@ -1717,18 +1703,6 @@ export default {
 .rt-subtask-desc { font-size: 0.84rem; font-weight: 600; color: #334155; }
 .rt-subtask-dash { font-size: 0.84rem; color: #94a3b8; padding-left: 4px; }
 .rt-member-chip { display: inline-flex; align-items: center; font-size: 0.72rem; font-weight: 600; background: #e0f2f1; color: #0f696e; padding: 3px 10px; border-radius: 50px; border: 1px solid rgba(15,105,110,0.2); }
-.rt-assigned-highlight {
-  background: #ecfeff;
-  border: 1px solid #99f6e4;
-  border-radius: 10px;
-  padding: 10px 12px;
-}
-.rt-assigned-highlight .rt-expand-label { color: #0f766e; }
-.rt-assigned-highlight .rt-member-chip {
-  background: #ccfbf1;
-  color: #0f766e;
-  border-color: #5eead4;
-}
 
 /* Complete step section */
 .rt-step-complete-section { margin-top: 20px; padding-top: 18px; border-top: 1px solid #f1f5f9; }
