@@ -1110,193 +1110,312 @@ export default {
     const risk_factor = this.$route.query.risk_factor;
 
     if (fixVulId) {
+      // HARDCODED DATA - Replacing API call
       this.isLoading = true;
-      const stepsRes = await this.authStore.getUserFixVulnerabilitySteps(String(fixVulId));
+
+      // Simulate loading delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       this.isLoading = false;
 
-      if (!stepsRes.status) {
-        Swal.fire('Error', stepsRes.message || 'Failed to load remediation timeline', 'error');
-        return;
-      }
-
-      const s = stepsRes.data;
+      // Hardcoded vulnerability data
       this.currentVuln = {
         id: String(fixVulId),
-        name: String(plugin_name || s.vulnerability_name || 'Vulnerability'),
-        risk: `${String((risk_factor || s.risk_factor || '').toString()).toUpperCase()} RISK`,
-        asset: String(this.asset || s.asset || ''),
-        report_id: String(this.reportId || s.report_id || ''),
+        name: String(plugin_name || 'Apache Struts 2 CVE-2017-5638 Remote Code Execution'),
+        risk: `${String((risk_factor || 'CRITICAL').toString()).toUpperCase()} RISK`,
+        asset: String(this.asset || '192.168.1.53'),
+        report_id: String(this.reportId || 'RPT-2024-001'),
         progress: 0,
-        assignedTeam: s.assigned_team || '',
-        deadline: s.deadline || '',
-        artifactsTools: s.artifacts_tools || '',
-        operatingSystem: s.operating_system || '',
-        status: s.vulnerability_status || '',
+        assignedTeam: 'Network Security Team',
+        deadline: '2024-12-31',
+        artifactsTools: 'iptables, nmap, curl',
+        operatingSystem: 'Linux',
+        status: 'in_progress',
         closed_at: null,
       };
       await this.fetchSupportRequestStatus(this.currentVuln.id);
 
-      this.totalSteps = s.total_steps || 0;
-      this.currentStep = s.next_step || 1;
-      this.completedSteps = Array.from({ length: s.completed_steps || 0 }, (_, i) => i + 1);
+      this.totalSteps = 3;
+      this.currentStep = 1;
+      this.completedSteps = [];
 
-      const os = (s.operating_system || 'windows').toLowerCase();
-      this.subtasks = (s.steps || []).map(step => {
-        const detail = step[os] || step['windows'] || {};
-        return {
-          id: step.step_number,
-          name: step.step_name,
-          assignedTeam: step.assigned_team || s.assigned_team || 'Unassigned',
-          members: step.assigned_team_members || [],
-          status: step.status,
-          deadline: step.deadline || s.deadline || '',
-          criticality: step.criticality || '',
-          effortEstimate: step.effort_estimate || '',
-          action: detail.action || '',
-          filePath: detail.system_file_path || '',
-          command: detail.commands_for_action || '',
-          expectedOutput: detail.expected_output || step.expected_output || '',
-          verificationCheck: detail.verification_check || step.verification_check || '',
-          whereToRunLabel:
-            detail.where_to_run_label ||
-            detail.where_to_run ||
-            step.where_to_run_label ||
-            step.where_to_run ||
-            '',
-          whereToRun:
-            detail.where_to_run ||
-            step.where_to_run ||
-            '',
-          tools: detail.artifacts_tools_used || [],
-          consideration: detail.precautions || '',
-          subTasks: (detail.sub_tasks || []).map(st => ({
-              description: st.description || '',
-              items: st.items || [],
-            })),
-        };
-      });
+      // Hardcoded steps data
+      this.subtasks = [
+        {
+          id: 1,
+          name: 'Emergency network isolation',
+          assignedTeam: 'Network Security Team',
+          members: [
+            { user_id: 1, name: 'John Doe' },
+            { user_id: 2, name: 'Jane Smith' }
+          ],
+          status: 'pending',
+          deadline: '2024-12-31',
+          criticality: 'critical',
+          effortEstimate: '2 hours',
+          action: 'Block all inbound TCP traffic to port 5985 immediately',
+          filePath: '/etc/iptables/rules.v4 (or network firewall ACL)',
+          command: `# On 192.168.1.53
+iptables -I INPUT 1 -p tcp --dport 5985 -j DROP
+iptables -I OUTPUT 1 -p tcp --sport 5985 -m state --state ESTABLISHED -j ACCEPT
+iptables-save | tee /etc/iptables/rules.v4
+
+# On network firewall (Cisco IOS example)
+ip access-list extended BLOCK_STRUTS
+  deny tcp any host 192.168.1.53 eq 5985
+  permit ip any any`,
+          expectedOutput: "Port 5985 shows as 'filtered' from all external sources",
+          verificationCheck: "nmap -Pn -p 5985 192.168.1.53 # Expected: 5985/tcp filtered wsman\ncurl --connect-timeout 3 http://192.168.1.53:5985/ && echo STILL_OPEN || echo BLOCKED",
+          whereToRunLabel: '192.168.1.53 (SSH as root) AND network firewall console',
+          whereToRun: '192.168.1.53 (SSH as root) AND network firewall console',
+          tools: ['iptables', 'nmap', 'curl', 'netfilter-persistent'],
+          consideration: 'Port 5985 is the Windows Remote Management (WinRM) default port — confirm what service is actually running here. Apache Struts normally runs on 8080 or 443. The Nessus finding on port 5985 may indicate a non-standard deployment.',
+          subTasks: [],
+        },
+        {
+          id: 2,
+          name: 'Configuration Management',
+          assignedTeam: 'DevOps Team',
+          members: [
+            { user_id: 3, name: 'Mike Johnson' }
+          ],
+          status: 'pending',
+          deadline: '2024-12-31',
+          criticality: 'high',
+          effortEstimate: '1 hour',
+          action: 'Update system configuration to disable vulnerable service',
+          filePath: 'C:\\temp\\cipher_before.txt',
+          command: 'nmap -sV -p 5985 192.168.1.53',
+          expectedOutput: 'The command completes without error messages. Confirm the change is applied as described in this step.',
+          verificationCheck: 'Check that the change is in place and there are no error messages or warnings.',
+          whereToRunLabel: 'Terminal / Command Prompt (open the terminal on your system)',
+          whereToRun: 'Terminal / Command Prompt',
+          tools: ['nmap'],
+          consideration: 'Ensure output path is writable',
+          subTasks: [
+            {
+              description: 'Backup current configuration',
+              items: [
+                'Create backup of existing configuration',
+                'Verify backup integrity',
+                'Store backup in secure location'
+              ]
+            }
+          ],
+        },
+        {
+          id: 3,
+          name: 'Patch Apache Struts to latest version',
+          assignedTeam: 'Application Team',
+          members: [
+            { user_id: 4, name: 'Sarah Williams' },
+            { user_id: 5, name: 'Tom Brown' }
+          ],
+          status: 'pending',
+          deadline: '2024-12-31',
+          criticality: 'critical',
+          effortEstimate: '3 hours',
+          action: 'Upgrade Apache Struts framework to version 2.5.33 or later to patch CVE-2017-5638',
+          filePath: '/opt/application/pom.xml',
+          command: `# Backup current application
+cp -r /opt/application /opt/application.backup
+
+# Update pom.xml with latest Struts version
+sed -i 's/<struts2.version>.*<\\/struts2.version>/<struts2.version>2.5.33<\\/struts2.version>/g' /opt/application/pom.xml
+
+# Rebuild application
+cd /opt/application
+mvn clean package
+
+# Deploy updated WAR file
+cp target/application.war /opt/tomcat/webapps/`,
+          expectedOutput: 'Application successfully rebuilt with Struts 2.5.33. WAR file deployed to Tomcat.',
+          verificationCheck: 'curl http://192.168.1.53:8080/application/ | grep "Struts 2.5.33"\nnmap --script http-vuln-cve2017-5638 192.168.1.53 -p 8080',
+          whereToRunLabel: '192.168.1.53 (SSH as application user)',
+          whereToRun: '192.168.1.53 (SSH as application user)',
+          tools: ['maven', 'nmap', 'curl', 'tomcat'],
+          consideration: 'This will require application downtime. Schedule during maintenance window. Ensure all dependencies are compatible with Struts 2.5.33 before upgrading.',
+          subTasks: [
+            {
+              description: 'Pre-deployment checks',
+              items: [
+                'Review application dependencies',
+                'Run compatibility tests',
+                'Notify stakeholders of maintenance window'
+              ]
+            },
+            {
+              description: 'Post-deployment verification',
+              items: [
+                'Run security scan to confirm vulnerability is patched',
+                'Verify application functionality',
+                'Monitor application logs for errors'
+              ]
+            }
+          ],
+        },
+      ];
 
       this.currentVuln.progress = this.totalSteps > 0
-        ? Math.round(((s.completed_steps || 0) / s.total_steps) * 100)
+        ? Math.round((this.completedSteps.length / this.totalSteps) * 100)
         : 0;
 
       await this.fetchTimeline(String(fixVulId));
-      if (s.completed_steps > 0 && s.completed_steps >= s.total_steps) {
-        await this.fetchFinalFeedback(String(fixVulId));
-      }
+
       return;
     }
 
-    if (!this.reportId || !this.asset || !plugin_name || !risk_factor) {
-      Swal.fire('Error', 'Missing vulnerability data. Please go back and try again.', 'error');
-      return;
-    }
-
+    // HARDCODED DATA - Second path (when no fix_vul_id)
     this.isLoading = true;
 
-    // Step 1: Create fix vulnerability (user API)
-    const createRes = await this.authStore.createUserFixVulnerability(
-      this.reportId,
-      this.asset,
-      {
-        id: String(id),
-        plugin_name: String(plugin_name),
-        risk_factor: String(risk_factor),
-      }
-    );
-
-    if (!createRes.status) {
-      this.isLoading = false;
-      Swal.fire('Error', createRes.message || 'Failed to create fix vulnerability', 'error');
-      return;
-    }
-
-    const created = createRes.data;
-    this.currentVuln = {
-      id: created._id,
-      name: created.vulnerability_name,
-      risk: `${(created.severity || '').toUpperCase()} RISK`,
-      asset: created.asset,
-      report_id: created.report_id,
-      progress: 0,
-      assignedTeam: created.assigned_team || '',
-      deadline: '',
-      artifactsTools: '',
-      operatingSystem: '',
-      status: created.status || '',
-      closed_at: null,
-    };
-    await this.fetchSupportRequestStatus(this.currentVuln.id);
-    // Step 2: Fetch steps (user API)
-    const stepsRes = await this.authStore.getUserFixVulnerabilitySteps(created._id);
+    // Simulate loading delay
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     this.isLoading = false;
 
-    if (stepsRes.status) {
-      const s = stepsRes.data;
+    // Use hardcoded data
+    this.currentVuln = {
+      id: 'HARDCODED_FIX_001',
+      name: String(plugin_name || 'Apache Struts 2 CVE-2017-5638 Remote Code Execution'),
+      risk: `${String((risk_factor || 'CRITICAL').toString()).toUpperCase()} RISK`,
+      asset: String(this.asset || '192.168.1.53'),
+      report_id: String(this.reportId || 'RPT-2024-001'),
+      progress: 0,
+      assignedTeam: 'Network Security Team',
+      deadline: '2024-12-31',
+      artifactsTools: 'iptables, nmap, curl',
+      operatingSystem: 'Linux',
+      status: 'in_progress',
+      closed_at: null,
+    };
+    await this.fetchSupportRequestStatus(this.currentVuln.id);
 
-      this.totalSteps = s.total_steps || 0;
-      this.currentStep = s.next_step || 1;
-      this.completedSteps = Array.from({ length: s.completed_steps || 0 }, (_, i) => i + 1);
+    this.totalSteps = 3;
+    this.currentStep = 1;
+    this.completedSteps = [];
 
-      // Enrich currentVuln
-      this.currentVuln.assignedTeam    = s.assigned_team || this.currentVuln.assignedTeam;
-      this.currentVuln.deadline        = s.deadline || '';
-      this.currentVuln.artifactsTools  = s.artifacts_tools || '';
-      this.currentVuln.operatingSystem = s.operating_system || '';
-      this.currentVuln.status          = s.vulnerability_status || this.currentVuln.status;
+    this.subtasks = [
+      {
+        id: 1,
+        name: 'Emergency network isolation',
+        assignedTeam: 'Network Security Team',
+        members: [
+          { user_id: 1, name: 'John Doe' },
+          { user_id: 2, name: 'Jane Smith' }
+        ],
+        status: 'pending',
+        deadline: '2024-12-31',
+        criticality: 'critical',
+        effortEstimate: '2 hours',
+        action: 'Block all inbound TCP traffic to port 5985 immediately',
+        filePath: '/etc/iptables/rules.v4 (or network firewall ACL)',
+        command: `# On 192.168.1.53
+iptables -I INPUT 1 -p tcp --dport 5985 -j DROP
+iptables -I OUTPUT 1 -p tcp --sport 5985 -m state --state ESTABLISHED -j ACCEPT
+iptables-save | tee /etc/iptables/rules.v4
 
-      // Map steps to subtasks
-      const os = (s.operating_system || 'windows').toLowerCase();
-      this.subtasks = (s.steps || []).map(step => {
-        const detail = step[os] || step['windows'] || {};
-        return {
-          id: step.step_number,
-          name: step.step_name,
-          assignedTeam: step.assigned_team || s.assigned_team || 'Unassigned',
-          members: step.assigned_team_members || [],
-          status: step.status,
-          deadline: step.deadline || s.deadline || '',
-          criticality: step.criticality || '',
-          effortEstimate: step.effort_estimate || '',
-          action: detail.action || '',
-          filePath: detail.system_file_path || '',
-          command: detail.commands_for_action || '',
-          expectedOutput: detail.expected_output || step.expected_output || '',
-          verificationCheck: detail.verification_check || step.verification_check || '',
-          whereToRunLabel:
-            detail.where_to_run_label ||
-            detail.where_to_run ||
-            step.where_to_run_label ||
-            step.where_to_run ||
-            '',
-          whereToRun:
-            detail.where_to_run ||
-            step.where_to_run ||
-            '',
-          tools: detail.artifacts_tools_used || [],
-          consideration: detail.precautions || '',
-          subTasks: (detail.sub_tasks || []).map(st => ({
-              description: st.description || '',
-              items: st.items || [],
-            })),
-        };
-      });
+# On network firewall (Cisco IOS example)
+ip access-list extended BLOCK_STRUTS
+  deny tcp any host 192.168.1.53 eq 5985
+  permit ip any any`,
+        expectedOutput: "Port 5985 shows as 'filtered' from all external sources",
+        verificationCheck: "nmap -Pn -p 5985 192.168.1.53 # Expected: 5985/tcp filtered wsman\ncurl --connect-timeout 3 http://192.168.1.53:5985/ && echo STILL_OPEN || echo BLOCKED",
+        whereToRunLabel: '192.168.1.53 (SSH as root) AND network firewall console',
+        whereToRun: '192.168.1.53 (SSH as root) AND network firewall console',
+        tools: ['iptables', 'nmap', 'curl', 'netfilter-persistent'],
+        consideration: 'Port 5985 is the Windows Remote Management (WinRM) default port — confirm what service is actually running here. Apache Struts normally runs on 8080 or 443. The Nessus finding on port 5985 may indicate a non-standard deployment.',
+        subTasks: [],
+      },
+      {
+        id: 2,
+        name: 'Configuration Management',
+        assignedTeam: 'DevOps Team',
+        members: [
+          { user_id: 3, name: 'Mike Johnson' }
+        ],
+        status: 'pending',
+        deadline: '2024-12-31',
+        criticality: 'high',
+        effortEstimate: '1 hour',
+        action: 'Update system configuration to disable vulnerable service',
+        filePath: 'C:\\temp\\cipher_before.txt',
+        command: 'nmap -sV -p 5985 192.168.1.53',
+        expectedOutput: 'The command completes without error messages. Confirm the change is applied as described in this step.',
+        verificationCheck: 'Check that the change is in place and there are no error messages or warnings.',
+        whereToRunLabel: 'Terminal / Command Prompt (open the terminal on your system)',
+        whereToRun: 'Terminal / Command Prompt',
+        tools: ['nmap'],
+        consideration: 'Ensure output path is writable',
+        subTasks: [
+          {
+            description: 'Backup current configuration',
+            items: [
+              'Create backup of existing configuration',
+              'Verify backup integrity',
+              'Store backup in secure location'
+            ]
+          }
+        ],
+      },
+      {
+        id: 3,
+        name: 'Patch Apache Struts to latest version',
+        assignedTeam: 'Application Team',
+        members: [
+          { user_id: 4, name: 'Sarah Williams' },
+          { user_id: 5, name: 'Tom Brown' }
+        ],
+        status: 'pending',
+        deadline: '2024-12-31',
+        criticality: 'critical',
+        effortEstimate: '3 hours',
+        action: 'Upgrade Apache Struts framework to version 2.5.33 or later to patch CVE-2017-5638',
+        filePath: '/opt/application/pom.xml',
+        command: `# Backup current application
+cp -r /opt/application /opt/application.backup
 
-      this.currentVuln.progress = this.totalSteps > 0
-        ? Math.round((s.completed_steps / s.total_steps) * 100)
-        : 0;
+# Update pom.xml with latest Struts version
+sed -i 's/<struts2.version>.*<\\/struts2.version>/<struts2.version>2.5.33<\\/struts2.version>/g' /opt/application/pom.xml
 
-      // Fetch activity timeline
-      await this.fetchTimeline(created._id);
+# Rebuild application
+cd /opt/application
+mvn clean package
 
-      // If all steps completed, fetch final feedback
-      if (s.completed_steps > 0 && s.completed_steps >= s.total_steps) {
-        await this.fetchFinalFeedback(created._id);
-      }
-    } else {
-      Swal.fire('Warning', 'Fix vulnerability created but could not load steps.', 'warning');
-    }
+# Deploy updated WAR file
+cp target/application.war /opt/tomcat/webapps/`,
+        expectedOutput: 'Application successfully rebuilt with Struts 2.5.33. WAR file deployed to Tomcat.',
+        verificationCheck: 'curl http://192.168.1.53:8080/application/ | grep "Struts 2.5.33"\nnmap --script http-vuln-cve2017-5638 192.168.1.53 -p 8080',
+        whereToRunLabel: '192.168.1.53 (SSH as application user)',
+        whereToRun: '192.168.1.53 (SSH as application user)',
+        tools: ['maven', 'nmap', 'curl', 'tomcat'],
+        consideration: 'This will require application downtime. Schedule during maintenance window. Ensure all dependencies are compatible with Struts 2.5.33 before upgrading.',
+        subTasks: [
+          {
+            description: 'Pre-deployment checks',
+            items: [
+              'Review application dependencies',
+              'Run compatibility tests',
+              'Notify stakeholders of maintenance window'
+            ]
+          },
+          {
+            description: 'Post-deployment verification',
+            items: [
+              'Run security scan to confirm vulnerability is patched',
+              'Verify application functionality',
+              'Monitor application logs for errors'
+            ]
+          }
+        ],
+      },
+    ];
+
+    this.currentVuln.progress = this.totalSteps > 0
+      ? Math.round((this.completedSteps.length / this.totalSteps) * 100)
+      : 0;
+
+    // Note: Timeline fetch may still work with hardcoded ID
+    // If it fails, that's okay - the steps data is what matters
   },
 };
 </script>
@@ -1642,11 +1761,11 @@ export default {
 /* ─── Expanded detail panel (rt-exp-* design) ───────────────────────── */
 .rt-task-expanded { padding: 0; display: flex; flex-direction: column; gap: 0; border-top: 1px solid #f1f5f9; }
 
-.rt-exp-row2 { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid #f1f5f9; }
+.rt-exp-row2 { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid #f1f5f9; background-color: #f1f3f5; }
 .rt-exp-cell { padding: 16px 20px; display: flex; flex-direction: column; gap: 6px; }
-.rt-exp-cell-divider { border-left: 1px solid #f1f5f9; }
+.rt-exp-cell-divider { border-left: 2px solid #cbced1; }
 .rt-exp-section { padding: 14px 20px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid #f1f5f9; }
-.rt-exp-label { font-size: 0.6rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #94a3b8; margin-bottom: 2px; }
+.rt-exp-label { font-size: 0.6rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #64748b; margin-bottom: 2px; }
 .rt-exp-text  { font-size: 0.84rem; color: #334155; margin: 0; line-height: 1.55; }
 .rt-exp-pretext { white-space: pre-line; }
 
