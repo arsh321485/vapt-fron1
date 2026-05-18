@@ -29,7 +29,7 @@
           <router-link to="/userassets">
           <button class="btn border-0" :class="{ activeBtn: isActive('/userassets') }">
           <i class="bi bi-laptop nav-menu"></i>
-          <p class="menu-heading">Assets</p></button>
+          <p class="menu-heading">Fix</p></button>
           </router-link>
         </div>
 

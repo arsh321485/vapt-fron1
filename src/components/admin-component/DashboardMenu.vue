@@ -58,8 +58,8 @@
         <div>
           <button class="btn border-0" :class="{ activeBtn: isActive('/assets') }" @click="navigateTo('/assets')">
           <i class="bi bi-laptop nav-menu"></i>
-          <p class="menu-heading">Assets</p></button>
-        </div>
+          <p class="menu-heading">Fix</p></button>
+          </div>
 
         <!-- Performance Monitoring - Restricted during testing -->
         <div>
