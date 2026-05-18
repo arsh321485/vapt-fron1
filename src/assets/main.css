@@ -1308,19 +1308,23 @@ html.legal-doc-sticky-context body {
   top: 0;
 }
 
-/* Global Severity Palette (Critical/High/Medium/Low) */
+/* Global Severity Palette — matches Mitigation Criteria Timeline gauges */
 :root {
-  --sev-critical-text: #dc2626;
-  --sev-critical-bg: #fee2e2;
-  --sev-high-text: #b42318;
-  --sev-high-bg: #f8dede;
-  --sev-medium-text: #d48806;
-  --sev-medium-bg: #f7e4bf;
-  --sev-low-text: #1f7a57;
-  --sev-low-bg: #cfead8;
+  --sev-critical-text: #b42318;
+  --sev-critical-bg: #f8dede;
+  --sev-critical-bar: #b42318;
+  --sev-high-text: #dc2626;
+  --sev-high-bg: #fee2e2;
+  --sev-high-bar: #dc2626;
+  --sev-medium-text: #f59e0b;
+  --sev-medium-bg: #fef3c7;
+  --sev-medium-bar: #f59e0b;
+  --sev-low-text: #10b981;
+  --sev-low-bg: #d1fae5;
+  --sev-low-bar: #10b981;
 }
 
-/* Critical palette (swapped with high) */
+/* Critical */
 .sev-critical,
 .critical-dot,
 .sev-pill-critical,
@@ -1329,10 +1333,10 @@ html.legal-doc-sticky-context body {
 .footer-critical,
 .tpc-sev-critical {
   color: var(--sev-critical-text) !important;
-  background: #fee2e2 !important;
+  background: var(--sev-critical-bg) !important;
 }
 
-/* High palette (swapped with critical) */
+/* High */
 .sev-high,
 .high-dot,
 .sev-pill-high,
@@ -1421,6 +1425,223 @@ th.sev-medium {
 th.sev-low {
   color: var(--sev-low-text) !important;
   background-color: var(--sev-low-bg) !important;
+}
+
+/* Team identity colors (Performance Monitoring card borders) */
+:root {
+  --team-network-color: #3b82f6;
+  --team-patch-color: #5b21b6;
+  --team-configuration-color: #06b6d4;
+  --team-architectural-color: #c026d3;
+  --team-network-bg: #eff6ff;
+  --team-patch-bg: #f5f3ff;
+  --team-configuration-bg: #ecfeff;
+  --team-architectural-bg: #fdf4ff;
+}
+
+.team-txt-network,
+.team-text-network { color: var(--team-network-color) !important; }
+.team-txt-patch,
+.team-text-patch { color: var(--team-patch-color) !important; }
+.team-txt-configuration,
+.team-txt-config,
+.team-text-configuration,
+.team-text-config { color: var(--team-configuration-color) !important; }
+.team-txt-architectural,
+.team-txt-arch,
+.team-text-architectural,
+.team-text-arch { color: var(--team-architectural-color) !important; }
+
+.team-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+  background: #f8fafc;
+}
+.team-badge.team-network,
+.team-network.team-badge {
+  color: var(--team-network-color) !important;
+  background: var(--team-network-bg) !important;
+  border-color: var(--team-network-color) !important;
+}
+.team-badge.team-patch,
+.team-patch.team-badge {
+  color: var(--team-patch-color) !important;
+  background: var(--team-patch-bg) !important;
+  border-color: var(--team-patch-color) !important;
+}
+.team-badge.team-configuration,
+.team-badge.team-config,
+.team-configuration.team-badge,
+.team-config.team-badge {
+  color: var(--team-configuration-color) !important;
+  background: var(--team-configuration-bg) !important;
+  border-color: var(--team-configuration-color) !important;
+}
+.team-badge.team-architectural,
+.team-badge.team-arch,
+.team-architectural.team-badge,
+.team-arch.team-badge {
+  color: var(--team-architectural-color) !important;
+  background: var(--team-architectural-bg) !important;
+  border-color: var(--team-architectural-color) !important;
+}
+.team-unassigned.team-badge,
+.team-badge.team-unassigned {
+  color: #64748b !important;
+  background: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+}
+
+.rt-team-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 50px;
+  border: 1px solid;
+  background: #f8fafc;
+}
+.rt-team-chip.rt-team-network {
+  color: var(--team-network-color);
+  background: var(--team-network-bg);
+  border-color: var(--team-network-color);
+}
+.rt-team-chip.rt-team-patch {
+  color: var(--team-patch-color);
+  background: var(--team-patch-bg);
+  border-color: var(--team-patch-color);
+}
+.rt-team-chip.rt-team-configuration {
+  color: var(--team-configuration-color);
+  background: var(--team-configuration-bg);
+  border-color: var(--team-configuration-color);
+}
+.rt-team-chip.rt-team-architectural {
+  color: var(--team-architectural-color);
+  background: var(--team-architectural-bg);
+  border-color: var(--team-architectural-color);
+}
+.rt-team-chip.rt-team-default {
+  color: #475569;
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}
+
+.rteam-badge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+.rteam-network {
+  color: var(--team-network-color) !important;
+  background: var(--team-network-bg) !important;
+  border-color: var(--team-network-color) !important;
+}
+.rteam-patch {
+  color: var(--team-patch-color) !important;
+  background: var(--team-patch-bg) !important;
+  border-color: var(--team-patch-color) !important;
+}
+.rteam-configuration {
+  color: var(--team-configuration-color) !important;
+  background: var(--team-configuration-bg) !important;
+  border-color: var(--team-configuration-color) !important;
+}
+.rteam-architectural {
+  color: var(--team-architectural-color) !important;
+  background: var(--team-architectural-bg) !important;
+  border-color: var(--team-architectural-color) !important;
+}
+
+.msu-team-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 12px;
+  border-radius: 50px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+}
+.msu-team-badge.team-txt-network { color: var(--team-network-color); border-color: var(--team-network-color); background: var(--team-network-bg); }
+.msu-team-badge.team-txt-patch { color: var(--team-patch-color); border-color: var(--team-patch-color); background: var(--team-patch-bg); }
+.msu-team-badge.team-txt-configuration { color: var(--team-configuration-color); border-color: var(--team-configuration-color); background: var(--team-configuration-bg); }
+.msu-team-badge.team-txt-architectural { color: var(--team-architectural-color); border-color: var(--team-architectural-color); background: var(--team-architectural-bg); }
+
+.cal-event-team-network,
+.cal-week-card-team-network,
+.cal-day-card-team-network,
+.cal-badge-team-network {
+  color: var(--team-network-color) !important;
+  border-color: var(--team-network-color) !important;
+  background: var(--team-network-bg) !important;
+}
+.cal-event-team-patch,
+.cal-week-card-team-patch,
+.cal-day-card-team-patch,
+.cal-badge-team-patch {
+  color: var(--team-patch-color) !important;
+  border-color: var(--team-patch-color) !important;
+  background: var(--team-patch-bg) !important;
+}
+.cal-event-team-config,
+.cal-event-team-configuration,
+.cal-week-card-team-config,
+.cal-week-card-team-configuration,
+.cal-day-card-team-config,
+.cal-day-card-team-configuration,
+.cal-badge-team-config,
+.cal-badge-team-configuration {
+  color: var(--team-configuration-color) !important;
+  border-color: var(--team-configuration-color) !important;
+  background: var(--team-configuration-bg) !important;
+}
+.cal-event-team-arch,
+.cal-event-team-architectural,
+.cal-week-card-team-arch,
+.cal-week-card-team-architectural,
+.cal-day-card-team-arch,
+.cal-day-card-team-architectural,
+.cal-badge-team-arch,
+.cal-badge-team-architectural {
+  color: var(--team-architectural-color) !important;
+  border-color: var(--team-architectural-color) !important;
+  background: var(--team-architectural-bg) !important;
+}
+
+.team-tab-pill.team-txt-network { color: var(--team-network-color); border-color: var(--team-network-color); }
+.team-tab-pill.team-txt-patch { color: var(--team-patch-color); border-color: var(--team-patch-color); }
+.team-tab-pill.team-txt-configuration { color: var(--team-configuration-color); border-color: var(--team-configuration-color); }
+.team-tab-pill.team-txt-architectural { color: var(--team-architectural-color); border-color: var(--team-architectural-color); }
+.team-tab-pill.active.team-txt-network,
+.team-tab-pill.team-txt-network.active {
+  color: var(--team-network-color) !important;
+  border-color: var(--team-network-color) !important;
+  background: var(--team-network-bg) !important;
+}
+.team-tab-pill.active.team-txt-patch,
+.team-tab-pill.team-txt-patch.active {
+  color: var(--team-patch-color) !important;
+  border-color: var(--team-patch-color) !important;
+  background: var(--team-patch-bg) !important;
+}
+.team-tab-pill.active.team-txt-configuration,
+.team-tab-pill.team-txt-configuration.active {
+  color: var(--team-configuration-color) !important;
+  border-color: var(--team-configuration-color) !important;
+  background: var(--team-configuration-bg) !important;
+}
+.team-tab-pill.active.team-txt-architectural,
+.team-tab-pill.team-txt-architectural.active {
+  color: var(--team-architectural-color) !important;
+  border-color: var(--team-architectural-color) !important;
+  background: var(--team-architectural-bg) !important;
 }
 
 /* SweetAlert2 above fixed nav / sign-in overlay (overlay z-index ~9999–10000) */

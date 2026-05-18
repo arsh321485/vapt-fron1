@@ -420,7 +420,7 @@ export default {
 
 .rc-sev-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
 .rc-sev-bar { width: 5px; height: 22px; border-radius: 3px; flex-shrink: 0; }
-.rc-bar-critical { background: #dc2626; }
+.rc-bar-critical { background: #b42318; }
 .rc-bar-high     { background: #f97316; }
 .rc-bar-medium   { background: #f59e0b; }
 .rc-bar-low      { background: #0f696e; }

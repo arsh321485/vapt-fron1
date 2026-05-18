@@ -257,6 +257,18 @@
                         <span class="rt-asset-chip">{{ currentVuln.asset }}</span>
                       </div>
                       <h3 class="rt-vuln-name">{{ currentVuln.name }}</h3>
+                      <div v-if="currentVuln.description" class="rt-vuln-desc-wrap">
+                        <h5 class="rt-vuln-desc-title">Description</h5>
+                        <p class="rt-vuln-desc-text">{{ getVulnDisplayDescription() }}</p>
+                        <button
+                          v-if="showVulnReadMore()"
+                          type="button"
+                          class="rt-btn-read-more"
+                          @click="toggleVulnDescription"
+                        >
+                          {{ vulnDescriptionExpanded ? 'Read less' : 'Read more' }}
+                        </button>
+                      </div>
                     </div>
                     <div class="rt-tech-right">
                       <span class="rt-progress-label">REMEDIATION PROGRESS</span>
@@ -269,7 +281,9 @@
                   <div class="rt-tech-meta-row mt-3">
                     <div v-if="currentVuln.assignedTeam" class="rt-tech-meta-item">
                       <span class="rt-tech-meta-label">ASSIGNED TEAM</span>
-                      <span class="rt-tech-meta-val">{{ currentVuln.assignedTeam }}</span>
+                      <span class="rt-team-chip" :class="getTeamChipClass(currentVuln.assignedTeam)">
+                        <i class="bi bi-people-fill me-1"></i>{{ currentVuln.assignedTeam }}
+                      </span>
                     </div>
                     <!-- <div v-if="currentVuln.deadline" class="rt-tech-meta-item">
                       <span class="rt-tech-meta-label">DEADLINE</span>
@@ -277,11 +291,17 @@
                     </div> -->
                     <div v-if="currentVuln.operatingSystem" class="rt-tech-meta-item">
                       <span class="rt-tech-meta-label">OS</span>
-                      <span class="rt-tech-meta-val">{{ currentVuln.operatingSystem }}</span>
+                      <div class="d-inline-block mt-1">
+                        <span class="rt-tool-chip">{{ currentVuln.operatingSystem }}</span>
+                      </div>
                     </div>
                     <div v-if="currentVuln.artifactsTools" class="rt-tech-meta-item">
                       <span class="rt-tech-meta-label">ARTIFACTS / TOOLS</span>
-                      <span class="rt-tech-meta-val">{{ currentVuln.artifactsTools }}</span>
+                      <div class="d-flex flex-wrap gap-2 mt-1">
+                        <span v-for="(tool, idx) in parseTools(currentVuln.artifactsTools)" :key="idx" class="rt-tool-chip">
+                          {{ tool }}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -323,7 +343,7 @@
                           </div>
                           <div class="rt-task-info">
                             <span class="rt-task-name">{{ task.name }}</span>
-                            <span class="rt-task-assignee">{{ task.assignedTeam }}</span>
+                            <!-- <span class="rt-task-assignee">{{ task.assignedTeam }}</span> -->
                           </div>
                         </div>
                         <div class="d-flex align-items-center gap-2 rt-task-right">
@@ -341,45 +361,56 @@
                       <!-- Expanded detail panel -->
                       <div v-if="expandedTasks.includes(idx)" class="rt-task-expanded" @click.stop>
 
-                        <!-- ROW 1: ACTION | ASSIGNED TO -->
-                        <div class="rt-exp-row2">
-                          <div class="rt-exp-cell">
-                            <span class="rt-exp-label">ACTION</span>
-                            <p class="rt-exp-text rt-exp-pretext">{{ cleanText(task.action) }}</p>
-                            <!-- SUB-TASKS under ACTION -->
-                            <div v-if="task.subTasks && task.subTasks.length" class="mt-3">
-                              <span class="rt-exp-label">SUB-TASKS</span>
-                              <div class="rt-subtask-list mt-1">
-                                <div v-for="(sub, si) in task.subTasks" :key="si" class="rt-subtask-entry" @click.stop>
-                                  <div v-if="!sub.items || sub.items.length === 0" class="rt-subtask-dash">-</div>
-                                  <div v-else class="d-flex align-items-center gap-2">
-                                    <input type="checkbox" class="rt-checkbox" />
-                                    <span class="rt-subtask-desc">{{ sub.description }}</span>
-                                  </div>
-                                  <div v-if="sub.items && sub.items.length > 0" class="rt-checklist mt-1 ps-4">
-                                    <label v-for="(item, ii) in sub.items" :key="ii" class="rt-check-item">
+                        <div class="rt-exp-primary-stack">
+                          <!-- ROW 1: ACTION | ASSIGNED TO -->
+                          <div class="rt-exp-row2">
+                            <div class="rt-exp-cell">
+                              <span class="rt-exp-label">ACTION</span>
+                              <p class="rt-exp-text rt-exp-pretext">{{ cleanText(task.action) }}</p>
+                              <!-- SUB-TASKS under ACTION -->
+                              <div v-if="task.subTasks && task.subTasks.length" class="mt-3">
+                                <span class="rt-exp-label">SUB-TASKS</span>
+                                <div class="rt-subtask-list mt-1">
+                                  <div v-for="(sub, si) in task.subTasks" :key="si" class="rt-subtask-entry" @click.stop>
+                                    <div v-if="!sub.items || sub.items.length === 0" class="rt-subtask-dash">-</div>
+                                    <div v-else class="d-flex align-items-center gap-2">
                                       <input type="checkbox" class="rt-checkbox" />
-                                      <span>{{ item }}</span>
-                                    </label>
+                                      <span class="rt-subtask-desc">{{ sub.description }}</span>
+                                    </div>
+                                    <div v-if="sub.items && sub.items.length > 0" class="rt-checklist mt-1 ps-4">
+                                      <label v-for="(item, ii) in sub.items" :key="ii" class="rt-check-item">
+                                        <input type="checkbox" class="rt-checkbox" />
+                                        <span>{{ item }}</span>
+                                      </label>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                          <div class="rt-exp-cell rt-exp-cell-divider" v-if="task.members && task.members.length">
-                            <span class="rt-exp-label">ASSIGNED TO</span>
-                            <div class="d-flex flex-wrap gap-2 mt-2">
-                              <span v-for="m in task.members" :key="m.user_id" class="rt-member-chip">
-                                <i class="bi bi-person-fill me-1"></i>{{ m.name }}
-                              </span>
+                            <div class="rt-exp-cell rt-exp-cell-divider" v-if="task.members && task.members.length">
+                              <span class="rt-exp-label">ASSIGNED TO</span>
+                              <div class="d-flex flex-wrap gap-2 mt-2">
+                                <span v-for="m in task.members" :key="m.user_id" class="rt-member-chip">
+                                  <i class="bi bi-person-fill me-1"></i>{{ m.name }}
+                                </span>
+                              </div>
                             </div>
                           </div>
+
                         </div>
 
-                        <!-- FILE PATH -->
-                        <div v-if="task.filePath && task.filePath !== 'N/A'" class="rt-exp-section">
-                          <span class="rt-exp-label">FILE PATH</span>
-                          <div class="rt-exp-filepath">{{ task.filePath }}</div>
+                        <!-- FILE PATH (outside grey stack; same column + padding as ACTION) -->
+                        <div v-if="task.filePath && task.filePath !== 'N/A'" class="rt-exp-filepath-row">
+                          <div class="rt-exp-filepath-col">
+                            <span class="rt-exp-label">FILE PATH</span>
+                            <div class="rt-filepath-wrapper">
+                              <div class="rt-exp-filepath">{{ task.filePath }}</div>
+                              <button class="rt-copy-btn-sm" @click.stop="copyCommand(task.filePath)" title="Copy to clipboard">
+                                <i class="bi bi-clipboard"></i>
+                              </button>
+                            </div>
+                          </div>
+                          <div class="rt-exp-filepath-spacer" aria-hidden="true"></div>
                         </div>
 
                         <!-- WHERE TO RUN -->
@@ -406,8 +437,15 @@
                             <p class="rt-exp-text rt-exp-pretext">{{ cleanText(task.expectedOutput) }}</p>
                           </div>
                           <div class="rt-exp-cell rt-exp-cell-divider" v-if="task.verificationCheck && task.verificationCheck !== 'N/A'">
-                            <span class="rt-exp-label">VERIFICATION CHECK</span>
-                            <p class="rt-exp-text rt-exp-pretext">{{ cleanText(task.verificationCheck) }}</p>
+                            <div class="rt-exp-verify-head">
+                              <span class="rt-exp-label">VERIFICATION CHECK</span>
+                              <button type="button" class="rt-exp-verify-copy" @click.stop="copyCommand(cleanText(task.verificationCheck))" title="Copy to clipboard">
+                                <i class="bi bi-clipboard"></i>
+                              </button>
+                            </div>
+                            <div class="rt-exp-verify-wrap">
+                              <span class="rt-exp-verify-body">{{ cleanText(task.verificationCheck) }}</span>
+                            </div>
                           </div>
                         </div>
 
@@ -572,6 +610,7 @@
 import DashboardMenu from '@/components/user-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/user-component/DashboardHeader.vue';
 import { useAuthStore } from '@/stores/authStore';
+import { getTeamChipClass, getTeamTextClass } from '@/utils/teamColors';
 import Swal from 'sweetalert2';
 
 export default {
@@ -618,9 +657,12 @@ export default {
       extPopupOriginalDeadlineDays: null,
       extPopupOptionsLoading: false,
       timelineLoading: false,
+      vulnDescriptionExpanded: false,
+      descriptionPreviewLimit: 280,
       currentVuln: {
         id: null,
         name: '',
+        description: '',
         risk: '',
         asset: '',
         report_id: null,
@@ -699,6 +741,44 @@ export default {
   },
 
   methods: {
+    parseTools(toolsString) {
+      if (!toolsString) return [];
+      return String(toolsString)
+        .split(',')
+        .map(t => t.trim())
+        .filter(t => t.length > 0);
+    },
+    getTeamChipClass,
+    getTeamTextClass,
+    resolveRouteDescription() {
+      const fromQuery = this.$route.query.description;
+      if (fromQuery) return this.cleanText(String(fromQuery));
+
+      const name = String(this.$route.query.plugin_name || '').toLowerCase();
+      if (name.includes('tls') && name.includes('1.0')) {
+        return (
+          'The remote service accepts connections encrypted with TLS version 1.0. TLS 1.0 has ' +
+          'known cryptographic weaknesses. An attacker may be able to exploit these flaws to ' +
+          'conduct man-in-the-middle attacks or decrypt communications between affected clients ' +
+          'and the service. Organizations should disable TLS 1.0 and enforce TLS 1.2 or higher.'
+        );
+      }
+      return '';
+    },
+    toggleVulnDescription() {
+      this.vulnDescriptionExpanded = !this.vulnDescriptionExpanded;
+    },
+    getVulnDisplayDescription() {
+      const fullText = this.cleanText(this.currentVuln.description) || '-';
+      if (this.vulnDescriptionExpanded || fullText.length <= this.descriptionPreviewLimit) {
+        return fullText;
+      }
+      return `${fullText.slice(0, this.descriptionPreviewLimit).trimEnd()}...`;
+    },
+    showVulnReadMore() {
+      const text = this.cleanText(this.currentVuln.description) || '';
+      return text.length > this.descriptionPreviewLimit;
+    },
     cleanText(text) {
       if (!text) return '';
       return String(text)
@@ -1122,6 +1202,7 @@ export default {
       this.currentVuln = {
         id: String(fixVulId),
         name: String(plugin_name || 'Apache Struts 2 CVE-2017-5638 Remote Code Execution'),
+        description: this.resolveRouteDescription(),
         risk: `${String((risk_factor || 'CRITICAL').toString()).toUpperCase()} RISK`,
         asset: String(this.asset || '192.168.1.53'),
         report_id: String(this.reportId || 'RPT-2024-001'),
@@ -1277,6 +1358,7 @@ cp target/application.war /opt/tomcat/webapps/`,
     this.currentVuln = {
       id: 'HARDCODED_FIX_001',
       name: String(plugin_name || 'Apache Struts 2 CVE-2017-5638 Remote Code Execution'),
+      description: this.resolveRouteDescription(),
       risk: `${String((risk_factor || 'CRITICAL').toString()).toUpperCase()} RISK`,
       asset: String(this.asset || '192.168.1.53'),
       report_id: String(this.reportId || 'RPT-2024-001'),
@@ -1686,14 +1768,20 @@ cp target/application.war /opt/tomcat/webapps/`,
 .rt-tech-left   { flex: 1; min-width: 0; }
 .rt-critical-badge { display: inline-block; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; background: #f8dede; color: #b42318; padding: 4px 12px; border-radius: 50px; margin-bottom: 10px; }
 .rt-vuln-name   { font-size: 1.3rem; font-weight: 800; color: #1e293b; margin: 0 0 6px; line-height: 1.3; }
+.rt-vuln-desc-wrap { margin-top: 10px; max-width: 640px; }
+.rt-vuln-desc-title { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #241447; margin: 0 0 5px; }
+.rt-vuln-desc-text { font-size: 0.875rem; color: #49454f; line-height: 1.6; margin: 0 0 4px; }
+.rt-btn-read-more { background: transparent; border: none; padding: 0; color: #0f696e; font-size: 0.8rem; font-weight: 700; cursor: pointer; }
 .rt-label-text  { font-size: 0.82rem; color: #64748b; font-weight: 500; }
 .rt-asset-chip  { display: inline-block; font-size: 0.92rem; font-weight: 700; background: #e0f2fe; color: #0369a1; padding: 4px 14px; border-radius: 50px; border: 1.5px solid #bae6fd; letter-spacing: 0.01em; }
 .rt-tech-right  { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; margin-left: 24px; }
 .rt-progress-label { font-size: 0.6rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #94a3b8; }
 .rt-progress-num { font-size: 2.5rem; font-weight: 800; color: #241447; line-height: 1.1; }
 .rt-progress-pct { font-size: 1.2rem; font-weight: 700; color: #64748b; }
-.rt-tech-meta-row { display: flex; flex-wrap: wrap; gap: 16px; padding-top: 14px; border-top: 1px solid #f1f5f9; }
-.rt-tech-meta-item { display: flex; flex-direction: column; gap: 2px; min-width: 120px; }
+.rt-tech-meta-row { display: flex; flex-wrap: wrap; gap: 40px; padding-top: 14px; border-top: 1px solid #f1f5f9; }
+.rt-tech-meta-item { display: flex; flex-direction: column; gap: 6px; min-width: 120px; align-items: center; text-align: center; }
+.rt-tech-meta-item:nth-child(2) { margin-left: 20px; }
+.rt-tech-meta-item:nth-child(3) { margin-left: 30px; }
 .rt-tech-meta-label { font-size: 0.58rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #94a3b8; }
 .rt-tech-meta-val   { font-size: 0.82rem; font-weight: 600; color: #1e293b; }
 
@@ -1761,10 +1849,21 @@ cp target/application.war /opt/tomcat/webapps/`,
 /* ─── Expanded detail panel (rt-exp-* design) ───────────────────────── */
 .rt-task-expanded { padding: 0; display: flex; flex-direction: column; gap: 0; border-top: 1px solid #f1f5f9; }
 
-.rt-exp-row2 { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid #f1f5f9; background-color: #f1f3f5; }
-.rt-exp-cell { padding: 16px 20px; display: flex; flex-direction: column; gap: 6px; }
+/* Grey stack: ACTION | ASSIGNED TO only */
+.rt-exp-primary-stack { background-color: #f1f3f5; border-bottom: 1px solid #f1f5f9; border-radius: 14px 14px 0 0; overflow: hidden; }
+.rt-exp-primary-stack > .rt-exp-row2 { background-color: transparent; border-bottom: none; }
+.rt-exp-filepath-row { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid #f1f5f9; background: #ffffff; }
+.rt-exp-filepath-col { padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; box-sizing: border-box; }
+.rt-exp-filepath-spacer { border-left: 2px solid #cbced1; }
+
+.rt-exp-row2 { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid #f1f5f9; background-color: #f1f3f5; margin: 0; padding: 0; }
+.rt-task-expanded > .rt-exp-row2 { border-radius: 8px; overflow: hidden; }
+.rt-exp-cell { padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; box-sizing: border-box; }
 .rt-exp-cell-divider { border-left: 2px solid #cbced1; }
 .rt-exp-section { padding: 14px 20px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid #f1f5f9; }
+.rt-exp-section-wide { padding: 16px 20px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid #f1f5f9; }
+.rt-filepath-wrapper { position: relative; width: 100%; }
+.rt-copy-btn-sm { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: transparent; color: #7c3aed; border: none; border-radius: 4px; padding: 4px 10px; font-size: 0.72rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px; white-space: nowrap; }
 .rt-exp-label { font-size: 0.6rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #64748b; margin-bottom: 2px; }
 .rt-exp-text  { font-size: 0.84rem; color: #334155; margin: 0; line-height: 1.55; }
 .rt-exp-pretext { white-space: pre-line; }
@@ -1772,13 +1871,14 @@ cp target/application.war /opt/tomcat/webapps/`,
 .rt-exp-filepath {
   background: #f5f3ff;
   border: 1px solid #e9d5ff;
-  border-radius: 6px;
-  padding: 8px 14px;
+  border-radius: 8px;
+  padding: 12px 48px 12px 0;
   font-family: 'Courier New', Courier, monospace;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   color: #7c3aed;
   word-break: break-all;
-  line-height: 1.6;
+  line-height: 1.65;
+  position: relative;
 }
 
 .rt-exp-code-block {
@@ -1808,6 +1908,12 @@ cp target/application.war /opt/tomcat/webapps/`,
   margin-top: 1px;
 }
 .rt-exp-copy-btn:hover { opacity: 1; }
+.rt-exp-verify-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; }
+.rt-exp-verify-head .rt-exp-label { margin-bottom: 0; }
+.rt-exp-verify-wrap { background: transparent; border: none; border-radius: 0; padding: 0; }
+.rt-exp-verify-body { display: block; margin: 0; font-family: 'Courier New', Courier, monospace; font-size: 0.82rem; color: #1e293b; line-height: 1.6; white-space: pre-wrap; word-break: break-all; }
+.rt-exp-verify-copy { flex-shrink: 0; background: transparent; border: none; color: #94a3b8; font-size: 0.95rem; cursor: pointer; padding: 4px 10px; line-height: 1; border-radius: 4px; display: flex; align-items: center; justify-content: center; transition: color 0.15s, background 0.15s; }
+.rt-exp-verify-copy:hover { color: #64748b; background: #f1f5f9; }
 
 .rt-exp-consideration { margin: 14px 20px 18px; background: #fffbeb; border: 1px solid #fbbf24; border-radius: 8px; padding: 12px 16px; }
 .rt-exp-consideration-hd { display: flex; align-items: center; gap: 6px; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #b45309; margin-bottom: 6px; }
@@ -1822,6 +1928,10 @@ cp target/application.war /opt/tomcat/webapps/`,
 .rt-subtask-desc { font-size: 0.84rem; font-weight: 600; color: #334155; }
 .rt-subtask-dash { font-size: 0.84rem; color: #94a3b8; padding-left: 4px; }
 .rt-member-chip { display: inline-flex; align-items: center; font-size: 0.72rem; font-weight: 600; background: #e0f2f1; color: #0f696e; padding: 3px 10px; border-radius: 50px; border: 1px solid rgba(15,105,110,0.2); }
+
+.rt-tool-chip { display: inline-block; font-size: 0.68rem; font-weight: 600; background: #f1f5f9; color: #475569; padding: 2px 9px; border-radius: 50px; border: 1px solid #e2e8f0; }
+
+/* rt-team-chip colors: global main.css */
 
 /* Complete step section */
 .rt-step-complete-section { margin-top: 20px; padding-top: 18px; border-top: 1px solid #f1f5f9; }
@@ -1865,7 +1975,7 @@ cp target/application.war /opt/tomcat/webapps/`,
 
 /* ─── Right Sidebar ─────────────────────────────────────────────────── */
 .rt-sidebar { display: flex; flex-direction: column; gap: 18px; }
-.rt-timeline-card { background: #ffffff; border-radius: 14px; padding: 20px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); border: 1px solid #f1f5f9; }
+.rt-timeline-card { background: #ffffff; border-radius: 14px; overflow: hidden; padding: 20px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); border: 1px solid #f1f5f9; }
 .rt-card-heading { display: block; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; color: #94a3b8; margin-bottom: 16px; }
 .rt-tl-list { display: flex; flex-direction: column; }
 .rt-tl-item { display: flex; gap: 10px; padding-bottom: 16px; }

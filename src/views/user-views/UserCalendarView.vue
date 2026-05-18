@@ -270,7 +270,7 @@
                     <p class="cal-detail-label">ASSIGNED TO TEAM</p>
                     <div class="cal-detail-team-row">
                       <div class="cal-detail-team-icon"><i class="bi bi-people-fill"></i></div>
-                      <span class="cal-detail-val">{{ selectedEvent.team || 'Network Security' }}</span>
+                      <span class="cal-detail-val" :class="getTeamTextClass(selectedEvent.team)">{{ selectedEvent.team || 'Network Security' }}</span>
                     </div>
                   </div>
 
@@ -447,6 +447,7 @@
 import DashboardMenu from '@/components/user-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/user-component/DashboardHeader.vue';
 import { useAuthStore } from '@/stores/authStore';
+import { getTeamTextClass } from '@/utils/teamColors';
 
 export default {
   name: 'UserCalendarView',
@@ -516,6 +517,7 @@ export default {
   },
 
   methods: {
+    getTeamTextClass,
     // ── Color helpers ──────────────────────────────────────────────────────────
     severityColor(sev) {
       const map = { critical: 'maroon', high: 'dl-blue', medium: 'dl-orange', low: 'dl-green' };
@@ -1240,10 +1242,7 @@ export default {
 .cal-event-dl-orange   { background: #fef3c7; color: #b45309; } /* Medium */
 .cal-event-dl-green    { background: #ccfbf1; color: #0f766e; } /* Low */
 .cal-event-dl-red      { background: #fef2f2; color: rgb(220, 38, 38); }
-.cal-event-team-network { background: rgb(239, 246, 255); color: rgb(59, 130, 246); }
-.cal-event-team-patch   { background: rgb(236, 253, 245); color: rgb(16, 185, 129); }
-.cal-event-team-config  { background: rgb(255, 247, 237); color: rgb(249, 115, 22); }
-.cal-event-team-arch    { background: rgb(254, 242, 242); color: rgb(220, 38, 38); }
+/* cal-event-team-* colors: global main.css */
 
 /* ── Event Popup ── */
 .cal-popup-overlay {
@@ -1461,10 +1460,10 @@ export default {
 .cal-week-card-dl-orange { background: #fef3c7; color: #b45309; border-left: 3px solid #fcd34d; } /* Medium */
 .cal-week-card-dl-green  { background: #ccfbf1; color: #0f766e; border-left: 3px solid #5eead4; } /* Low */
 /* Week card colors — team extension events */
-.cal-week-card-team-network { background: rgb(239, 246, 255); border-left: 3px solid rgb(59, 130, 246); }
-.cal-week-card-team-patch   { background: rgb(236, 253, 245); border-left: 3px solid rgb(16, 185, 129); }
-.cal-week-card-team-config  { background: rgb(255, 247, 237); border-left: 3px solid rgb(249, 115, 22); }
-.cal-week-card-team-arch    { background: rgb(254, 242, 242); border-left: 3px solid rgb(220, 38, 38); }
+.cal-week-card-team-network,
+.cal-week-card-team-patch,
+.cal-week-card-team-config,
+.cal-week-card-team-arch { border-left-width: 3px; border-left-style: solid; }
 /* Fallback removed — canonical .cal-week-card-dl-blue defined above */
 
 .cal-week-type-badge {
@@ -1481,10 +1480,7 @@ export default {
 .cal-badge-dl-blue   { background: #dc2626; color: white; } /* High */
 .cal-badge-dl-orange { background: #b45309; color: white; } /* Medium */
 .cal-badge-dl-green  { background: #0f766e; color: white; } /* Low */
-.cal-badge-team-network { background: rgb(59, 130, 246); color: #fff; }
-.cal-badge-team-patch   { background: rgb(16, 185, 129); color: #fff; }
-.cal-badge-team-config  { background: rgb(249, 115, 22); color: #fff; }
-.cal-badge-team-arch    { background: rgb(220, 38, 38);  color: #fff; }
+/* cal-badge-team-* colors: global main.css */
 
 .cal-week-event-title {
   font-size: 0.75rem;
@@ -1576,10 +1572,10 @@ export default {
 .cal-day-card-dl-orange { background: #fef3c7; color: #b45309; border-left: 4px solid #fcd34d; } /* Medium */
 .cal-day-card-dl-green  { background: #ccfbf1; color: #0f766e; border-left: 4px solid #5eead4; } /* Low */
 /* Day card colors — team extension events */
-.cal-day-card-team-network { background: rgb(239, 246, 255); border-left: 4px solid rgb(59, 130, 246); }
-.cal-day-card-team-patch   { background: rgb(236, 253, 245); border-left: 4px solid rgb(16, 185, 129); }
-.cal-day-card-team-config  { background: rgb(255, 247, 237); border-left: 4px solid rgb(249, 115, 22); }
-.cal-day-card-team-arch    { background: rgb(254, 242, 242); border-left: 4px solid rgb(220, 38, 38); }
+.cal-day-card-team-network,
+.cal-day-card-team-patch,
+.cal-day-card-team-config,
+.cal-day-card-team-arch { border-left-width: 4px; border-left-style: solid; }
 
 .cal-day-event-top {
   display: flex;

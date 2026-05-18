@@ -19,7 +19,7 @@
               </router-link>
               <div class="d-flex align-items-baseline gap-3 mt-2">
                 <h2 class="msu-title">Missing Security Updates</h2>
-                <span v-if="activeTeamKey" class="msu-team-badge">{{ activeTeamKey }}</span>
+                <span v-if="activeTeamKey" class="msu-team-badge" :class="teamTextClass(activeTeamKey)">{{ activeTeamKey }}</span>
               </div>
               <p class="msu-subtitle">Vulnerability patch status by asset group</p>
             </div>
@@ -107,6 +107,7 @@
 import DashboardMenu from '@/components/user-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/user-component/DashboardHeader.vue';
 import { useAuthStore } from '@/stores/authStore';
+import { getTeamTextClass } from '@/utils/teamColors';
 
 export default {
   name: 'UserMissingSecurityUpdatesView',
@@ -144,6 +145,9 @@ export default {
     },
   },
   methods: {
+    teamTextClass(team) {
+      return getTeamTextClass(team);
+    },
     async loadData() {
       const store = useAuthStore();
       this.loading = true;

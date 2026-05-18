@@ -927,7 +927,7 @@
           <div class="mte-modal-header">
             <div class="d-flex align-items-baseline gap-3">
               <h3 class="mte-modal-title">Common Vulnerabilities</h3>
-              <span v-if="selectedTeam" class="msu-team-badge">{{ selectedTeam }}</span>
+              <span v-if="selectedTeam" class="msu-team-badge" :class="teamTextClass(selectedTeam)">{{ selectedTeam }}</span>
             </div>
             <button type="button" class="mte-close-btn" @click="closeMsuModal">
               <i class="bi bi-x-lg"></i>
@@ -1029,6 +1029,7 @@
 import DashboardMenu from '@/components/user-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/user-component/DashboardHeader.vue';
 import { useAuthStore } from '@/stores/authStore';
+import { getTeamTextClass } from '@/utils/teamColors';
 import Swal from 'sweetalert2';
 
 export default {
@@ -1410,6 +1411,9 @@ export default {
     },
   },
   methods: {
+    teamTextClass(team) {
+      return getTeamTextClass(team);
+    },
     startCommonWalkthrough() {
       this.commonWalkthroughStepIndex = 0;
       this.commonWalkthroughActive = true;

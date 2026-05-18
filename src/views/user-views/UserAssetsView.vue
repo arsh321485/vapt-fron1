@@ -11,7 +11,27 @@
           </div>
 
           <div class="col-11 assets-content">
-            <div class="assets-split-panel">
+            <div class="assets-page-shell">
+              <div class="assets-list-mode-tabs">
+                <button
+                  type="button"
+                  class="assets-mode-tab"
+                  :class="{ 'assets-mode-tab-active': leftPanelTab === 'assets' }"
+                  @click="leftPanelTab = 'assets'"
+                >
+                  All Assets
+                </button>
+                <button
+                  type="button"
+                  class="assets-mode-tab"
+                  :class="{ 'assets-mode-tab-active': leftPanelTab === 'vulnerabilities' }"
+                  @click="leftPanelTab = 'vulnerabilities'"
+                >
+                  All Vulnerabilities
+                </button>
+              </div>
+
+            <div v-if="leftPanelTab === 'assets'" class="assets-split-panel">
 
               <!-- Left Panel: Asset List -->
               <div class="assets-left-panel">
@@ -46,7 +66,7 @@
                       class="asset-item-new"
                       :class="{ 'asset-item-active': activeIndex === asset.asset }"
                       @click="setActive(asset)">
-                      <div class="d-flex justify-content-between align-items-start mb-1">
+                      <div class="d-flex justify-content-between align-items-start asset-item-top">
                         <div class="d-flex align-items-center gap-2">
                           <input v-if="showCheckboxes" type="checkbox" v-model="asset.selected" class="form-check-input" />
                           <input v-if="showHoldCheckboxes" type="checkbox" v-model="asset.selected" class="form-check-input" />
@@ -57,7 +77,7 @@
                           {{ getTopSeverity(asset.severity_counts) }}
                         </span>
                       </div>
-                      <p class="asset-sub mb-2">
+                      <p class="asset-sub">
                         <i class="bi bi-link-45deg me-1"></i>
                         {{ asset.isInternal ? 'Internal' : 'External' }}
                       </p>
@@ -200,11 +220,11 @@
                   <!-- Vulnerabilities Tab -->
                   <div v-if="activeTab === 'vulnerabilities'">
                     <div class="d-flex gap-2 mb-4">
-                      <button class="sev-pill" :class="{ 'sev-pill-active': activeSeverity === 'All' }" @click="setSeverity('All')">All</button>
-                      <button class="sev-pill sev-pill-critical" :class="{ 'sev-pill-active': activeSeverity === 'Critical' }" @click="setSeverity('Critical')">Critical</button>
-                      <button class="sev-pill sev-pill-high" :class="{ 'sev-pill-active': activeSeverity === 'High' }" @click="setSeverity('High')">High</button>
-                      <button class="sev-pill sev-pill-medium" :class="{ 'sev-pill-active': activeSeverity === 'Medium' }" @click="setSeverity('Medium')">Medium</button>
-                      <button class="sev-pill sev-pill-low" :class="{ 'sev-pill-active': activeSeverity === 'Low' }" @click="setSeverity('Low')">Low</button>
+                      <button class="sev-pill" :class="{ 'sev-pill-active': activeFilters.includes('All') }" @click="setSeverityFilter('All')">All</button>
+                      <button class="sev-pill sev-pill-critical" :class="{ 'sev-pill-active': activeFilters.includes('Critical') }" @click="setSeverityFilter('Critical')">Critical</button>
+                      <button class="sev-pill sev-pill-high" :class="{ 'sev-pill-active': activeFilters.includes('High') }" @click="setSeverityFilter('High')">High</button>
+                      <button class="sev-pill sev-pill-medium" :class="{ 'sev-pill-active': activeFilters.includes('Medium') }" @click="setSeverityFilter('Medium')">Medium</button>
+                      <button class="sev-pill sev-pill-low" :class="{ 'sev-pill-active': activeFilters.includes('Low') }" @click="setSeverityFilter('Low')">Low</button>
                     </div>
 
                     <h3 class="section-label mb-3">Active Threats</h3>
@@ -270,7 +290,7 @@
                                 :to="{
                                   name: 'user-remediation-timeline',
                                   params: { reportId: authStore.userLatestReportId, asset: activeIndex },
-                                  query: { plugin_name: vuln.vul_name, risk_factor: vuln.severity }
+                                  query: { plugin_name: vuln.vul_name, risk_factor: vuln.severity, description: vuln.description || '' }
                                 }"
                                 class="btn-fix-now text-decoration-none">
                                 Fix Now
@@ -490,6 +510,12 @@
               </transition>
 
             </div>
+
+            <div v-else class="assets-vuln-mode-wrap">
+              <AssetsVulnerabilitiesMode :is-user="true" />
+            </div>
+
+            </div>
           </div>
         </div>
       </div>
@@ -500,6 +526,7 @@
 <script>
 import DashboardMenu from "@/components/user-component/DashboardMenu.vue";
 import DashboardHeader from "@/components/user-component/DashboardHeader.vue";
+import AssetsVulnerabilitiesMode from "@/components/assets/AssetsVulnerabilitiesMode.vue";
 import { useAuthStore } from "@/stores/authStore";
 
 export default {
@@ -507,12 +534,14 @@ export default {
   components: {
     DashboardMenu,
     DashboardHeader,
+    AssetsVulnerabilitiesMode,
   },
   data() {
     return {
+      leftPanelTab: "assets",
       authStore: useAuthStore(),
       selectedSeverity: "",
-      activeSeverity: "All",
+      activeFilters: ['All'],
       searchQuery: "",
       activeTab: "vulnerabilities",
       showCheckboxes: false,
@@ -563,9 +592,11 @@ export default {
       });
     },
     filteredVulnerabilities() {
-      const vulns = this.openAssetVulnerabilities;
-      if (this.activeSeverity === 'All') return vulns;
-      return vulns.filter(v => v.severity === this.activeSeverity);
+      let vulns = this.openAssetVulnerabilities;
+      if (!this.activeFilters.includes('All')) {
+        vulns = vulns.filter(v => this.activeFilters.includes(v.severity));
+      }
+      return vulns;
     },
     filteredAssets() {
       if (!this.searchQuery) return this.assets;
@@ -642,8 +673,19 @@ export default {
       this.activeTab = "exceptions";
       await this.loadSupportRequestsByHost(this.activeIndex);
     },
-    setSeverity(sev) {
-      this.activeSeverity = sev;
+    setSeverityFilter(type) {
+      if (type === 'All') {
+        this.activeFilters = ['All'];
+        return;
+      }
+      const filters = this.activeFilters.filter(f => f !== 'All');
+      const idx = filters.indexOf(type);
+      if (idx === -1) {
+        filters.push(type);
+      } else {
+        filters.splice(idx, 1);
+      }
+      this.activeFilters = filters.length === 0 ? ['All'] : filters;
     },
     isDescriptionExpanded(index) {
       return !!this.expandedDescriptions[index];
@@ -756,6 +798,7 @@ export default {
           id: item.fix_vulnerability_id,
           plugin_name: item.plugin_name,
           risk_factor: item.risk_factor,
+          description: item.description || '',
         }
       });
     },
@@ -990,9 +1033,55 @@ export default {
   padding: 0;
 }
 
+.assets-page-shell {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 72px);
+  min-height: 0;
+}
+
+.assets-list-mode-tabs {
+  display: flex;
+  gap: 0;
+  flex-shrink: 0;
+  padding: 62px 16px 0;
+  background: #fff;
+  border-bottom: 1px solid rgba(203, 196, 208, 0.25);
+}
+
+.assets-mode-tab {
+  border: none;
+  background: transparent;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #64748b;
+  padding: 10px 16px;
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.assets-mode-tab:hover {
+  color: #241447;
+}
+
+.assets-mode-tab-active {
+  color: #0f696e;
+  border-bottom-color: #0f696e;
+}
+
+.assets-vuln-mode-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  background: #f8f9fc;
+}
+
 .assets-split-panel {
   display: flex;
-  height: calc(100vh - 72px);
+  flex: 1;
+  min-height: 0;
   background: #f8f9fc;
 }
 
@@ -1000,17 +1089,17 @@ export default {
 .assets-left-panel {
   width: 33%;
   min-width: 280px;
-  border-right: 1px solid rgba(203, 196, 208, 0.3);
+  max-width: 380px;
+  border-right: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
   background: #ffffff;
   overflow: hidden;
-  padding-top: 70px;
 }
 
 .left-panel-header {
-  padding: 18px 16px 14px;
-  border-bottom: 1px solid rgba(203, 196, 208, 0.2);
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid #f1f5f9;
   flex-shrink: 0;
 }
 
@@ -1078,22 +1167,33 @@ export default {
 .asset-list-scroll {
   flex: 1;
   overflow-y: auto;
+  padding: 4px 0;
 }
 .asset-list-scroll::-webkit-scrollbar { width: 4px; }
 .asset-list-scroll::-webkit-scrollbar-track { background: transparent; }
 .asset-list-scroll::-webkit-scrollbar-thumb { background: #cbc4d0; border-radius: 10px; }
 
 .asset-item-new {
-  padding: 12px 16px;
-  border-bottom: 1px solid rgba(203, 196, 208, 0.15);
+  padding: 10px 14px;
+  border-bottom: 1px solid #f8fafc;
+  border-left: 3px solid transparent;
   cursor: pointer;
-  transition: background 0.15s;
-  border-left: 4px solid transparent;
+  transition: background 0.15s, border-color 0.15s;
 }
-.asset-item-new:hover { background: #f2f3f6; }
+.asset-item-new:hover {
+  background: #f8fafc;
+  border-left-color: #cbd5e1;
+}
 .asset-item-active {
-  background: #ffffff;
-  border-left: 4px solid #0f696e !important;
+  background: #f0fdf4;
+  border-left-color: #10b981 !important;
+}
+.asset-item-active:hover {
+  background: #f0fdf4;
+}
+
+.asset-item-top {
+  margin-bottom: 3px;
 }
 
 .asset-ip {
@@ -1105,6 +1205,8 @@ export default {
 .asset-sub {
   font-size: 0.73rem;
   color: #49454f;
+  margin: 0 0 5px;
+  line-height: 1.3;
 }
 
 /* Severity badges */

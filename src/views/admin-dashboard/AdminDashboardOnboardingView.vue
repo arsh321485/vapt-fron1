@@ -3967,11 +3967,7 @@ mounted() {
 .rsev-red, .rsev-high { background: #fee2e2; color: #dc2626; }
 .rsev-orange, .rsev-medium { background: #fef3c7; color: #b45309; }
 .rsev-darkgreen, .rsev-low { background: #ccfbf1; color: #0f766e; }
-.rteam-badge { padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
-.rteam-network { background: #3b82f6; color: white; }
-.rteam-patch { background: #10b981; color: white; }
-.rteam-configuration { background: #b42318; color: white; }
-.rteam-architectural { background: #b42318; color: white; }
+/* rteam-badge colors: global main.css */
 .rstatus-open { padding: 6px 12px; border-radius: 20px; background: #f8dede; color: #b42318; font-size: 0.85rem; font-weight: 600; display: inline-block; }
 .rstatus-closed { padding: 6px 12px; border-radius: 20px; background: #d1fae5; color: #059669; font-size: 0.85rem; font-weight: 600; display: inline-block; }
 

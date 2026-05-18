@@ -19,7 +19,7 @@
               </router-link>
               <div class="d-flex align-items-baseline gap-3 mt-2">
                 <h2 class="msu-title">Common Vulnerabilities</h2>
-                <span v-if="activeTeamKey" class="msu-team-badge">{{ activeTeamKey }}</span>
+                <span v-if="activeTeamKey" class="msu-team-badge" :class="teamTextClass(activeTeamKey)">{{ activeTeamKey }}</span>
               </div>
               <p class="msu-subtitle">Vulnerability patch status by asset group</p>
             </div>
@@ -107,6 +107,7 @@
 import DashboardMenu from "@/components/admin-component/DashboardMenu.vue";
 import DashboardHeader from "@/components/admin-component/DashboardHeader.vue";
 import { useAuthStore } from "@/stores/authStore";
+import { getTeamTextClass } from '@/utils/teamColors';
 
 export default {
   name: "MissingSecurityUpdatesView",
@@ -170,6 +171,9 @@ export default {
       if (s === 'closed' || s === 'close') return 'text-patched';
       return 'text-inprogress';
     },
+    teamTextClass(team) {
+      return getTeamTextClass(team);
+    },
     exportPDF() {
       window.print();
     },
@@ -221,14 +225,7 @@ export default {
   margin: 0;
 }
 
-.msu-team-badge {
-  background: #f0ecff;
-  color: #241447;
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 3px 12px;
-  border-radius: 50px;
-}
+/* msu-team-badge team colors: global main.css */
 
 .msu-subtitle {
   font-size: 0.875rem;
@@ -278,8 +275,8 @@ export default {
   border-radius: 4px;
   flex-shrink: 0;
 }
-.bar-critical { background: #dc2626; }
-.bar-high     { background: #b42318; }
+.bar-critical { background: #b42318; }
+.bar-high     { background: #dc2626; }
 .bar-medium   { background: #b45309; }
 .bar-low      { background: #0f766e; }
 
@@ -361,8 +358,8 @@ export default {
   border-radius: 6px;
   letter-spacing: 0.04em;
 }
-.msu-sev-critical { background: #fee2e2; color: #dc2626; }
-.msu-sev-high     { background: #f8dede; color: #b42318; }
+.msu-sev-critical { background: #f8dede; color: #b42318; }
+.msu-sev-high     { background: #fee2e2; color: #dc2626; }
 .msu-sev-medium   { background: #fef3c7; color: #b45309; }
 .msu-sev-low      { background: #ccfbf1; color: #0f766e; }
 

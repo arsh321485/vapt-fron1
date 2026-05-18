@@ -32,7 +32,7 @@
             <div class="exc-table-card">
               <!-- Controls -->
               <div class="exc-table-controls">
-                <div class="d-flex gap-3">
+                <div class="d-flex gap-3 flex-wrap align-items-center">
                   <button
                     class="exc-tab-btn"
                     :class="{ 'exc-tab-active': activeTab === 'all' }"
@@ -57,21 +57,25 @@
                     Closed
                     <span class="exc-tab-count">{{ sortedSupportRequests.filter((r) => (r.status || '').toLowerCase() === 'closed').length }}</span>
                   </button>
-                  <button class="exc-btn-filter">
+                  <!-- <button class="exc-btn-filter">
                     <i class="bi bi-funnel me-1"></i> Filter View
                   </button>
                   <button class="exc-btn-sort" @click="toggleSort">
                     <i class="bi bi-sort-down me-1"></i> Sort by Date
+                  </button> -->
+                  <button
+                    v-for="team in teamOptions"
+                    :key="team.value"
+                    type="button"
+                    class="exc-team-pill"
+                    :class="{ 'exc-team-pill-active': selectedTeam === team.value }"
+                    :style="pillStyle(team)"
+                    @click="setTeam(team.value)"
+                  >
+                    {{ team.label }}
                   </button>
-                  <select v-model="selectedTeam" class="exc-select">
-                    <option value="all">All Teams</option>
-                    <option value="Patch Management">Patch Management</option>
-                    <option value="Configuration Management">Configuration Management</option>
-                    <option value="Network Security">Network Security</option>
-                    <option value="Architectural Flaws">Architectural Flaws</option>
-                  </select>
                 </div>
-                <span class="exc-showing-badge">Showing {{ paginatedSupportRequests.length }} requests</span>
+                <!-- <span class="exc-showing-badge">Showing {{ paginatedSupportRequests.length }} requests</span> -->
               </div>
 
               <!-- Table -->
@@ -283,6 +287,7 @@
 import DashboardMenu from '@/components/admin-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/admin-component/DashboardHeader.vue';
 import { useAuthStore } from "@/stores/authStore";
+import { SUPPORT_TEAM_OPTIONS, teamPillStyle } from '@/utils/teamColors';
 
 export default {
   name: 'ExceptionsView',
@@ -309,6 +314,7 @@ export default {
       selectedLocation: "greece",
       sortOrder: 'asc' ,
       selectedTeam: "all",
+      teamOptions: [...SUPPORT_TEAM_OPTIONS],
       activeTab: "all",
       currentPage: 1,
       itemsPerPage: 6,
@@ -435,8 +441,14 @@ export default {
       return "exc-so-dot-critical";
     },
     toggleSort() {
-  this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
-},
+      this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
+    },
+    setTeam(value) {
+      this.selectedTeam = value;
+    },
+    pillStyle(team) {
+      return teamPillStyle(team, this.selectedTeam);
+    },
     getShortDescription(desc) {
     if (!desc) return "";
 
@@ -642,9 +654,27 @@ export default {
   background: #16a34a;
   color: #ffffff;
 }
-.exc-select {
-  border: 1px solid #e2e8f0; border-radius: 8px; padding: 7px 12px;
-  font-size: 0.82rem; color: #1e293b; background: #f2f3f6; outline: none; cursor: pointer;
+/* Team pills — border colors match Performance Monitoring team cards */
+.exc-team-pill {
+  border-radius: 50px;
+  padding: 7px 16px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: #f8fafc;
+  border-style: solid;
+  color: #1e293b;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+.exc-team-pill:hover {
+  background: #f1f5f9;
+}
+.exc-team-pill-active {
+  background: #f8fafc;
+  font-weight: 700;
 }
 .exc-showing-badge {
   font-size: 0.72rem; font-weight: 600; color: #49454f;

@@ -274,7 +274,7 @@
                     <p class="cal-detail-label">ASSIGNED TO TEAM</p>
                     <div class="cal-detail-team-row">
                       <div class="cal-detail-team-icon"><i class="bi bi-people-fill"></i></div>
-                      <span class="cal-detail-val">{{ selectedEvent.team || 'Network Security' }}</span>
+                      <span class="cal-detail-val" :class="getTeamTextClass(selectedEvent.team)">{{ selectedEvent.team || 'Network Security' }}</span>
                     </div>
                   </div>
 
@@ -451,6 +451,7 @@
 import DashboardMenu from '@/components/admin-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/admin-component/DashboardHeader.vue';
 import { useAuthStore } from '@/stores/authStore';
+import { getTeamTextClass } from '@/utils/teamColors';
 
 export default {
   name: 'CalendarView',
@@ -563,6 +564,7 @@ export default {
     };
   },
   methods: {
+    getTeamTextClass,
     authStore() {
       return useAuthStore();
     },
@@ -1302,11 +1304,7 @@ export default {
 .cal-event-dl-orange { background: #fef3c7; color: #b45309; } /* Medium */
 .cal-event-dl-green  { background: #ccfbf1; color: #0f766e; } /* Low */
 .cal-event-dl-red    { background: #f8dede; color: #b42318; }
-/* Team-based extension event colors */
-.cal-event-team-network { background: rgb(239, 246, 255); color: rgb(59, 130, 246); }
-.cal-event-team-patch   { background: rgb(236, 253, 245); color: rgb(16, 185, 129); }
-.cal-event-team-config  { background: rgb(255, 247, 237); color: rgb(249, 115, 22); }
-.cal-event-team-arch    { background: rgb(254, 242, 242); color: rgb(220, 38, 38); }
+/* Team event colors: global main.css */
 
 /* ── Event Popup ── */
 .cal-popup-overlay {
@@ -1538,10 +1536,10 @@ export default {
 .cal-week-card-dl-green  { background: #ccfbf1; color: #0f766e; border-left: 3px solid #5eead4; } /* Low */
 .cal-week-card-dl-red   { background: #f8dede; border-left: 3px solid #b42318; }
 /* Team-based extension event colors */
-.cal-week-card-team-network { background: rgb(239, 246, 255); border-left: 3px solid rgb(59, 130, 246); }
-.cal-week-card-team-patch   { background: rgb(236, 253, 245); border-left: 3px solid rgb(16, 185, 129); }
-.cal-week-card-team-config  { background: rgb(255, 247, 237); border-left: 3px solid rgb(249, 115, 22); }
-.cal-week-card-team-arch    { background: rgb(254, 242, 242); border-left: 3px solid rgb(220, 38, 38); }
+.cal-week-card-team-network,
+.cal-week-card-team-patch,
+.cal-week-card-team-config,
+.cal-week-card-team-arch { border-left-width: 3px; border-left-style: solid; }
 
 .cal-week-type-badge {
   display: inline-block;
@@ -1564,10 +1562,7 @@ export default {
 .cal-badge-dl-green  { background: #0f766e; color: white; } /* Low */
 .cal-badge-dl-red    { background: #fef2f2; color: #dc2626; }
 /* Team-based extension badge colors */
-.cal-badge-team-network { background: rgb(239, 246, 255); color: rgb(59, 130, 246); }
-.cal-badge-team-patch   { background: rgb(236, 253, 245); color: rgb(16, 185, 129); }
-.cal-badge-team-config  { background: rgb(255, 247, 237); color: rgb(249, 115, 22); }
-.cal-badge-team-arch    { background: rgb(254, 242, 242); color: rgb(220, 38, 38); }
+/* cal-badge-team-* colors: global main.css */
 
 .cal-week-event-title {
   font-size: 0.82rem;
@@ -1750,11 +1745,10 @@ export default {
 .cal-day-card-dl-orange { background: #fef3c7; color: #b45309; border-left: 4px solid #fcd34d; } /* Medium */
 .cal-day-card-dl-green  { background: #ccfbf1; color: #0f766e; border-left: 4px solid #5eead4; } /* Low */
 .cal-day-card-dl-red    { background: #fef2f2; border-left: 4px solid #dc2626; }
-/* Team-based day event colors */
-.cal-day-card-team-network { background: rgb(239, 246, 255); border-left: 4px solid rgb(59, 130, 246); }
-.cal-day-card-team-patch   { background: rgb(236, 253, 245); border-left: 4px solid rgb(16, 185, 129); }
-.cal-day-card-team-config  { background: rgb(255, 247, 237); border-left: 4px solid rgb(249, 115, 22); }
-.cal-day-card-team-arch    { background: rgb(254, 242, 242); border-left: 4px solid rgb(220, 38, 38); }
+.cal-day-card-team-network,
+.cal-day-card-team-patch,
+.cal-day-card-team-config,
+.cal-day-card-team-arch { border-left-width: 4px; border-left-style: solid; }
 /* Day API event card */
 .cal-day-api-event {
   border-radius: 10px;

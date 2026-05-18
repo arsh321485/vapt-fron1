@@ -1,0 +1,2 @@
+          <div v-else class="av-manual-tab">
+            <motion v-for="asset in selectedVuln.assets" :key="asset" class="av-asset-section">

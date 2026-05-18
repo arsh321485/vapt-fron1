@@ -586,6 +586,7 @@ import DashboardMenu from '@/components/admin-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/admin-component/DashboardHeader.vue';
 import Chart from 'chart.js/auto';
 import { useAuthStore } from '@/stores/authStore';
+import { PERFORMANCE_TEAM_CONFIGS, TEAM_COLORS } from '@/utils/teamColors';
 
 export default {
   name: 'ViewReportPage',
@@ -670,10 +671,7 @@ export default {
     },
     teamCardConfigs() {
       return [
-        { name: 'Network Security',         color: '#3b82f6', gradient: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', icon: '🔗' },
-        { name: 'Patch Management',         color: '#10b981', gradient: 'linear-gradient(135deg, #10b981, #059669)', icon: '🔧' },
-        { name: 'Configuration Management', color: '#f97316', gradient: 'linear-gradient(135deg, #f97316, #ea580c)', icon: '⚙️' },
-        { name: 'Architectural Flaws',      color: '#dc2626', gradient: 'linear-gradient(135deg, #dc2626, #b91c1c)', icon: '🏗️' },
+        ...PERFORMANCE_TEAM_CONFIGS.map(c => ({ ...c })),
       ];
     },
   },
@@ -802,10 +800,10 @@ export default {
           type: 'doughnut',
           data: (() => {
             const colorMap = {
-              'Network Security': '#3b82f6',
-              'Patch Management': '#10b981',
-              'Configuration Management': '#f97316',
-              'Architectural Flaws': '#dc2626',
+              'Network Security': TEAM_COLORS.network,
+              'Patch Management': TEAM_COLORS.patch,
+              'Configuration Management': TEAM_COLORS.configuration,
+              'Architectural Flaws': TEAM_COLORS.architectural,
             };
             const dist = this.teamDistribution.length
               ? this.teamDistribution.filter(d => d.team !== 'Unassigned')
@@ -1424,7 +1422,7 @@ export default {
   justify-content: center;
   margin-top: 1px;
 }
-.risk-icon-critical { background: #fee2e2; color: #dc2626; }
+.risk-icon-critical { background: #f8dede; color: #b42318; }
 .risk-icon-high     { background: #fef3c7; color: #b45309; }
 .risk-icon-medium   { background: #fef9c3; color: #a16207; }
 
@@ -1496,8 +1494,8 @@ export default {
   font-weight: 800;
   letter-spacing: 0.02em;
 }
-.rem-sev-critical { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
-.rem-sev-high     { background: #f8dede; color: #b42318; border: 1px solid #efb7b1; }
+.rem-sev-critical { background: #f8dede; color: #b42318; border: 1px solid #efb7b1; }
+.rem-sev-high     { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
 .rem-sev-medium   { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
 .rem-sev-low      { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
 
@@ -1849,8 +1847,8 @@ export default {
   border-radius: 8px;
   padding: 2px 10px;
 }
-.velocity-pct-critical { color: #dc2626; background: #fef2f2; }
-.velocity-pct-high     { color: #b42318; background: #fff1f1; }
+.velocity-pct-critical { color: #b42318; background: #f8dede; }
+.velocity-pct-high     { color: #dc2626; background: #fee2e2; }
 .velocity-pct-overall  { color: #241447; background: #f4f0ff; }
 
 .velocity-bar-track {
@@ -1864,7 +1862,7 @@ export default {
   border-radius: 999px;
   transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.velocity-fill-critical { background: #dc2626; }
+.velocity-fill-critical { background: #b42318; }
 .velocity-fill-high     { background: linear-gradient(90deg, #dc2626, #f87171); }
 .velocity-fill-overall  { background: linear-gradient(90deg, #241447, #0f696e); }
 
@@ -1996,8 +1994,8 @@ export default {
   border-radius: 999px;
   letter-spacing: 0.02em;
 }
-.tpc-sev-critical { background: #fee2e2; color: #dc2626; }
-.tpc-sev-high     { background: #f8dede; color: #b42318; }
+.tpc-sev-critical { background: #f8dede; color: #b42318; }
+.tpc-sev-high     { background: #fee2e2; color: #dc2626; }
 .tpc-sev-medium   { background: #fef3c7; color: #b45309; }
 .tpc-sev-low      { background: #ccfbf1; color: #0f766e; }
 
@@ -2144,16 +2142,11 @@ export default {
 .cell-asset { display: inline-block; background: #f0ecff; color: #241447; font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 8px; }
 .cell-date { font-size: 0.78rem; color: #64748b; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
-.team-badge { display: inline-block; padding: 3px 10px; border-radius: 8px; font-size: 0.72rem; font-weight: 700; }
-.team-network       { background: #dbeafe; color: #1d4ed8; }
-.team-patch         { background: #d1fae5; color: #059669; }
-.team-configuration { background: #ffedd5; color: #c2410c; }
-.team-architectural { background: #fee2e2; color: #b91c1c; }
-.team-unassigned    { background: #f3f4f6; color: #6b7280; }
+/* team-badge colors: global main.css */
 
 .sev-badge-pill { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.03em; }
-.sev-badge-critical { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
-.sev-badge-high     { background: #f8dede; color: #b42318; border: 1px solid #efb7b1; }
+.sev-badge-critical { background: #f8dede; color: #b42318; border: 1px solid #efb7b1; }
+.sev-badge-high     { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
 .sev-badge-medium   { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
 .sev-badge-low      { background: #ccfbf1; color: #0f766e; border: 1px solid #5eead4; }
 
@@ -2190,8 +2183,8 @@ export default {
 .table-footer-text strong { color: #241447; font-weight: 800; }
 .table-footer-badges { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .footer-sev-pill { font-size: 0.65rem; font-weight: 800; padding: 3px 11px; border-radius: 999px; }
-.footer-critical { color: #dc2626; }
-.footer-high     { color: #b42318; }
+.footer-critical { color: #b42318; }
+.footer-high     { color: #dc2626; }
 .footer-medium   { color: #b45309; }
 .footer-low      { color: #0f766e; }
 

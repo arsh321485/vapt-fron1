@@ -125,6 +125,7 @@
 import DashboardMenu from '@/components/admin-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/admin-component/DashboardHeader.vue';
 import { useAuthStore } from '@/stores/authStore';
+import { PERFORMANCE_TEAM_CONFIGS } from '@/utils/teamColors';
 
 export default {
   name: 'PerformanceMonitoringView',
@@ -133,12 +134,7 @@ export default {
     return {
       loading: false,
       teamDetail: {},
-      teamConfigs: [
-        { name: 'Network Security',         focus: 'Infrastructure Focus',    color: '#3b82f6', gradient: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', icon: '🔗' },
-        { name: 'Patch Management',         focus: 'Lifecycle Management',    color: '#10b981', gradient: 'linear-gradient(135deg, #10b981, #059669)', icon: '🔧' },
-        { name: 'Configuration Management', focus: 'System Configuration',    color: '#f97316', gradient: 'linear-gradient(135deg, #f97316, #ea580c)', icon: '⚙️' },
-        { name: 'Architectural Flaws',      focus: 'Design & Architecture',   color: '#dc2626', gradient: 'linear-gradient(135deg, #dc2626, #b91c1c)', icon: '🏗️' },
-      ],
+      teamConfigs: [...PERFORMANCE_TEAM_CONFIGS],
     };
   },
   computed: {
@@ -353,10 +349,10 @@ export default {
   margin-bottom: 10px;
 }
 
-.pm-bar-critical { height: 100%; background: #dc2626; }
-.pm-bar-high     { height: 100%; background: #f97316; }
-.pm-bar-medium   { height: 100%; background: #d97706; }
-.pm-bar-low      { height: 100%; background: #16a34a; }
+.pm-bar-critical { height: 100%; background: var(--sev-critical-bar); }
+.pm-bar-high     { height: 100%; background: var(--sev-high-bar); }
+.pm-bar-medium   { height: 100%; background: var(--sev-medium-bar); }
+.pm-bar-low      { height: 100%; background: var(--sev-low-bar); }
 
 .pm-sev-boxes {
   display: grid;
@@ -369,10 +365,10 @@ export default {
   border-radius: 8px;
   text-align: center;
 }
-.pm-sev-box-critical { background: rgb(254, 242, 242); }
-.pm-sev-box-high     { background: rgb(255, 247, 237); }
-.pm-sev-box-medium   { background: rgb(254, 252, 232); }
-.pm-sev-box-low      { background: rgb(240, 253, 244); }
+.pm-sev-box-critical { background: var(--sev-critical-bg); }
+.pm-sev-box-high     { background: var(--sev-high-bg); }
+.pm-sev-box-medium   { background: var(--sev-medium-bg); }
+.pm-sev-box-low      { background: var(--sev-low-bg); }
 
 .pm-sev-box-label {
   font-size: 0.6rem;
@@ -380,10 +376,10 @@ export default {
   text-transform: uppercase;
   margin-bottom: 2px;
 }
-.pm-sev-box-critical .pm-sev-box-label { color: rgb(220, 38, 38); }
-.pm-sev-box-high     .pm-sev-box-label { color: rgb(249, 115, 22); }
-.pm-sev-box-medium   .pm-sev-box-label { color: rgb(217, 119, 6); }
-.pm-sev-box-low      .pm-sev-box-label { color: rgb(22, 163, 74); }
+.pm-sev-box-critical .pm-sev-box-label { color: var(--sev-critical-text); }
+.pm-sev-box-high     .pm-sev-box-label { color: var(--sev-high-text); }
+.pm-sev-box-medium   .pm-sev-box-label { color: var(--sev-medium-text); }
+.pm-sev-box-low      .pm-sev-box-label { color: var(--sev-low-text); }
 
 .pm-sev-box-value {
   font-size: 0.9rem;

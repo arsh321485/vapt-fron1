@@ -32,7 +32,7 @@
               </div>
               <div class="hero-mini-card">
                 <p class="mini-label mb-2">Assigned Team</p>
-                <h4 class="mini-value mb-1">{{ activeTab }}</h4>
+                <h4 class="mini-value mb-1" :class="getTeamTextClass(activeTab)">{{ activeTab }}</h4>
                 <p class="mini-note mb-0">Current response owner</p>
               </div>
               <div class="hero-mini-card hero-mini-card-dark">
@@ -47,7 +47,7 @@
                 v-for="(tab, idx) in tabs"
                 :key="tab.key"
                 class="team-tab-pill"
-                :class="{ active: activeTab === tab.key }"
+                :class="[getTeamTextClass(tab.key), { active: activeTab === tab.key }]"
                 @click="setActiveTab(tab.key, idx)"
               >
                 <i :class="tab.icon"></i> {{ tab.label }}
@@ -57,7 +57,7 @@
             <div class="criteria-panel mb-4">
               <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
                 <h5 class="mb-0">Risk Criteria Timelines</h5>
-                <span class="criteria-team">Assigned to {{ activeTab }} team</span>
+                <span class="criteria-team" :class="getTeamTextClass(activeTab)">Assigned to {{ activeTab }} team</span>
               </div>
 
               <div class="criteria-grid">
@@ -207,6 +207,7 @@
 import DashboardMenu from "@/components/admin-component/DashboardMenu.vue";
 import DashboardHeader from "@/components/admin-component/DashboardHeader.vue";
 import { useAuthStore } from "@/stores/authStore";
+import { getTeamTextClass } from '@/utils/teamColors';
 
 export default {
   name: "MitigationStrategyView",
@@ -270,6 +271,7 @@ export default {
   },
 
   methods: {
+    getTeamTextClass,
     setActiveTab(key, index) {
       this.activeTab = key;
       this.activeTabIndex = index;
@@ -571,11 +573,7 @@ export default {
   font-weight: 600;
 }
 
-.team-tab-pill.active {
-  background: #241447;
-  color: #fff;
-  border-color: #241447;
-}
+/* active team tab colors: global main.css .team-tab-pill.active.team-txt-* */
 
 .criteria-panel,
 .findings-panel {
