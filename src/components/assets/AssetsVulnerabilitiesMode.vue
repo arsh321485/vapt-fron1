@@ -99,24 +99,9 @@
               ● {{ statusLabel(selectedVuln.status).toUpperCase() }}
             </span>
           </div>
-          <h1 class="av-dh-title">{{ selectedVuln.vul_name }}</h1>
-          <div class="av-dh-meta-row">
-            <div class="av-dh-meta-item">
-              <div class="av-dh-meta-lbl">CVE</div>
-              <div class="av-dh-meta-val mono">{{ selectedVuln.cve || '—' }}</div>
-            </div>
-            <div class="av-dh-meta-item">
-              <div class="av-dh-meta-lbl">CVSS Score</div>
-              <div class="av-dh-meta-val cvss-val">{{ selectedVuln.cvss_score ?? '—' }}</div>
-            </div>
-            <div class="av-dh-meta-item">
-              <div class="av-dh-meta-lbl">Exposure</div>
-              <div class="av-dh-meta-val">{{ selectedVuln.exposure || 'Internal network' }}</div>
-            </div>
-            <div class="av-dh-meta-item">
-              <div class="av-dh-meta-lbl">Affected assets</div>
-              <div class="av-dh-meta-val">{{ selectedVuln.assets.length }}</div>
-            </div>
+          <div class="av-title-row">
+            <h1 class="av-dh-title">{{ selectedVuln.vul_name }}</h1>
+            <span class="av-cvss-pill">CVSS {{ selectedVuln.cvss_score || '—' }}</span>
           </div>
         </div>
 
@@ -134,13 +119,21 @@
         </div>
 
         <div class="av-affected-block">
-          <div class="av-aab-label">Affected Assets</div>
+          <div class="av-aab-label">Affected Assets ({{ selectedVuln.assets.length }})</div>
           <div class="av-aab-chips">
             <span v-for="ip in selectedVuln.assets" :key="ip" class="av-asset-chip">{{ ip }}</span>
           </div>
         </div>
 
         <div class="av-detail-tabs">
+          <button
+            type="button"
+            class="av-dtab"
+            :class="{ active: detailTab === 'affected' }"
+            @click="setDetailTab('affected')"
+          >
+            🎯 Affected Assets
+          </button>
           <button
             type="button"
             class="av-dtab"
@@ -200,14 +193,52 @@
             </div>
           </div>
 
-          <div v-else class="av-manual-tab">
+          <div v-else-if="detailTab === 'manual'" class="av-manual-tab">
             <div v-for="asset in selectedVuln.assets" :key="asset" class="av-asset-section">
               <div class="av-asset-label">
                 <span class="av-asset-ip-badge">{{ asset }}</span>
                 <span v-if="assetMeta(asset).port" class="av-asset-port">:{{ assetMeta(asset).port }}</span>
                 <span class="av-asset-os-lbl">{{ assetMeta(asset).os }}</span>
               </div>
-              <ManualRemediationStepsPanel />
+              <ManualRemediationStepsPanel :is-user="isUser" />
+            </div>
+          </div>
+
+          <div v-else-if="detailTab === 'affected'" class="av-affected-tab">
+            <div class="av-assets-table-card">
+              <table class="av-assets-table">
+                <thead>
+                  <tr>
+                    <th>IP</th>
+                    <th>Steps complete</th>
+                    <th>Send for verification</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="!affectedAssetsTableRows.length">
+                    <td colspan="3" class="av-assets-empty">No affected assets for this vulnerability.</td>
+                  </tr>
+                  <tr v-for="asset in affectedAssetsTableRows" :key="asset.ip">
+                    <td class="av-assets-ip">{{ asset.ip }}</td>
+                    <td>
+                      <div class="av-assets-steps-cell">
+                        <div class="av-assets-progress-track">
+                          <div class="av-assets-progress-fill" :style="{ width: (asset.progress || 0) + '%' }"></div>
+                        </div>
+                        <span class="av-assets-steps-text">{{ asset.stepsCompleted }}/{{ asset.totalSteps }}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <button type="button" class="av-assets-verify-btn" :disabled="asset.stepsCompleted < asset.totalSteps" @click="sendForVerification(asset)">
+                        <i class="bi bi-send" aria-hidden="true"></i> Send for verification
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div v-if="affectedAssetsTableRows.length" class="av-assets-table-footer">
+                Showing {{ affectedAssetsTableRows.length }} asset{{ affectedAssetsTableRows.length === 1 ? '' : 's' }}
+              </div>
             </div>
           </div>
         </div>
@@ -217,6 +248,7 @@
 </template>
 
 <script>
+import Swal from 'sweetalert2';
 import { useAuthStore } from '@/stores/authStore';
 import ManualRemediationStepsPanel from '@/components/assets/ManualRemediationStepsPanel.vue';
 
@@ -238,8 +270,52 @@ export default {
       vulnQuery: '',
       activeFilters: ['All'],
       selectedKey: null,
-      detailTab: 'auto',
+      detailTab: 'affected',
       descriptionExpanded: false,
+      affectedAssetsData: [
+        {
+          ip: '210.14.23.65',
+          status: 'In Progress',
+          statusClass: 'status-progress',
+          stepsCompleted: 2,
+          totalSteps: 4,
+          progress: 50,
+          steps: [
+            { name: 'Identify vulnerability location', completed: true },
+            { name: 'Backup current configuration', completed: true },
+            { name: 'Apply security patch', completed: false },
+            { name: 'Verify fix implementation', completed: false },
+          ],
+        },
+        {
+          ip: '192.168.1.100',
+          status: 'Pending',
+          statusClass: 'status-pending',
+          stepsCompleted: 0,
+          totalSteps: 4,
+          progress: 0,
+          steps: [
+            { name: 'Identify vulnerability location', completed: false },
+            { name: 'Backup current configuration', completed: false },
+            { name: 'Apply security patch', completed: false },
+            { name: 'Verify fix implementation', completed: false },
+          ],
+        },
+        {
+          ip: '172.16.0.50',
+          status: 'Completed',
+          statusClass: 'status-completed',
+          stepsCompleted: 4,
+          totalSteps: 4,
+          progress: 100,
+          steps: [
+            { name: 'Identify vulnerability location', completed: true },
+            { name: 'Backup current configuration', completed: true },
+            { name: 'Apply security patch', completed: true },
+            { name: 'Verify fix implementation', completed: true },
+          ],
+        },
+      ],
     };
   },
   computed: {
@@ -317,6 +393,24 @@ export default {
     selectedVuln() {
       if (!this.selectedKey) return null;
       return this.groupedVulns.find(v => v._key === this.selectedKey) || null;
+    },
+    affectedAssetsTableRows() {
+      const vuln = this.selectedVuln;
+      if (!vuln) return [];
+      const ips = [...new Set((vuln.assets || []).filter(Boolean))];
+      if (!ips.length) return [];
+      const mockByIp = Object.fromEntries(this.affectedAssetsData.map(a => [a.ip, a]));
+      return ips.map(ip => {
+        if (mockByIp[ip]) return mockByIp[ip];
+        return {
+          ip,
+          status: 'Pending',
+          statusClass: 'status-pending',
+          stepsCompleted: 0,
+          totalSteps: 4,
+          progress: 0,
+        };
+      });
     },
     fullDescription() {
       const text = this.cleanText(this.selectedVuln?.description);
@@ -471,6 +565,17 @@ export default {
       const os = row.operating_system || row.os || row.platform || 'Linux';
       return { port, os };
     },
+    sendForVerification(asset) {
+      if (asset.stepsCompleted < asset.totalSteps) return;
+      Swal.fire({
+        icon: 'info',
+        title: 'Verification request',
+        text: `Remediation for ${asset.ip} will be sent for verification. You will be notified once it is reviewed.`,
+        confirmButtonText: 'OK',
+      });
+      asset.status = 'Under Verification';
+      asset.statusClass = 'status-verification';
+    },
   },
 };
 </script>
@@ -482,6 +587,7 @@ export default {
   height: 100%;
   min-height: 0;
   flex: 1;
+  align-items: flex-start;
 }
 
 .av-left {
@@ -493,6 +599,8 @@ export default {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  align-self: stretch;
+  max-height: 100%;
 }
 
 .av-left-header {
@@ -710,9 +818,11 @@ export default {
 
 .av-right {
   flex: 1;
+  min-width: 0;
+  align-self: flex-start;
+  max-height: 100%;
   overflow-y: auto;
   background: #f8fafc;
-  min-height: 0;
 }
 
 .av-empty-state {
@@ -747,7 +857,8 @@ export default {
 .av-detail {
   display: flex;
   flex-direction: column;
-  min-height: 100%;
+  min-height: 0;
+  height: auto;
 }
 
 .av-detail-header {
@@ -782,6 +893,19 @@ export default {
   border-radius: 4px;
 }
 
+.av-cvss-pill {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: #fff;
+  border: 1px solid #818cf8;
+  box-shadow: 0 2px 4px rgba(99, 102, 241, 0.3);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .av-detail-status {
   font-size: 0.68rem;
   font-weight: 700;
@@ -792,55 +916,21 @@ export default {
 .ds-overdue { background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; }
 .ds-open { background: #f0fdf4; color: #16a34a; border: 1px solid #86efac; }
 
+.av-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .av-dh-title {
   font-size: 1.1rem;
   font-weight: 600;
   color: #0f172a;
   line-height: 1.3;
-  margin: 0 0 12px;
-}
-
-.av-dh-meta-row {
-  display: flex;
-  flex-wrap: wrap;
-  background: #f1f5f9;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid #e2e8f0;
-}
-
-.av-dh-meta-item {
-  background: #fff;
-  padding: 8px 14px;
+  margin: 0;
   flex: 1;
-  min-width: 90px;
-}
-
-.av-dh-meta-lbl {
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #94a3b8;
-  margin-bottom: 2px;
-}
-
-.av-dh-meta-val {
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: #1e293b;
-}
-
-.av-dh-meta-val.mono {
-  font-family: monospace;
-  font-size: 0.75rem;
-  color: #6366f1;
-}
-
-.cvss-val {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #dc2626;
+  min-width: 200px;
 }
 
 .av-description-block {
@@ -941,8 +1031,23 @@ export default {
 
 .av-detail-tab-content {
   padding: 20px 22px;
-  flex: 1;
+  flex: 0 0 auto;
+  min-height: 0;
   background: #f8fafc;
+}
+
+.av-detail-tab-content:has(.av-manual-tab),
+.av-detail-tab-content:has(.av-affected-tab) {
+  padding: 16px 22px 12px;
+}
+
+.av-detail-tab-content:has(.av-manual-tab) .av-manual-tab,
+.av-detail-tab-content:has(.av-affected-tab) .av-affected-tab {
+  padding: 0;
+}
+
+.av-detail-tab-content:has(.av-manual-tab) .av-asset-section:last-child {
+  margin-bottom: 0;
 }
 
 .av-assess-card {
@@ -1392,5 +1497,335 @@ export default {
   color: #92400e;
   line-height: 1.55;
   white-space: pre-line;
+}
+
+/* Affected Assets tab — table rows (register-style) */
+.av-affected-tab {
+  padding: 0;
+}
+
+.av-assets-table-card {
+  background: #ffffff;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(203, 196, 208, 0.25);
+}
+
+.av-assets-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.av-assets-table thead tr {
+  background: #f2f3f6;
+}
+
+.av-assets-table thead th {
+  padding: 14px 20px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #241447;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-align: left;
+  border: none;
+  white-space: nowrap;
+}
+
+.av-assets-table tbody tr {
+  border-top: 1px solid rgba(203, 196, 208, 0.15);
+  transition: background 0.15s;
+}
+
+.av-assets-table tbody tr:hover {
+  background: #f8f9fc;
+}
+
+.av-assets-table tbody td {
+  padding: 14px 20px;
+  font-size: 13px;
+  color: #191c1e;
+  vertical-align: middle;
+  border: none;
+}
+
+.av-assets-ip {
+  font-weight: 600;
+  font-family: ui-monospace, 'Courier New', monospace;
+  color: #241447;
+}
+
+.av-assets-steps-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 180px;
+}
+
+.av-assets-progress-track {
+  flex: 1;
+  min-width: 100px;
+  height: 10px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.av-assets-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #16a34a 0%, #22c55e 100%);
+  border-radius: 999px;
+  transition: width 0.25s ease;
+}
+
+.av-assets-steps-text {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f696e;
+  white-space: nowrap;
+}
+
+.av-assets-verify-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 999px;
+  border: 1px solid #0f696e;
+  background: #ffffff;
+  color: #0f696e;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+}
+
+.av-assets-verify-btn:hover:not(:disabled) {
+  background: #f0fdfa;
+  color: #0d5a5e;
+}
+
+.av-assets-verify-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  border-color: #cbd5e1;
+  color: #94a3b8;
+}
+
+.av-assets-empty {
+  text-align: center;
+  color: #64748b;
+  padding: 28px 20px !important;
+}
+
+.av-assets-table-footer {
+  padding: 12px 20px;
+  font-size: 12px;
+  color: #64748b;
+  border-top: 1px solid rgba(203, 196, 208, 0.15);
+  background: #ffffff;
+}
+
+/* legacy affected-asset card styles (unused) */
+.av-affected-tab-legacy {
+  padding: 20px;
+}
+
+.affected-asset-card {
+  background: #020617;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.affected-asset-card:hover {
+  box-shadow: 0 6px 20px rgba(90, 68, 255, 0.15);
+  border-color: rgba(90, 68, 255, 0.3);
+}
+
+.affected-asset-header {
+  background: linear-gradient(135deg, rgb(90, 68, 255) 0%, #764ba2 100%);
+  padding: 18px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.affected-asset-ip {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.5px;
+}
+
+.affected-asset-status {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.status-progress {
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+  border: 1px solid #fbbf24;
+}
+
+.status-pending {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid #ef4444;
+}
+
+.status-completed {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  border: 1px solid #22c55e;
+}
+
+.status-verification {
+  background: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+  border: 1px solid #3b82f6;
+}
+
+.affected-asset-body {
+  padding: 28px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  color: #9ca3af;
+  font-size: 13px;
+  margin-bottom: 6px;
+  display: block;
+  font-weight: 500;
+}
+
+.form-control {
+  background: #020617;
+  border: 1px solid #1f2937;
+  color: #fff;
+  height: 46px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  padding: 0 14px;
+  width: 100%;
+  font-family: 'Courier New', monospace;
+  transition: all 0.2s;
+}
+
+.form-control::placeholder {
+  color: #6b7280;
+}
+
+.form-control:focus {
+  background: #020617;
+  border-color: rgb(90, 68, 255);
+  box-shadow: 0 0 0 3px rgba(90, 68, 255, 0.1);
+  outline: none;
+  color: #fff;
+}
+
+.steps-progress {
+  background: #0f172a;
+  padding: 18px;
+  border-radius: 10px;
+  border: 1px solid #1f2937;
+}
+
+.progress {
+  height: 28px;
+  background-color: #1f2937;
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.progress-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
+  transition: width 0.4s ease;
+}
+
+.steps-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.steps-list li {
+  padding: 12px 0;
+  font-size: 0.85rem;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid #1f2937;
+  transition: all 0.2s;
+}
+
+.steps-list li:last-child {
+  border-bottom: none;
+}
+
+.steps-list li.step-completed {
+  color: #e5e7eb;
+  font-weight: 500;
+}
+
+.steps-list li i {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, rgb(90, 68, 255) 0%, #764ba2 100%);
+  border: none;
+  padding: 14px 24px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+  color: #fff;
+  cursor: pointer;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 46px;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #6d54ff 0%, #8a5ab8 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(90, 68, 255, 0.4);
+}
+
+.btn-primary:disabled {
+  background: #374151;
+  cursor: not-allowed;
+  opacity: 0.5;
+  transform: none;
+  box-shadow: none;
 }
 </style>

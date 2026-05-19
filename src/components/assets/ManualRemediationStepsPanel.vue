@@ -119,17 +119,56 @@
           </div>
           <p class="mf-consideration-text">{{ cleanText(task.consideration) }}</p>
         </div>
+
+        <!-- Complete Step Button (User Only) -->
+        <div v-if="isUser" class="mf-complete-btn-wrap">
+          <button
+            type="button"
+            class="mf-complete-btn"
+            :class="{ 'completed': task.status === 'completed' }"
+            @click="toggleStepComplete(task)"
+          >
+            {{ task.status === 'completed' ? 'Completed Step ' + task.id : 'Complete Step ' + task.id }}
+          </button>
+        </div>
       </div>
+    </div>
+
+    <div v-if="isUser" class="mf-footer-actions">
+      <button
+        type="button"
+        class="mf-action-btn mf-action-btn--primary"
+        :disabled="allStepsCompleted"
+        @click="completeAllSteps"
+      >
+        <i class="bi bi-check2-all" aria-hidden="true"></i>
+        <span>Complete all steps</span>
+      </button>
+      <button
+        type="button"
+        class="mf-action-btn mf-action-btn--outline"
+        @click="sendVerificationForSteps"
+      >
+        <i class="bi bi-send" aria-hidden="true"></i>
+        <span>Send verification</span>
+      </button>
     </div>
   </div>
 </template>
 
 <script>
+import Swal from 'sweetalert2';
 import { MOCK_MANUAL_STEPS } from '@/constants/mockManualRemediationSteps';
 import { getTeamColor } from '@/utils/teamColors';
 
 export default {
   name: 'ManualRemediationStepsPanel',
+  props: {
+    isUser: {
+      type: Boolean,
+      default: false,
+    },
+  },
   data() {
     return {
       subtasks: MOCK_MANUAL_STEPS,
@@ -139,6 +178,9 @@ export default {
   computed: {
     completedSubtasksCount() {
       return this.subtasks.filter(t => t.status === 'completed').length;
+    },
+    allStepsCompleted() {
+      return this.subtasks.length > 0 && this.subtasks.every(t => t.status === 'completed');
     },
   },
   methods: {
@@ -214,6 +256,48 @@ export default {
         'position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#0f172a;color:#4ade80;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:600;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,0.3);pointer-events:none;';
       document.body.appendChild(toast);
       setTimeout(() => toast.remove(), 2000);
+    },
+    toggleStepComplete(task) {
+      if (task.status === 'completed') {
+        task.status = 'pending';
+      } else {
+        task.status = 'completed';
+      }
+      this.$forceUpdate();
+    },
+    async completeAllSteps() {
+      if (this.allStepsCompleted) {
+        Swal.fire({ icon: 'info', title: 'All steps are already completed' });
+        return;
+      }
+      const { isConfirmed } = await Swal.fire({
+        title: 'Complete all steps?',
+        text: 'All manual fix steps will be marked completed.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#0f696e',
+        confirmButtonText: 'Yes, complete all',
+        cancelButtonText: 'Cancel',
+      });
+      if (!isConfirmed) return;
+      this.subtasks.forEach(t => {
+        t.status = 'completed';
+      });
+      this.$forceUpdate();
+      Swal.fire({
+        icon: 'success',
+        title: 'All steps completed',
+        timer: 2200,
+        showConfirmButton: false,
+      });
+    },
+    sendVerificationForSteps() {
+      Swal.fire({
+        icon: 'info',
+        title: 'Verification request',
+        text: 'Your remediation steps fix will be sent for verification. You will be notified once it is reviewed.',
+        confirmButtonText: 'OK',
+      });
     },
   },
 };

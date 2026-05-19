@@ -306,16 +306,16 @@
                   </div>
                 </div>
 
-                <!-- Remediation Sub-Tasks Card -->
+                <!-- Remediation Sub-Tasks Card (manual mock data) -->
                 <div class="rt-subtasks-card">
-                  <div class="rt-subtasks-header">
-                    <span class="rt-subtasks-title">
-                      Remediation Sub-Tasks ({{ subtasks.length }})
-                    </span>
-                    <span class="rt-tasks-completed">{{ completedSubtasksCount }} tasks completed</span>
-                  </div>
+                    <div class="rt-subtasks-header">
+                      <span class="rt-subtasks-title">
+                        Remediation Sub-Tasks ({{ subtasks.length }})
+                      </span>
+                      <span class="rt-tasks-completed">{{ completedSubtasksCount }} tasks completed</span>
+                    </div>
 
-                  <div class="rt-task-list">
+                    <div class="rt-task-list">
                     <div
                       v-for="(task, idx) in subtasks"
                       :key="task.id"
@@ -483,8 +483,29 @@
                       </div>
                     </div>
                   </div>
-
                 </div>
+
+                <div v-if="subtasks.length" class="rt-subtasks-footer-actions">
+                  <button
+                    type="button"
+                    class="rt-subtasks-action-btn rt-subtasks-action-btn--primary"
+                    :disabled="!currentVuln.id || savingStep || completedSteps.length >= totalSteps || totalSteps === 0"
+                    @click="completeAllSteps"
+                  >
+                    <i class="bi bi-check2-all" aria-hidden="true"></i>
+                    <span>Complete all steps</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="rt-subtasks-action-btn rt-subtasks-action-btn--outline"
+                    :disabled="!currentVuln.id"
+                    @click="sendVerificationForSteps"
+                  >
+                    <i class="bi bi-send" aria-hidden="true"></i>
+                    <span>Send verification</span>
+                  </button>
+                </div>
+
 
                 <!-- Final Feedback Card -->
                 <div v-if="showFeedback" class="rt-feedback-card">
@@ -609,6 +630,7 @@
 <script>
 import DashboardMenu from '@/components/user-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/user-component/DashboardHeader.vue';
+import { MOCK_MANUAL_STEPS } from '@/constants/mockManualRemediationSteps';
 import { useAuthStore } from '@/stores/authStore';
 import { getTeamChipClass, getTeamTextClass } from '@/utils/teamColors';
 import Swal from 'sweetalert2';
@@ -657,6 +679,7 @@ export default {
       extPopupOriginalDeadlineDays: null,
       extPopupOptionsLoading: false,
       timelineLoading: false,
+      useManualRemediation: true,
       vulnDescriptionExpanded: false,
       descriptionPreviewLimit: 280,
       currentVuln: {
@@ -1013,8 +1036,78 @@ export default {
         Swal.fire('Error', res.message || 'Failed to submit extension request', 'error');
       }
     },
-    async completeCurrentStep(stepNumber = this.currentStep) {
-      if (!this.currentVuln.id) return;
+    loadManualRemediationData() {
+      const fixVulId = this.$route.query.fix_vul_id;
+      const plugin_name = this.$route.query.plugin_name;
+      const risk_factor = this.$route.query.risk_factor;
+
+      this.currentVuln = {
+        id: String(fixVulId || 'MANUAL_FIX_001'),
+        name: String(plugin_name || 'Apache Struts 2 CVE-2017-5638 Remote Code Execution'),
+        description: this.resolveRouteDescription(),
+        risk: `${String((risk_factor || 'CRITICAL').toString()).toUpperCase()} RISK`,
+        asset: String(this.asset || '192.168.1.53'),
+        report_id: String(this.reportId || 'RPT-2024-001'),
+        progress: 0,
+        assignedTeam: 'Network Security Team',
+        deadline: '2024-12-31',
+        artifactsTools: 'iptables, nmap, curl',
+        operatingSystem: 'Linux',
+        status: 'in_progress',
+        closed_at: null,
+      };
+
+      this.subtasks = JSON.parse(JSON.stringify(MOCK_MANUAL_STEPS));
+      this.totalSteps = this.subtasks.length;
+      this.currentStep = 1;
+      this.completedSteps = [];
+      this.expandedTasks = this.subtasks.length ? [0] : [];
+      this.currentVuln.progress = 0;
+      this.timeline = [];
+    },
+    completeCurrentStepManual(stepNumber = this.currentStep, options = {}) {
+      const { silentSuccess = false } = options || {};
+      if (!this.currentVuln.id) return false;
+
+      this.savingStep = true;
+      const task = this.subtasks.find(t => t.id === stepNumber);
+      if (task) task.status = 'completed';
+
+      if (!this.completedSteps.includes(stepNumber)) {
+        this.completedSteps = [...this.completedSteps, stepNumber].sort((a, b) => a - b);
+      }
+
+      const nextStep = stepNumber + 1;
+      if (nextStep <= this.totalSteps) {
+        this.currentStep = nextStep;
+      }
+
+      this.currentVuln.progress = this.totalSteps > 0
+        ? Math.round((this.completedSteps.length / this.totalSteps) * 100)
+        : 0;
+
+      this.savingStep = false;
+      this.currentStepComment = '';
+
+      if (!silentSuccess) {
+        Swal.fire({
+          icon: 'success',
+          title: `Step ${stepNumber} completed`,
+          timer: 1800,
+          showConfirmButton: false,
+        });
+      }
+
+      return true;
+    },
+    async completeCurrentStep(stepNumber = this.currentStep, options = {}) {
+      const { silentSuccess = false } = options || {};
+      if (!this.currentVuln.id) return false;
+
+      if (this.useManualRemediation) {
+        return this.completeCurrentStepManual(stepNumber, options);
+      }
+
       this.currentStep = stepNumber;
 
       this.savingStep = true;
@@ -1031,66 +1124,24 @@ export default {
 
       if (!res.status) {
         Swal.fire('Error', res.message || 'Failed to complete step', 'error');
-        return;
+        return false;
       }
 
-      // Success feedback
-      Swal.fire({
-        icon: 'success',
-        title: res.message || `Step ${this.currentStep} saved`,
-        timer: 1800,
-        showConfirmButton: false,
-      });
+      // Success feedback (skip when batching "complete all")
+      if (!silentSuccess) {
+        Swal.fire({
+          icon: 'success',
+          title: res.message || `Step ${this.currentStep} saved`,
+          timer: 1800,
+          showConfirmButton: false,
+        });
+      }
 
       this.currentStepComment = '';
 
-      // Refresh steps from API
       const stepsRes = await this.authStore.getUserFixVulnerabilitySteps(this.currentVuln.id);
       if (stepsRes.status) {
-        const s = stepsRes.data;
-        this.totalSteps    = s.total_steps || 0;
-        this.currentStep   = s.next_step || 1;
-        this.completedSteps = Array.from({ length: s.completed_steps || 0 }, (_, i) => i + 1);
-
-        const os = (s.operating_system || 'windows').toLowerCase();
-        this.subtasks = (s.steps || []).map(step => {
-          const detail = step[os] || step['windows'] || {};
-          return {
-            id: step.step_number,
-            name: step.step_name,
-            assignedTeam: step.assigned_team || s.assigned_team || 'Unassigned',
-            members: step.assigned_team_members || [],
-            status: step.status,
-            deadline: step.deadline || s.deadline || '',
-            criticality: step.criticality || '',
-            effortEstimate: step.effort_estimate || '',
-            action: detail.action || '',
-            filePath: detail.system_file_path || '',
-            command: detail.commands_for_action || '',
-            expectedOutput: detail.expected_output || step.expected_output || '',
-            verificationCheck: detail.verification_check || step.verification_check || '',
-            whereToRunLabel:
-              detail.where_to_run_label ||
-              detail.where_to_run ||
-              step.where_to_run_label ||
-              step.where_to_run ||
-              '',
-            whereToRun:
-              detail.where_to_run ||
-              step.where_to_run ||
-              '',
-            tools: detail.artifacts_tools_used || [],
-            consideration: detail.precautions || '',
-            subTasks: (detail.sub_tasks || []).map(st => ({
-              description: st.description || '',
-              items: st.items || [],
-            })),
-          };
-        });
-
-        this.currentVuln.progress = this.totalSteps > 0
-          ? Math.round((s.completed_steps / s.total_steps) * 100)
-          : 0;
+        this.applyStepsFromApi(stepsRes.data);
       }
 
       // Refresh timeline silently (no loading spinner)
@@ -1100,6 +1151,56 @@ export default {
       if (res.data?.status === 'closed' || this.showFeedback) {
         await this.fetchFinalFeedback(this.currentVuln.id);
       }
+      return true;
+    },
+    async completeAllSteps() {
+      if (!this.currentVuln?.id || this.totalSteps === 0) return;
+      if (this.completedSteps.length >= this.totalSteps) {
+        Swal.fire({ icon: 'info', title: 'All steps are already completed' });
+        return;
+      }
+      const { isConfirmed } = await Swal.fire({
+        title: 'Complete all steps?',
+        text: 'Remaining steps will be completed one by one in order. This may take a few seconds.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#0f696e',
+        confirmButtonText: 'Yes, complete all',
+        cancelButtonText: 'Cancel',
+      });
+      if (!isConfirmed) return;
+
+      let guard = 0;
+      while (this.completedSteps.length < this.totalSteps && guard < 40) {
+        guard += 1;
+        const before = this.completedSteps.length;
+        const ok = await this.completeCurrentStep(this.currentStep, { silentSuccess: true });
+        if (!ok) return;
+        if (this.completedSteps.length <= before) {
+          Swal.fire(
+            'Could not continue',
+            'No further steps could be completed automatically. Complete the current step from the list if needed.',
+            'warning',
+          );
+          return;
+        }
+      }
+
+      Swal.fire({
+        icon: 'success',
+        title: 'All steps completed',
+        text: 'Remediation steps are done. Submit final feedback if prompted.',
+        timer: 2200,
+        showConfirmButton: false,
+      });
+    },
+    sendVerificationForSteps() {
+      Swal.fire({
+        icon: 'info',
+        title: 'Verification request',
+        text: 'Your remediation steps fix will be sent for verification. You will be notified once it is reviewed.',
+        confirmButtonText: 'OK',
+      });
     },
     formatTimelineDate(dateStr) {
       if (!dateStr) return '';
@@ -1181,323 +1282,134 @@ export default {
       // Reset form
       this.feedbackForm = { fix_result: '', feedback_comment: '' };
     },
-  },
+    getFixCacheKey(reportId, asset, id) {
+      return `user_fix_${reportId}_${encodeURIComponent(asset)}_${id}`;
+    },
+    applyStepsFromApi(s, queryMeta = {}) {
+      const os = (s.operating_system || 'windows').toLowerCase();
+      const severity = s.severity || queryMeta.risk_factor || '';
+      const sevUpper = String(severity).toUpperCase();
+      const riskLabel = severity
+        ? `${sevUpper}${sevUpper.includes('RISK') ? '' : ' RISK'}`
+        : '—';
 
-  async mounted() {
-    const fixVulId = this.$route.query.fix_vul_id;
-    const id = this.$route.query.id;
-    const plugin_name = this.$route.query.plugin_name;
-    const risk_factor = this.$route.query.risk_factor;
-
-    if (fixVulId) {
-      // HARDCODED DATA - Replacing API call
-      this.isLoading = true;
-
-      // Simulate loading delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      this.isLoading = false;
-
-      // Hardcoded vulnerability data
       this.currentVuln = {
-        id: String(fixVulId),
-        name: String(plugin_name || 'Apache Struts 2 CVE-2017-5638 Remote Code Execution'),
+        id: String(s.fix_vulnerability_id || queryMeta.fixId || ''),
+        name: s.vulnerability_name || queryMeta.plugin_name || '',
         description: this.resolveRouteDescription(),
-        risk: `${String((risk_factor || 'CRITICAL').toString()).toUpperCase()} RISK`,
-        asset: String(this.asset || '192.168.1.53'),
-        report_id: String(this.reportId || 'RPT-2024-001'),
+        risk: riskLabel,
+        asset: s.asset || this.asset,
+        report_id: s.report_id || this.reportId,
         progress: 0,
-        assignedTeam: 'Network Security Team',
-        deadline: '2024-12-31',
-        artifactsTools: 'iptables, nmap, curl',
-        operatingSystem: 'Linux',
-        status: 'in_progress',
-        closed_at: null,
+        assignedTeam: s.assigned_team || '',
+        deadline: s.deadline || '',
+        artifactsTools: s.artifacts_tools || '',
+        operatingSystem: s.operating_system || '',
+        status: s.vulnerability_status || 'in_progress',
+        closed_at: s.closed_at || null,
       };
-      await this.fetchSupportRequestStatus(this.currentVuln.id);
 
-      this.totalSteps = 3;
-      this.currentStep = 1;
-      this.completedSteps = [];
+      this.totalSteps = s.total_steps || 0;
+      const apiSteps = s.steps || [];
 
-      // Hardcoded steps data
-      this.subtasks = [
-        {
-          id: 1,
-          name: 'Emergency network isolation',
-          assignedTeam: 'Network Security Team',
-          members: [
-            { user_id: 1, name: 'John Doe' },
-            { user_id: 2, name: 'Jane Smith' }
-          ],
-          status: 'pending',
-          deadline: '2024-12-31',
-          criticality: 'critical',
-          effortEstimate: '2 hours',
-          action: 'Block all inbound TCP traffic to port 5985 immediately',
-          filePath: '/etc/iptables/rules.v4 (or network firewall ACL)',
-          command: `# On 192.168.1.53
-iptables -I INPUT 1 -p tcp --dport 5985 -j DROP
-iptables -I OUTPUT 1 -p tcp --sport 5985 -m state --state ESTABLISHED -j ACCEPT
-iptables-save | tee /etc/iptables/rules.v4
+      if (s.next_step) {
+        this.currentStep = s.next_step;
+        this.completedSteps = apiSteps
+          .filter(step => step.step_number < s.next_step)
+          .map(step => step.step_number);
+      } else {
+        this.completedSteps = apiSteps
+          .filter(step => step.status === 'completed')
+          .map(step => step.step_number);
+        if (this.completedSteps.length > 0) {
+          const maxCompleted = Math.max(...this.completedSteps);
+          this.currentStep = Math.min(maxCompleted + 1, apiSteps.length || 1);
+        } else {
+          this.currentStep = 1;
+        }
+      }
 
-# On network firewall (Cisco IOS example)
-ip access-list extended BLOCK_STRUTS
-  deny tcp any host 192.168.1.53 eq 5985
-  permit ip any any`,
-          expectedOutput: "Port 5985 shows as 'filtered' from all external sources",
-          verificationCheck: "nmap -Pn -p 5985 192.168.1.53 # Expected: 5985/tcp filtered wsman\ncurl --connect-timeout 3 http://192.168.1.53:5985/ && echo STILL_OPEN || echo BLOCKED",
-          whereToRunLabel: '192.168.1.53 (SSH as root) AND network firewall console',
-          whereToRun: '192.168.1.53 (SSH as root) AND network firewall console',
-          tools: ['iptables', 'nmap', 'curl', 'netfilter-persistent'],
-          consideration: 'Port 5985 is the Windows Remote Management (WinRM) default port — confirm what service is actually running here. Apache Struts normally runs on 8080 or 443. The Nessus finding on port 5985 may indicate a non-standard deployment.',
-          subTasks: [],
-        },
-        {
-          id: 2,
-          name: 'Configuration Management',
-          assignedTeam: 'DevOps Team',
-          members: [
-            { user_id: 3, name: 'Mike Johnson' }
-          ],
-          status: 'pending',
-          deadline: '2024-12-31',
-          criticality: 'high',
-          effortEstimate: '1 hour',
-          action: 'Update system configuration to disable vulnerable service',
-          filePath: 'C:\\temp\\cipher_before.txt',
-          command: 'nmap -sV -p 5985 192.168.1.53',
-          expectedOutput: 'The command completes without error messages. Confirm the change is applied as described in this step.',
-          verificationCheck: 'Check that the change is in place and there are no error messages or warnings.',
-          whereToRunLabel: 'Terminal / Command Prompt (open the terminal on your system)',
-          whereToRun: 'Terminal / Command Prompt',
-          tools: ['nmap'],
-          consideration: 'Ensure output path is writable',
-          subTasks: [
-            {
-              description: 'Backup current configuration',
-              items: [
-                'Create backup of existing configuration',
-                'Verify backup integrity',
-                'Store backup in secure location'
-              ]
-            }
-          ],
-        },
-        {
-          id: 3,
-          name: 'Patch Apache Struts to latest version',
-          assignedTeam: 'Application Team',
-          members: [
-            { user_id: 4, name: 'Sarah Williams' },
-            { user_id: 5, name: 'Tom Brown' }
-          ],
-          status: 'pending',
-          deadline: '2024-12-31',
-          criticality: 'critical',
-          effortEstimate: '3 hours',
-          action: 'Upgrade Apache Struts framework to version 2.5.33 or later to patch CVE-2017-5638',
-          filePath: '/opt/application/pom.xml',
-          command: `# Backup current application
-cp -r /opt/application /opt/application.backup
-
-# Update pom.xml with latest Struts version
-sed -i 's/<struts2.version>.*<\\/struts2.version>/<struts2.version>2.5.33<\\/struts2.version>/g' /opt/application/pom.xml
-
-# Rebuild application
-cd /opt/application
-mvn clean package
-
-# Deploy updated WAR file
-cp target/application.war /opt/tomcat/webapps/`,
-          expectedOutput: 'Application successfully rebuilt with Struts 2.5.33. WAR file deployed to Tomcat.',
-          verificationCheck: 'curl http://192.168.1.53:8080/application/ | grep "Struts 2.5.33"\nnmap --script http-vuln-cve2017-5638 192.168.1.53 -p 8080',
-          whereToRunLabel: '192.168.1.53 (SSH as application user)',
-          whereToRun: '192.168.1.53 (SSH as application user)',
-          tools: ['maven', 'nmap', 'curl', 'tomcat'],
-          consideration: 'This will require application downtime. Schedule during maintenance window. Ensure all dependencies are compatible with Struts 2.5.33 before upgrading.',
-          subTasks: [
-            {
-              description: 'Pre-deployment checks',
-              items: [
-                'Review application dependencies',
-                'Run compatibility tests',
-                'Notify stakeholders of maintenance window'
-              ]
-            },
-            {
-              description: 'Post-deployment verification',
-              items: [
-                'Run security scan to confirm vulnerability is patched',
-                'Verify application functionality',
-                'Monitor application logs for errors'
-              ]
-            }
-          ],
-        },
-      ];
+      this.subtasks = apiSteps.map(step => {
+        const detail = step[os] || step.windows || step.linux || {};
+        return {
+          id: step.step_number,
+          name: step.step_name,
+          assignedTeam: step.assigned_team || s.assigned_team || 'Unassigned',
+          members: step.assigned_team_members || [],
+          status: step.status,
+          deadline: step.deadline || s.deadline || '',
+          criticality: step.criticality || '',
+          effortEstimate: step.effort_estimate || '',
+          action: detail.action || '',
+          filePath: detail.system_file_path || '',
+          command: detail.commands_for_action || '',
+          expectedOutput: detail.expected_output || step.expected_output || '',
+          verificationCheck: detail.verification_check || step.verification_check || '',
+          whereToRunLabel:
+            detail.where_to_run_label ||
+            detail.where_to_run ||
+            step.where_to_run_label ||
+            step.where_to_run ||
+            '',
+          whereToRun: detail.where_to_run || step.where_to_run || '',
+          tools: detail.artifacts_tools_used || [],
+          consideration: detail.precautions || '',
+          subTasks: (detail.sub_tasks || []).map(st => ({
+            description: st.description || '',
+            items: st.items || [],
+          })),
+        };
+      });
 
       this.currentVuln.progress = this.totalSteps > 0
         ? Math.round((this.completedSteps.length / this.totalSteps) * 100)
         : 0;
+    },
+    async resolveFixVulnerabilityId() {
+      const fixVulId = this.$route.query.fix_vul_id;
+      if (fixVulId) return String(fixVulId);
 
-      await this.fetchTimeline(String(fixVulId));
+      const id = this.$route.query.id;
+      const plugin_name = this.$route.query.plugin_name;
+      const risk_factor = this.$route.query.risk_factor;
+      if (!plugin_name) return null;
 
-      return;
-    }
+      const cacheKey = this.getFixCacheKey(this.reportId, this.asset, id || plugin_name);
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) return cached;
 
-    // HARDCODED DATA - Second path (when no fix_vul_id)
+      const payload = id
+        ? { id, plugin_name, risk_factor }
+        : { plugin_name, risk_factor };
+
+      const res = await this.authStore.createUserFixVulnerability(
+        this.reportId,
+        this.asset,
+        payload,
+      );
+
+      if (res.status && res.data) {
+        const fixId = String(res.data.fix_vulnerability_id || res.data._id || '');
+        if (fixId) localStorage.setItem(cacheKey, fixId);
+        return fixId || null;
+      }
+
+      const existingId = res.details?.fix_vulnerability_id;
+      if (existingId) {
+        const fixId = String(existingId);
+        localStorage.setItem(cacheKey, fixId);
+        return fixId;
+      }
+
+      return null;
+    },
+  },
+
+  async mounted() {
     this.isLoading = true;
-
-    // Simulate loading delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-
+    await new Promise(resolve => setTimeout(resolve, 300));
+    this.loadManualRemediationData();
     this.isLoading = false;
-
-    // Use hardcoded data
-    this.currentVuln = {
-      id: 'HARDCODED_FIX_001',
-      name: String(plugin_name || 'Apache Struts 2 CVE-2017-5638 Remote Code Execution'),
-      description: this.resolveRouteDescription(),
-      risk: `${String((risk_factor || 'CRITICAL').toString()).toUpperCase()} RISK`,
-      asset: String(this.asset || '192.168.1.53'),
-      report_id: String(this.reportId || 'RPT-2024-001'),
-      progress: 0,
-      assignedTeam: 'Network Security Team',
-      deadline: '2024-12-31',
-      artifactsTools: 'iptables, nmap, curl',
-      operatingSystem: 'Linux',
-      status: 'in_progress',
-      closed_at: null,
-    };
-    await this.fetchSupportRequestStatus(this.currentVuln.id);
-
-    this.totalSteps = 3;
-    this.currentStep = 1;
-    this.completedSteps = [];
-
-    this.subtasks = [
-      {
-        id: 1,
-        name: 'Emergency network isolation',
-        assignedTeam: 'Network Security Team',
-        members: [
-          { user_id: 1, name: 'John Doe' },
-          { user_id: 2, name: 'Jane Smith' }
-        ],
-        status: 'pending',
-        deadline: '2024-12-31',
-        criticality: 'critical',
-        effortEstimate: '2 hours',
-        action: 'Block all inbound TCP traffic to port 5985 immediately',
-        filePath: '/etc/iptables/rules.v4 (or network firewall ACL)',
-        command: `# On 192.168.1.53
-iptables -I INPUT 1 -p tcp --dport 5985 -j DROP
-iptables -I OUTPUT 1 -p tcp --sport 5985 -m state --state ESTABLISHED -j ACCEPT
-iptables-save | tee /etc/iptables/rules.v4
-
-# On network firewall (Cisco IOS example)
-ip access-list extended BLOCK_STRUTS
-  deny tcp any host 192.168.1.53 eq 5985
-  permit ip any any`,
-        expectedOutput: "Port 5985 shows as 'filtered' from all external sources",
-        verificationCheck: "nmap -Pn -p 5985 192.168.1.53 # Expected: 5985/tcp filtered wsman\ncurl --connect-timeout 3 http://192.168.1.53:5985/ && echo STILL_OPEN || echo BLOCKED",
-        whereToRunLabel: '192.168.1.53 (SSH as root) AND network firewall console',
-        whereToRun: '192.168.1.53 (SSH as root) AND network firewall console',
-        tools: ['iptables', 'nmap', 'curl', 'netfilter-persistent'],
-        consideration: 'Port 5985 is the Windows Remote Management (WinRM) default port — confirm what service is actually running here. Apache Struts normally runs on 8080 or 443. The Nessus finding on port 5985 may indicate a non-standard deployment.',
-        subTasks: [],
-      },
-      {
-        id: 2,
-        name: 'Configuration Management',
-        assignedTeam: 'DevOps Team',
-        members: [
-          { user_id: 3, name: 'Mike Johnson' }
-        ],
-        status: 'pending',
-        deadline: '2024-12-31',
-        criticality: 'high',
-        effortEstimate: '1 hour',
-        action: 'Update system configuration to disable vulnerable service',
-        filePath: 'C:\\temp\\cipher_before.txt',
-        command: 'nmap -sV -p 5985 192.168.1.53',
-        expectedOutput: 'The command completes without error messages. Confirm the change is applied as described in this step.',
-        verificationCheck: 'Check that the change is in place and there are no error messages or warnings.',
-        whereToRunLabel: 'Terminal / Command Prompt (open the terminal on your system)',
-        whereToRun: 'Terminal / Command Prompt',
-        tools: ['nmap'],
-        consideration: 'Ensure output path is writable',
-        subTasks: [
-          {
-            description: 'Backup current configuration',
-            items: [
-              'Create backup of existing configuration',
-              'Verify backup integrity',
-              'Store backup in secure location'
-            ]
-          }
-        ],
-      },
-      {
-        id: 3,
-        name: 'Patch Apache Struts to latest version',
-        assignedTeam: 'Application Team',
-        members: [
-          { user_id: 4, name: 'Sarah Williams' },
-          { user_id: 5, name: 'Tom Brown' }
-        ],
-        status: 'pending',
-        deadline: '2024-12-31',
-        criticality: 'critical',
-        effortEstimate: '3 hours',
-        action: 'Upgrade Apache Struts framework to version 2.5.33 or later to patch CVE-2017-5638',
-        filePath: '/opt/application/pom.xml',
-        command: `# Backup current application
-cp -r /opt/application /opt/application.backup
-
-# Update pom.xml with latest Struts version
-sed -i 's/<struts2.version>.*<\\/struts2.version>/<struts2.version>2.5.33<\\/struts2.version>/g' /opt/application/pom.xml
-
-# Rebuild application
-cd /opt/application
-mvn clean package
-
-# Deploy updated WAR file
-cp target/application.war /opt/tomcat/webapps/`,
-        expectedOutput: 'Application successfully rebuilt with Struts 2.5.33. WAR file deployed to Tomcat.',
-        verificationCheck: 'curl http://192.168.1.53:8080/application/ | grep "Struts 2.5.33"\nnmap --script http-vuln-cve2017-5638 192.168.1.53 -p 8080',
-        whereToRunLabel: '192.168.1.53 (SSH as application user)',
-        whereToRun: '192.168.1.53 (SSH as application user)',
-        tools: ['maven', 'nmap', 'curl', 'tomcat'],
-        consideration: 'This will require application downtime. Schedule during maintenance window. Ensure all dependencies are compatible with Struts 2.5.33 before upgrading.',
-        subTasks: [
-          {
-            description: 'Pre-deployment checks',
-            items: [
-              'Review application dependencies',
-              'Run compatibility tests',
-              'Notify stakeholders of maintenance window'
-            ]
-          },
-          {
-            description: 'Post-deployment verification',
-            items: [
-              'Run security scan to confirm vulnerability is patched',
-              'Verify application functionality',
-              'Monitor application logs for errors'
-            ]
-          }
-        ],
-      },
-    ];
-
-    this.currentVuln.progress = this.totalSteps > 0
-      ? Math.round((this.completedSteps.length / this.totalSteps) * 100)
-      : 0;
-
-    // Note: Timeline fetch may still work with hardcoded ID
-    // If it fails, that's okay - the steps data is what matters
   },
 };
 </script>
@@ -1727,7 +1639,7 @@ cp target/application.war /opt/tomcat/webapps/`,
 .rt-loading-overlay { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; }
 
 /* ─── Shell ─────────────────────────────────────────────────────────── */
-.rt-content { background: #f4f5f8; min-height: 100vh; padding: 0; }
+.rt-content { background: #f4f5f8; min-height: 100vh; padding: 0; overflow-x: visible; overflow-y: visible; }
 
 /* ─── Page Header ───────────────────────────────────────────────────── */
 .rt-page-header {
@@ -1757,8 +1669,8 @@ cp target/application.war /opt/tomcat/webapps/`,
 .rt-active-label { position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); font-size: 0.58rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: #ffffff; background: #241447; padding: 3px 10px; border-radius: 50px; white-space: nowrap; pointer-events: none; z-index: 1; }
 
 /* ─── Body Grid ─────────────────────────────────────────────────────── */
-.rt-body { display: grid; grid-template-columns: 1fr 300px; gap: 20px; padding: 28px 28px 48px; }
-.rt-main-col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.rt-body { display: grid; grid-template-columns: 1fr 300px; gap: 20px; padding: 28px 28px 20px; overflow: visible; align-items: start; }
+.rt-main-col { display: flex; flex-direction: column; gap: 18px; min-width: 0; overflow: visible; align-self: start; }
 
 /* ─── Tech Card ─────────────────────────────────────────────────────── */
 .rt-tech-card { background: #ffffff; border-radius: 14px; padding: 22px 24px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); border: 1px solid #f1f5f9; border-left: 4px solid #b42318; }
@@ -1785,11 +1697,119 @@ cp target/application.war /opt/tomcat/webapps/`,
 .rt-tech-meta-label { font-size: 0.58rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #94a3b8; }
 .rt-tech-meta-val   { font-size: 0.82rem; font-weight: 600; color: #1e293b; }
 
-/* ─── Subtasks Card ─────────────────────────────────────────────────── */
-.rt-subtasks-card { background: #ffffff; border-radius: 14px; padding: 22px 24px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); border: 1px solid #f1f5f9; }
+/* ─── Subtasks Card: full width unchanged; buttons sit beside in vacant space ─ */
+.rt-subtasks-with-actions {
+  position: relative;
+  width: 100%;
+  overflow: visible;
+}
+.rt-subtasks-card {
+  width: 100%;
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 22px 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid #f1f5f9;
+  box-sizing: border-box;
+}
+.rt-subtasks-aside {
+  position: absolute;
+  top: 20px;
+  left: calc(100% + 12px);
+  z-index: 5;
+  width: max-content;
+  max-width: none;
+  overflow: visible;
+  pointer-events: auto;
+}
+.rt-subtasks-footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 12px;
+  margin-bottom: 0;
+  padding: 0 4px;
+  width: 100%;
+  box-sizing: border-box;
+}
 .rt-subtasks-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; padding-bottom: 12px; border-bottom: 1px solid #f1f5f9; }
 .rt-subtasks-title  { font-size: 0.95rem; font-weight: 700; color: #1e293b; }
+.rt-subtasks-btn-group {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+}
+.rt-subtasks-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  line-height: 1.2;
+  font-family: inherit;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(15, 105, 110, 0.18);
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.12s ease, box-shadow 0.18s ease;
+}
+.rt-subtasks-action-btn i {
+  font-size: 0.85rem;
+  line-height: 1;
+}
+.rt-subtasks-action-btn--primary {
+  background: #0f696e;
+  color: #ffffff;
+  border-color: #0f696e;
+}
+.rt-subtasks-action-btn--primary:hover:not(:disabled) {
+  background: #0d5a5e;
+  border-color: #0d5a5e;
+  box-shadow: 0 3px 10px rgba(15, 105, 110, 0.28);
+}
+.rt-subtasks-action-btn--outline {
+  background: #ffffff;
+  color: #0f696e;
+  border-color: #0f696e;
+}
+.rt-subtasks-action-btn--outline:hover:not(:disabled) {
+  background: #f0fdfa;
+  color: #0d5a5e;
+  border-color: #0d5a5e;
+}
+.rt-subtasks-action-btn:focus-visible {
+  outline: 2px solid #0f696e;
+  outline-offset: 2px;
+}
+.rt-subtasks-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
 .rt-tasks-completed { font-size: 0.78rem; color: #0f696e; font-weight: 600; }
+
+@media (max-width: 1100px) {
+  .rt-subtasks-aside {
+    position: static;
+    left: auto;
+    width: auto;
+    margin-top: 12px;
+    display: flex;
+    justify-content: flex-end;
+  }
+  .rt-subtasks-btn-group {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}
 .rt-task-list { display: flex; flex-direction: column; }
 .rt-task-item { border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background 0.15s; border-radius: 8px; padding: 0 8px; background: #ffffff; }
 .rt-task-item:last-child { border-bottom: none; }

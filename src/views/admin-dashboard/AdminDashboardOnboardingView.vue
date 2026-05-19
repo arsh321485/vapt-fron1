@@ -769,7 +769,7 @@
                       </div>
                       <div class="position-relative search-wrap">
                         <i class="bi bi-search search-icon-left"></i>
-                        <input v-model="overlayQuery" class="assets-search" placeholder="Search assets, IPs..." />
+                        <input v-model="overlayQuery" class="assets-search" placeholder="Search assets" />
                         <i v-if="overlayQuery" class="bi bi-x-circle-fill clear-icon" @click="overlayQuery = ''"></i>
                       </div>
                     </div>
@@ -866,15 +866,9 @@
                               </div>
                               <div :id="'ov' + i" class="accordion-collapse collapse" :class="{ show: i === 0 }">
                                 <div class="vuln-accordion-body">
-                                  <div class="vuln-meta-grid">
-                                    <div class="vuln-meta-cell">
-                                      <p class="vuln-meta-label">Vendor Fix</p>
-                                      <p class="vuln-meta-value teal">{{ v.vendor_fix_available || '-' }}</p>
-                                    </div>
-                                    <div class="vuln-meta-cell">
-                                      <p class="vuln-meta-label">CVSS Score</p>
-                                      <p class="vuln-meta-value">{{ v.cvss_score || '-' }}</p>
-                                    </div>
+                                  <div class="mb-3">
+                                    <span v-if="v.vendor_fix_available && v.vendor_fix_available.toLowerCase() === 'yes'" class="vendor-fix-pill">Vendor Fix: Yes</span>
+                                    <span v-if="v.cvss_score" class="cvss-pill ms-2">CVSS {{ v.cvss_score }}</span>
                                   </div>
                                   <div class="mb-4">
                                     <h5 class="vuln-desc-title">Description</h5>
@@ -4686,5 +4680,33 @@ mounted() {
 .in-process-close-btn {
   background: #241447;
   color: #ffffff;
+}
+
+/* Vendor Fix and CVSS Pills */
+.vendor-fix-pill {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+  color: #fff;
+  border: 1px solid #5eead4;
+  box-shadow: 0 1px 3px rgba(20, 184, 166, 0.2);
+  white-space: nowrap;
+  text-transform: capitalize;
+  display: inline-block;
+}
+
+.cvss-pill {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: #fff;
+  border: 1px solid #818cf8;
+  box-shadow: 0 1px 3px rgba(99, 102, 241, 0.2);
+  white-space: nowrap;
+  display: inline-block;
 }
 </style>

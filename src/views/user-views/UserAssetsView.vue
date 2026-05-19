@@ -51,7 +51,7 @@
                   </div>
                   <div class="position-relative search-wrap">
                     <i class="bi bi-search search-icon-left"></i>
-                    <input v-model="searchQuery" class="assets-search" placeholder="Search assets, IPs..." />
+                    <input v-model="searchQuery" class="assets-search" placeholder="Search assets" />
                     <i v-if="searchQuery" class="bi bi-x-circle-fill clear-icon" @click="searchQuery = ''"></i>
                   </div>
                 </div>
@@ -171,6 +171,7 @@
                       :class="'sev-' + getTopSeverity(selectedAsset.severity_counts).toLowerCase()">
                       {{ getTopSeverity(selectedAsset.severity_counts) }} Severity
                     </span>
+                    <span v-if="highestCvssScore" class="cvss-pill">CVSS {{ highestCvssScore }}</span>
                     <span :class="getStatusBadgeClass(selectedAssetStatusLabel)">
                       <span :class="getStatusDotClass(selectedAssetStatusLabel)"></span>
                       {{ selectedAssetStatusLabel }}
@@ -206,8 +207,8 @@
                         {{ supportRequestCount }}
                       </span>
                     </button>
-                    <button class="detail-tab" disabled style="opacity:0.4;cursor:not-allowed;">Related Assets</button>
-                    <button class="detail-tab" disabled style="opacity:0.4;cursor:not-allowed;">History</button>
+                    <!-- <button class="detail-tab" disabled style="opacity:0.4;cursor:not-allowed;">Related Assets</button>
+                    <button class="detail-tab" disabled style="opacity:0.4;cursor:not-allowed;">History</button> -->
                     <button class="detail-tab ext-tab-btn" @click="openExtPopup">
                       Extend Timeline
                     </button>
@@ -244,6 +245,7 @@
                           </div>
                           <div class="d-flex align-items-center gap-3 flex-shrink-0">
                             <span class="sev-badge" :class="'sev-' + (vuln.severity?.toLowerCase() || '')">{{ vuln.severity }}</span>
+                            <span v-if="vuln.vendor_fix_available && vuln.vendor_fix_available.toLowerCase() === 'yes'" class="vendor-fix-pill">Vendor Fix: Yes</span>
                             <span :class="getStatusBadgeClass(vuln.status)">
                               <span :class="getStatusDotClass(vuln.status)"></span>{{ getStatusLabel(vuln.status) }}
                             </span>
@@ -252,49 +254,100 @@
                         </div>
                         <div v-show="expandedVulnIndex === idx">
                           <div class="vuln-accordion-body">
-                            <div class="vuln-meta-grid">
-                              <div class="vuln-meta-cell">
-                                <p class="vuln-meta-label">Vendor Fix</p>
-                                <p class="vuln-meta-value teal">{{ vuln.vendor_fix_available || '-' }}</p>
-                              </div>
-                              <div class="vuln-meta-cell">
-                                <p class="vuln-meta-label">CVSS Score</p>
-                                <p class="vuln-meta-value">{{ vuln.cvss_score || '-' }}</p>
-                              </div>
-                              <div class="vuln-meta-cell">
-                                <p class="vuln-meta-label">Assigned Team</p>
-                                <p class="vuln-meta-value">{{ vuln.assigned_team || '-' }}</p>
-                              </div>
-                              <div class="vuln-meta-cell">
-                                <p class="vuln-meta-label">Status</p>
-                                <p class="vuln-meta-value">{{ vuln.status || '-' }}</p>
-                              </div>
-                            </div>
-                            <div class="mb-4">
-                              <h5 class="vuln-desc-title">Description</h5>
-                              <p class="vuln-desc-text">
+                            <!-- Description -->
+                            <div class="av-description-block">
+                              <div class="av-db-label">DESCRIPTION</div>
+                              <p class="av-db-text">
                                 {{ getDisplayDescription(vuln.description, idx) }}
                               </p>
                               <button
                                 v-if="(vuln.description || '').length > descriptionPreviewLimit"
                                 type="button"
-                                class="btn-read-more"
+                                class="av-read-more"
                                 @click="toggleDescription(idx)"
                               >
                                 {{ isDescriptionExpanded(idx) ? 'Read less' : 'Read more' }}
                               </button>
                             </div>
-                            <div class="d-flex gap-3">
-                              <router-link
-                                v-if="authStore.userLatestReportId && activeIndex"
-                                :to="{
-                                  name: 'user-remediation-timeline',
-                                  params: { reportId: authStore.userLatestReportId, asset: activeIndex },
-                                  query: { plugin_name: vuln.vul_name, risk_factor: vuln.severity, description: vuln.description || '' }
-                                }"
-                                class="btn-fix-now text-decoration-none">
-                                Fix Now
-                              </router-link>
+
+                            <!-- Affected Assets Chips -->
+                            <div class="av-affected-block">
+                              <div class="av-aab-label">AFFECTED ASSETS ({{ getVulnAssets(vuln).length }})</div>
+                              <div class="av-aab-chips">
+                                <span v-for="ip in getVulnAssets(vuln)" :key="ip" class="av-asset-chip">{{ ip }}</span>
+                              </div>
+                            </div>
+
+                            <!-- Tabs -->
+                            <div class="av-detail-tabs">
+                              <button
+                                type="button"
+                                class="av-dtab"
+                                :class="{ active: currentVulnTab === 'auto' }"
+                                @click="setVulnDetailTab('auto')"
+                              >
+                                🐍 Automated Fix
+                              </button>
+                              <button
+                                type="button"
+                                class="av-dtab"
+                                :class="{ active: currentVulnTab === 'manual' }"
+                                @click="setVulnDetailTab('manual')"
+                              >
+                                📋 Manual Fix
+                              </button>
+                            </div>
+
+                            <!-- Tab Content -->
+                            <div
+                              class="av-detail-tab-content"
+                              :class="{ 'av-detail-tab-content--manual': currentVulnTab === 'manual' }"
+                            >
+                              <div v-if="currentVulnTab === 'auto'" class="av-auto-tab">
+                                <div class="av-assess-card">
+                                  <div class="av-assess-header">
+                                    <div>
+                                      <div class="av-assess-title">Automation Capability Assessment</div>
+                                      <div class="av-assess-sub">Based on vulnerability profile and remediation data</div>
+                                    </div>
+                                    <div class="av-feas-badge" style="background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7;">
+                                      <span class="av-feas-level">High</span>
+                                      <span class="av-feas-pct">75% automatable</span>
+                                    </div>
+                                  </div>
+                                  <div class="av-progress-track">
+                                    <div class="av-progress-fill" style="width: 75%; background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);"></div>
+                                  </div>
+                                  <div class="av-assess-grid">
+                                    <div class="av-assess-col">
+                                      <div class="col-head green-head">✓ What can be automated</div>
+                                      <ul class="av-can-list">
+                                        <li class="av-can-item"><span class="av-can-dot">✓</span>Detect affected services and versions across listed assets</li>
+                                        <li class="av-can-item"><span class="av-can-dot">✓</span>Apply network-level controls where appropriate (firewall rules)</li>
+                                        <li class="av-can-item"><span class="av-can-dot">✓</span>Run post-remediation verification scans from the scanner</li>
+                                      </ul>
+                                    </div>
+                                    <div class="av-assess-col">
+                                      <div class="col-head red-head">✗ What must remain manual</div>
+                                      <ul class="av-can-list">
+                                        <li class="av-cant-item"><span class="av-cant-dot">✗</span>Validate business impact before applying patches in production</li>
+                                        <li class="av-cant-item"><span class="av-cant-dot">✗</span>Coordinate maintenance window and application owner sign-off</li>
+                                        <li class="av-cant-item"><span class="av-cant-dot">✗</span>Review remediation steps for environment-specific configuration</li>
+                                      </ul>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div class="av-recommended-box">
+                                  <div class="av-rec-label">Recommended approach</div>
+                                  <div class="av-rec-text">Use automation for detection and verification where possible. Perform configuration changes and patching manually per the remediation timeline, with staging validation first.</div>
+                                </div>
+                              </div>
+
+                              <div v-else-if="currentVulnTab === 'manual'" class="av-manual-tab">
+                                <div class="av-asset-section">
+                                  <ManualRemediationStepsPanel :is-user="true" />
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -527,6 +580,7 @@
 import DashboardMenu from "@/components/user-component/DashboardMenu.vue";
 import DashboardHeader from "@/components/user-component/DashboardHeader.vue";
 import AssetsVulnerabilitiesMode from "@/components/assets/AssetsVulnerabilitiesMode.vue";
+import ManualRemediationStepsPanel from "@/components/assets/ManualRemediationStepsPanel.vue";
 import { useAuthStore } from "@/stores/authStore";
 
 export default {
@@ -535,6 +589,7 @@ export default {
     DashboardMenu,
     DashboardHeader,
     AssetsVulnerabilitiesMode,
+    ManualRemediationStepsPanel,
   },
   data() {
     return {
@@ -565,6 +620,7 @@ export default {
       expandedDescriptions: {},
       descriptionPreviewLimit: 280,
       expandedVulnIndex: null,
+      currentVulnTab: 'auto',
       showExtPopup: false,
       extPopupSeverity: "critical",
       extPopupAsset: "",
@@ -597,6 +653,14 @@ export default {
         vulns = vulns.filter(v => this.activeFilters.includes(v.severity));
       }
       return vulns;
+    },
+    highestCvssScore() {
+      const vulns = this.openAssetVulnerabilities;
+      if (!vulns || vulns.length === 0) return null;
+      const scores = vulns
+        .map(v => parseFloat(v.cvss_score))
+        .filter(s => !isNaN(s));
+      return scores.length > 0 ? Math.max(...scores).toFixed(1) : null;
     },
     filteredAssets() {
       if (!this.searchQuery) return this.assets;
@@ -971,6 +1035,13 @@ export default {
       this.extPopupOriginalDeadlineDays = null;
       this.extPopupOptionsLoading = false;
     },
+    getVulnAssets(vuln) {
+      if (!this.activeIndex) return [];
+      return [this.activeIndex];
+    },
+    setVulnDetailTab(tab) {
+      this.currentVulnTab = tab;
+    },
     async submitExtPopup() {
       if (!this.extPopupAsset || !this.extPopupVulName || !this.extPopupExtension || !this.extPopupReason.trim()) return;
       const requestedDays = this.parseExtensionDays(this.extPopupExtension);
@@ -1083,6 +1154,7 @@ export default {
   flex: 1;
   min-height: 0;
   background: #f8f9fc;
+  align-items: flex-start;
 }
 
 /* ── Left Panel ── */
@@ -1095,6 +1167,8 @@ export default {
   flex-direction: column;
   background: #ffffff;
   overflow: hidden;
+  align-self: stretch;
+  max-height: 100%;
 }
 
 .left-panel-header {
@@ -1224,6 +1298,31 @@ export default {
 .sev-medium   { background: #fef3c7; color: #b45309; }
 .sev-low      { background: #ccfbf1; color: #0f766e; }
 
+.cvss-pill {
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: #fff;
+  border: 1px solid #818cf8;
+  box-shadow: 0 1px 3px rgba(99, 102, 241, 0.2);
+  white-space: nowrap;
+}
+
+.vendor-fix-pill {
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+  color: #fff;
+  border: 1px solid #5eead4;
+  box-shadow: 0 1px 3px rgba(20, 184, 166, 0.2);
+  white-space: nowrap;
+  text-transform: capitalize;
+}
+
 .vuln-chip {
   font-size: 0.65rem;
   color: #176d72;
@@ -1317,15 +1416,16 @@ export default {
   display: flex;
   flex-direction: column;
   background: #f8f9fc;
-  overflow: hidden;
   min-width: 0;
+  align-self: flex-start;
+  max-height: 100%;
+  overflow: hidden;
 }
 
 .right-panel-header {
-  padding: 80px 28px 16px;
+  padding: 16px 28px 16px;
   background: #f8f9fc;
   flex-shrink: 0;
-  border-bottom: 1px solid rgba(203, 196, 208, 0.2);
 }
 
 .asset-detail-title {
@@ -1420,9 +1520,10 @@ export default {
 
 /* Right panel scrollable body */
 .right-panel-scroll {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
-  padding: 18px 28px;
+  padding: 18px 28px 20px;
 }
 .right-panel-scroll::-webkit-scrollbar { width: 4px; }
 .right-panel-scroll::-webkit-scrollbar-track { background: transparent; }
@@ -1865,4 +1966,290 @@ export default {
   cursor: pointer;
 }
 .ext-submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* All Vulnerabilities Tab Styles - Imported from AssetsVulnerabilitiesMode */
+.av-description-block {
+  background: #fff;
+  padding: 18px 22px;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.av-db-label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-bottom: 8px;
+}
+
+.av-db-text {
+  font-size: 0.88rem;
+  color: #334155;
+  line-height: 1.7;
+  margin: 0;
+  white-space: pre-line;
+}
+
+.av-read-more {
+  background: none;
+  border: none;
+  color: #6366f1;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+  margin-top: 8px;
+  transition: color 0.15s;
+}
+
+.av-read-more:hover {
+  color: #4f46e5;
+  text-decoration: underline;
+}
+
+.av-affected-block {
+  background: #fff;
+  padding: 18px 22px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.av-aab-label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-bottom: 10px;
+}
+
+.av-aab-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.av-asset-chip {
+  font-family: monospace;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: #d1fae5;
+  color: #065f46;
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid #6ee7b7;
+}
+
+.av-detail-tabs {
+  display: flex;
+  border-bottom: 2px solid #e2e8f0;
+  background: #fff;
+  padding: 0 22px;
+}
+
+.av-dtab {
+  background: none;
+  border: none;
+  padding: 14px 20px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.2s;
+}
+
+.av-dtab:hover {
+  color: #6366f1;
+}
+
+.av-dtab.active {
+  color: #6366f1;
+  border-bottom-color: #6366f1;
+}
+
+.av-detail-tab-content {
+  background: #f8fafc;
+  min-height: 0;
+}
+
+.av-detail-tab-content--manual {
+  min-height: 0;
+  padding: 0;
+  background: #ffffff;
+}
+
+.av-detail-tab-content--manual .av-manual-tab {
+  padding: 0;
+}
+
+.av-detail-tab-content--manual .av-asset-section {
+  padding: 14px 16px 8px;
+  margin-bottom: 0;
+}
+
+.vuln-accordion-body:has(.av-detail-tab-content--manual) {
+  padding-bottom: 0;
+}
+
+.av-auto-tab {
+  padding: 22px;
+}
+
+.av-assess-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.av-assess-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  gap: 16px;
+}
+
+.av-assess-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+
+.av-assess-sub {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.av-feas-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding: 8px 14px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.av-feas-level {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.av-feas-pct {
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.av-progress-track {
+  width: 100%;
+  height: 12px;
+  background: #e2e8f0;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.av-progress-fill {
+  height: 100%;
+  transition: width 0.5s ease;
+}
+
+.av-assess-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.av-assess-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.col-head {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.green-head {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.red-head {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.av-can-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.av-can-item,
+.av-cant-item {
+  display: flex;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: #374151;
+  padding: 6px 0;
+  line-height: 1.5;
+}
+
+.av-can-dot {
+  color: #16a34a;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.av-cant-dot {
+  color: #dc2626;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.av-recommended-box {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+.av-rec-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #1e40af;
+  margin-bottom: 6px;
+}
+
+.av-rec-text {
+  font-size: 0.82rem;
+  color: #1e3a8a;
+  line-height: 1.6;
+}
+
+.av-asset-section {
+  background: #fff;
+  border-radius: 10px;
+  padding: 0;
+}
+
+@media (max-width: 768px) {
+  .av-assess-grid {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

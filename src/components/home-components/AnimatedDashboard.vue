@@ -327,7 +327,7 @@
                   <input
                     type="search"
                     class="assets-search"
-                    placeholder="Search assets, IPs..."
+                    placeholder="Search assets"
                     readonly
                     aria-label="Search assets"
                   />

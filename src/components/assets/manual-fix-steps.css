@@ -29,7 +29,7 @@
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
-  overflow: hidden;
+  overflow: visible;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
@@ -74,6 +74,10 @@
   font-size: 0.88rem;
   font-weight: 700;
   color: #1e293b;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  flex: 1;
+  min-width: 0;
 }
 
 .mf-step-head-right {
@@ -146,6 +150,8 @@
   color: #334155;
   line-height: 1.55;
   margin: 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .mf-pretext {
@@ -185,7 +191,7 @@
 }
 
 .mf-filepath-text {
-  font-family: 'Courier New', Consolas, monospace;
+  font-family: "Courier New", Consolas, monospace;
   font-size: 0.8rem;
   color: #7c3aed;
   word-break: break-all;
@@ -265,7 +271,7 @@
 }
 
 .mf-cmd-block code {
-  font-family: 'Cascadia Code', 'Courier New', Consolas, monospace;
+  font-family: "Cascadia Code", "Courier New", Consolas, monospace;
   font-size: 0.78rem;
   line-height: 1.75;
   color: #e2e8f0;
@@ -289,7 +295,7 @@
 }
 
 .mf-verify-text {
-  font-family: 'Courier New', Consolas, monospace;
+  font-family: "Courier New", Consolas, monospace;
   font-size: 0.8rem;
   color: #1e293b;
   line-height: 1.6;
@@ -340,6 +346,129 @@
   line-height: 1.55;
   margin: 0;
   white-space: pre-line;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* Complete Step Button (User Only) */
+.mf-complete-btn-wrap {
+  padding: 16px 18px;
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.mf-complete-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #0f696e;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 22px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    opacity 0.2s;
+  white-space: nowrap;
+}
+
+.mf-complete-btn:hover {
+  background: #0d5a5f;
+}
+
+.mf-complete-btn i {
+  font-size: 1.1rem;
+}
+
+.mf-complete-btn.completed {
+  background: #16a34a;
+  cursor: default;
+}
+
+.mf-complete-btn.completed:hover {
+  background: #16a34a;
+}
+
+/* Footer: Complete all + Send verification (user /userassets Manual Fix) */
+.mf-footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin: 0;
+  padding: 8px 0 0;
+  border-top: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.mf-panel:last-child {
+  margin-bottom: 0;
+}
+
+.mf-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  line-height: 1.2;
+  font-family: inherit;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(15, 105, 110, 0.18);
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.mf-action-btn i {
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.mf-action-btn--primary {
+  background: #0f696e;
+  color: #ffffff;
+  border-color: #0f696e;
+}
+
+.mf-action-btn--primary:hover:not(:disabled) {
+  background: #0d5a5e;
+  border-color: #0d5a5e;
+  box-shadow: 0 3px 10px rgba(15, 105, 110, 0.28);
+}
+
+.mf-action-btn--outline {
+  background: #ffffff;
+  color: #0f696e;
+  border-color: #0f696e;
+}
+
+.mf-action-btn--outline:hover:not(:disabled) {
+  background: #f0fdfa;
+  color: #0d5a5e;
+  border-color: #0d5a5e;
+}
+
+.mf-action-btn:focus-visible {
+  outline: 2px solid #0f696e;
+  outline-offset: 2px;
+}
+
+.mf-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 @media (max-width: 700px) {
