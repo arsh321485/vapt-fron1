@@ -64,10 +64,10 @@
           :key="item._key"
           class="av-vuln-item"
           :class="{ active: selectedKey === item._key }"
-          @click="selectVuln(item)"
+          @click="selectVulnWithScroll(item)"
         >
           <div class="av-vi-top">
-            <span class="av-vi-id">{{ item.displayId }}</span>
+            <!-- <span class="av-vi-id">{{ item.displayId }}</span> -->
             <span class="av-vi-sev" :class="sevClass(item.severity)">{{ item.severity }}</span>
             <span class="av-vi-status" :class="statusClass(item.status)">{{ statusLabel(item.status) }}</span>
           </div>
@@ -93,15 +93,15 @@
       <div v-else class="av-detail">
         <div class="av-detail-header">
           <div class="av-dh-top">
-            <span class="av-dh-id">{{ selectedVuln.displayId }}</span>
+            <!-- <span class="av-dh-id">{{ selectedVuln.displayId }}</span> -->
             <span class="av-detail-sev" :class="sevClass(selectedVuln.severity)">{{ selectedVuln.severity }}</span>
             <span class="av-detail-status" :class="statusDetailClass(selectedVuln.status)">
               ● {{ statusLabel(selectedVuln.status).toUpperCase() }}
             </span>
+            <span class="av-cvss-pill">CVSS {{ selectedVuln.cvss_score || '—' }}</span>
           </div>
           <div class="av-title-row">
             <h1 class="av-dh-title">{{ selectedVuln.vul_name }}</h1>
-            <span class="av-cvss-pill">CVSS {{ selectedVuln.cvss_score || '—' }}</span>
           </div>
         </div>
 
@@ -118,7 +118,7 @@
           </button>
         </div>
 
-        <div class="av-affected-block">
+        <div class="av-affected-block" style="display: none;">
           <div class="av-aab-label">Affected Assets ({{ selectedVuln.assets.length }})</div>
           <div class="av-aab-chips">
             <span v-for="ip in selectedVuln.assets" :key="ip" class="av-asset-chip">{{ ip }}</span>
@@ -161,8 +161,7 @@
                   <div class="av-assess-sub">Based on vulnerability profile and remediation data</div>
                 </div>
                 <div class="av-feas-badge" :style="feasBadgeStyle">
-                  <span class="av-feas-level">{{ automationLevel }}</span>
-                  <span class="av-feas-pct">{{ automationPct }} automatable</span>
+                  <span class="av-feas-pct">{{ automationPct }}</span>
                 </div>
               </div>
               <div class="av-progress-track">
@@ -191,13 +190,21 @@
               <div class="av-rec-label">Recommended approach</div>
               <div class="av-rec-text">{{ recommendedText }}</div>
             </div>
+            <div class="av-action-buttons">
+              <button class="av-btn-outline" @click="showCodeModal = true">
+                <i class="bi bi-code-square"></i>
+                View Code
+              </button>
+              <button class="av-btn-primary">
+                <i class="bi bi-download"></i>
+                Download
+              </button>
+            </div>
           </div>
 
           <div v-else-if="detailTab === 'manual'" class="av-manual-tab">
             <div v-for="asset in selectedVuln.assets" :key="asset" class="av-asset-section">
               <div class="av-asset-label">
-                <span class="av-asset-ip-badge">{{ asset }}</span>
-                <span v-if="assetMeta(asset).port" class="av-asset-port">:{{ assetMeta(asset).port }}</span>
                 <span class="av-asset-os-lbl">{{ assetMeta(asset).os }}</span>
               </div>
               <ManualRemediationStepsPanel :is-user="isUser" />
@@ -241,6 +248,32 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Code Modal -->
+    <div v-if="showCodeModal" class="code-modal-backdrop" @click.self="showCodeModal = false">
+      <div class="code-modal-box">
+        <div class="code-modal-header">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <i class="bi bi-file-earmark-code" style="font-size: 1.2rem; color: #6366f1;"></i>
+            <h3 class="code-modal-title">tls_config_auto_fixer.py</h3>
+          </div>
+          <button class="code-modal-close" @click="showCodeModal = false">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        <div class="code-modal-body">
+          <div class="code-header-badge">Python 3.7+</div>
+          <pre class="code-block"><code>{{ automationCode }}</code></pre>
+        </div>
+        <div class="code-modal-footer">
+          <button class="code-copy-btn" @click="copyCodeToClipboard">
+            <i class="bi bi-clipboard"></i>
+            {{ codeCopied ? 'Copied!' : 'Copy to Clipboard' }}
+          </button>
+          <button class="code-close-btn" @click="showCodeModal = false">Close</button>
         </div>
       </div>
     </div>
@@ -316,6 +349,9 @@ export default {
           ],
         },
       ],
+      showCodeModal: false,
+      codeCopied: false,
+      automationCode: `import paramiko\nimport requests\nimport subprocess\nimport re\nfrom datetime import import datetime\n\nclass TLSConfigurator:\n    def __init__(self, host, username, password):\n        self.host = host\n        self.username = username\n        self.password = password\n        self.ssh_client = paramiko.SSHClient()\n        self.log = []\n\n    def connect(self):\n        """Establish SSH connection to target host"""\n        self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())\n        try:\n            self.ssh_client.connect(self.host, username=self.username, password=self.password)\n            self.log_action("SSH connection established")\n            return True\n        except Exception as e:\n            self.log_action(f"Connection failed: {str(e)}")\n            return False`,
     };
   },
   computed: {
@@ -525,6 +561,15 @@ export default {
     selectVuln(item) {
       this.selectedKey = item._key;
     },
+    selectVulnWithScroll(item) {
+      this.selectVuln(item);
+      this.$nextTick(() => {
+        const rightPanel = document.querySelector('.av-right');
+        if (rightPanel) {
+          rightPanel.scrollTop = 0;
+        }
+      });
+    },
     cleanText(text) {
       if (!text) return '';
       return String(text)
@@ -576,7 +621,15 @@ export default {
       asset.status = 'Under Verification';
       asset.statusClass = 'status-verification';
     },
+    copyCodeToClipboard() {
+    navigator.clipboard.writeText(this.automationCode).then(() => {
+      this.codeCopied = true;
+      setTimeout(() => {
+        this.codeCopied = false;
+      }, 2000);
+    });
   },
+},
 };
 </script>
 
@@ -669,7 +722,7 @@ export default {
 
 .av-pill-medium {
   background: #f7e4bf;
-  color: #d48806;
+  color: #f59e0b;
 }
 
 .av-pill-low {
@@ -753,21 +806,25 @@ export default {
   border-radius: 3px;
 }
 
-.sev-c { background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
-.sev-h { background: #fff7ed; color: #9a3412; border: 1px solid #fdba74; }
-.sev-m { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
-.sev-l { background: #f0fdf4; color: #166534; border: 1px solid #86efac; }
+.sev-c, .av-vi-sev.sev-c { background: #f8dede !important; color: #b42318 !important; }
+.sev-h, .av-vi-sev.sev-h { background: #fee2e2 !important; color: #dc2626 !important; }
+.sev-m, .av-vi-sev.sev-m { background: #fef3c7 !important; color: #f59e0b !important; }
+.sev-l, .av-vi-sev.sev-l { background: #ccfbf1 !important; color: #0f766e !important; }
 
 .av-vi-status {
-  font-size: 0.56rem;
+  font-size: 0.68rem;
   font-weight: 700;
-  padding: 1px 6px;
-  border-radius: 3px;
+  padding: 3px 10px;
+  border-radius: 4px;
   margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-transform: uppercase;
 }
 
 .status-overdue { background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
-.status-open { background: #f0fdf4; color: #166534; border: 1px solid #86efac; }
+.status-open { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
 
 .av-vi-title {
   font-size: 0.75rem;
@@ -871,8 +928,8 @@ export default {
 .av-dh-top {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 7px;
+  gap: 12px;
+  margin-bottom: 8px;
   flex-wrap: wrap;
 }
 
@@ -889,19 +946,25 @@ export default {
 .av-detail-sev {
   font-size: 0.68rem;
   font-weight: 700;
-  padding: 3px 9px;
+  padding: 3px 10px;
   border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
+.av-detail-sev.sev-c { background: #f8dede !important; color: #b42318 !important; }
+.av-detail-sev.sev-h { background: #fee2e2 !important; color: #dc2626 !important; }
+.av-detail-sev.sev-m { background: #fef3c7 !important; color: #f59e0b !important; }
+.av-detail-sev.sev-l { background: #ccfbf1 !important; color: #0f766e !important; }
 
 .av-cvss-pill {
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   font-weight: 700;
-  padding: 6px 14px;
-  border-radius: 8px;
+  padding: 3px 10px;
+  border-radius: 4px;
   background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
   color: #fff;
   border: 1px solid #818cf8;
-  box-shadow: 0 2px 4px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 1px 3px rgba(99, 102, 241, 0.2);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -909,12 +972,13 @@ export default {
 .av-detail-status {
   font-size: 0.68rem;
   font-weight: 700;
-  padding: 3px 9px;
+  padding: 3px 10px;
   border-radius: 4px;
+  text-transform: uppercase;
 }
 
 .ds-overdue { background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; }
-.ds-open { background: #f0fdf4; color: #16a34a; border: 1px solid #86efac; }
+.ds-open { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
 
 .av-title-row {
   display: flex;
@@ -1012,7 +1076,7 @@ export default {
   border: none;
   background: transparent;
   font-size: 0.8rem;
-  font-weight: 500;
+  font-weight: 400;
   color: #64748b;
   border-bottom: 2px solid transparent;
   cursor: pointer;
@@ -1136,13 +1200,19 @@ export default {
 .col-head {
   font-size: 0.68rem;
   font-weight: 700;
-  margin-bottom: 8px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid #f1f5f9;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 12px;
 }
 
-.green-head { color: #166534; }
-.red-head { color: #991b1b; }
+.green-head {
+  background: #d1fae5;
+  color: #065f46;
+}
+.red-head {
+  background: #fee2e2;
+  color: #991b1b;
+}
 
 .av-can-list {
   list-style: none;
@@ -1164,6 +1234,53 @@ export default {
 .av-can-dot { color: #16a34a; font-weight: 700; flex-shrink: 0; width: 14px; }
 .av-cant-dot { color: #dc2626; font-weight: 700; flex-shrink: 0; width: 14px; }
 
+.av-action-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 14px;
+  justify-content: flex-end;
+}
+
+.av-btn-outline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border: 2px solid #0284c7;
+  background: #fff;
+  color: #0284c7;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.av-btn-outline:hover {
+  background: #f0f9ff;
+  border-color: #0369a1;
+  color: #0369a1;
+}
+
+.av-btn-primary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border: none;
+  background: #0c4a6e;
+  color: #fff;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.av-btn-primary:hover {
+  background: #075985;
+}
+
 .av-recommended-box {
   background: #eff6ff;
   border: 1px solid #bfdbfe;
@@ -1177,14 +1294,33 @@ export default {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: #1e40af;
-  margin-bottom: 5px;
+  margin-bottom: 6px;
 }
 
 .av-rec-text {
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   color: #1e3a8a;
-  line-height: 1.6;
+  line-height: 1.5;
+  margin: 0;
 }
+
+/* Code Modal */
+.code-modal-backdrop { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+.code-modal-box { background: #fff; border-radius: 12px; width: 90%; max-width: 900px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); }
+.code-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #e5e7eb; }
+.code-modal-title { font-size: 1rem; font-weight: 600; color: #1f2937; margin: 0; }
+.code-modal-close { background: none; border: none; font-size: 1.2rem; color: #6b7280; cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; }
+.code-modal-close:hover { background: #f3f4f6; color: #1f2937; }
+.code-modal-body { flex: 1; overflow: auto; padding: 0; position: relative; }
+.code-header-badge { position: absolute; top: 12px; right: 12px; background: #1e293b; color: #94a3b8; padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; z-index: 1; }
+.code-block { background: #1e293b; color: #e2e8f0; padding: 20px; margin: 0; font-family: 'Courier New', Courier, monospace; font-size: 0.85rem; line-height: 1.6; overflow-x: auto; white-space: pre; }
+.code-block::-webkit-scrollbar { height: 8px; }
+.code-block::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+.code-modal-footer { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-top: 1px solid #e5e7eb; background: #f9fafb; }
+.code-copy-btn { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: #0ea5e9; color: #fff; border: none; border-radius: 6px; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.code-copy-btn:hover { background: #0284c7; }
+.code-close-btn { padding: 8px 16px; background: #fff; color: #6b7280; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.code-close-btn:hover { background: #f9fafb; color: #1f2937; }
 
 .av-manual-tab {
   display: flex;

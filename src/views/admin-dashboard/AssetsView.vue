@@ -158,22 +158,20 @@
               <div class="assets-right-panel">
                 <!-- Detail Header -->
                 <div class="right-panel-header">
-                  <div class="d-flex align-items-center gap-3 mb-3 flex-wrap pt-2">
-                    <h1 class="asset-detail-title">{{ authStore.selectedAssetDetail?.asset }}</h1>
+                  <div class="d-flex align-items-center gap-3 mb-2 flex-wrap">
                     <span v-if="authStore.selectedAssetDetail?.severity" class="sev-badge" :class="'sev-' + (authStore.selectedAssetDetail.severity?.toLowerCase() || '')">
-                      {{ authStore.selectedAssetDetail.severity }} Severity
+                      {{ authStore.selectedAssetDetail.severity }}
                     </span>
-                    <span v-if="highestCvssScore" class="cvss-pill">CVSS {{ highestCvssScore }}</span>
                     <span :class="getStatusBadgeClass(selectedAssetStatusLabel)">
                       <span :class="getStatusDotClass(selectedAssetStatusLabel)"></span>
                       {{ selectedAssetStatusLabel }}
                     </span>
+                    <span v-if="highestCvssScore" class="cvss-pill">CVSS {{ highestCvssScore }}</span>
                   </div>
+                  <h1 class="asset-detail-title mb-0">{{ authStore.selectedAssetDetail?.asset }}</h1>
+                </div>
+                <div class="right-panel-body">
                   <div class="d-flex gap-5 mb-4">
-                    <div v-if="authStore.selectedAssetDetail?.exposure">
-                      <p class="meta-label">Exposure</p>
-                      <p class="meta-value" style="text-transform:capitalize;">{{ authStore.selectedAssetDetail.exposure }}</p>
-                    </div>
                     <div v-if="authStore.selectedAssetDetail?.owner">
                       <p class="meta-label">Owner</p>
                       <p class="meta-value">{{ authStore.selectedAssetDetail.owner }}</p>
@@ -212,8 +210,8 @@
                     <h3 class="section-label mb-3">Active Threats</h3>
 
                     <div class="d-flex flex-column gap-3">
-                      <div v-for="(v, i) in filteredVulnerabilities" :key="i" class="vuln-accordion-item">
-                        <div class="vuln-accordion-header" role="button" @click="expandedVulnIndex = expandedVulnIndex === i ? null : i">
+                      <div v-for="(v, i) in filteredVulnerabilities" :key="i" class="vuln-accordion-item" :ref="'vuln-' + i">
+                        <div class="vuln-accordion-header" role="button" @click="toggleAccordion(i)">
                           <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
                             <i class="bi bi-exclamation-triangle-fill vuln-icon flex-shrink-0"
                               :class="{
@@ -226,7 +224,6 @@
                           </div>
                           <div class="d-flex align-items-center gap-3 flex-shrink-0">
                             <span class="sev-badge" :class="'sev-' + (v.severity?.toLowerCase() || '')">{{ v.severity }}</span>
-                            <span v-if="v.vendor_fix_available && v.vendor_fix_available.toLowerCase() === 'yes'" class="vendor-fix-pill">Vendor Fix: Yes</span>
                             <span :class="getStatusBadgeClass(v.status)">
                               <span :class="getStatusDotClass(v.status)"></span>{{ getStatusLabel(v.status) }}
                             </span>
@@ -252,7 +249,7 @@
                             </div>
 
                             <!-- Affected Assets Chips -->
-                            <div class="av-affected-block">
+                            <div class="av-affected-block" style="display: none;">
                               <div class="av-aab-label">AFFECTED ASSETS ({{ getVulnAssets(v).length }})</div>
                               <div class="av-aab-chips">
                                 <span v-for="ip in getVulnAssets(v)" :key="ip" class="av-asset-chip">{{ ip }}</span>
@@ -289,8 +286,7 @@
                                       <div class="av-assess-sub">Based on vulnerability profile and remediation data</div>
                                     </div>
                                     <div class="av-feas-badge" style="background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7;">
-                                      <span class="av-feas-level">High</span>
-                                      <span class="av-feas-pct">75% automatable</span>
+                                      <span class="av-feas-pct">75%</span>
                                     </div>
                                   </div>
                                   <div class="av-progress-track">
@@ -319,10 +315,23 @@
                                   <div class="av-rec-label">Recommended approach</div>
                                   <div class="av-rec-text">Use automation for detection and verification where possible. Perform configuration changes and patching manually per the remediation timeline, with staging validation first.</div>
                                 </div>
+                                <div class="av-action-buttons">
+                                  <button class="av-btn-outline" @click="showCodeModal = true">
+                                    <i class="bi bi-code-square"></i>
+                                    View Code
+                                  </button>
+                                  <button class="av-btn-primary">
+                                    <i class="bi bi-download"></i>
+                                    Download
+                                  </button>
+                                </div>
                               </div>
 
                               <div v-else-if="currentVulnTab === 'manual'" class="av-manual-tab">
                                 <div class="av-asset-section">
+                                  <div class="av-asset-label">
+                                    <span class="av-asset-os-lbl">Linux</span>
+                                  </div>
                                   <ManualRemediationStepsPanel />
                                 </div>
                               </div>
@@ -414,7 +423,6 @@
 
                 </div>
               </div>
-
             </div>
 
             <div v-else class="assets-vuln-mode-wrap">
@@ -426,6 +434,32 @@
         </div>
       </div>
     </section>
+
+    <!-- Code Modal -->
+    <div v-if="showCodeModal" class="code-modal-backdrop" @click.self="showCodeModal = false">
+      <div class="code-modal-box">
+        <div class="code-modal-header">
+          <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-file-earmark-code" style="font-size: 1.2rem; color: #6366f1;"></i>
+            <h3 class="code-modal-title">tls_config_auto_fixer.py</h3>
+          </div>
+          <button class="code-modal-close" @click="showCodeModal = false">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        <div class="code-modal-body">
+          <div class="code-header-badge">Python 3.7+</div>
+          <pre class="code-block"><code>{{ automationCode }}</code></pre>
+        </div>
+        <div class="code-modal-footer">
+          <button class="code-copy-btn" @click="copyCodeToClipboard">
+            <i class="bi bi-clipboard"></i>
+            {{ codeCopied ? 'Copied!' : 'Copy to Clipboard' }}
+          </button>
+          <button class="code-close-btn" @click="showCodeModal = false">Close</button>
+        </div>
+      </div>
+    </div>
   </main>
 </template>
 
@@ -476,6 +510,39 @@ export default {
       closedFixCount: 0,
       loadingClosedFix: false,
       assetFetchSeq: 0,
+      showCodeModal: false,
+      codeCopied: false,
+      automationCode: `import paramiko
+import requests
+import subprocess
+import re
+from datetime import import datetime
+
+class TLSConfigurator:
+    def __init__(self, host, username, password):
+        self.host = host
+        self.username = username
+        self.password = password
+        self.ssh_client = paramiko.SSHClient()
+        self.log = []
+
+    def connect(self):
+        """Establish SSH connection to target host"""
+        self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        try:
+            self.ssh_client.connect(self.host, username=self.username, password=self.password)
+            self.log_action("SSH connection established")
+            return True
+        except Exception as e:
+            self.log_action(f"Connection failed: {str(e)}")
+            return False
+
+    def detect_tls_version(self):
+        """Detect current TLS configuration"""
+        stdin, stdout, stderr = self.ssh_client.exec_command("openssl version")
+        version = stdout.read().decode()
+        self.log_action(f"Detected OpenSSL version: {version}")
+        return version`,
     };
   },
   computed: {
@@ -623,6 +690,28 @@ export default {
     },
     getStatusDotClass(status) {
       return this.getStatusLabel(status) === "Closed" ? "status-dot-closed" : "status-dot-open";
+    },
+    copyCodeToClipboard() {
+      navigator.clipboard.writeText(this.automationCode).then(() => {
+        this.codeCopied = true;
+        setTimeout(() => {
+          this.codeCopied = false;
+        }, 2000);
+      });
+    },
+    toggleAccordion(index) {
+      const isOpening = this.expandedVulnIndex !== index;
+      this.expandedVulnIndex = this.expandedVulnIndex === index ? null : index;
+
+      if (isOpening) {
+        this.$nextTick(() => {
+          const refKey = 'vuln-' + index;
+          const element = this.$refs[refKey];
+          if (element && element[0]) {
+            element[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
+      }
     },
     async reloadAssetsAndHeld() {
       await this.authStore.fetchAssets(true);
@@ -1134,7 +1223,7 @@ export default {
 .assets-mode-tab {
   border: none;
   background: transparent;
-  font-size: 0.88rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: #64748b;
   padding: 10px 16px;
@@ -1145,12 +1234,12 @@ export default {
 }
 
 .assets-mode-tab:hover {
-  color: #241447;
+  color: #000000;
 }
 
 .assets-mode-tab-active {
-  color: #0f696e;
-  border-bottom-color: #0f696e;
+  color: #000000;
+  border-bottom-color: #000000;
 }
 
 .assets-vuln-mode-wrap {
@@ -1189,25 +1278,25 @@ export default {
 }
 
 .assets-title {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: #241447;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #1e293b;
   margin: 0;
 }
 
 .assets-count-badge {
-  font-size: 0.72rem;
-  font-weight: 500;
-  color: #49454f;
-  background: #edeef1;
-  padding: 2px 8px;
-  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: #f1f5f9;
+  border-radius: 20px;
+  padding: 3px 12px;
+  color: #64748b;
 }
 
 .action-icon {
-  font-size: 1.05rem;
+  font-size: 0.95rem;
   cursor: pointer;
-  color: #49454f;
+  color: #64748b;
   transition: color 0.15s;
 }
 .action-icon:hover { color: #241447; }
@@ -1219,20 +1308,20 @@ export default {
   left: 10px;
   top: 50%;
   transform: translateY(-50%);
-  color: #49454f;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
+  color: #94a3b8;
   pointer-events: none;
 }
 
 .assets-search {
   width: 100%;
-  padding: 8px 32px 8px 30px;
-  border: none;
-  border-radius: 8px;
-  background: #f8f9fc;
-  font-size: 0.84rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  padding: 7px 10px 7px 30px;
+  font-size: 0.75rem;
+  color: #1e293b;
+  background: #f8fafc;
   outline: none;
-  color: #191c1e;
 }
 .assets-search:focus {
   box-shadow: 0 0 0 2px rgba(15, 105, 110, 0.2);
@@ -1240,12 +1329,12 @@ export default {
 
 .clear-icon {
   position: absolute;
-  right: 10px;
+  right: 11px;
   top: 50%;
   transform: translateY(-50%);
   cursor: pointer;
-  color: #49454f;
-  font-size: 0.85rem;
+  color: #94a3b8;
+  font-size: 0.8rem;
 }
 
 /* Asset list */
@@ -1282,32 +1371,31 @@ export default {
 }
 
 .asset-ip {
-  font-size: 0.88rem;
-  font-weight: 700;
-  color: #241447;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #1e293b;
 }
 
 .asset-sub {
-  font-size: 0.73rem;
-  color: #49454f;
+  font-size: 0.62rem;
+  color: #64748b;
   margin: 0 0 5px;
-  line-height: 1.3;
 }
 
 /* Severity badges */
 .sev-badge {
-  font-size: 0.62rem;
+  font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  padding: 2px 7px;
-  border-radius: 3px;
+  padding: 3px 10px;
+  border-radius: 4px;
   white-space: nowrap;
 }
-.sev-critical { background: #f8dede; color: #b42318; }
-.sev-high     { background: #fee2e2; color: #dc2626; }
-.sev-medium   { background: #fef3c7; color: #b45309; }
-.sev-low      { background: #ccfbf1; color: #0f766e; }
+.sev-critical { background: #f8dede !important; color: #b42318 !important; }
+.sev-high     { background: #fee2e2 !important; color: #dc2626 !important; }
+.sev-medium   { background: #fef3c7 !important; color: #f59e0b !important; }
+.sev-low      { background: #ccfbf1 !important; color: #0f766e !important; }
 
 .cvss-pill {
   font-size: 0.62rem;
@@ -1335,23 +1423,23 @@ export default {
 }
 
 .vuln-chip {
-  font-size: 0.65rem;
-  color: #176d72;
-  background: #a1ecf2;
+  font-size: 0.62rem;
+  color: #64748b;
+  background: #f1f5f9;
   padding: 2px 6px;
   border-radius: 4px;
   font-weight: 500;
 }
 
 .sev-count-dot {
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   font-weight: 700;
   padding: 2px 5px;
   border-radius: 4px;
 }
 .critical-dot { color: #b42318 !important; background: #f8dede !important; }
 .high-dot     { color: #dc2626 !important; background: #fee2e2 !important; }
-.medium-dot   { color: #b45309; background: #fef3c7; }
+.medium-dot   { color: #f59e0b; background: #fef3c7; }
 .low-dot      { color: #0f766e; background: #ccfbf1; }
 
 /* Mitigation on hold */
@@ -1367,11 +1455,11 @@ export default {
 .mitigation-hold-section::-webkit-scrollbar-thumb { background: #cbc4d0; border-radius: 10px; }
 
 .hold-title {
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #49454f;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
   margin: 0;
 }
 
@@ -1388,16 +1476,15 @@ export default {
 }
 
 .hold-ip {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: #241447;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #1e293b;
   margin: 0;
 }
 .hold-sub {
-  font-size: 0.7rem;
-  color: #49454f;
+  font-size: 0.62rem;
+  color: #64748b;
   margin: 0;
-  text-transform: capitalize;
 }
 
 /* Pagination */
@@ -1409,10 +1496,11 @@ export default {
   border-top: 1px solid rgba(203, 196, 208, 0.15);
 }
 .custom-pagination .page-link {
-  color: #0f696e;
+  color: #64748b;
   background: transparent;
   border: none;
   font-weight: 500;
+  font-size: 0.75rem;
   padding: 5px 9px;
   border-radius: 50%;
 }
@@ -1434,16 +1522,22 @@ export default {
 }
 
 .right-panel-header {
-  padding: 16px 28px 0;
-  background: #f8f9fc;
+  padding: 18px 22px 14px;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
   flex-shrink: 0;
 }
 
+.right-panel-body {
+  background: #f8f9fc;
+  padding: 16px 28px 0;
+}
+
 .asset-detail-title {
-  font-size: 1.7rem;
-  font-weight: 800;
-  color: #241447;
-  letter-spacing: -0.02em;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.3;
   margin: 0;
 }
 
@@ -1457,7 +1551,7 @@ export default {
   font-weight: 700;
   text-transform: uppercase;
   background: #fee2e2;
-  color: #b91c1c;
+  color: #dc2626;
   border: 1px solid #fecaca;
 }
 .status-dot-open {
@@ -1489,14 +1583,16 @@ export default {
 }
 
 .meta-label {
-  font-size: 0.73rem;
-  color: #49454f;
-  font-weight: 500;
+  font-size: 0.62rem;
+  color: #94a3b8;
+  font-weight: 700;
   margin-bottom: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 .meta-value {
-  font-size: 0.92rem;
-  color: #191c1e;
+  font-size: 0.8rem;
+  color: #475569;
   font-weight: 500;
   margin: 0;
 }
@@ -1509,20 +1605,20 @@ export default {
 }
 .detail-tab {
   padding-bottom: 10px;
-  font-size: 0.875rem;
+  font-size: 0.8rem;
   font-weight: 500;
-  color: #49454f;
+  color: #64748b;
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
   cursor: pointer;
   transition: color 0.15s;
 }
-.detail-tab:hover { color: #241447; }
+.detail-tab:hover { color: #1e293b; }
 .detail-tab-active {
-  font-weight: 700;
-  color: #0f696e;
-  border-bottom: 2px solid #0f696e;
+  font-weight: 500;
+  color: #0f172a;
+  border-bottom: 2px solid #0f172a;
 }
 
 /* Right panel scrollable body */
@@ -1537,11 +1633,11 @@ export default {
 .right-panel-scroll::-webkit-scrollbar-thumb { background: #cbc4d0; border-radius: 10px; }
 
 .section-label {
-  font-size: 0.72rem;
+  font-size: 0.62rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #49454f;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
   margin: 0;
 }
 
@@ -1549,8 +1645,8 @@ export default {
 .sev-pill {
   border-radius: 50px;
   padding: 5px 14px;
-  font-size: 0.8rem;
-  font-weight: 500;
+  font-size: 0.68rem;
+  font-weight: 600;
   background: white;
   border: 1px solid rgba(0,0,0,0.12);
   cursor: pointer;
@@ -1597,18 +1693,19 @@ export default {
 .vuln-icon { font-size: 1rem; }
 .vuln-icon-critical { color: #b42318; }
 .vuln-icon-high     { color: #dc2626; }
-.vuln-icon-medium   { color: #ca8a04; }
+.vuln-icon-medium   { color: #f59e0b; }
 .vuln-icon-low      { color: #10b981; }
 
 .vuln-name {
-  font-size: 0.92rem;
-  font-weight: 700;
-  color: #241447;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #1e293b;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
-  max-width: 220px;
+  max-width: 100%;
+  flex: 1;
   cursor: default;
 }
 
@@ -1631,29 +1728,30 @@ export default {
   font-size: 0.62rem;
   font-weight: 700;
   text-transform: uppercase;
-  color: #49454f;
+  color: #94a3b8;
+  letter-spacing: 0.05em;
   margin-bottom: 3px;
 }
 .vuln-meta-value {
-  font-size: 0.84rem;
-  font-weight: 700;
-  color: #241447;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #1e293b;
   margin: 0;
 }
 .vuln-meta-value.teal { color: #0f696e; }
 
 .vuln-desc-title {
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #241447;
+  color: #94a3b8;
   margin-bottom: 5px;
 }
 .vuln-desc-text {
-  font-size: 0.875rem;
-  color: #49454f;
-  line-height: 1.6;
+  font-size: 0.8rem;
+  color: #475569;
+  line-height: 1.65;
 }
 
 .btn-fix-now {
@@ -1675,7 +1773,7 @@ export default {
   border: none;
   padding: 0;
   color: #0f696e;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;
 }
@@ -1693,23 +1791,23 @@ export default {
 }
 .fixed-check-icon { color: #16a34a; font-size: 1.1rem; }
 .fixed-vuln-name {
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: #241447;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #1e293b;
   margin: 0;
 }
 .fixed-vuln-date {
-  font-size: 0.7rem;
-  color: #49454f;
+  font-size: 0.62rem;
+  color: #64748b;
   margin: 0;
 }
 .btn-view-detail {
   font-size: 0.75rem;
-  font-weight: 700;
-  color: #0f696e;
+  font-weight: 600;
+  color: #64748b;
   padding: 4px 14px;
-  border-radius: 50px;
-  background: transparent;
+  border-radius: 8px;
+  background: #f1f5f9;
   border: none;
   cursor: pointer;
   transition: background 0.15s;
@@ -1729,9 +1827,9 @@ export default {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: #f0ecff;
-  color: #241447;
-  font-size: 0.78rem;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 0.68rem;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -1740,14 +1838,14 @@ export default {
 }
 
 .sr-vul-name {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #241447;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #1e293b;
 }
 
 .sr-empty {
   color: #94a3b8;
-  font-size: 0.875rem;
+  font-size: 0.8rem;
   padding: 16px 0;
   display: flex;
   align-items: center;
@@ -1771,8 +1869,8 @@ export default {
 
 .sr-modal-title {
   color: white;
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: 0.85rem;
+  font-weight: 600;
   margin: 0 0 3px;
   display: flex;
   align-items: center;
@@ -1780,37 +1878,37 @@ export default {
 
 .sr-modal-sub {
   color: rgba(255,255,255,0.55);
-  font-size: 0.78rem;
+  font-size: 0.68rem;
   padding-left: 26px;
 }
 
 .sr-section-label {
-  font-size: 0.72rem;
+  font-size: 0.62rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #64748b;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
 }
 
 .sr-step-pill {
   display: inline-flex;
   align-items: center;
-  background: rgba(15,105,110,0.1);
-  color: #0f696e;
-  border: 1.5px solid rgba(15,105,110,0.25);
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
   border-radius: 50px;
-  padding: 4px 14px;
-  font-size: 0.78rem;
+  padding: 4px 12px;
+  font-size: 0.68rem;
   font-weight: 600;
 }
 
 .sr-textarea {
   width: 100%;
-  background: #f8f9fc;
-  border: 1.5px solid #e8ecf0;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   border-radius: 10px;
   padding: 10px 14px;
-  font-size: 0.875rem;
+  font-size: 0.8rem;
   color: #475569;
   resize: none;
   outline: none;
@@ -1829,20 +1927,20 @@ export default {
   border: none;
   border-radius: 8px;
   padding: 8px 22px;
-  font-size: 0.875rem;
-  font-weight: 700;
+  font-size: 0.8rem;
+  font-weight: 600;
   cursor: pointer;
   transition: background 0.15s;
 }
 .sr-btn-close:hover { background: #1a0f35; }
 
 .btn-view-requests {
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: #0f696e;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
   padding: 6px 14px;
   border-radius: 8px;
-  background: #e0f2f1;
+  background: #f1f5f9;
   border: none;
   cursor: pointer;
   transition: background 0.15s;
@@ -1858,38 +1956,34 @@ export default {
 }
 
 .av-db-label {
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  font-size: 0.62rem;
+  font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: #94a3b8;
-  margin-bottom: 8px;
+  margin-bottom: 5px;
 }
 
 .av-db-text {
-  font-size: 0.88rem;
-  color: #334155;
-  line-height: 1.7;
+  font-size: 0.8rem;
+  color: #475569;
+  line-height: 1.65;
   margin: 0;
   white-space: pre-line;
 }
 
 .av-read-more {
-  background: none;
+  background: transparent;
   border: none;
-  color: #6366f1;
-  font-size: 0.82rem;
-  font-weight: 600;
+  padding: 0;
+  margin-top: 4px;
+  color: #0f696e;
+  font-size: 0.75rem;
+  font-weight: 700;
   cursor: pointer;
-  padding: 4px 0;
-  margin-top: 8px;
-  transition: color 0.15s;
 }
 
-.av-read-more:hover {
-  color: #4f46e5;
-  text-decoration: underline;
-}
+
 
 .av-affected-block {
   background: #fff;
@@ -1916,11 +2010,24 @@ export default {
   font-family: monospace;
   font-size: 0.78rem;
   font-weight: 600;
-  background: #d1fae5;
   color: #065f46;
-  padding: 5px 12px;
-  border-radius: 6px;
-  border: 1px solid #6ee7b7;
+  background: #d1fae5;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.av-asset-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.av-asset-os-lbl {
+  font-size: 0.75rem;
+  color: #64748b;
 }
 
 .av-detail-tabs {
@@ -1935,7 +2042,7 @@ export default {
   border: none;
   padding: 14px 20px;
   font-size: 0.82rem;
-  font-weight: 600;
+  font-weight: 400;
   color: #64748b;
   cursor: pointer;
   border-bottom: 3px solid transparent;
@@ -1944,12 +2051,12 @@ export default {
 }
 
 .av-dtab:hover {
-  color: #6366f1;
+  color: #000000;
 }
 
 .av-dtab.active {
-  color: #6366f1;
-  border-bottom-color: #6366f1;
+  color: #000000;
+  border-bottom-color: #000000;
 }
 
 .av-detail-tab-content {
@@ -1980,15 +2087,15 @@ export default {
 }
 
 .av-assess-title {
-  font-size: 0.95rem;
-  font-weight: 700;
+  font-size: 0.85rem;
+  font-weight: 600;
   color: #1e293b;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .av-assess-sub {
-  font-size: 0.75rem;
-  color: #64748b;
+  font-size: 0.68rem;
+  color: #94a3b8;
 }
 
 .av-feas-badge {
@@ -2013,32 +2120,35 @@ export default {
 }
 
 .av-progress-track {
-  width: 100%;
-  height: 12px;
-  background: #e2e8f0;
-  border-radius: 6px;
+  height: 8px;
+  background: #f1f5f9;
+  border-radius: 4px;
   overflow: hidden;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  border: 1px solid #e2e8f0;
 }
 
 .av-progress-fill {
   height: 100%;
-  transition: width 0.5s ease;
+  border-radius: 4px;
+  transition: width 0.4s;
 }
 
 .av-assess-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  gap: 12px;
 }
 
 .av-assess-col {
-  display: flex;
-  flex-direction: column;
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 12px 14px;
+  border: 1px solid #f1f5f9;
 }
 
 .col-head {
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   font-weight: 700;
   padding: 8px 12px;
   border-radius: 6px;
@@ -2064,11 +2174,12 @@ export default {
 .av-can-item,
 .av-cant-item {
   display: flex;
-  gap: 8px;
-  font-size: 0.8rem;
+  gap: 7px;
+  font-size: 0.75rem;
   color: #374151;
-  padding: 6px 0;
-  line-height: 1.5;
+  padding: 4px 0;
+  line-height: 1.45;
+  border-bottom: 1px solid #f8fafc;
 }
 
 .av-can-dot {
@@ -2081,6 +2192,53 @@ export default {
   color: #dc2626;
   font-weight: 700;
   flex-shrink: 0;
+}
+
+.av-action-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 14px;
+  justify-content: flex-end;
+}
+
+.av-btn-outline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border: 2px solid #0284c7;
+  background: #fff;
+  color: #0284c7;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.av-btn-outline:hover {
+  background: #f0f9ff;
+  border-color: #0369a1;
+  color: #0369a1;
+}
+
+.av-btn-primary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border: none;
+  background: #0c4a6e;
+  color: #fff;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.av-btn-primary:hover {
+  background: #075985;
 }
 
 .av-recommended-box {
@@ -2115,5 +2273,147 @@ export default {
   .av-assess-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Code Modal */
+.code-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.code-modal-box {
+  background: #fff;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 900px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.code-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.code-modal-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.code-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.code-modal-close:hover {
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
+.code-modal-body {
+  flex: 1;
+  overflow: auto;
+  padding: 0;
+  position: relative;
+}
+
+.code-header-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: #1e293b;
+  color: #94a3b8;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  z-index: 1;
+}
+
+.code-block {
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 20px;
+  margin: 0;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.code-block::-webkit-scrollbar {
+  height: 8px;
+}
+
+.code-block::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 4px;
+}
+
+.code-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.code-copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #0ea5e9;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.code-copy-btn:hover {
+  background: #0284c7;
+}
+
+.code-close-btn {
+  padding: 8px 16px;
+  background: #fff;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.code-close-btn:hover {
+  background: #f9fafb;
+  color: #1f2937;
 }
 </style>
