@@ -1,71 +1,48 @@
 <template>
   <main>
     <section>
-      <div class="container-fluid">
-        <div class="row">
+      <div class="container-fluid px-0">
+        <div class="row g-0">
           <DashboardHeader />
         </div>
-        <div class="row">
-          <div class="col-1">
+        <div class="row g-0 flex-nowrap vr-layout-row">
+          <div class="col-1 ps-0 menubar-col1">
             <DashboardMenu />
           </div>
 
-          <div class="col-11 vr-content">
+          <div class="col vr-content px-0" ref="vrContent">
 
-            <!-- Sticky Top Header — Dark Banner -->
-            <div class="report-sticky-header">
-              <!-- Back button -->
-              <button class="btn-back" @click="$router.back()">
-                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:5px;"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-                Back
-              </button>
-
-              <!-- Centre: badge + title + subtitle -->
-              <div class="rsh-main">
-                <div class="rsh-info">
-                  <div class="rsh-risk-badge" v-if="hasOverdueFindings">
-                    <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="vertical-align:-1px;"><path stroke-linecap="round" stroke-linejoin="round" d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>
-                    High Risk — Action Required
-                  </div>
-                  <div class="rsh-title">NFH Vulnerability Mitigation Portal</div>
-                  <div class="rsh-subtitle">
-                    Internal Network
-                    <span class="rsh-dot">·</span>
-                    January 2026 Nessus Assessment
-                    <span class="rsh-dot">·</span>
-                    {{ uniqueHostsCount }} hosts
-                    <span class="rsh-dot">·</span>
-                    {{ totalVulnerabilities }} actionable findings
+            <!-- Fixed Top Header — white gutters + dark bar inset (does not scroll) -->
+            <div class="report-header-shell" ref="reportHeaderShell">
+              <div class="report-sticky-header" ref="reportHeader">
+                <div class="rsh-main">
+                  <div class="rsh-info">
+                    <div class="rsh-risk-badge" v-if="hasOverdueFindings">
+                      <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="vertical-align:-1px;"><path stroke-linecap="round" stroke-linejoin="round" d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>
+                      High Risk — Action Required
+                    </div>
+                    <div class="rsh-title">NFH Vulnerability Mitigation Portal</div>
+                    <div class="rsh-subtitle">
+                      Internal Network
+                      <span class="rsh-dot">·</span>
+                      January 2026 Nessus Assessment
+                      <span class="rsh-dot">·</span>
+                      {{ uniqueHostsCount }} hosts
+                      <span class="rsh-dot">·</span>
+                      {{ totalVulnerabilities }} actionable findings
+                    </div>
                   </div>
                 </div>
 
-                <!-- Right: severity counts -->
-                <div class="rsh-counts">
-                  <div class="rsh-count-item">
-                    <div class="rsh-count-num rsh-critical">{{ vulnStats.critical }}</div>
-                    <div class="rsh-count-lbl">Critical</div>
-                  </div>
-                  <div class="rsh-count-item">
-                    <div class="rsh-count-num rsh-high">{{ vulnStats.high }}</div>
-                    <div class="rsh-count-lbl">High</div>
-                  </div>
-                  <div class="rsh-count-item">
-                    <div class="rsh-count-num rsh-medium">{{ vulnStats.medium }}</div>
-                    <div class="rsh-count-lbl">Medium</div>
-                  </div>
-                  <div class="rsh-count-item">
-                    <div class="rsh-count-num rsh-low">{{ vulnStats.low }}</div>
-                    <div class="rsh-count-lbl">Low</div>
-                  </div>
-                </div>
+                <button class="btn-export" @click="downloadReport">
+                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:7px;"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
+                  Export PDF
+                </button>
               </div>
-
-              <!-- Export button -->
-              <button class="btn-export" @click="downloadReport">
-                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:7px;"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
-                Export PDF
-              </button>
             </div>
+
+            <!-- Reserves space so fixed header does not cover tabs/cards -->
+            <div class="report-header-spacer" aria-hidden="true"></div>
 
             <!-- Report Body -->
             <div class="report-body" ref="reportWrap">
@@ -604,7 +581,6 @@ export default {
       teamDetail: {},
       tableLoading: false,
       tableData: [],
-      activeTabs: ['executive-summary'],
       tabs: [
         { id: 'executive-summary',    label: 'Executive Summary',          icon: '📊' },
         { id: 'business-risk',        label: 'Business Risk',              icon: '⚠️' },
@@ -612,6 +588,14 @@ export default {
         { id: 'distribution-velocity',label: 'Distribution & Velocity',    icon: '📈' },
         { id: 'team-performance',     label: 'Team Performance',           icon: '👥' },
         { id: 'vulnerability-log',    label: 'Detailed Vulnerability Log', icon: '🔍' },
+      ],
+      activeTabs: [
+        'executive-summary',
+        'business-risk',
+        'remediation-schedule',
+        'distribution-velocity',
+        'team-performance',
+        'vulnerability-log',
       ],
       remediationSchedule: [
         {
@@ -680,15 +664,58 @@ export default {
     await Promise.all([this.fetchVulnerabilities(), this.fetchTeamDistribution(), this.fetchTeamDetail(), this.fetchDetailedVulnerabilities()]);
     this.$nextTick(() => {
       this.initCharts();
+      this.syncReportHeaderLayout();
+      this.observeReportHeader();
     });
+    window.addEventListener('resize', this.syncReportHeaderLayout);
   },
 
   beforeUnmount() {
+    window.removeEventListener('resize', this.syncReportHeaderLayout);
+    this._headerObserver?.disconnect();
     this.charts.forEach(c => c.destroy());
     this.charts = [];
   },
 
   methods: {
+    syncReportHeaderLayout() {
+      const content = this.$refs.vrContent;
+      const shell = this.$refs.reportHeaderShell;
+      const header = this.$refs.reportHeader;
+      if (!content || !shell || !header) return;
+
+      const browserBar = document.querySelector('.fixed-browser-bar');
+      const browserH = browserBar?.offsetHeight ?? 52;
+      const rect = content.getBoundingClientRect();
+      const shellH = Math.ceil(shell.getBoundingClientRect().height) || 88;
+
+      const gutter = parseFloat(
+        getComputedStyle(content).getPropertyValue('--vr-report-gutter')
+      ) || 32;
+      const scrollbarW = Math.max(0, content.offsetWidth - content.clientWidth);
+      const shellW = Math.round(content.clientWidth || rect.width - scrollbarW);
+
+      shell.style.top = `${browserH}px`;
+      shell.style.left = `${rect.left}px`;
+      shell.style.width = `${shellW}px`;
+      shell.style.paddingLeft = `${gutter}px`;
+      shell.style.paddingRight = `${gutter}px`;
+
+      header.style.paddingLeft = '';
+      header.style.paddingRight = '';
+
+      content.style.setProperty('--vr-browser-h', `${browserH}px`);
+      content.style.setProperty('--vr-report-bar-h', `${shellH}px`);
+    },
+
+    observeReportHeader() {
+      const shell = this.$refs.reportHeaderShell;
+      if (!shell || typeof ResizeObserver === 'undefined') return;
+      this._headerObserver?.disconnect();
+      this._headerObserver = new ResizeObserver(() => this.syncReportHeaderLayout());
+      this._headerObserver.observe(shell);
+    },
+
     toggleTab(tabId) {
       const idx = this.activeTabs.indexOf(tabId);
       if (idx === -1) {
@@ -984,61 +1011,62 @@ export default {
 ───────────────────────────────────────────── */
 * { box-sizing: border-box; }
 
+.vr-layout-row {
+  margin-top: 0;
+}
+
 .vr-content {
+  --vr-browser-h: 52px;
+  --vr-report-bar-h: 88px;
+  --vr-report-gutter: 32px;
   background: #f8f9fc;
   min-height: 100vh;
   padding: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  position: relative;
+  overflow-x: clip;
+  overflow-y: visible;
 }
 
 /* ─────────────────────────────────────────────
-   Sticky Header — Dark Banner
+   Fixed Header — white side gutters + inset dark bar
 ───────────────────────────────────────────── */
-.report-sticky-header {
+.report-header-shell {
   position: fixed;
-  top: 52px;
-  left: 8.333%;
-  right: 0;
-  z-index: 200;
+  top: var(--vr-browser-h);
+  left: 100px;
+  width: calc(100% - 100px);
+  z-index: 9000;
+  padding: 0 var(--vr-report-gutter, 32px);
+  background: #f8f9fc;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.report-sticky-header {
+  position: relative;
+  width: 100%;
   background: #111827;
-  padding: 12px 28px;
+  padding: 14px 24px;
+  min-height: 72px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 18px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  margin: 0;
+  box-sizing: border-box;
+  border-radius: 12px;
+  pointer-events: auto;
 }
 
-/* Fills the gap between DashboardHeader bottom and this header */
-.report-sticky-header::before {
-  content: '';
-  position: absolute;
-  top: -10px;
-  left: 0;
-  right: 0;
-  height: 10px;
-  background: #111827;
-}
-
-/* Back button — ghost on dark */
-.btn-back {
-  display: inline-flex;
-  align-items: center;
+.report-header-spacer {
+  height: var(--vr-report-bar-h, 88px);
   flex-shrink: 0;
-  background: transparent;
-  border: 1.5px solid rgba(255,255,255,0.18);
-  border-radius: 999px;
-  padding: 8px 18px;
-  font-size: 0.80rem;
-  font-weight: 700;
-  color: rgba(255,255,255,0.75);
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-}
-.btn-back:hover {
-  background: rgba(255,255,255,0.08);
-  border-color: rgba(255,255,255,0.38);
-  color: #ffffff;
+  pointer-events: none;
 }
 
 /* Export button — white pill on dark */
@@ -1069,8 +1097,7 @@ export default {
   flex: 1;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 20px;
+  min-width: 0;
   overflow: hidden;
 }
 
@@ -1120,41 +1147,11 @@ export default {
   opacity: 0.5;
 }
 
-/* Severity count chips */
-.rsh-counts {
-  display: flex;
-  align-items: center;
-  gap: 22px;
-  flex-shrink: 0;
-}
-.rsh-count-item {
-  text-align: center;
-}
-.rsh-count-num {
-  font-size: 1.55rem;
-  font-weight: 900;
-  line-height: 1;
-  letter-spacing: -1px;
-}
-.rsh-critical { color: #ef4444; }
-.rsh-high     { color: #f97316; }
-.rsh-medium   { color: #fbbf24; }
-.rsh-low      { color: #22c55e; }
-
-.rsh-count-lbl {
-  font-size: 0.58rem;
-  color: rgba(255,255,255,0.40);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  margin-top: 2px;
-}
-
 /* ─────────────────────────────────────────────
    Report Body
 ───────────────────────────────────────────── */
 .report-body {
-  padding: 158px 32px 56px;
+  padding: 24px var(--vr-report-gutter, 32px) 56px;
 }
 
 /* ─────────────────────────────────────────────
@@ -1173,6 +1170,7 @@ export default {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-top: 60px;
   background: #ffffff;
   border: 1.5px solid #e8e2f5;
   border-radius: 20px;
@@ -2207,10 +2205,20 @@ export default {
   .business-risk-grid { grid-template-columns: 1fr; }
   .sla-stats-row { grid-template-columns: repeat(2, 1fr); }
   .resource-asks-grid { grid-template-columns: 1fr; }
-  .report-body { padding: 158px 16px 40px; }
-  .report-sticky-header { padding: 10px 16px; gap: 10px; }
-  .rsh-counts { gap: 14px; }
-  .rsh-count-num { font-size: 1.2rem; }
+  .report-header-shell {
+    left: 0 !important;
+    width: 100% !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+  .report-sticky-header {
+    padding: 12px 16px;
+    gap: 10px;
+    border-radius: 10px;
+  }
+  .report-body {
+    padding: 20px 16px 40px;
+  }
   .tabs-nav { gap: 4px; }
   .tab-btn { padding: 8px 12px; font-size: 0.75rem; }
 }

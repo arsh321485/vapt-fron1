@@ -1,6 +1,10 @@
 import { defineStore } from "pinia";
 import endpoint from "../services/apiServices";
 import type { AxiosError } from "axios";
+import {
+  buildVulnsFromRegister,
+  normalizeAssetVulnerabilityList,
+} from "@/utils/assetVulnerabilities";
 
 interface CreateUserPayload {
   admin_id: string;
@@ -2030,15 +2034,19 @@ export const useAuthStore = defineStore("auth", {
         const res = await endpoint.get(
           `/api/user/asset/report/${reportId}/asset/${assetIp}/vulnerabilities/`,
         );
-        const vulns = res.data.vulnerabilities || [];
+        let vulns = normalizeAssetVulnerabilityList(res.data.vulnerabilities || []);
+        if (!vulns.length) {
+          await this.fetchUserVulnerabilityRegister(false);
+          vulns = buildVulnsFromRegister(this.cachedUserVulnRegister, assetIp);
+        }
         this.selectedAssetVulnerabilities = vulns;
         this.selectedAssetDetail = {
-          asset: res.data.asset,
+          asset: res.data.asset || assetIp,
           exposure: vulns[0]?.exposure || "",
           owner: vulns[0]?.owner || "",
           severity: vulns[0]?.severity || "",
         };
-        return { status: true, count: res.data.count };
+        return { status: true, count: vulns.length || res.data.count };
       } catch (error) {
         this.selectedAssetDetail = null;
         this.selectedAssetVulnerabilities = [];
@@ -3487,14 +3495,18 @@ export const useAuthStore = defineStore("auth", {
           `/api/admin/adminasset/report/${reportId}/asset/${asset}/vulnerabilities/`,
         );
 
-        const vulns = res.data.vulnerabilities || [];
+        let vulns = normalizeAssetVulnerabilityList(res.data.vulnerabilities || []);
+        if (!vulns.length) {
+          await this.fetchVulnerabilityRegister(false);
+          vulns = buildVulnsFromRegister(this.vulnerabilityRows, asset);
+        }
 
         // ✅ vulnerabilities list
         this.selectedAssetVulnerabilities = vulns;
 
         // ✅ asset summary (top card)
         this.selectedAssetDetail = {
-          asset: res.data.asset,
+          asset: res.data.asset || asset,
           exposure: vulns[0]?.exposure || "",
           owner: vulns[0]?.owner || "",
           severity: vulns[0]?.severity || "",
@@ -3502,7 +3514,7 @@ export const useAuthStore = defineStore("auth", {
 
         return {
           status: true,
-          count: res.data.count,
+          count: vulns.length || res.data.count,
         };
       } catch (error) {
         console.error("Fetch single asset vulnerabilities failed:", error);
