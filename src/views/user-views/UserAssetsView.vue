@@ -163,23 +163,20 @@
 
               <!-- Right Panel: Vulnerability Details -->
               <div class="assets-right-panel">
+                <FixPanelHeaderAlerts
+                  :python-visible="showPythonInstallAlert"
+                  :verified-visible="showVaptfixVerifiedAlert"
+                  @close-python="showPythonInstallAlert = false"
+                  @close-verified="showVaptfixVerifiedAlert = false"
+                  @open-python-guide="openPythonGuideFromAlert"
+                />
                 <!-- Detail Header -->
                 <div class="right-panel-header">
-                  <div class="d-flex align-items-center gap-3 mb-2 flex-wrap">
-                    <span v-if="selectedAsset && getTopSeverity(selectedAsset.severity_counts)" class="sev-badge"
-                      :class="'sev-' + getTopSeverity(selectedAsset.severity_counts).toLowerCase()">
-                      {{ getTopSeverity(selectedAsset.severity_counts) }}
-                    </span>
-                    <span :class="getStatusBadgeClass(selectedAssetStatusLabel)">
-                      <span :class="getStatusDotClass(selectedAssetStatusLabel)"></span>
-                      {{ selectedAssetStatusLabel }}
-                    </span>
-                    <span v-if="highestCvssScore" class="cvss-pill">CVSS {{ highestCvssScore }}</span>
-                  </div>
                   <h1 class="asset-detail-title mb-0">{{ selectedAsset?.asset }}</h1>
-                </div>
-                <div class="right-panel-body">
-                  <div class="d-flex gap-5 mb-4 flex-wrap">
+                  <div
+                    v-if="selectedAsset?.host_information?.['Netbios Name'] || selectedAsset?.host_information?.['DNS Name'] || selectedAsset?.assigned_teams?.length"
+                    class="right-panel-meta"
+                  >
                     <div v-if="selectedAsset?.host_information?.['Netbios Name']">
                       <p class="meta-label">Hostname</p>
                       <p class="meta-value">{{ selectedAsset.host_information['Netbios Name'] }}</p>
@@ -193,7 +190,6 @@
                       <p class="meta-value">{{ selectedAsset.assigned_teams.join(', ') }}</p>
                     </div>
                   </div>
-                  <!-- Tabs -->
                   <div class="detail-tabs">
                     <button class="detail-tab" :class="{ 'detail-tab-active': activeTab === 'vulnerabilities' }" @click="activeTab = 'vulnerabilities'">
                       Vulnerabilities ({{ filteredVulnerabilities.length }})
@@ -205,30 +201,73 @@
                         {{ supportRequestCount }}
                       </span>
                     </button>
-                    <!-- <button class="detail-tab" disabled style="opacity:0.4;cursor:not-allowed;">Related Assets</button>
-                    <button class="detail-tab" disabled style="opacity:0.4;cursor:not-allowed;">History</button> -->
                     <button class="detail-tab ext-tab-btn" @click="openExtPopup">
                       Extend Timeline
                     </button>
                   </div>
+                </div>
 
                 <!-- Tab Content -->
                 <div class="right-panel-scroll">
 
                   <!-- Vulnerabilities Tab -->
                   <div v-if="activeTab === 'vulnerabilities'">
-                    <div class="d-flex gap-2 mb-4">
-                      <button class="sev-pill" :class="{ 'sev-pill-active': activeFilters.includes('All') }" @click="setSeverityFilter('All')">All</button>
-                      <button class="sev-pill sev-pill-critical" :class="{ 'sev-pill-active': activeFilters.includes('Critical') }" @click="setSeverityFilter('Critical')">Critical</button>
-                      <button class="sev-pill sev-pill-high" :class="{ 'sev-pill-active': activeFilters.includes('High') }" @click="setSeverityFilter('High')">High</button>
-                      <button class="sev-pill sev-pill-medium" :class="{ 'sev-pill-active': activeFilters.includes('Medium') }" @click="setSeverityFilter('Medium')">Medium</button>
-                      <button class="sev-pill sev-pill-low" :class="{ 'sev-pill-active': activeFilters.includes('Low') }" @click="setSeverityFilter('Low')">Low</button>
+                    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap vuln-filter-bar">
+                      <div class="d-flex gap-2 flex-wrap align-items-center">
+                        <button class="sev-pill" :class="{ 'sev-pill-active': activeFilters.includes('All') }" @click="setSeverityFilter('All')">All</button>
+                        <button class="sev-pill sev-pill-critical" :class="{ 'sev-pill-active': activeFilters.includes('Critical') }" @click="setSeverityFilter('Critical')">Critical</button>
+                        <button class="sev-pill sev-pill-high" :class="{ 'sev-pill-active': activeFilters.includes('High') }" @click="setSeverityFilter('High')">High</button>
+                        <button class="sev-pill sev-pill-medium" :class="{ 'sev-pill-active': activeFilters.includes('Medium') }" @click="setSeverityFilter('Medium')">Medium</button>
+                        <button class="sev-pill sev-pill-low" :class="{ 'sev-pill-active': activeFilters.includes('Low') }" @click="setSeverityFilter('Low')">Low</button>
+                      </div>
+                      <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <button
+                          type="button"
+                          class="vr-tab-btn"
+                          :class="{ 'vr-tab-active': statusFilter.length === 0 }"
+                          @click="toggleStatusTab('all')"
+                        >
+                          All
+                          <span class="vr-tab-count">{{ statusCountAll }}</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="vr-tab-btn"
+                          :class="{ 'vr-tab-active-open': statusFilter.includes('open') }"
+                          @click="toggleStatusTab('open')"
+                        >
+                          Open
+                          <span class="vr-tab-count">{{ statusCountOpen }}</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="vr-tab-btn"
+                          :class="{ 'vr-tab-active-closed': statusFilter.includes('closed') }"
+                          @click="toggleStatusTab('closed')"
+                        >
+                          Closed
+                          <span class="vr-tab-count">{{ statusCountClosed }}</span>
+                        </button>
+                      </div>
                     </div>
 
                     <h3 class="section-label mb-3">Active Threats</h3>
 
-                    <div class="d-flex flex-column gap-3">
-                      <div v-for="(vuln, idx) in filteredVulnerabilities" :key="idx" class="vuln-accordion-item" :ref="'vuln-' + idx">
+                    <div v-if="loadingAssetVulns" class="text-center py-4">
+                      <span class="spinner-border spinner-border-sm text-primary"></span>
+                    </div>
+                    <p v-else-if="!filteredVulnerabilities.length" class="av-empty-threats">
+                      No active threats for this asset. Try clearing severity filters or select another asset.
+                    </p>
+
+                    <div v-else class="d-flex flex-column gap-3">
+                      <div
+                        v-for="(vuln, idx) in filteredVulnerabilities"
+                        :key="vuln.vul_name + '-' + idx"
+                        class="vuln-accordion-item"
+                        :class="{ 'vuln-accordion-item--expanded': expandedVulnIndex === idx }"
+                        :ref="'vuln-' + idx"
+                      >
                         <div class="vuln-accordion-header" role="button" @click="toggleAccordion(idx)">
                           <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
                             <i class="bi bi-exclamation-triangle-fill vuln-icon flex-shrink-0"
@@ -238,17 +277,35 @@
                                 'vuln-icon-medium': vuln.severity === 'Medium',
                                 'vuln-icon-low': vuln.severity === 'Low'
                               }"></i>
-                            <span class="vuln-name" :title="vuln.vul_name">{{ vuln.vul_name }}</span>
+                            <div class="vuln-name-row">
+                              <span class="vuln-name" :title="vuln.vul_name">{{ vuln.vul_name }}</span>
+                              <span class="sev-badge" :class="'sev-' + (vuln.severity?.toLowerCase() || '')">{{ vuln.severity }}</span>
+                              <span :class="getStatusBadgeClass(vuln.status)">
+                                <span :class="getStatusDotClass(vuln.status)"></span>{{ getStatusLabel(vuln.status) }}
+                              </span>
+                            </div>
                           </div>
-                          <div class="d-flex align-items-center gap-3 flex-shrink-0">
-                            <span class="sev-badge" :class="'sev-' + (vuln.severity?.toLowerCase() || '')">{{ vuln.severity }}</span>
-                            <span :class="getStatusBadgeClass(vuln.status)">
-                              <span :class="getStatusDotClass(vuln.status)"></span>{{ getStatusLabel(vuln.status) }}
-                            </span>
+                          <div class="d-flex align-items-center gap-3 flex-shrink-0 vuln-accordion-actions">
+                            <FixAvailableIndicator
+                              :severity="vuln.severity"
+                              :asset-ip="selectedAssetIp"
+                              :asset-index="selectedAssetDemoIndex"
+                            />
+                            <button
+                              type="button"
+                              class="vuln-download-icon-btn"
+                              :class="{ 'vuln-download-icon-btn--disabled': isVulnDownloadDisabled(vuln) }"
+                              :disabled="isVulnDownloadDisabled(vuln)"
+                              :title="isVulnDownloadDisabled(vuln) ? 'Script not available — automation not possible' : 'Download fix'"
+                              :aria-label="isVulnDownloadDisabled(vuln) ? 'Script download not available' : 'Download fix'"
+                              @click.stop="!isVulnDownloadDisabled(vuln) && downloadAutomationScript()"
+                            >
+                              <i class="bi bi-download"></i>
+                            </button>
                             <i class="bi text-muted" :class="expandedVulnIndex === idx ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
                           </div>
                         </div>
-                        <div v-show="expandedVulnIndex === idx">
+                        <div v-show="expandedVulnIndex === idx" class="vuln-accordion-expand">
                           <div class="vuln-accordion-body">
                             <!-- Description -->
                             <div class="av-description-block">
@@ -282,7 +339,8 @@
                                 :class="{ active: currentVulnTab === 'auto' }"
                                 @click="setVulnDetailTab('auto')"
                               >
-                                🐍 Automated Fix
+                                <span class="av-dtab-emoji" aria-hidden="true">🤖</span>
+                                Automated Fix
                               </button>
                               <button
                                 type="button"
@@ -290,7 +348,8 @@
                                 :class="{ active: currentVulnTab === 'manual' }"
                                 @click="setVulnDetailTab('manual')"
                               >
-                                📋 Manual Fix
+                                <span class="av-dtab-emoji" aria-hidden="true">📋</span>
+                                Manual Fix
                               </button>
                             </div>
 
@@ -300,52 +359,15 @@
                               :class="{ 'av-detail-tab-content--manual': currentVulnTab === 'manual' }"
                             >
                               <div v-if="currentVulnTab === 'auto'" class="av-auto-tab">
-                                <div class="av-assess-card">
-                                  <div class="av-assess-header">
-                                    <div>
-                                      <div class="av-assess-title">Automation Capability Assessment</div>
-                                      <div class="av-assess-sub">Based on vulnerability profile and remediation data</div>
-                                    </div>
-                                    <div class="av-feas-badge" style="background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7;">
-                                      <span class="av-feas-pct">75%</span>
-                                    </div>
-                                  </div>
-                                  <div class="av-progress-track">
-                                    <div class="av-progress-fill" style="width: 75%; background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);"></div>
-                                  </div>
-                                  <div class="av-assess-grid">
-                                    <div class="av-assess-col">
-                                      <div class="col-head green-head">✓ What can be automated</div>
-                                      <ul class="av-can-list">
-                                        <li class="av-can-item"><span class="av-can-dot">✓</span>Detect affected services and versions across listed assets</li>
-                                        <li class="av-can-item"><span class="av-can-dot">✓</span>Apply network-level controls where appropriate (firewall rules)</li>
-                                        <li class="av-can-item"><span class="av-can-dot">✓</span>Run post-remediation verification scans from the scanner</li>
-                                      </ul>
-                                    </div>
-                                    <div class="av-assess-col">
-                                      <div class="col-head red-head">✗ What must remain manual</div>
-                                      <ul class="av-can-list">
-                                        <li class="av-cant-item"><span class="av-cant-dot">✗</span>Validate business impact before applying patches in production</li>
-                                        <li class="av-cant-item"><span class="av-cant-dot">✗</span>Coordinate maintenance window and application owner sign-off</li>
-                                        <li class="av-cant-item"><span class="av-cant-dot">✗</span>Review remediation steps for environment-specific configuration</li>
-                                      </ul>
-                                    </div>
-                                  </div>
-                                </div>
-                                <div class="av-recommended-box">
-                                  <div class="av-rec-label">Recommended approach</div>
-                                  <div class="av-rec-text">Use automation for detection and verification where possible. Perform configuration changes and patching manually per the remediation timeline, with staging validation first.</div>
-                                </div>
-                                <div class="av-action-buttons">
-                                  <button class="av-btn-outline" @click="showCodeModal = true">
-                                    <i class="bi bi-code-square"></i>
-                                    View Code
-                                  </button>
-                                  <button class="av-btn-primary">
-                                    <i class="bi bi-download"></i>
-                                    Download
-                                  </button>
-                                </div>
+                                <AutomationNotSafeBanner v-if="isSelectedAssetAutomationNo" />
+                                <AutomatedFixPanel
+                                  v-else
+                                  :key="vuln.vul_name + '-' + idx"
+                                  :severity="vuln.severity"
+                                  :asset-ip="selectedAssetIp"
+                                  :asset-index="selectedAssetDemoIndex"
+                                  @view-code="showCodeModal = true"
+                                />
                               </div>
 
                               <div v-else-if="currentVulnTab === 'manual'" class="av-manual-tab">
@@ -463,7 +485,6 @@
                   </div>
 
                 </div>
-                </div>
               </div>
 
               <!-- Extended Timeline Drawer -->
@@ -574,7 +595,13 @@
             </div>
 
             <div v-else class="assets-vuln-mode-wrap">
-              <AssetsVulnerabilitiesMode :is-user="true" />
+              <AssetsVulnerabilitiesMode
+                :is-user="true"
+                :show-python-alert="showPythonInstallAlert"
+                :show-verified-alert="showVaptfixVerifiedAlert"
+                @close-python-alert="showPythonInstallAlert = false"
+                @close-verified-alert="showVaptfixVerifiedAlert = false"
+              />
             </div>
 
             </div>
@@ -584,6 +611,11 @@
     </section>
 
     <!-- Code Modal -->
+    <PythonInstallGuideModal
+      v-model="showPythonModal"
+      :severity="pythonGuideSeverity"
+    />
+
     <div v-if="showCodeModal" class="code-modal-backdrop" @click.self="showCodeModal = false">
       <div class="code-modal-box">
         <div class="code-modal-header">
@@ -616,6 +648,18 @@ import DashboardMenu from "@/components/user-component/DashboardMenu.vue";
 import DashboardHeader from "@/components/user-component/DashboardHeader.vue";
 import AssetsVulnerabilitiesMode from "@/components/assets/AssetsVulnerabilitiesMode.vue";
 import ManualRemediationStepsPanel from "@/components/assets/ManualRemediationStepsPanel.vue";
+import AutomatedFixPanel from "@/components/assets/AutomatedFixPanel.vue";
+import PythonInstallGuideModal from "@/components/assets/PythonInstallGuideModal.vue";
+import FixAvailableIndicator from "@/components/assets/FixAvailableIndicator.vue";
+import AutomationNotSafeBanner from "@/components/assets/AutomationNotSafeBanner.vue";
+import FixPanelHeaderAlerts from "@/components/assets/FixPanelHeaderAlerts.vue";
+import {
+  filterOpenAssetVulnerabilities,
+  mergeAssetThreatVulnerabilities,
+  matchesVulnStatusFilter,
+  severityMatchesFilter,
+  isAutomationNotAvailable,
+} from "@/utils/assetVulnerabilities";
 import { useAuthStore } from "@/stores/authStore";
 
 export default {
@@ -625,13 +669,21 @@ export default {
     DashboardHeader,
     AssetsVulnerabilitiesMode,
     ManualRemediationStepsPanel,
+    AutomatedFixPanel,
+    PythonInstallGuideModal,
+    FixAvailableIndicator,
+    AutomationNotSafeBanner,
+    FixPanelHeaderAlerts,
   },
   data() {
     return {
+      showPythonInstallAlert: false,
+      showVaptfixVerifiedAlert: false,
       leftPanelTab: "assets",
       authStore: useAuthStore(),
       selectedSeverity: "",
       activeFilters: ['All'],
+      statusFilter: [],
       searchQuery: "",
       activeTab: "vulnerabilities",
       showCheckboxes: false,
@@ -656,6 +708,7 @@ export default {
       descriptionPreviewLimit: 280,
       expandedVulnIndex: null,
       currentVulnTab: 'auto',
+      loadingAssetVulns: false,
       showExtPopup: false,
       extPopupSeverity: "critical",
       extPopupAsset: "",
@@ -667,6 +720,8 @@ export default {
       extPopupOriginalDeadlineDays: null,
       extPopupOptionsLoading: false,
       showCodeModal: false,
+      showPythonModal: false,
+      pythonGuideSeverity: '',
       codeCopied: false,
       automationCode: `import paramiko
 import requests
@@ -702,33 +757,41 @@ class TLSConfigurator:
     };
   },
   computed: {
-    openAssetVulnerabilities() {
-      const closedNames = new Set(
-        this.closedFixVulnerabilities
-          .map(v => (v.plugin_name || "").toLowerCase())
-          .filter(Boolean)
+    allAssetThreatVulns() {
+      return mergeAssetThreatVulnerabilities(
+        this.authStore.selectedAssetVulnerabilities,
+        this.closedFixVulnerabilities,
       );
-      return this.authStore.selectedAssetVulnerabilities.filter(v => {
-        const status = (v.status || "").toLowerCase();
-        const isOpen = status === "open" || status === "";
-        const vulnName = (v.vul_name || "").toLowerCase();
-        return isOpen && !closedNames.has(vulnName);
-      });
+    },
+    vulnsForStatusCounts() {
+      let list = this.allAssetThreatVulns;
+      if (!this.activeFilters.includes('All')) {
+        list = list.filter(v => severityMatchesFilter(v.severity, this.activeFilters));
+      }
+      return list;
+    },
+    statusCountAll() {
+      return this.vulnsForStatusCounts.length;
+    },
+    statusCountOpen() {
+      return this.vulnsForStatusCounts.filter(v => matchesVulnStatusFilter(v, ['open'])).length;
+    },
+    statusCountClosed() {
+      return this.vulnsForStatusCounts.filter(v => matchesVulnStatusFilter(v, ['closed'])).length;
+    },
+    openAssetVulnerabilities() {
+      return filterOpenAssetVulnerabilities(
+        this.authStore.selectedAssetVulnerabilities,
+        this.closedFixVulnerabilities,
+      );
     },
     filteredVulnerabilities() {
-      let vulns = this.openAssetVulnerabilities;
+      let vulns = [...this.allAssetThreatVulns];
       if (!this.activeFilters.includes('All')) {
-        vulns = vulns.filter(v => this.activeFilters.includes(v.severity));
+        vulns = vulns.filter(v => severityMatchesFilter(v.severity, this.activeFilters));
       }
+      vulns = vulns.filter(v => matchesVulnStatusFilter(v, this.statusFilter));
       return vulns;
-    },
-    highestCvssScore() {
-      const vulns = this.openAssetVulnerabilities;
-      if (!vulns || vulns.length === 0) return null;
-      const scores = vulns
-        .map(v => parseFloat(v.cvss_score))
-        .filter(s => !isNaN(s));
-      return scores.length > 0 ? Math.max(...scores).toFixed(1) : null;
     },
     filteredAssets() {
       if (!this.searchQuery) return this.assets;
@@ -760,6 +823,20 @@ class TLSConfigurator:
       if (!this.activeIndex) return null;
       return this.assets.find(a => a.asset === this.activeIndex) || null;
     },
+    selectedAssetIp() {
+      return this.selectedAsset?.asset || this.activeIndex || '';
+    },
+    selectedAssetDemoIndex() {
+      const ip = this.selectedAssetIp;
+      const idx = this.assets.findIndex(a => String(a.asset || '').trim() === String(ip).trim());
+      return idx >= 0 ? idx : null;
+    },
+    isSelectedAssetAutomationNo() {
+      const topSev = this.selectedAsset
+        ? this.getTopSeverity(this.selectedAsset.severity_counts)
+        : 'Medium';
+      return isAutomationNotAvailable(this.selectedAssetIp, this.selectedAssetDemoIndex, topSev);
+    },
     selectedAssetStatusLabel() {
       return this.openAssetVulnerabilities.length > 0 ? "Open" : "Closed";
     },
@@ -786,6 +863,18 @@ class TLSConfigurator:
     },
   },
   methods: {
+    openPythonGuide(vuln) {
+      this.pythonGuideSeverity = vuln?.severity || '';
+      this.showPythonModal = true;
+    },
+    openPythonGuideFromAlert() {
+      const vuln = this.filteredVulnerabilities?.[0];
+      const topSev = this.selectedAsset
+        ? this.getTopSeverity(this.selectedAsset.severity_counts)
+        : 'Medium';
+      const severity = vuln?.severity || topSev || 'Medium';
+      this.openPythonGuide(vuln || { severity });
+    },
     copyCodeToClipboard() {
       navigator.clipboard.writeText(this.automationCode).then(() => {
         this.codeCopied = true;
@@ -803,7 +892,7 @@ class TLSConfigurator:
           const refKey = 'vuln-' + index;
           const element = this.$refs[refKey];
           if (element && element[0]) {
-            element[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
+            element[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
           }
         });
       }
@@ -828,6 +917,7 @@ class TLSConfigurator:
       await this.loadSupportRequestsByHost(this.activeIndex);
     },
     setSeverityFilter(type) {
+      this.expandedVulnIndex = null;
       if (type === 'All') {
         this.activeFilters = ['All'];
         return;
@@ -840,6 +930,19 @@ class TLSConfigurator:
         filters.splice(idx, 1);
       }
       this.activeFilters = filters.length === 0 ? ['All'] : filters;
+    },
+    toggleStatusTab(status) {
+      this.expandedVulnIndex = null;
+      if (status === 'all') {
+        this.statusFilter = [];
+        return;
+      }
+      const idx = this.statusFilter.indexOf(status);
+      if (idx === -1) {
+        this.statusFilter.push(status);
+      } else {
+        this.statusFilter.splice(idx, 1);
+      }
     },
     isDescriptionExpanded(index) {
       return !!this.expandedDescriptions[index];
@@ -881,6 +984,7 @@ class TLSConfigurator:
     async loadAssets(force = false) {
       this.loading = true;
       const result = await this.authStore.fetchUserAssets(force);
+      await this.authStore.fetchUserVulnerabilityRegister(force);
       if (result.status) {
         this.assets = result.data;
         if (this.assets.length > 0) {
@@ -931,7 +1035,10 @@ class TLSConfigurator:
     async setActive(asset) {
       if (!asset?.asset) return;
       this.activeIndex = asset.asset;
+      this.loadingAssetVulns = true;
+      this.expandedVulnIndex = null;
       await this.authStore.fetchUserSingleAssetVulnerabilities(asset.asset);
+      this.loadingAssetVulns = false;
       await this.loadSupportRequestsByHost(asset.asset);
       this.loadingClosedFix = true;
       const res = await this.authStore.getUserClosedVulnerabilities(asset.asset);
@@ -941,6 +1048,22 @@ class TLSConfigurator:
       } else {
         this.closedFixVulnerabilities = [];
       }
+    },
+    openFixPanelAlerts() {
+      this.showPythonInstallAlert = true;
+      this.showVaptfixVerifiedAlert = true;
+    },
+    isVulnDownloadDisabled(vuln) {
+      return isAutomationNotAvailable(this.selectedAssetIp, this.selectedAssetDemoIndex, vuln?.severity);
+    },
+    downloadAutomationScript() {
+      const blob = new Blob([this.automationCode], { type: 'text/x-python' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'automation_script.py';
+      a.click();
+      URL.revokeObjectURL(url);
     },
     viewFixDetail(item) {
       const reportId = this.authStore.userLatestReportId;
@@ -1169,11 +1292,18 @@ class TLSConfigurator:
     },
   },
   watch: {
+    leftPanelTab(val, oldVal) {
+      if (val === 'vulnerabilities' && oldVal !== 'vulnerabilities') {
+        this.openFixPanelAlerts();
+      }
+    },
     searchQuery() {
       this.currentPage = 1;
     },
   },
   async mounted() {
+    this.openFixPanelAlerts();
+
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     [...tooltipTriggerList].map(el => new bootstrap.Tooltip(el));
     // Keep behavior consistent with navigation: always fetch fresh on entry.
@@ -1182,6 +1312,7 @@ class TLSConfigurator:
     this.syncTotalAssets();
   },
   async activated() {
+    this.openFixPanelAlerts();
     await this.reloadAssetsAndHeld();
   },
   beforeUnmount() {
@@ -1192,6 +1323,10 @@ class TLSConfigurator:
 <style scoped>
 .assets-content {
   padding: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 72px);
+  height: calc(100vh - 72px);
 }
 
 .assets-page-shell {
@@ -1236,7 +1371,16 @@ class TLSConfigurator:
   flex: 1;
   min-height: 0;
   display: flex;
+  flex-direction: column;
   background: #f8f9fc;
+  overflow: hidden;
+}
+
+.assets-vuln-mode-wrap :deep(.av-mode-root) {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  align-items: stretch;
 }
 
 .assets-split-panel {
@@ -1244,7 +1388,8 @@ class TLSConfigurator:
   flex: 1;
   min-height: 0;
   background: #f8f9fc;
-  align-items: flex-start;
+  align-items: stretch;
+  overflow: hidden;
 }
 
 /* ── Left Panel ── */
@@ -1258,7 +1403,7 @@ class TLSConfigurator:
   background: #ffffff;
   overflow: hidden;
   align-self: stretch;
-  max-height: 100%;
+  flex-shrink: 0;
 }
 
 .left-panel-header {
@@ -1330,6 +1475,7 @@ class TLSConfigurator:
 /* Asset list */
 .asset-list-scroll {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 4px 0;
 }
@@ -1386,18 +1532,6 @@ class TLSConfigurator:
 .sev-high     { background: #fee2e2 !important; color: #dc2626 !important; }
 .sev-medium   { background: #fef3c7 !important; color: #f59e0b !important; }
 .sev-low      { background: #ccfbf1 !important; color: #0f766e !important; }
-
-.cvss-pill {
-  font-size: 0.62rem;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  color: #fff;
-  border: 1px solid #818cf8;
-  box-shadow: 0 1px 3px rgba(99, 102, 241, 0.2);
-  white-space: nowrap;
-}
 
 .vendor-fix-pill {
   font-size: 0.62rem;
@@ -1506,22 +1640,12 @@ class TLSConfigurator:
   flex-direction: column;
   background: #f8f9fc;
   min-width: 0;
-  align-self: flex-start;
-  max-height: 100%;
+  min-height: 0;
+  align-self: stretch;
   overflow: hidden;
 }
 
-.right-panel-header {
-  padding: 18px 22px 14px;
-  background: #fff;
-  border-bottom: 1px solid #e2e8f0;
-  flex-shrink: 0;
-}
-
-.right-panel-body {
-  background: #f8f9fc;
-  padding: 16px 28px 0;
-}
+/* right-panel-header / scroll — shared rules in main.css (.assets-right-panel) */
 
 .asset-detail-title {
   font-size: 1.1rem;
@@ -1617,10 +1741,12 @@ class TLSConfigurator:
 
 /* Right panel scrollable body */
 .right-panel-scroll {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 0;
   overflow-y: auto;
-  padding: 18px 28px 20px;
+  overflow-x: hidden;
+  padding: 18px 28px 12px;
+  background: #f8fafc;
 }
 .right-panel-scroll::-webkit-scrollbar { width: 4px; }
 .right-panel-scroll::-webkit-scrollbar-track { background: transparent; }
@@ -1655,9 +1781,23 @@ class TLSConfigurator:
 }
 .sev-pill-critical { color: #b42318 !important; background: #f8dede !important; }
 .sev-pill-high     { color: #dc2626 !important; background: #fee2e2 !important; }
-.sev-pill-medium   { color: #f59e0b; }
-/* Same white / gray border as other severity pills; green text only */
+.sev-pill-medium   { color: #f59e0b !important; background: #fef3c7 !important; }
 .sev-pill-low { color: #10b981; }
+.sev-pill-critical.sev-pill-active {
+  background: #f8dede !important;
+  color: #b42318 !important;
+  border-color: #b42318 !important;
+}
+.sev-pill-high.sev-pill-active {
+  background: #fee2e2 !important;
+  color: #dc2626 !important;
+  border-color: #dc2626 !important;
+}
+.sev-pill-medium.sev-pill-active {
+  background: #fef3c7 !important;
+  color: #f59e0b !important;
+  border-color: #f59e0b !important;
+}
 .sev-pill-low.sev-pill-active {
   background: #e0f2f1 !important;
   color: #10b981 !important;
@@ -1671,18 +1811,37 @@ class TLSConfigurator:
   background: white;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
   border: 1px solid rgba(203, 196, 208, 0.25);
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  isolation: isolate;
+}
+
+.vuln-accordion-item--expanded {
+  height: min(calc(100vh - 260px), 520px);
+  max-height: min(calc(100vh - 260px), 520px);
+  min-height: 280px;
+}
+
+.right-panel-scroll .d-flex.flex-column {
+  flex: 0 0 auto;
 }
 
 .vuln-accordion-header {
+  position: relative;
+  z-index: 3;
+  flex-shrink: 0;
   padding: 14px 16px;
-  background: #f2f3f6;
+  background-color: #f2f3f6 !important;
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
   display: flex;
   justify-content: space-between;
   align-items: center;
   cursor: pointer;
   gap: 12px;
 }
-.vuln-accordion-header:hover { background: #edeef1; }
+.vuln-accordion-header:hover { background-color: #edeef1 !important; }
 
 .vuln-icon { font-size: 1rem; }
 .vuln-icon-critical { color: #ba1a1a; }
@@ -1694,17 +1853,34 @@ class TLSConfigurator:
   font-size: 0.75rem;
   font-weight: 500;
   color: #1e293b;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-  max-width: 100%;
-  flex: 1;
   cursor: default;
 }
 
+.vuln-accordion-expand {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  background: #fff;
+  box-sizing: border-box;
+  padding-bottom: 28px;
+  scroll-padding-bottom: 28px;
+}
+
+.vuln-accordion-expand::-webkit-scrollbar {
+  width: 6px;
+}
+
+.vuln-accordion-expand::-webkit-scrollbar-thumb {
+  background: #cbc4d0;
+  border-radius: 10px;
+}
+
 .vuln-accordion-body {
-  padding: 18px 20px;
+  padding: 14px 16px 20px;
 }
 
 .vuln-meta-grid {
@@ -2072,7 +2248,12 @@ class TLSConfigurator:
   background: #fff;
   padding: 18px 22px;
   border-bottom: 1px solid #e2e8f0;
-  flex-shrink: 0;
+}
+
+.vuln-accordion-body .av-description-block {
+  padding: 0 0 14px;
+  border-bottom: 1px solid #e2e8f0;
+  background: transparent;
 }
 
 .av-db-label {
@@ -2183,12 +2364,32 @@ class TLSConfigurator:
 .av-detail-tab-content {
   background: #f8fafc;
   min-height: 0;
+  height: auto;
+  flex: 0 0 auto;
+  padding: 14px 20px 28px;
+  box-sizing: border-box;
+}
+
+.av-detail-tab-content:has(.av-auto-tab) {
+  padding: 14px 20px 28px;
+}
+
+.av-detail-tab-content:has(.av-auto-tab) .av-auto-tab {
+  padding: 0;
+  min-height: 0;
+  height: auto;
+}
+
+.av-detail-tab-content:has(.av-manual-tab),
+.av-detail-tab-content:has(.av-affected-tab) {
+  padding: 16px 22px 28px;
 }
 
 .av-detail-tab-content--manual {
   min-height: 0;
-  padding: 0;
+  padding: 16px 20px 28px;
   background: #ffffff;
+  box-sizing: border-box;
 }
 
 .av-detail-tab-content--manual .av-manual-tab {
@@ -2196,16 +2397,36 @@ class TLSConfigurator:
 }
 
 .av-detail-tab-content--manual .av-asset-section {
-  padding: 14px 16px 8px;
+  padding: 14px 16px 12px;
   margin-bottom: 0;
 }
 
-.vuln-accordion-body:has(.av-detail-tab-content--manual) {
-  padding-bottom: 0;
+.av-detail-tab-content--manual .av-asset-section:last-child {
+  padding-bottom: 20px;
+}
+
+.vuln-accordion-body .av-detail-tab-content {
+  padding-bottom: 28px !important;
+}
+
+.vuln-accordion-body .av-auto-tab {
+  padding-bottom: 20px;
 }
 
 .av-auto-tab {
-  padding: 22px;
+  padding: 12px 14px 24px;
+  height: auto;
+  min-height: 0;
+  box-sizing: border-box;
+}
+
+.av-manual-tab {
+  padding: 0 0 12px;
+  box-sizing: border-box;
+}
+
+.vuln-accordion-body .av-detail-tabs {
+  margin-bottom: 0;
 }
 
 .av-assess-card {
@@ -2331,6 +2552,16 @@ class TLSConfigurator:
   color: #dc2626;
   font-weight: 700;
   flex-shrink: 0;
+}
+
+.av-empty-threats {
+  font-size: 13px;
+  color: #64748b;
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px dashed #e2e8f0;
+  border-radius: 8px;
+  margin-bottom: 12px;
 }
 
 .av-action-buttons {

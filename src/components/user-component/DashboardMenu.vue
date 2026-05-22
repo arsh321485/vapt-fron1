@@ -21,7 +21,7 @@
          <div>
           <router-link to="/userVulnerabilityregister">
           <button class="btn border-0" :class="{ activeBtn: isActive('/userVulnerabilityregister') }"><i class="bi bi-list-ul nav-menu"></i>
-          <p class="menu-heading">Register</p></button>
+          <p class="menu-heading">Registration</p></button>
           </router-link>
          </div>
 
@@ -33,11 +33,19 @@
           </router-link>
         </div>
 
+        <div>
+          <router-link to="/user-toolbox">
+          <button class="btn border-0" :class="{ activeBtn: isActive('/user-toolbox') }">
+          <i class="bi bi-tools nav-menu"></i>
+          <p class="menu-heading">Toolbox</p></button>
+          </router-link>
+        </div>
+
          <div>
           <router-link to="/userexception">
           <button class="btn border-0" :class="{ activeBtn: isActive('/userexception') }">
           <i class="bi bi-exclamation-circle nav-menu"></i>
-          <p class="menu-heading">Support Requests</p></button>
+          <p class="menu-heading">Support Request</p></button>
           </router-link>
         </div>
 

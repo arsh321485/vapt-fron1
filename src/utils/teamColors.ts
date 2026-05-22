@@ -82,3 +82,23 @@ export function teamPillStyle(
     boxShadow: active ? `0 0 0 1px ${c}40` : 'none',
   };
 }
+
+/** Tab nav label (Your Team, Mitigation Strategy, etc.) */
+export function getTeamTabNavStyle(teamName?: string | null, isActive = false) {
+  const c = getTeamColor(teamName);
+  return {
+    color: isActive ? c : '#64748b',
+    fontWeight: isActive ? '600' : '500',
+  };
+}
+
+export function getTeamTabUnderlineStyle(teamName?: string | null) {
+  return { backgroundColor: getTeamColor(teamName) };
+}
+
+export const CANONICAL_TEAM_NAMES = [
+  'Network Security',
+  'Patch Management',
+  'Configuration Management',
+  'Architectural Flaws',
+] as const;

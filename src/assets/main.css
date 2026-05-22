@@ -842,6 +842,102 @@ html.legal-doc-sticky-context body {
   background-color: #241447;
 }
 
+/* Python install guide — accordion / vuln header */
+.vuln-python-info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid #bfdbfe;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+  color: #2563eb;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.12);
+}
+
+.vuln-python-info-btn:hover {
+  background: linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1d4ed8;
+  transform: scale(1.06);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.22);
+}
+
+.vuln-python-info-btn:active {
+  transform: scale(0.98);
+}
+
+.vuln-verified-badge {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  flex-shrink: 0;
+  display: block;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.vuln-download-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: #0c4a6e;
+  color: #fff;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.vuln-download-icon-btn:hover {
+  background: #075985;
+  transform: translateY(-1px);
+}
+
+.vuln-download-icon-btn:active {
+  transform: translateY(0);
+}
+
+.vuln-download-icon-btn--disabled,
+.vuln-download-icon-btn:disabled {
+  background: #cbd5e1 !important;
+  color: #94a3b8 !important;
+  cursor: not-allowed;
+  opacity: 1;
+  pointer-events: none;
+}
+
+.vuln-download-icon-btn--disabled:hover,
+.vuln-download-icon-btn:disabled:hover {
+  background: #cbd5e1 !important;
+  transform: none;
+}
+
+.av-dtab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.av-dtab-emoji {
+  font-size: 1.05rem;
+  line-height: 1;
+  display: inline-block;
+}
+
 .btn .menu-heading,
 .btn .nav-menu {
   color: rgba(255, 255, 255, 0.5);
@@ -1372,6 +1468,32 @@ html.legal-doc-sticky-context body {
   background: var(--sev-low-bg) !important;
 }
 
+/* Severity filter pills — active state keeps each severity palette (not generic teal) */
+.sev-pill.sev-pill-critical.sev-pill-active {
+  color: var(--sev-critical-text) !important;
+  background: var(--sev-critical-bg) !important;
+  border-color: var(--sev-critical-text) !important;
+  font-weight: 700;
+}
+.sev-pill.sev-pill-high.sev-pill-active {
+  color: var(--sev-high-text) !important;
+  background: var(--sev-high-bg) !important;
+  border-color: var(--sev-high-text) !important;
+  font-weight: 700;
+}
+.sev-pill.sev-pill-medium.sev-pill-active {
+  color: var(--sev-medium-text) !important;
+  background: var(--sev-medium-bg) !important;
+  border-color: var(--sev-medium-bar) !important;
+  font-weight: 700;
+}
+.sev-pill.sev-pill-low.sev-pill-active {
+  background: #e0f2f1 !important;
+  color: var(--sev-low-text) !important;
+  border-color: var(--sev-low-text) !important;
+  font-weight: 700;
+}
+
 /* Extended severity mapping across admin/user dashboard components */
 .vr-pill-critical,
 .vr-filter-tag-critical,
@@ -1451,6 +1573,14 @@ th.sev-low {
 .team-txt-arch,
 .team-text-architectural,
 .team-text-arch { color: var(--team-architectural-color) !important; }
+
+.team-colored-name {
+  font-weight: 600;
+}
+.team-colored-name.team-txt-network { color: var(--team-network-color) !important; }
+.team-colored-name.team-txt-patch { color: var(--team-patch-color) !important; }
+.team-colored-name.team-txt-configuration { color: var(--team-configuration-color) !important; }
+.team-colored-name.team-txt-architectural { color: var(--team-architectural-color) !important; }
 
 .team-badge {
   display: inline-block;
@@ -1647,4 +1777,428 @@ th.sev-low {
 /* SweetAlert2 above fixed nav / sign-in overlay (overlay z-index ~9999–10000) */
 .swal2-container {
   z-index: 20000 !important;
+}
+
+/* Vulnerability accordion: fixed header row + scroll only inside body (all views) */
+.vuln-accordion-item {
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+  isolation: isolate;
+}
+
+.vuln-accordion-item--expanded {
+  height: min(calc(100vh - 260px), 520px);
+  max-height: min(calc(100vh - 260px), 520px);
+  min-height: 280px;
+}
+
+.vuln-accordion-header {
+  position: relative;
+  z-index: 3;
+  flex-shrink: 0;
+  background-color: #f2f3f6 !important;
+  background-image: none;
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+}
+
+.vuln-accordion-item--expanded .vuln-accordion-header {
+  border-radius: 12px 12px 0 0;
+}
+
+/* Severity + status badges inline after vuln title */
+.vuln-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+  flex-wrap: nowrap;
+}
+
+.vuln-name-row .vuln-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vuln-name-row .sev-badge,
+.vuln-name-row .status-open-badge,
+.vuln-name-row .status-closed-badge {
+  flex-shrink: 0;
+}
+
+.vuln-accordion-expand {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  background: #fff;
+  border-radius: 0 0 12px 12px;
+  box-sizing: border-box;
+  padding-bottom: 28px;
+  scroll-padding-bottom: 28px;
+}
+
+.vuln-accordion-body {
+  padding: 14px 16px 20px;
+}
+
+.vuln-accordion-body .av-detail-tab-content {
+  padding-bottom: 28px !important;
+}
+
+.vuln-accordion-body .av-auto-tab {
+  padding-bottom: 20px;
+}
+
+.vuln-accordion-expand::-webkit-scrollbar {
+  width: 6px;
+}
+
+.vuln-accordion-expand::-webkit-scrollbar-thumb {
+  background: #cbc4d0;
+  border-radius: 10px;
+}
+
+/* Status filter tabs (All / Open / Closed) — assets & all-vul views */
+.vr-tab-btn {
+  border-radius: 50px;
+  padding: 6px 16px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  border: 1px solid rgba(203, 196, 208, 0.4);
+  background: #f8f9fc;
+  color: #49454f;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vr-tab-count {
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: #edeef1;
+  color: #49454f;
+  padding: 1px 6px;
+  border-radius: 50px;
+}
+
+.vr-tab-active {
+  background: #e0f2f1 !important;
+  color: #0f696e !important;
+  border-color: #0f696e !important;
+}
+
+.vr-tab-active .vr-tab-count {
+  background: #0f696e;
+  color: #ffffff;
+}
+
+.vr-tab-active-open {
+  background: #f8dede !important;
+  color: #b42318 !important;
+  border-color: #b42318 !important;
+}
+
+.vr-tab-active-open .vr-tab-count {
+  background: #b42318;
+  color: #ffffff;
+}
+
+.vr-tab-active-closed {
+  background: #dcfce7 !important;
+  color: #166534 !important;
+  border-color: #16a34a !important;
+}
+
+.vr-tab-active-closed .vr-tab-count {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.vuln-filter-bar {
+  gap: 12px;
+}
+
+.vuln-toolbox-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 8px 14px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #241447;
+  background: #fff;
+  border: 1px solid rgba(36, 20, 71, 0.2);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.vuln-toolbox-btn:hover {
+  background: #f2f3f6;
+  border-color: #241447;
+  color: #241447;
+}
+
+.vuln-toolbox-btn i {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.right-panel-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.right-panel-header-main {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Right detail panel — title + tabs (All Assets & All Vul) */
+.assets-right-panel {
+  position: relative;
+}
+
+.assets-right-panel .right-panel-header {
+  padding: 14px 28px 0;
+  background: #fff;
+  border-bottom: none;
+  flex-shrink: 0;
+}
+
+.assets-right-panel .right-panel-header .detail-tabs {
+  margin-top: 10px;
+}
+
+/* Header alerts — overlay at top of right panel, no layout space */
+.assets-right-panel .fix-panel-header-alerts {
+  position: absolute;
+  top: 4px;
+  right: 18px;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: min(300px, calc(100% - 36px));
+  pointer-events: none;
+}
+
+.assets-right-panel .fix-panel-header-alerts .panel-header-alert {
+  pointer-events: auto;
+}
+
+@media (max-width: 900px) {
+  .assets-right-panel .fix-panel-header-alerts {
+    right: 12px;
+    max-width: calc(100% - 24px);
+  }
+}
+
+.assets-right-panel .right-panel-meta {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.assets-right-panel .right-panel-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 18px 28px 12px;
+  background: #f8f9fc;
+}
+
+/* Detail tabs — All Assets & All Vulnerabilities (Vulnerabilities | Support Requests) */
+.detail-tabs {
+  display: flex;
+  gap: 24px;
+  border-bottom: 1px solid rgba(203, 196, 208, 0.2);
+}
+
+.detail-tab {
+  padding-bottom: 10px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #64748b;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.detail-tab:hover {
+  color: #1e293b;
+}
+
+.detail-tab-active {
+  font-weight: 500;
+  color: #0f172a;
+  border-bottom: 2px solid #0f172a;
+}
+
+/* Support requests — assets / all-vul panels */
+.support-req-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(203, 196, 208, 0.2);
+}
+
+.sr-index-circle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sr-vul-name {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.sr-host-name {
+  font-size: 0.68rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.sr-empty {
+  color: #94a3b8;
+  font-size: 0.8rem;
+  padding: 16px 0;
+  display: flex;
+  align-items: center;
+}
+
+.sr-modal-content {
+  border-radius: 14px;
+  overflow: hidden;
+  border: none;
+}
+
+.sr-modal-header {
+  background: #241447;
+  border-bottom: none;
+  padding: 18px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.sr-modal-title {
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 0 0 3px;
+  display: flex;
+  align-items: center;
+}
+
+.sr-modal-sub {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.68rem;
+  padding-left: 26px;
+}
+
+.sr-section-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+}
+
+.sr-step-pill {
+  display: inline-flex;
+  align-items: center;
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+  border-radius: 50px;
+  padding: 4px 12px;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.sr-textarea {
+  width: 100%;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.8rem;
+  color: #475569;
+  resize: none;
+  outline: none;
+}
+
+.sr-modal-footer {
+  padding: 14px 24px;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.sr-btn-close {
+  background: #241447;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 22px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.sr-btn-close:hover {
+  background: #1a0f35;
+}
+
+.btn-view-requests {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.btn-view-requests:hover {
+  background: #a1ecf2;
 }
