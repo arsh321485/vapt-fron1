@@ -10,8 +10,11 @@ import { createPinia } from "pinia";
 
 import App from "./App.vue";
 import router from "./router";
+import TeamNameText from "./components/common/TeamNameText.vue";
 
 const app = createApp(App);
+
+app.component("TeamNameText", TeamNameText);
 
 app.use(createPinia());
 app.use(router);

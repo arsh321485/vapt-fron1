@@ -40,6 +40,7 @@ import NotificationPanel from "../components/admin-component/NotificationPanel.v
 
 // user import
 import UserAssetsView from "../views/user-views/UserAssetsView.vue";
+import UserToolboxView from "../views/user-views/UserToolboxView.vue";
 import DelayedvulnerabilitiesView from "../views/user-views/DelayedvulnerabilitiesView.vue";
 import DelayedvulnerabilitycardView from "../views/user-views/DelayedvulnerabilitycardView.vue";
 import UserExceptionsView from "../views/user-views/UserExceptionsView.vue";
@@ -61,6 +62,7 @@ import ScopeView from "../views/admin-dashboard/ScopeView.vue";
 import MicrosoftCallbackView from "../views/admin-views/MicrosoftCallbackView.vue";
 import PerformanceMonitoringView from "../views/admin-dashboard/PerformanceMonitoringView.vue";
 import ViewReportPage from "../views/admin-dashboard/ViewReportPage.vue";
+import ToolboxView from "../views/admin-dashboard/ToolboxView.vue";
 import ScopingFormView from "../views/admin-dashboard/ScopingFormView.vue";
 import ScopingFormView2 from "../views/admin-dashboard/ScopingFormView2.vue";
 import UserSetPasswordView from "../views/user-views/UserSetPasswordView.vue";
@@ -319,6 +321,12 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
+      path: "/toolbox",
+      name: "toolbox",
+      component: ToolboxView,
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
       path: "/performance-monitoring",
       name: "performance-monitoring",
       component: PerformanceMonitoringView,
@@ -406,6 +414,12 @@ const router = createRouter({
       path: "/userassets",
       name: "userassets",
       component: UserAssetsView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/user-toolbox",
+      name: "user-toolbox",
+      component: UserToolboxView,
       meta: { requiresAuth: true },
     },
     {

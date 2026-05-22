@@ -32,7 +32,7 @@
                   <!-- Card Header -->
                   <div class="d-flex justify-content-between align-items-start mb-4">
                     <div>
-                      <h3 class="pm-card-title">{{ cfg.name }} Team</h3>
+                      <h3 class="pm-card-title" :style="{ color: cfg.color }">{{ cfg.name }} Team</h3>
                       <p class="pm-card-subtitle">{{ cfg.focus }}</p>
                     </div>
 
@@ -94,25 +94,6 @@
                 </div>
               </div>
 
-              <!-- Bottom Analytics Bar -->
-              <div class="pm-analytics-bar">
-                <div class="d-flex gap-5 align-items-center">
-                  <div>
-                    <p class="pm-analytics-label">Total System Resolution</p>
-                    <p class="pm-analytics-value">{{ totalSystemResolution }}%</p>
-                  </div>
-                  <div class="pm-divider"></div>
-                  <div>
-                    <p class="pm-analytics-label">Total Vulnerabilities Tracked</p>
-                    <p class="pm-analytics-value">{{ totalVulnerabilities }}</p>
-                  </div>
-                </div>
-                <button class="pm-export-btn">
-                  <i class="bi bi-download me-2"></i>
-                  Export Global Stats
-                </button>
-              </div>
-
             </div>
           </div>
         </div>
@@ -136,17 +117,6 @@ export default {
       teamDetail: {},
       teamConfigs: [...PERFORMANCE_TEAM_CONFIGS],
     };
-  },
-  computed: {
-    totalSystemResolution() {
-      const teams = this.teamConfigs.map(c => this.closureRate(c.name));
-      if (!teams.length) return 0;
-      const avg = teams.reduce((s, v) => s + v, 0) / teams.length;
-      return Math.round(avg * 10) / 10;
-    },
-    totalVulnerabilities() {
-      return this.teamConfigs.reduce((s, c) => s + ((this.teamDetail[c.name] || {}).total || 0), 0);
-    },
   },
   methods: {
     closureRate(teamName) {
@@ -387,54 +357,4 @@ export default {
   color: #1e293b;
   margin: 0;
 }
-
-/* Bottom Analytics Bar */
-.pm-analytics-bar {
-  background: #241447;
-  border-radius: 12px;
-  padding: 20px 28px;
-  color: white;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 4px 16px rgba(36, 20, 71, 0.3);
-}
-
-.pm-analytics-label {
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.5);
-  margin-bottom: 4px;
-}
-
-.pm-analytics-value {
-  font-size: 1.6rem;
-  font-weight: 800;
-  margin: 0;
-  color: white;
-}
-
-.pm-divider {
-  width: 1px;
-  height: 40px;
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.pm-export-btn {
-  background: #0f696e;
-  color: white;
-  padding: 9px 20px;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  font-weight: 700;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  transition: background 0.15s, transform 0.1s;
-}
-.pm-export-btn:hover { background: #0a4e52; }
-.pm-export-btn:active { transform: scale(0.97); }
 </style>

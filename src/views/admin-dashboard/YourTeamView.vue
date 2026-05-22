@@ -90,7 +90,7 @@
                           <div class="dropdown-list" v-show="isOpen.dropdown2">
                             <label v-for="option in roleOptions" :key="option.short">
                               <input type="checkbox" :value="option.short" v-model="selectedRoles2" />
-                              {{ option.full }}
+                              <TeamNameText :name="option.full" />
                             </label>
                           </div>
                         </div>
@@ -122,15 +122,24 @@
             <div class="row my-4 px-4">
               <div class="col-12">
                 <div class="d-flex justify-content-between tab-wrapper position-relative">
-                  <p v-for="(tab, index) in tabs" :key="index" class="nav-item" :class="{ active: activeTab === index }"
-                    :style="{ width: '25%', color: activeTab === index ? '#0f696e' : '#64748b' }"
-                    @click="selectTab(index)">
+                  <p
+                    v-for="(tab, index) in tabs"
+                    :key="index"
+                    class="nav-item yt-team-tab"
+                    :class="[{ active: activeTab === index }, getTeamTextClass(tab.name)]"
+                    :style="{ width: tabWidth + '%', ...getTeamTabNavStyle(tab.name, activeTab === index) }"
+                    @click="selectTab(index)"
+                  >
                     {{ tab.name }}
                   </p>
-                  <div class="tab-line" :style="{
-                    width: tabWidth + '%',
-                    left: tabWidth * activeTab + '%'
-                  }"></div>
+                  <div
+                    class="tab-line"
+                    :style="{
+                      width: tabWidth + '%',
+                      left: tabWidth * activeTab + '%',
+                      ...getTeamTabUnderlineStyle(tabs[activeTab]?.name),
+                    }"
+                  ></div>
 
                 </div>
               </div>
@@ -198,7 +207,7 @@
             v-model="selectedRoles[user._id]"
             @change="handleRoleChange($event, user, option)"
           />
-          {{ option.full }}
+          <TeamNameText :name="option.full" />
         </label>
       </div>
     </div>
@@ -282,7 +291,7 @@
                                       <label v-for="option in roleOptions" :key="option.short">
                                         <input type="checkbox" :value="option.short" v-model="selectedRoles[user._id]"
                                           @change="handleRoleChange($event, user, option)" />
-                                        {{ option.full }}
+                                        <TeamNameText :name="option.full" />
                                       </label>
                                     </div>
                                   </div>
@@ -321,6 +330,12 @@ import DashboardMenu from '@/components/admin-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/admin-component/DashboardHeader.vue';
 import { useAuthStore } from "@/stores/authStore";
 import endpoint from "@/services/apiServices";
+import {
+  getTeamColor,
+  getTeamTextClass,
+  getTeamTabNavStyle,
+  getTeamTabUnderlineStyle,
+} from '@/utils/teamColors';
 
 export default {
   name: 'YourTeamView',
@@ -423,6 +438,10 @@ export default {
     }
   },
   methods: {
+    getTeamColor,
+    getTeamTextClass,
+    getTeamTabNavStyle,
+    getTeamTabUnderlineStyle,
     openModal() {
     const modal = new bootstrap.Modal(this.$refs.addUserModal);
     modal.show();
@@ -1292,8 +1311,7 @@ async deleteRoleFromUser(user, roleToRemove) {
 .tab-line {
   position: absolute;
   bottom: 0;
-  height: 2px;
-  background-color: #0f696e;
+  height: 3px;
   transition: all 0.3s ease;
 }
 
@@ -1309,8 +1327,17 @@ async deleteRoleFromUser(user, roleToRemove) {
   white-space: nowrap;
 }
 
-.nav-item.active {
-  text-shadow: 0 2px 10px rgba(15, 105, 110, 0.6);
+.nav-item.active.yt-team-tab.team-txt-network {
+  text-shadow: 0 2px 10px rgba(59, 130, 246, 0.35);
+}
+.nav-item.active.yt-team-tab.team-txt-patch {
+  text-shadow: 0 2px 10px rgba(91, 33, 182, 0.35);
+}
+.nav-item.active.yt-team-tab.team-txt-configuration {
+  text-shadow: 0 2px 10px rgba(6, 182, 212, 0.35);
+}
+.nav-item.active.yt-team-tab.team-txt-architectural {
+  text-shadow: 0 2px 10px rgba(192, 38, 211, 0.35);
 }
 
 .nav-item i {

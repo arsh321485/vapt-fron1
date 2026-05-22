@@ -5,14 +5,15 @@
     <div class="sidebar d-flex flex-column align-items-center my-5 py-2">
       <!-- Navigation Icons -->
       <div class="flex-grow-1 d-flex flex-column align-items-center  text-center">
-         <!-- HOME - Always allowed -->
+         <!-- HOME -->
          <div>
           <router-link to="/admindashboardonboarding">
           <button class="btn border-0" :class="{ activeBtn: isActive('/admindashboardonboarding') }"><i class="bi bi-house-door nav-menu"></i>
           <p class="menu-heading">Home</p></button>
           </router-link>
          </div>
-          <!-- CALENDAR -->
+
+         <!-- CALENDAR -->
         <div>
           <button class="btn border-0" :class="{ activeBtn: isActive('/calendar') }" @click="navigateTo('/calendar')">
             <i class="bi bi-calendar3 nav-menu"></i>
@@ -20,74 +21,49 @@
           </button>
         </div>
 
-
-
-
-         <!-- SCOPE - Always allowed -->
-         <!-- <div>
-          <router-link to="/scope">
-          <button class="btn border-0" :class="{ activeBtn: isActive('/scope') }"><i class="bi bi-bullseye nav-menu"></i>
-          <p class="menu-heading">Scope</p></button>
-          </router-link>
-         </div> -->
-
-         <!-- TEAMS - Always allowed -->
+         <!-- TEAM -->
          <div>
           <router-link to="/yourteam">
           <button class="btn border-0" :class="{ activeBtn: isActive('/yourteam') }">
           <i class="bi bi-people nav-menu"></i>
-          <p class="menu-heading">Teams</p></button>
+          <p class="menu-heading">Team</p></button>
           </router-link>
         </div>
 
-         <!-- REGISTER - Restricted during testing -->
-         <div>
-          <button class="btn border-0" :class="{ activeBtn: isActive('/vulnerabilityregister') }" @click="navigateTo('/vulnerabilityregister')">
-          <i class="bi bi-list-ul nav-menu"></i>
-          <p class="menu-heading">Register</p></button>
-         </div>
-
-         <!-- REPORT - Restricted during testing -->
-         <!-- <div>
-          <button class="btn border-0" :class="{ activeBtn: isActive('/report') }" @click="navigateTo('/report')">
-          <i class="bi bi-file-earmark-text nav-menu"></i>
-          <p class="menu-heading">Report</p></button>
-         </div> -->
-
-        <!-- ASSETS - Restricted during testing -->
-        <div>
-          <button class="btn border-0" :class="{ activeBtn: isActive('/assets') }" @click="navigateTo('/assets')">
-          <i class="bi bi-laptop nav-menu"></i>
-          <p class="menu-heading">Fix</p></button>
-          </div>
-
-        <!-- Performance Monitoring - Restricted during testing -->
+         <!-- TEAM PERFORMANCE -->
         <div>
           <button class="btn border-0" :class="{ activeBtn: isActive('/performance-monitoring') }" @click="navigateTo('/performance-monitoring')">
           <i class="bi bi-graph-up-arrow nav-menu"></i>
           <p class="menu-heading">Team Performance</p></button>
         </div>
 
-        <!-- PENDING - Restricted during testing -->
-       <!--  <div>
-          <button class="btn border-0" :class="{ activeBtn: isActive('/pending') }" @click="navigateTo('/pending')">
-          <i class="bi bi-dash-circle-dotted nav-menu"></i>
-          <p class="menu-heading">Pending</p></button>
-        </div> -->
+         <!-- REGISTRATION -->
+         <div>
+          <button class="btn border-0" :class="{ activeBtn: isActive('/vulnerabilityregister') }" @click="navigateTo('/vulnerabilityregister')">
+          <i class="bi bi-list-ul nav-menu"></i>
+          <p class="menu-heading">Registration</p></button>
+         </div>
 
-         <!-- MITIGATION STRATEGY - Restricted during testing -->
-         <!-- <div>
-          <button class="btn border-0" :class="{ activeBtn: isActive('/mitigationstrategy') }" @click="navigateTo('/mitigationstrategy')">
-           <i class="bi bi-diagram-3 nav-menu"></i>
-          <p class="menu-heading">Mitigation Strategy</p>
+        <!-- FIX -->
+        <div>
+          <button class="btn border-0" :class="{ activeBtn: isActive('/assets') }" @click="navigateTo('/assets')">
+          <i class="bi bi-laptop nav-menu"></i>
+          <p class="menu-heading">Fix</p></button>
+          </div>
+
+        <!-- TOOLBOX -->
+        <div>
+          <button class="btn border-0" :class="{ activeBtn: isActive('/toolbox') }" @click="navigateTo('/toolbox')">
+            <i class="bi bi-tools nav-menu"></i>
+            <p class="menu-heading">Toolbox</p>
           </button>
-        </div> -->
+        </div>
 
-         <!-- SUPPORT REQUESTS - Restricted during testing -->
+         <!-- SUPPORT REQUEST -->
          <div>
           <button class="btn border-0" :class="{ activeBtn: isActive('/supportrequests') }" @click="navigateTo('/supportrequests')">
           <i class="bi bi-exclamation-circle nav-menu"></i>
-          <p class="menu-heading">Support Requests</p></button>
+          <p class="menu-heading">Support Request</p></button>
         </div>
 
         <!-- TICKETS - Restricted during testing -->

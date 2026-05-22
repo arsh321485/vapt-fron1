@@ -4326,9 +4326,17 @@ mounted() {
   background: white;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
   border: 1px solid rgba(203,196,208,0.25);
+  display: flex;
+  flex-direction: column;
+}
+
+.vuln-accordion-item:has(.accordion-collapse.show) {
+  max-height: min(calc(100vh - 220px), 520px);
 }
 
 .vuln-accordion-header {
+  flex-shrink: 0;
+  z-index: 2;
   padding: 14px 16px;
   background: #f2f3f6;
   display: flex;
@@ -4336,6 +4344,14 @@ mounted() {
   align-items: center;
   cursor: pointer;
   gap: 12px;
+}
+
+.vuln-accordion-item .accordion-collapse.show {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 .vuln-accordion-header:hover { background: #edeef1; }
 
