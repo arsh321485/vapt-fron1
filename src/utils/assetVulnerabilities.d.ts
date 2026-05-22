@@ -1,72 +1,87 @@
-export type AssetVulnInput = Record<string, unknown> | null | undefined;
-
-export interface AutomationProfile {
+export interface AutomationTierProfile {
   label: string;
   pct: number;
-  tier: "yes" | "no" | "partial";
+  tier: string;
 }
 
-export interface AutomationDisplay extends AutomationProfile {
+export interface AutomationDisplayResult {
+  tier: string;
+  label: string;
+  pct: number;
   barWidth: number;
   displayPct: string;
 }
 
+export interface NormalizedAssetVulnerability {
+  vul_name: string;
+  plugin_name: string;
+  vulnerability_name: string;
+  severity: string;
+  risk_factor: string;
+  status: string;
+  description: string;
+  cvss_score: string | number | null;
+  cve: string;
+  exposure: string;
+  [key: string]: unknown;
+}
+
 export function canonSeverity(sev: unknown): string;
-export function vulnDisplayName(v: AssetVulnInput): string;
-export function vulnNameKey(v: AssetVulnInput): string;
+export function vulnDisplayName(v: Record<string, unknown> | null | undefined): string;
+export function vulnNameKey(v: Record<string, unknown> | null | undefined): string;
 export function isActiveVulnStatus(status: unknown): boolean;
 export function normalizeAssetVulnerability(
-  v: AssetVulnInput,
-): Record<string, unknown> | null;
+  v: Record<string, unknown> | null | undefined,
+): NormalizedAssetVulnerability | null;
 export function normalizeAssetVulnerabilityList(
   list: unknown,
-): Record<string, unknown>[];
+): NormalizedAssetVulnerability[];
 export function assetMatchesRegisterRow(
   row: Record<string, unknown>,
-  assetIp: unknown,
+  assetIp: string,
 ): boolean;
 export function buildVulnsFromRegister(
   registerRows: unknown,
-  assetIp: unknown,
-): Record<string, unknown>[];
+  assetIp: string,
+): NormalizedAssetVulnerability[];
 export function matchesVulnStatusFilter(
-  vuln: AssetVulnInput,
+  vuln: Record<string, unknown> | null | undefined,
   statusFilter: string[] | null | undefined,
 ): boolean;
 export function mergeAssetThreatVulnerabilities(
   activeVulns: unknown,
   closedFixVulns?: unknown,
-): Record<string, unknown>[];
+): NormalizedAssetVulnerability[];
 export function filterOpenAssetVulnerabilities(
   vulns: unknown,
   closedFixVulns?: unknown,
-): Record<string, unknown>[];
+): NormalizedAssetVulnerability[];
 export function severityMatchesFilter(
   severity: unknown,
   activeFilters: string[] | null | undefined,
 ): boolean;
 
-export const AUTOMATION_DEMO_BY_SEVERITY: Record<string, AutomationProfile>;
-export const AUTOMATION_DEMO_BY_ASSET: Record<string, AutomationProfile>;
-export const AUTOMATION_DEMO_BY_INDEX: AutomationProfile[];
+export const AUTOMATION_DEMO_BY_SEVERITY: Record<string, AutomationTierProfile>;
+export const AUTOMATION_DEMO_BY_ASSET: Record<string, AutomationTierProfile>;
+export const AUTOMATION_DEMO_BY_INDEX: AutomationTierProfile[];
 
 export function getAutomationProfileForAsset(
-  assetIp: unknown,
+  assetIp: string | null | undefined,
   assetIndex?: number | null,
-): AutomationProfile | null;
+): AutomationTierProfile | null;
 export function getAutomationProfileForSeverity(
   severity: unknown,
-  overrides?: Partial<AutomationProfile>,
-): AutomationProfile;
+  overrides?: Partial<AutomationTierProfile>,
+): AutomationTierProfile;
 export function resolveAutomationDisplay(
   automationLevel: unknown,
   automationPct: unknown,
   severity: unknown,
-  assetIp?: unknown,
+  assetIp?: string | null,
   assetIndex?: number | null,
-): AutomationDisplay;
+): AutomationDisplayResult;
 export function isAutomationNotAvailable(
-  assetIp?: unknown,
+  assetIp?: string | null,
   assetIndex?: number | null,
   severity?: string,
 ): boolean;
