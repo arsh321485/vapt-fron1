@@ -4,24 +4,45 @@
     <div class="av-left">
       <div class="av-left-header left-panel-header">
         <div class="d-flex justify-content-between align-items-center mb-2">
-          <h2 class="av-left-title assets-title">All Vulnerabilities</h2>
-          <span class="av-count-badge assets-count-badge">{{ filteredVulns.length }} Vulns</span>
+          <h2 class="av-left-title">All Vulnerabilities</h2>
+          <span class="av-count-badge">{{ filteredVulns.length }}</span>
         </div>
-        <div class="d-flex gap-3 mb-3">
-          <i
-            class="bi bi-trash action-icon"
-            :class="{ 'text-muted': activeAction !== '' && activeAction !== 'delete' }"
-            title="Remove assets for selected vulnerabilities"
-            role="button"
-            @click.stop="handleDeleteClick"
-          ></i>
-          <i
-            class="bi bi-eye-slash action-icon"
-            :class="{ 'text-muted': activeAction !== '' && activeAction !== 'hold' }"
-            title="Hold mitigation"
-            role="button"
-            @click.stop="toggleHoldMode"
-          ></i>
+        <div class="av-filter-pills">
+          <button
+            type="button"
+            :class="['av-pill', activeFilters.includes('All') ? 'av-pill-all' : 'av-pill-inactive']"
+            @click="setFilter('All')"
+          >
+            All
+          </button>
+          <button
+            type="button"
+            :class="['av-pill', activeFilters.includes('Critical') ? 'av-pill-critical' : 'av-pill-inactive']"
+            @click="setFilter('Critical')"
+          >
+            Critical
+          </button>
+          <button
+            type="button"
+            :class="['av-pill', activeFilters.includes('High') ? 'av-pill-high' : 'av-pill-inactive']"
+            @click="setFilter('High')"
+          >
+            High
+          </button>
+          <button
+            type="button"
+            :class="['av-pill', activeFilters.includes('Medium') ? 'av-pill-medium' : 'av-pill-inactive']"
+            @click="setFilter('Medium')"
+          >
+            Medium
+          </button>
+          <button
+            type="button"
+            :class="['av-pill', activeFilters.includes('Low') ? 'av-pill-low' : 'av-pill-inactive']"
+            @click="setFilter('Low')"
+          >
+            Low
+          </button>
         </div>
         <div class="av-search-box">
           <i class="bi bi-search av-search-icon"></i>
@@ -38,26 +59,14 @@
         <div
           v-for="item in filteredVulns"
           :key="item._key"
-          class="asset-item-new"
-          :class="{ 'asset-item-active': selectedKey === item._key && !showCheckboxes && !showHoldCheckboxes }"
-          @click="selectVulnFromList(item)"
+          class="av-vuln-item"
+          :class="{ active: selectedKey === item._key }"
+          @click="selectVulnWithScroll(item)"
         >
-          <div class="av-list-item-primary d-flex align-items-start gap-2">
-            <input
-              v-if="showCheckboxes"
-              type="checkbox"
-              v-model="item.selected"
-              class="form-check-input flex-shrink-0 mt-1"
-              @click.stop
-            />
-            <input
-              v-if="showHoldCheckboxes"
-              type="checkbox"
-              v-model="item.selected"
-              class="form-check-input flex-shrink-0 mt-1"
-              @click.stop
-            />
-            <span class="asset-ip av-vuln-list-name">{{ item.vul_name }}</span>
+          <div class="av-vi-top">
+            <!-- <span class="av-vi-id">{{ item.displayId }}</span> -->
+            <span class="av-vi-sev" :class="sevClass(item.severity)">{{ item.severity }}</span>
+            <span class="av-vi-status" :class="statusClass(item.status)">{{ statusLabel(item.status) }}</span>
           </div>
           <div class="d-flex align-items-center gap-2 flex-wrap av-list-item-badges">
             <span class="sev-badge" :class="'sev-' + (item.severity?.toLowerCase() || '')">{{ item.severity }}</span>
@@ -111,420 +120,177 @@
         </div>
       </div>
 
-      <!-- Delete Modal (same layout as All Assets #deleteModal) -->
-      <div class="modal fade assets-action-modal" id="avDeleteModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title">Confirm Delete</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" @click="cancelDelete"></button>
-            </div>
-            <div class="modal-body">Are you sure you want to delete the selected assets?</div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @click="cancelDelete">Cancel</button>
-              <button type="button" class="btn btn-danger" data-bs-dismiss="modal" @click="confirmDelete">OK</button>
-            </div>
-          </div>
-        </div>
+    <!-- Right: detail -->
+    <div class="av-right">
+      <div v-if="!selectedVuln" class="av-empty-state">
+        <div class="av-empty-icon">🛡️</div>
+        <p class="av-empty-text">Select a vulnerability</p>
+        <p class="av-empty-sub">Choose from the list on the left to view details, automated fix assessment, and manual remediation steps.</p>
       </div>
 
-      <!-- Hold Modal (same layout as All Assets #holdConfirmModal) -->
-      <div class="modal fade assets-action-modal assets-hold-modal" id="avHoldConfirmModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-          <div class="modal-content">
-            <div class="modal-body"><p>Do you want to hold to mitigation?</p></div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @click="cancelHold">No</button>
-              <button type="button" class="btn btn-primary" data-bs-dismiss="modal" @click="confirmHold">Yes</button>
-            </div>
+      <div v-else class="av-detail">
+        <div class="av-detail-header">
+          <div class="av-dh-top">
+            <!-- <span class="av-dh-id">{{ selectedVuln.displayId }}</span> -->
+            <span class="av-detail-sev" :class="sevClass(selectedVuln.severity)">{{ selectedVuln.severity }}</span>
+            <span class="av-detail-status" :class="statusDetailClass(selectedVuln.status)">
+              ● {{ statusLabel(selectedVuln.status).toUpperCase() }}
+            </span>
+            <span class="av-cvss-pill">CVSS {{ selectedVuln.cvss_score || '—' }}</span>
           </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Right: same layout as All Assets (title header + tabs in body card + scroll) -->
-    <div ref="avRightScroll" class="av-right assets-right-panel">
-      <template v-if="selectedVuln">
-        <FixPanelHeaderAlerts
-          :python-visible="showPythonAlert"
-          :verified-visible="showVerifiedAlert"
-          @close-python="$emit('close-python-alert')"
-          @close-verified="$emit('close-verified-alert')"
-          @open-python-guide="openPythonGuideFromAlert"
-        />
-        <div class="right-panel-header">
-          <h1 class="asset-detail-title mb-0">{{ selectedVuln.vul_name }}</h1>
-          <div class="detail-tabs">
-            <button
-              type="button"
-              class="detail-tab"
-              :class="{ 'detail-tab-active': activeDetailTab === 'vulnerabilities' }"
-              @click="activeDetailTab = 'vulnerabilities'"
-            >
-              Vulnerabilities ({{ panelVulns.length }})
-            </button>
-            <button
-              type="button"
-              class="detail-tab"
-              :class="{ 'detail-tab-active': activeDetailTab === 'exceptions' }"
-              @click="onSupportRequestsTabClick"
-            >
-              Support Requests
-              <span
-                v-if="supportRequestCount > 0"
-                class="badge rounded-circle bg-danger ms-1"
-                style="font-size:11px;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;"
-              >
-                {{ supportRequestCount }}
-              </span>
-            </button>
-          </div>
-        </div>
-      </template>
-
-      <div class="av-right-scroll right-panel-scroll">
-        <div class="av-right-inner">
-        <div v-if="activeDetailTab === 'vulnerabilities'">
-        <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap vuln-filter-bar">
-          <div class="d-flex gap-2 flex-wrap align-items-center">
-            <button class="sev-pill" :class="{ 'sev-pill-active': activeFilters.includes('All') }" @click="setSeverityFilter('All')">All</button>
-            <button class="sev-pill sev-pill-critical" :class="{ 'sev-pill-active': activeFilters.includes('Critical') }" @click="setSeverityFilter('Critical')">Critical</button>
-            <button class="sev-pill sev-pill-high" :class="{ 'sev-pill-active': activeFilters.includes('High') }" @click="setSeverityFilter('High')">High</button>
-            <button class="sev-pill sev-pill-medium" :class="{ 'sev-pill-active': activeFilters.includes('Medium') }" @click="setSeverityFilter('Medium')">Medium</button>
-            <button class="sev-pill sev-pill-low" :class="{ 'sev-pill-active': activeFilters.includes('Low') }" @click="setSeverityFilter('Low')">Low</button>
-          </div>
-          <div class="d-flex align-items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              class="vr-tab-btn"
-              :class="{ 'vr-tab-active': statusFilter.length === 0 }"
-              @click="toggleStatusTab('all')"
-            >
-              All
-              <span class="vr-tab-count">{{ statusCountAll }}</span>
-            </button>
-            <button
-              type="button"
-              class="vr-tab-btn"
-              :class="{ 'vr-tab-active-open': statusFilter.includes('open') }"
-              @click="toggleStatusTab('open')"
-            >
-              Open
-              <span class="vr-tab-count">{{ statusCountOpen }}</span>
-            </button>
-            <button
-              type="button"
-              class="vr-tab-btn"
-              :class="{ 'vr-tab-active-closed': statusFilter.includes('closed') }"
-              @click="toggleStatusTab('closed')"
-            >
-              Closed
-              <span class="vr-tab-count">{{ statusCountClosed }}</span>
-            </button>
+          <div class="av-title-row">
+            <h1 class="av-dh-title">{{ selectedVuln.vul_name }}</h1>
           </div>
         </div>
 
-        <h3 class="section-label mb-3">Active Threats</h3>
-
-        <div v-if="loading" class="text-center py-4">
-          <span class="spinner-border spinner-border-sm text-primary"></span>
-        </div>
-        <p v-else-if="!panelVulns.length" class="av-empty-threats">
-          No vulnerabilities found. Try clearing severity filters or your search.
-        </p>
-
-        <div v-else class="d-flex flex-column gap-3">
-          <div
-            v-for="(v, i) in panelVulns"
-            :key="v._key"
-            class="vuln-accordion-item"
-            :class="{ 'vuln-accordion-item--expanded': expandedVulnIndex === i }"
-            :ref="'vuln-' + v._key"
+        <div class="av-description-block">
+          <div class="av-db-label">Description</div>
+          <p class="av-db-text">{{ displayDescription }}</p>
+          <button
+            v-if="showReadMore"
+            type="button"
+            class="av-read-more"
+            @click="descriptionExpanded = !descriptionExpanded"
           >
-            <div class="vuln-accordion-header" role="button" @click="toggleAccordion(i)">
-              <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
-                <i
-                  class="bi bi-exclamation-triangle-fill vuln-icon flex-shrink-0"
-                  :class="{
-                    'vuln-icon-critical': v.severity === 'Critical',
-                    'vuln-icon-high': v.severity === 'High',
-                    'vuln-icon-medium': v.severity === 'Medium',
-                    'vuln-icon-low': v.severity === 'Low',
-                  }"
-                ></i>
-                <div class="vuln-name-row">
-                  <span class="vuln-name" :title="v.vul_name">{{ v.vul_name }}</span>
-                  <span class="sev-badge" :class="'sev-' + (v.severity?.toLowerCase() || '')">{{ v.severity }}</span>
-                  <span :class="getStatusBadgeClass(v.status)">
-                    <span :class="getStatusDotClass(v.status)"></span>{{ getStatusLabel(v.status) }}
-                  </span>
-                </div>
-              </div>
-              <div class="d-flex align-items-center gap-3 flex-shrink-0 vuln-accordion-actions">
-                <FixAvailableIndicator
-                  :severity="v.severity"
-                  :asset-ip="v.assets?.[0]"
-                  :asset-index="panelVulnDemoIndex(v)"
-                />
-                <button
-                  type="button"
-                  class="vuln-download-icon-btn"
-                  :class="{ 'vuln-download-icon-btn--disabled': isVulnAutomationNo(v, i) }"
-                  :disabled="isVulnAutomationNo(v, i)"
-                  :title="isVulnAutomationNo(v, i) ? 'Script not available — automation not possible' : 'Download fix'"
-                  :aria-label="isVulnAutomationNo(v, i) ? 'Script download not available' : 'Download fix'"
-                  @click.stop="!isVulnAutomationNo(v, i) && downloadAutomationScript()"
-                >
-                  <i class="bi bi-download"></i>
-                </button>
-                <i class="bi text-muted" :class="expandedVulnIndex === i ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
-              </div>
-            </div>
-            <div v-show="expandedVulnIndex === i" class="vuln-accordion-expand">
-              <div class="vuln-accordion-body">
-                <div class="av-description-block">
-                  <div class="av-db-label">DESCRIPTION</div>
-                  <p class="av-db-text">{{ getDisplayDescription(v.description, v._key) }}</p>
-                  <button
-                    v-if="(v.description || '').length > descriptionPreviewLimit"
-                    type="button"
-                    class="av-read-more"
-                    @click="toggleDescription(v._key)"
-                  >
-                    {{ isDescriptionExpanded(v._key) ? 'Read less' : 'Read more' }}
-                  </button>
-                </div>
-
-                <div class="av-detail-tabs">
-                  <button
-                    type="button"
-                    class="av-dtab"
-                    :class="{ active: currentVulnTab === 'affected' }"
-                    @click="setVulnDetailTab('affected')"
-                  >
-                    🎯 Affected Assets
-                  </button>
-                  <button
-                    type="button"
-                    class="av-dtab"
-                    :class="{ active: currentVulnTab === 'auto' }"
-                    @click="setVulnDetailTab('auto')"
-                  >
-                    <span class="av-dtab-emoji" aria-hidden="true">🤖</span>
-                    Automated Fix
-                  </button>
-                  <button
-                    type="button"
-                    class="av-dtab"
-                    :class="{ active: currentVulnTab === 'manual' }"
-                    @click="setVulnDetailTab('manual')"
-                  >
-                    <span class="av-dtab-emoji" aria-hidden="true">📋</span>
-                    Manual Fix
-                  </button>
-                </div>
-
-                <div class="av-detail-tab-content">
-                  <div v-if="currentVulnTab === 'affected'" class="av-affected-tab">
-                    <div class="av-assets-table-card">
-                      <table class="av-assets-table">
-                        <thead>
-                          <tr>
-                            <th>IP</th>
-                            <th>Steps complete</th>
-                            <th>Send for verification</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr v-if="!affectedAssetsTableRowsFor(v).length">
-                            <td colspan="3" class="av-assets-empty">No affected assets for this vulnerability.</td>
-                          </tr>
-                          <tr v-for="asset in affectedAssetsTableRowsFor(v)" :key="asset.ip">
-                            <td class="av-assets-ip">{{ asset.ip }}</td>
-                            <td>
-                              <div class="av-assets-steps-cell">
-                                <div class="av-assets-progress-track">
-                                  <div class="av-assets-progress-fill" :style="{ width: (asset.progress || 0) + '%' }"></div>
-                                </div>
-                                <span class="av-assets-steps-text">{{ asset.stepsCompleted }}/{{ asset.totalSteps }}</span>
-                              </div>
-                            </td>
-                            <td>
-                              <button
-                                type="button"
-                                class="av-assets-verify-btn"
-                                :disabled="asset.stepsCompleted < asset.totalSteps"
-                                @click="sendForVerification(asset)"
-                              >
-                                <i class="bi bi-send" aria-hidden="true"></i> Send for verification
-                              </button>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                      <div v-if="affectedAssetsTableRowsFor(v).length" class="av-assets-table-footer">
-                        Showing {{ affectedAssetsTableRowsFor(v).length }} asset{{ affectedAssetsTableRowsFor(v).length === 1 ? '' : 's' }}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div v-else-if="currentVulnTab === 'auto'" class="av-auto-tab">
-                    <AutomationNotSafeBanner v-if="isVulnAutomationNo(v, i)" />
-                    <AutomatedFixPanel
-                      v-else
-                      :key="v._key + '-' + i"
-                      :severity="v.severity"
-                      :asset-ip="v.assets?.[0]"
-                      :asset-index="panelVulnDemoIndex(v)"
-                      :can-automate="canAutomate"
-                      :must-manual="mustManual"
-                      :recommended-text="recommendedText"
-                      @view-code="showCodeModal = true"
-                    />
-                  </div>
-
-                  <div v-else-if="currentVulnTab === 'manual'" class="av-manual-tab">
-                    <div v-for="asset in v.assets" :key="asset" class="av-asset-section">
-                      <div class="av-asset-label">
-                        <span class="av-asset-os-lbl">{{ assetMetaFor(v, asset).os }}</span>
-                      </div>
-                      <ManualRemediationStepsPanel :is-user="isUser" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+            {{ descriptionExpanded ? 'Read less' : 'Read more' }}
+          </button>
         </div>
 
-        <!-- Support Requests Tab -->
-        <div v-else-if="activeDetailTab === 'exceptions'">
-          <div v-if="loadingSupportRequests" class="text-center py-4">
-            <span class="spinner-border spinner-border-sm text-primary"></span>
+        <div class="av-affected-block" style="display: none;">
+          <div class="av-aab-label">Affected Assets ({{ selectedVuln.assets.length }})</div>
+          <div class="av-aab-chips">
+            <span v-for="ip in selectedVuln.assets" :key="ip" class="av-asset-chip">{{ ip }}</span>
           </div>
-          <div v-else-if="!supportRequestsForVuln.length" class="sr-empty">
-            <i class="bi bi-inbox me-2"></i>No support requests raised for this vulnerability.
-          </div>
-          <div v-else>
-            <div
-              v-for="(req, i) in supportRequestsForVuln"
-              :key="req._id || req.id || i"
-              class="support-req-item"
-            >
-              <div class="d-flex align-items-center gap-3 flex-wrap">
-                <div class="sr-index-circle">{{ i + 1 }}</div>
+        </div>
+
+        <div class="av-detail-tabs">
+          <button
+            type="button"
+            class="av-dtab"
+            :class="{ active: detailTab === 'affected' }"
+            @click="setDetailTab('affected')"
+          >
+            🎯 Affected Assets
+          </button>
+          <button
+            type="button"
+            class="av-dtab"
+            :class="{ active: detailTab === 'auto' }"
+            @click="setDetailTab('auto')"
+          >
+            🐍 Automated Fix
+          </button>
+          <button
+            type="button"
+            class="av-dtab"
+            :class="{ active: detailTab === 'manual' }"
+            @click="setDetailTab('manual')"
+          >
+            📋 Manual Fix
+          </button>
+        </div>
+
+        <div class="av-detail-tab-content">
+          <div v-if="detailTab === 'auto'" class="av-auto-tab">
+            <div class="av-assess-card">
+              <div class="av-assess-header">
                 <div>
-                  <p class="sr-vul-name mb-0">{{ req.vul_name }}</p>
-                  <p v-if="req.host_name" class="sr-host-name mb-0">{{ req.host_name }}</p>
+                  <div class="av-assess-title">Automation Capability Assessment</div>
+                  <div class="av-assess-sub">Based on vulnerability profile and remediation data</div>
+                </div>
+                <div class="av-feas-badge" :style="feasBadgeStyle">
+                  <span class="av-feas-pct">{{ automationPct }}</span>
                 </div>
               </div>
-              <button
-                type="button"
-                class="btn-view-requests"
-                data-bs-toggle="modal"
-                :data-bs-target="isUser ? '#avUserSupportModal' : '#avAdminSupportModal'"
-                @click="openSupportRequestModal(req)"
-              >
-                <i class="bi bi-eye me-1"></i>View raised requests
+              <div class="av-progress-track">
+                <div class="av-progress-fill" :style="{ width: automationPct, background: feasColor }"></div>
+              </div>
+              <div class="av-assess-grid">
+                <div class="av-assess-col">
+                  <div class="col-head green-head">✓ What can be automated</div>
+                  <ul class="av-can-list">
+                    <li v-for="(line, i) in canAutomate" :key="'c' + i" class="av-can-item">
+                      <span class="av-can-dot">✓</span>{{ line }}
+                    </li>
+                  </ul>
+                </div>
+                <div class="av-assess-col">
+                  <div class="col-head red-head">✗ What must remain manual</div>
+                  <ul class="av-can-list">
+                    <li v-for="(line, i) in mustManual" :key="'m' + i" class="av-cant-item">
+                      <span class="av-cant-dot">✗</span>{{ line }}
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <div class="av-recommended-box">
+              <div class="av-rec-label">Recommended approach</div>
+              <div class="av-rec-text">{{ recommendedText }}</div>
+            </div>
+            <div class="av-action-buttons">
+              <button class="av-btn-outline" @click="showCodeModal = true">
+                <i class="bi bi-code-square"></i>
+                View Code
+              </button>
+              <button class="av-btn-primary">
+                <i class="bi bi-download"></i>
+                Download
               </button>
             </div>
           </div>
-        </div>
-        </div>
-      </div>
-    </div>
 
-    <!-- Support request detail modals -->
-    <div class="modal fade" id="avAdminSupportModal" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content sr-modal-content">
-          <div class="modal-header sr-modal-header">
-            <div>
-              <h5 class="modal-title sr-modal-title">
-                <i class="bi bi-headset me-2"></i>Issues Raised for Support
-              </h5>
-              <p class="sr-modal-sub mb-0">{{ selectedSupportRequest?.vul_name }}</p>
+          <div v-else-if="detailTab === 'manual'" class="av-manual-tab">
+            <div v-for="asset in selectedVuln.assets" :key="asset" class="av-asset-section">
+              <div class="av-asset-label">
+                <span class="av-asset-os-lbl">{{ assetMeta(asset).os }}</span>
+              </div>
+              <ManualRemediationStepsPanel :is-user="isUser" />
             </div>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
-          <div class="modal-body p-4" v-if="selectedSupportRequest">
-            <p class="sr-section-label mb-3">Steps requested for support</p>
-            <div v-if="selectedSupportRequest.step_requested" class="d-flex flex-wrap gap-2 mb-4">
-              <span
-                v-for="(step, si) in selectedSupportRequest.step_requested.split(',')"
-                :key="si"
-                class="sr-step-pill"
-              >
-                {{ step.trim() }}: review
-              </span>
-            </div>
-            <div v-else class="text-muted small mb-4">No steps specified.</div>
-            <p class="sr-section-label mb-2">Description</p>
-            <textarea
-              class="sr-textarea"
-              rows="4"
-              :value="selectedSupportRequest.description || ''"
-              readonly
-            ></textarea>
-          </div>
-          <div class="modal-footer sr-modal-footer">
-            <button type="button" class="sr-btn-close" data-bs-dismiss="modal">Close</button>
-          </div>
-        </div>
-      </div>
-    </div>
 
-    <div class="modal fade" id="avUserSupportModal" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content sr-modal-content">
-          <div class="modal-header sr-modal-header">
-            <div>
-              <h5 class="modal-title sr-modal-title">
-                <i class="bi bi-headset me-2"></i>Issues Raised for Support
-              </h5>
-              <p class="sr-modal-sub mb-0">{{ selectedSupportRequest?.vul_name }}</p>
+          <div v-else-if="detailTab === 'affected'" class="av-affected-tab">
+            <div class="av-assets-table-card">
+              <table class="av-assets-table">
+                <thead>
+                  <tr>
+                    <th>IP</th>
+                    <th>Steps complete</th>
+                    <th>Send for verification</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="!affectedAssetsTableRows.length">
+                    <td colspan="3" class="av-assets-empty">No affected assets for this vulnerability.</td>
+                  </tr>
+                  <tr v-for="asset in affectedAssetsTableRows" :key="asset.ip">
+                    <td class="av-assets-ip">{{ asset.ip }}</td>
+                    <td>
+                      <div class="av-assets-steps-cell">
+                        <div class="av-assets-progress-track">
+                          <div class="av-assets-progress-fill" :style="{ width: (asset.progress || 0) + '%' }"></div>
+                        </div>
+                        <span class="av-assets-steps-text">{{ asset.stepsCompleted }}/{{ asset.totalSteps }}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <button type="button" class="av-assets-verify-btn" :disabled="asset.stepsCompleted < asset.totalSteps" @click="sendForVerification(asset)">
+                        <i class="bi bi-send" aria-hidden="true"></i> Send for verification
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div v-if="affectedAssetsTableRows.length" class="av-assets-table-footer">
+                Showing {{ affectedAssetsTableRows.length }} asset{{ affectedAssetsTableRows.length === 1 ? '' : 's' }}
+              </div>
             </div>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body p-4" v-if="selectedSupportRequest">
-            <p class="sr-section-label mb-2">Vulnerability</p>
-            <p class="fw-semibold mb-3" style="font-size:15px;">{{ selectedSupportRequest.vul_name }}</p>
-            <p class="sr-section-label mb-2">Steps Requested</p>
-            <div class="d-flex flex-wrap gap-2 mb-4">
-              <template v-if="selectedSupportRequest.step_number">
-                <span class="sr-step-pill">Step {{ selectedSupportRequest.step_number }}</span>
-              </template>
-              <template v-else-if="selectedSupportRequest.step_requested === 'all'">
-                <span class="sr-step-pill">All Steps</span>
-              </template>
-              <template v-else-if="selectedSupportRequest.step_requested">
-                <span
-                  v-for="step in selectedSupportRequest.step_requested.split(',')"
-                  :key="step"
-                  class="sr-step-pill"
-                >Step {{ step.trim() }}</span>
-              </template>
-              <template v-else>
-                <span class="text-muted small">No step specified</span>
-              </template>
-            </div>
-            <p class="sr-section-label mb-2">Description</p>
-            <textarea class="sr-textarea" rows="4" :value="selectedSupportRequest.description || ''" readonly></textarea>
-          </div>
-          <div class="modal-footer sr-modal-footer">
-            <button type="button" class="sr-btn-close" data-bs-dismiss="modal">Close</button>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Code Modal -->
-    <PythonInstallGuideModal
-      v-model="showPythonModal"
-      :severity="pythonGuideSeverity"
-    />
-
     <div v-if="showCodeModal" class="code-modal-backdrop" @click.self="showCodeModal = false">
       <div class="code-modal-box">
         <div class="code-modal-header">
@@ -556,25 +322,12 @@
 import Swal from 'sweetalert2';
 import { useAuthStore } from '@/stores/authStore';
 import ManualRemediationStepsPanel from '@/components/assets/ManualRemediationStepsPanel.vue';
-import AutomatedFixPanel from '@/components/assets/AutomatedFixPanel.vue';
-import PythonInstallGuideModal from '@/components/assets/PythonInstallGuideModal.vue';
-import FixAvailableIndicator from '@/components/assets/FixAvailableIndicator.vue';
-import AutomationNotSafeBanner from '@/components/assets/AutomationNotSafeBanner.vue';
-import FixPanelHeaderAlerts from '@/components/assets/FixPanelHeaderAlerts.vue';
-import { isAutomationNotAvailable, matchesVulnStatusFilter } from '@/utils/assetVulnerabilities';
 
 const DESC_LIMIT = 280;
 
 export default {
   name: 'AssetsVulnerabilitiesMode',
-  components: {
-    ManualRemediationStepsPanel,
-    AutomatedFixPanel,
-    PythonInstallGuideModal,
-    FixAvailableIndicator,
-    AutomationNotSafeBanner,
-    FixPanelHeaderAlerts,
-  },
+  components: { ManualRemediationStepsPanel },
   props: {
     isUser: {
       type: Boolean,
@@ -659,7 +412,6 @@ export default {
       loadingSupportRequests: false,
       selectedSupportRequest: null,
       showCodeModal: false,
-      showPythonModal: false,
       codeCopied: false,
       automationCode: `import paramiko\nimport requests\nimport subprocess\nimport re\nfrom datetime import import datetime\n\nclass TLSConfigurator:\n    def __init__(self, host, username, password):\n        self.host = host\n        self.username = username\n        self.password = password\n        self.ssh_client = paramiko.SSHClient()\n        self.log = []\n\n    def connect(self):\n        """Establish SSH connection to target host"""\n        self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())\n        try:\n            self.ssh_client.connect(self.host, username=self.username, password=self.password)\n            self.log_action("SSH connection established")\n            return True\n        except Exception as e:\n            self.log_action(f"Connection failed: {str(e)}")\n            return False`,
     };
@@ -1033,144 +785,16 @@ export default {
       }
       this.activeFilters = filters.length === 0 ? ['All'] : filters;
     },
-    toggleStatusTab(status) {
-      this.expandedVulnIndex = null;
-      if (status === 'all') {
-        this.statusFilter = [];
-        return;
-      }
-      const idx = this.statusFilter.indexOf(status);
-      if (idx === -1) {
-        this.statusFilter.push(status);
-      } else {
-        this.statusFilter.splice(idx, 1);
-      }
-    },
-    panelVulnDemoIndex(v) {
-      const idx = this.filteredVulns.findIndex(x => x._key === v._key);
-      return idx >= 0 ? idx % 3 : 0;
-    },
-    selectVulnFromList(item) {
-      if (this.showCheckboxes || this.showHoldCheckboxes) return;
-      const idx = this.filteredVulns.findIndex(v => v._key === item._key);
-      if (idx < 0) return;
+    selectVuln(item) {
       this.selectedKey = item._key;
-      this.expandedVulnIndex = null;
-      this.currentVulnTab = 'auto';
-      this.activeDetailTab = 'vulnerabilities';
-      this.supportRequestsForVuln = [];
-      this.supportRequestCount = 0;
-      this.$nextTick(() => this.scrollToAccordion(item._key));
     },
-    openSupportRequestModal(req) {
-      this.selectedSupportRequest = req;
-    },
-    async refreshSupportRequestsForVuln() {
-      const vuln = this.selectedVuln;
-      if (!vuln?.assets?.length) {
-        this.supportRequestsForVuln = [];
-        this.supportRequestCount = 0;
-        return;
-      }
-      this.loadingSupportRequests = true;
-      const targetName = String(vuln.vul_name || '').trim().toLowerCase();
-      const seen = new Set();
-      const merged = [];
-      for (const host of vuln.assets) {
-        const res = this.isUser
-          ? await this.authStore.getUserSupportRequestsByHost(host)
-          : await this.authStore.getSupportRequestsByHost(host);
-        if (!res.status || !Array.isArray(res.data)) continue;
-        for (const req of res.data) {
-          const id = req._id || req.id || `${host}-${req.vul_name}-${req.requested_at}`;
-          if (seen.has(id)) continue;
-          const reqName = String(req.vul_name || '').trim().toLowerCase();
-          if (targetName && reqName && reqName !== targetName) continue;
-          seen.add(id);
-          merged.push({ ...req, host_name: req.host_name || host });
+    selectVulnWithScroll(item) {
+      this.selectVuln(item);
+      this.$nextTick(() => {
+        const rightPanel = document.querySelector('.av-right');
+        if (rightPanel) {
+          rightPanel.scrollTop = 0;
         }
-      }
-      this.supportRequestsForVuln = merged;
-      this.supportRequestCount = merged.length;
-      this.loadingSupportRequests = false;
-    },
-    async onSupportRequestsTabClick() {
-      this.activeDetailTab = 'exceptions';
-      await this.refreshSupportRequestsForVuln();
-    },
-    toggleAccordion(index) {
-      const isOpening = this.expandedVulnIndex !== index;
-      this.expandedVulnIndex = this.expandedVulnIndex === index ? null : index;
-      const item = this.panelVulns[index];
-      if (item) {
-        this.selectedKey = item._key;
-      }
-      if (isOpening && item) {
-        this.$nextTick(() => this.scrollToAccordion(item._key));
-      }
-    },
-    scrollToAccordion(refKey) {
-      const element = this.$refs['vuln-' + refKey];
-      const el = Array.isArray(element) ? element[0] : element;
-      if (el?.scrollIntoView) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }
-    },
-    setVulnDetailTab(tab) {
-      this.currentVulnTab = tab;
-    },
-    getStatusLabel(status) {
-      const normalized = String(status || '').toLowerCase();
-      if (normalized === 'closed' || normalized === 'resolved') return 'Closed';
-      return 'Open';
-    },
-    getStatusBadgeClass(status) {
-      return this.getStatusLabel(status) === 'Closed' ? 'status-closed-badge' : 'status-open-badge';
-    },
-    getStatusDotClass(status) {
-      return this.getStatusLabel(status) === 'Closed' ? 'status-dot-closed' : 'status-dot-open';
-    },
-    isDescriptionExpanded(key) {
-      return !!this.expandedDescriptions[key];
-    },
-    toggleDescription(key) {
-      this.expandedDescriptions = {
-        ...this.expandedDescriptions,
-        [key]: !this.expandedDescriptions[key],
-      };
-    },
-    getDisplayDescription(description, key) {
-      const fullText = this.cleanText(description) || 'No description available for this vulnerability.';
-      if (this.isDescriptionExpanded(key) || fullText.length <= this.descriptionPreviewLimit) {
-        return fullText;
-      }
-      return `${fullText.slice(0, this.descriptionPreviewLimit).trimEnd()}...`;
-    },
-    isVulnAutomationNo(v, index) {
-      return isAutomationNotAvailable(v.assets?.[0], index % 3, v.severity);
-    },
-    openPythonGuide(v) {
-      this.pythonGuideSeverity = v?.severity || 'Medium';
-      this.showPythonModal = true;
-    },
-    openPythonGuideFromAlert() {
-      this.openPythonGuide(this.selectedVuln || { severity: 'Medium' });
-    },
-    affectedAssetsTableRowsFor(vuln) {
-      if (!vuln) return [];
-      const ips = [...new Set((vuln.assets || []).filter(Boolean))];
-      if (!ips.length) return [];
-      const mockByIp = Object.fromEntries(this.affectedAssetsData.map(a => [a.ip, a]));
-      return ips.map(ip => {
-        if (mockByIp[ip]) return mockByIp[ip];
-        return {
-          ip,
-          status: 'Pending',
-          statusClass: 'status-pending',
-          stepsCompleted: 0,
-          totalSteps: 4,
-          progress: 0,
-        };
       });
     },
     cleanText(text) {
@@ -1545,34 +1169,10 @@ export default {
 .av-right.assets-right-panel {
   flex: 1;
   min-width: 0;
-  align-self: stretch;
-  min-height: 0;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  background: #f8f9fc;
-  overflow: hidden;
-}
-
-/* .av-right uses .assets-right-panel — header/scroll spacing in main.css */
-
-.av-right-inner {
-  max-width: 100%;
-}
-
-.asset-detail-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #0f172a;
-  line-height: 1.3;
-  margin: 0;
-}
-
-.av-empty-threats {
-  font-size: 0.8rem;
-  color: #94a3b8;
-  padding: 8px 0 16px;
-  margin: 0;
+  align-self: flex-start;
+  max-height: 100%;
+  overflow-y: auto;
+  background: #f8fafc;
 }
 
 .av-empty-state {
@@ -2667,309 +2267,5 @@ export default {
   border-color: #0a58ca;
   transform: none;
   box-shadow: none;
-}
-
-.assets-hold-modal .modal-footer .btn-secondary {
-  background-color: #6c757d;
-  border-color: #6c757d;
-  color: #fff;
-}
-
-.assets-hold-modal .modal-footer .btn-secondary:hover {
-  background-color: #5c636a;
-  border-color: #565e64;
-  color: #fff;
-}
-
-.assets-action-modal .modal-footer .btn-danger {
-  background-color: #dc3545;
-  border-color: #dc3545;
-  color: #fff;
-}
-
-.assets-action-modal .modal-footer .btn-danger:hover {
-  background-color: #bb2d3b;
-  border-color: #b02a37;
-  color: #fff;
-}
-
-/* Match Assets tab list + accordion */
-.asset-list-scroll {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 4px 0;
-}
-
-.asset-item-new {
-  padding: 10px 14px;
-  border-bottom: 1px solid #f8fafc;
-  border-left: 3px solid transparent;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.asset-item-new:hover {
-  background: #f8fafc;
-  border-left-color: #cbd5e1;
-}
-
-.asset-item-active {
-  background: #f0fdf4;
-  border-left-color: #10b981 !important;
-}
-
-.asset-item-active:hover {
-  background: #f0fdf4;
-}
-
-.asset-item-top {
-  margin-bottom: 3px;
-}
-
-.asset-ip {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: #1e293b;
-}
-
-.av-list-item-primary {
-  margin-bottom: 6px;
-}
-
-.av-list-item-badges {
-  margin-bottom: 6px;
-}
-
-.av-vuln-list-name {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  line-height: 1.3;
-  font-weight: 600;
-  color: #0f172a;
-}
-
-.vuln-chip {
-  font-size: 0.62rem;
-  color: #64748b;
-  background: #f1f5f9;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: 500;
-}
-
-.sev-badge {
-  font-size: 0.68rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 3px 10px;
-  border-radius: 4px;
-  white-space: nowrap;
-}
-
-.sev-critical { background: #f8dede !important; color: #b42318 !important; }
-.sev-high { background: #fee2e2 !important; color: #dc2626 !important; }
-.sev-medium { background: #fef3c7 !important; color: #f59e0b !important; }
-.sev-low { background: #ccfbf1 !important; color: #0f766e !important; }
-
-.section-label {
-  font-size: 0.62rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #94a3b8;
-  margin: 0;
-}
-
-.sev-pill {
-  border-radius: 50px;
-  padding: 5px 14px;
-  font-size: 0.68rem;
-  font-weight: 600;
-  background: white;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.sev-pill:hover {
-  background: #f2f3f6;
-}
-
-.sev-pill-active {
-  background: #e0f2f1 !important;
-  color: #0f696e !important;
-  border-color: #0f696e !important;
-  font-weight: 700;
-}
-
-.sev-pill-critical { color: #b42318 !important; background: #f8dede !important; }
-.sev-pill-high { color: #dc2626 !important; background: #fee2e2 !important; }
-.sev-pill-medium { color: #f59e0b !important; background: #fef3c7 !important; }
-.sev-pill-low { color: #10b981; }
-.sev-pill-critical.sev-pill-active {
-  background: #f8dede !important;
-  color: #b42318 !important;
-  border-color: #b42318 !important;
-}
-.sev-pill-high.sev-pill-active {
-  background: #fee2e2 !important;
-  color: #dc2626 !important;
-  border-color: #dc2626 !important;
-}
-.sev-pill-medium.sev-pill-active {
-  background: #fef3c7 !important;
-  color: #f59e0b !important;
-  border-color: #f59e0b !important;
-}
-.sev-pill-low.sev-pill-active {
-  background: #e0f2f1 !important;
-  color: #10b981 !important;
-  border-color: #10b981 !important;
-}
-
-.vuln-accordion-item {
-  border-radius: 12px;
-  overflow: hidden;
-  background: white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  border: 1px solid rgba(203, 196, 208, 0.25);
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  isolation: isolate;
-}
-
-.vuln-accordion-item--expanded {
-  height: min(calc(100vh - 260px), 520px);
-  max-height: min(calc(100vh - 260px), 520px);
-  min-height: 280px;
-}
-
-.vuln-accordion-header {
-  position: relative;
-  z-index: 3;
-  flex-shrink: 0;
-  padding: 14px 16px;
-  background-color: #f2f3f6 !important;
-  border-bottom: 1px solid #e2e8f0;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-  gap: 12px;
-  z-index: 2;
-}
-
-.vuln-accordion-header:hover {
-  background-color: #edeef1 !important;
-}
-
-.vuln-icon {
-  font-size: 1rem;
-}
-
-.vuln-icon-critical { color: #b42318; }
-.vuln-icon-high { color: #dc2626; }
-.vuln-icon-medium { color: #f59e0b; }
-.vuln-icon-low { color: #10b981; }
-
-.vuln-name {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: #1e293b;
-}
-
-.vuln-accordion-expand {
-  position: relative;
-  z-index: 1;
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  background: #fff;
-  box-sizing: border-box;
-  padding-bottom: 28px;
-  scroll-padding-bottom: 28px;
-}
-
-.vuln-accordion-expand::-webkit-scrollbar {
-  width: 6px;
-}
-
-.vuln-accordion-expand::-webkit-scrollbar-thumb {
-  background: #cbc4d0;
-  border-radius: 10px;
-}
-
-.vuln-accordion-body {
-  padding: 14px 16px 20px;
-}
-
-.vuln-accordion-body .av-description-block {
-  padding: 0 0 14px;
-  border-bottom: 1px solid #e2e8f0;
-  background: transparent;
-}
-
-.vuln-accordion-body .av-detail-tabs {
-  margin-bottom: 0;
-}
-
-.vuln-accordion-body .av-detail-tab-content {
-  padding-bottom: 28px !important;
-}
-
-.vuln-accordion-body .av-auto-tab {
-  padding-bottom: 20px;
-}
-
-.status-open-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
-  border-radius: 4px;
-  font-size: 0.68rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  background: #fee2e2;
-  color: #dc2626;
-  border: 1px solid #fecaca;
-}
-
-.status-dot-open {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #b42318;
-  flex-shrink: 0;
-}
-
-.status-closed-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
-  border-radius: 4px;
-  font-size: 0.68rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  background: #dcfce7;
-  color: #166534;
-  border: 1px solid #bbf7d0;
-}
-
-.status-dot-closed {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #16a34a;
-  flex-shrink: 0;
 }
 </style>
