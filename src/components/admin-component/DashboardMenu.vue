@@ -1,3 +1,4 @@
+
 <template>
   <main>
 
@@ -41,7 +42,7 @@
          <div>
           <button class="btn border-0" :class="{ activeBtn: isActive('/vulnerabilityregister') }" @click="navigateTo('/vulnerabilityregister')">
           <i class="bi bi-list-ul nav-menu"></i>
-          <p class="menu-heading">Registration</p></button>
+          <p class="menu-heading">Register</p></button>
          </div>
 
         <!-- FIX -->

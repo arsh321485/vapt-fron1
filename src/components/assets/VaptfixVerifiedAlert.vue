@@ -21,7 +21,7 @@
           alt=""
           class="panel-alert-img"
         />
-        <p class="panel-alert-text">All steps verified by vaptfix</p>
+        <p class="panel-alert-text">All scripts verified by VAPTFIX</p>
       </div>
     </div>
   </Transition>

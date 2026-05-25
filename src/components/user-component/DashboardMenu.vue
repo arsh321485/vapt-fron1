@@ -21,7 +21,7 @@
          <div>
           <router-link to="/userVulnerabilityregister">
           <button class="btn border-0" :class="{ activeBtn: isActive('/userVulnerabilityregister') }"><i class="bi bi-list-ul nav-menu"></i>
-          <p class="menu-heading">Registration</p></button>
+          <p class="menu-heading">Register</p></button>
           </router-link>
          </div>
 

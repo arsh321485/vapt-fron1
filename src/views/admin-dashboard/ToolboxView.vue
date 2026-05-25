@@ -9,7 +9,7 @@
           <div class="col-1 ps-0 menubar-col1">
             <DashboardMenu />
           </div>
-          <div class="col-11 pt-2 pb-4 px-4 toolbox-view-shell">
+          <div class="col-11 vr-content">
             <ToolboxPageContent />
           </div>
         </div>
@@ -34,8 +34,10 @@ export default {
 </script>
 
 <style scoped>
-.toolbox-view-shell {
+.vr-content {
   background: #f8f9fc;
-  min-height: calc(100vh - 52px);
+  min-height: 100vh;
+  padding: 40px 20px 20px 16px;
+  margin-top: 60px;
 }
 </style>

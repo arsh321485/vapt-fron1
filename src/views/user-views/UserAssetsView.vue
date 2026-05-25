@@ -988,7 +988,11 @@ class TLSConfigurator:
       if (result.status) {
         this.assets = result.data;
         if (this.assets.length > 0) {
-          await this.setActive(this.assets[0]);
+          if (this.$route.query?.asset || this.$route.query?.plugin_name) {
+            await this.applyRouteQueryContext();
+          } else {
+            await this.setActive(this.assets[0]);
+          }
         } else {
           this.activeIndex = null;
         }
@@ -1001,7 +1005,11 @@ class TLSConfigurator:
       if (result.status) {
         this.assets = result.data;
         if (this.assets.length > 0) {
-          await this.setActive(this.assets[0]);
+          if (this.$route.query?.asset || this.$route.query?.plugin_name) {
+            await this.applyRouteQueryContext();
+          } else {
+            await this.setActive(this.assets[0]);
+          }
         } else {
           this.activeIndex = null;
         }
@@ -1255,6 +1263,64 @@ class TLSConfigurator:
     setVulnDetailTab(tab) {
       this.currentVulnTab = tab;
     },
+    findAssetPage(assetIp) {
+      const idx = this.filteredAssets.findIndex(
+        a => String(a.asset || '').trim() === String(assetIp || '').trim(),
+      );
+      if (idx < 0) return null;
+      return Math.floor(idx / this.pageSize) + 1;
+    },
+    expandVulnFromQuery(pluginName, vulnId) {
+      const targetName = String(pluginName || '').trim().toLowerCase();
+      const targetId = vulnId != null && vulnId !== '' ? String(vulnId) : '';
+
+      const idx = this.filteredVulnerabilities.findIndex(v => {
+        if (targetId && (v.id != null || v.vulnerability_id != null)) {
+          return String(v.id ?? v.vulnerability_id) === targetId;
+        }
+        const name = String(v.vul_name || v.vulnerability_name || '').trim().toLowerCase();
+        return targetName && name === targetName;
+      });
+
+      if (idx < 0) return;
+
+      this.expandedVulnIndex = idx;
+      this.$nextTick(() => {
+        const refKey = 'vuln-' + idx;
+        const element = this.$refs[refKey];
+        if (element && element[0]) {
+          element[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      });
+    },
+    async applyRouteQueryContext() {
+      const q = this.$route.query || {};
+      const assetIp = q.asset || q.assetIp;
+      const pluginName = q.plugin_name || q.vul_name;
+      const vulnId = q.id;
+
+      if (!assetIp && !pluginName) return;
+
+      this.leftPanelTab = 'assets';
+      this.activeTab = q.tab === 'exceptions' ? 'exceptions' : 'vulnerabilities';
+
+      if (assetIp) {
+        const page = this.findAssetPage(assetIp);
+        if (page) this.currentPage = page;
+
+        const assetRow = this.assets.find(
+          a => String(a.asset || '').trim() === String(assetIp).trim(),
+        );
+
+        if (assetRow) {
+          await this.setActive(assetRow);
+          await this.$nextTick();
+          if (pluginName || vulnId) {
+            this.expandVulnFromQuery(pluginName, vulnId);
+          }
+        }
+      }
+    },
     async submitExtPopup() {
       if (!this.extPopupAsset || !this.extPopupVulName || !this.extPopupExtension || !this.extPopupReason.trim()) return;
       const requestedDays = this.parseExtensionDays(this.extPopupExtension);
@@ -1300,6 +1366,17 @@ class TLSConfigurator:
     searchQuery() {
       this.currentPage = 1;
     },
+    '$route.query': {
+      deep: true,
+      handler(newQuery, oldQuery) {
+        if (this.$route.name !== 'userassets') return;
+        const asset = newQuery?.asset;
+        const plugin = newQuery?.plugin_name || newQuery?.vul_name;
+        if (!asset && !plugin) return;
+        if (JSON.stringify(newQuery) === JSON.stringify(oldQuery)) return;
+        this.applyRouteQueryContext();
+      },
+    },
   },
   async mounted() {
     this.openFixPanelAlerts();
@@ -1314,6 +1391,7 @@ class TLSConfigurator:
   async activated() {
     this.openFixPanelAlerts();
     await this.reloadAssetsAndHeld();
+    await this.applyRouteQueryContext();
   },
   beforeUnmount() {
   },
@@ -2257,17 +2335,17 @@ class TLSConfigurator:
 }
 
 .av-db-label {
-  font-size: 0.62rem;
+  font-size: 10px;
   font-weight: 700;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
   color: #94a3b8;
-  margin-bottom: 5px;
+  margin-bottom: 6px;
 }
 
 .av-db-text {
-  font-size: 0.8rem;
-  color: #475569;
+  font-size: 13px;
+  color: #374151;
   line-height: 1.65;
   margin: 0;
   white-space: pre-line;
@@ -2328,8 +2406,11 @@ class TLSConfigurator:
 }
 
 .av-asset-os-lbl {
-  font-size: 0.75rem;
-  color: #64748b;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #94a3b8;
 }
 
 .av-detail-tabs {
@@ -2374,7 +2455,8 @@ class TLSConfigurator:
   padding: 14px 20px 28px;
 }
 
-.av-detail-tab-content:has(.av-auto-tab) .av-auto-tab {
+.av-detail-tab-content:has(.av-auto-tab) .av-auto-tab,
+.av-detail-tab-content:has(.av-manual-tab) .av-manual-tab {
   padding: 0;
   min-height: 0;
   height: auto;
@@ -2382,27 +2464,29 @@ class TLSConfigurator:
 
 .av-detail-tab-content:has(.av-manual-tab),
 .av-detail-tab-content:has(.av-affected-tab) {
-  padding: 16px 22px 28px;
+  padding: 14px 20px 28px;
 }
 
 .av-detail-tab-content--manual {
   min-height: 0;
-  padding: 16px 20px 28px;
-  background: #ffffff;
+  padding: 14px 20px 28px;
+  background: #f8fafc;
   box-sizing: border-box;
 }
 
 .av-detail-tab-content--manual .av-manual-tab {
   padding: 0;
+  min-height: 0;
+  height: auto;
 }
 
 .av-detail-tab-content--manual .av-asset-section {
-  padding: 14px 16px 12px;
+  padding: 0;
   margin-bottom: 0;
 }
 
 .av-detail-tab-content--manual .av-asset-section:last-child {
-  padding-bottom: 20px;
+  padding-bottom: 0;
 }
 
 .vuln-accordion-body .av-detail-tab-content {
@@ -2413,15 +2497,11 @@ class TLSConfigurator:
   padding-bottom: 20px;
 }
 
-.av-auto-tab {
-  padding: 12px 14px 24px;
+.av-auto-tab,
+.av-manual-tab {
+  padding: 0;
   height: auto;
   min-height: 0;
-  box-sizing: border-box;
-}
-
-.av-manual-tab {
-  padding: 0 0 12px;
   box-sizing: border-box;
 }
 

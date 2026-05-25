@@ -26,7 +26,7 @@
           <i class="bi bi-info-circle-fill"></i>
         </button>
         <p class="panel-alert-text">
-          Whatever steps to be done you have to install python in you system
+          Pre-requisite - Python must be installed on the system
         </p>
       </div>
     </div>

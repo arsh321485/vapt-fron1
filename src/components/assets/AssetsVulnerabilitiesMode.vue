@@ -1685,17 +1685,17 @@ export default {
 }
 
 .av-db-label {
-  font-size: 0.62rem;
+  font-size: 10px;
   font-weight: 700;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
   color: #94a3b8;
-  margin-bottom: 5px;
+  margin-bottom: 6px;
 }
 
 .av-db-text {
-  font-size: 0.8rem;
-  color: #475569;
+  font-size: 13px;
+  color: #374151;
   line-height: 1.65;
   margin: 0;
   white-space: pre-line;
@@ -1795,12 +1795,15 @@ export default {
 
 .av-detail-tab-content:has(.av-manual-tab),
 .av-detail-tab-content:has(.av-affected-tab) {
-  padding: 16px 22px 12px;
+  padding: 14px 20px 28px;
 }
 
 .av-detail-tab-content:has(.av-manual-tab) .av-manual-tab,
+.av-detail-tab-content:has(.av-auto-tab) .av-auto-tab,
 .av-detail-tab-content:has(.av-affected-tab) .av-affected-tab {
   padding: 0;
+  min-height: 0;
+  height: auto;
 }
 
 .av-detail-tab-content:has(.av-manual-tab) .av-asset-section:last-child {
@@ -2068,8 +2071,11 @@ export default {
 }
 
 .av-asset-os-lbl {
-  font-size: 0.75rem;
-  color: #64748b;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #94a3b8;
 }
 
 .av-step-card {

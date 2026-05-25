@@ -746,11 +746,23 @@ class TLSConfigurator:
     },
     pagedAssets: {
       handler(list) {
+        if (this.$route.query?.asset) return;
         if (list.length && !this.activeIndex) {
           this.setActive(list[0]);
         }
       },
       immediate: true
+    },
+    '$route.query': {
+      deep: true,
+      handler(newQuery, oldQuery) {
+        if (this.$route.name !== 'assets') return;
+        const asset = newQuery?.asset;
+        const plugin = newQuery?.plugin_name || newQuery?.vul_name;
+        if (!asset && !plugin) return;
+        if (JSON.stringify(newQuery) === JSON.stringify(oldQuery)) return;
+        this.applyRouteQueryContext();
+      },
     },
     heldAssets: {
       handler(val) {
@@ -1272,6 +1284,87 @@ class TLSConfigurator:
     setVulnDetailTab(tab) {
       this.currentVulnTab = tab;
     },
+    getFilteredSortedAssets() {
+      let list = this.authStore.assetRows || [];
+
+      if (this.query && this.query.trim()) {
+        const q = this.query.trim().toLowerCase();
+        list = list.filter(a => a.asset.toLowerCase().includes(q));
+      }
+
+      if (this.selectedSeverity && this.selectedSeverity !== 'all') {
+        list = list.filter(a => {
+          const priority = this.getPrioritySeverity(a);
+          return priority?.toLowerCase() === this.selectedSeverity;
+        });
+      }
+
+      return [...list].sort((a, b) => {
+        return (
+          this.getSeverityRank(this.getPrioritySeverity(a)) -
+          this.getSeverityRank(this.getPrioritySeverity(b))
+        );
+      });
+    },
+    findAssetPage(assetIp) {
+      const sorted = this.getFilteredSortedAssets();
+      const idx = sorted.findIndex(
+        a => String(a.asset || '').trim() === String(assetIp || '').trim(),
+      );
+      if (idx < 0) return null;
+      return Math.floor(idx / this.pageSize) + 1;
+    },
+    expandVulnFromQuery(pluginName, vulnId) {
+      const targetName = String(pluginName || '').trim().toLowerCase();
+      const targetId = vulnId != null && vulnId !== '' ? String(vulnId) : '';
+
+      const idx = this.filteredVulnerabilities.findIndex(v => {
+        if (targetId && (v.id != null || v.vulnerability_id != null)) {
+          return String(v.id ?? v.vulnerability_id) === targetId;
+        }
+        const name = String(v.vul_name || v.vulnerability_name || '').trim().toLowerCase();
+        return targetName && name === targetName;
+      });
+
+      if (idx < 0) return;
+
+      this.expandedVulnIndex = idx;
+      this.$nextTick(() => {
+        const refKey = 'vuln-' + idx;
+        const element = this.$refs[refKey];
+        if (element && element[0]) {
+          element[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      });
+    },
+    async applyRouteQueryContext() {
+      const q = this.$route.query || {};
+      const assetIp = q.asset || q.assetIp;
+      const pluginName = q.plugin_name || q.vul_name;
+      const vulnId = q.id;
+
+      if (!assetIp && !pluginName) return;
+
+      this.leftPanelTab = 'assets';
+      this.activeTab = q.tab === 'exceptions' ? 'exceptions' : 'vulnerabilities';
+
+      if (assetIp) {
+        const page = this.findAssetPage(assetIp);
+        if (page) this.currentPage = page;
+
+        const assetRow = this.getFilteredSortedAssets().find(
+          a => String(a.asset || '').trim() === String(assetIp).trim(),
+        );
+
+        if (assetRow) {
+          await this.setActive(assetRow);
+          await this.$nextTick();
+          if (pluginName || vulnId) {
+            this.expandVulnFromQuery(pluginName, vulnId);
+          }
+        }
+      }
+    },
   },
   async mounted() {
     this.openFixPanelAlerts();
@@ -1316,6 +1409,8 @@ class TLSConfigurator:
       this.reloadAssetsAndHeld(),
       this.authStore.fetchVulnerabilityRegister(true),
     ]);
+
+    await this.applyRouteQueryContext();
   },
   async activated() {
     this.openFixPanelAlerts();
@@ -1323,6 +1418,7 @@ class TLSConfigurator:
       this.reloadAssetsAndHeld(),
       this.authStore.fetchVulnerabilityRegister(true),
     ]);
+    await this.applyRouteQueryContext();
   },
 };
 </script>
@@ -2200,8 +2296,11 @@ class TLSConfigurator:
 }
 
 .av-asset-os-lbl {
-  font-size: 0.75rem;
-  color: #64748b;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #94a3b8;
 }
 
 .av-detail-tabs {
@@ -2250,7 +2349,7 @@ class TLSConfigurator:
 }
 
 .av-manual-tab {
-  padding: 22px;
+  padding: 12px 14px 24px;
 }
 
 .vuln-accordion-body .av-detail-tabs {
