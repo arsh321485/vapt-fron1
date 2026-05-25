@@ -516,8 +516,7 @@ const router = createRouter({
 router.beforeEach((to, _from, next) => {
   if (!to.meta.requiresAuth) return next();
 
-  const token =
-    sessionStorage.getItem("authorization") || localStorage.getItem("authorization");
+  const token = sessionStorage.getItem("authorization") || localStorage.getItem("authorization");
 
   if (!token) {
     return next("/home");

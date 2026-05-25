@@ -62,6 +62,36 @@
 
             </div>
 
+            <!-- Slack Integration Button -->
+            <div v-if="selectedCommunication === 'slack'" class="loc-slack-integration mt-3">
+              <div class="loc-slack-status">
+                <div v-if="slackConnected" class="loc-status-connected">
+                  <i class="bi bi-check-circle-fill"></i>
+                  <span>Connected to Slack</span>
+                </div>
+                <div v-else class="loc-status-disconnected">
+                  <i class="bi bi-circle"></i>
+                  <span>Not connected</span>
+                </div>
+              </div>
+
+              <div v-if="!slackConnected" class="loc-slack-button-wrapper">
+                <a
+                  @click.prevent="startSlackLogin"
+                  href="#"
+                  class="loc-slack-btn"
+                >
+                  <img
+                    alt="Add to Slack"
+                    height="40"
+                    width="139"
+                    src="https://platform.slack-edge.com/img/add_to_slack.png"
+                    srcset="https://platform.slack-edge.com/img/add_to_slack.png 1x, https://platform.slack-edge.com/img/add_to_slack@2x.png 2x"
+                  />
+                </a>
+                <p class="loc-slack-help">Click to connect your Slack workspace and enable real-time notifications</p>
+              </div>
+            </div>
 
           </div>
 
@@ -2050,6 +2080,83 @@ export default {
 
 @media (max-width: 992px) {
   .loc-users-added-card { min-height: auto; margin-top: 0; }
+}
+
+/* Slack Integration Styles */
+.loc-slack-integration {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 16px;
+}
+
+.loc-slack-status {
+  margin-bottom: 16px;
+}
+
+.loc-status-connected {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #dcfce7;
+  color: #166534;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.loc-status-connected i {
+  color: #22c55e;
+  font-size: 16px;
+}
+
+.loc-status-disconnected {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #f1f5f9;
+  color: #64748b;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.loc-status-disconnected i {
+  color: #cbd5e1;
+  font-size: 16px;
+}
+
+.loc-slack-button-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.loc-slack-btn {
+  display: inline-block;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.loc-slack-btn:hover {
+  opacity: 0.9;
+}
+
+.loc-slack-btn img {
+  display: block;
+  height: 40px;
+  width: auto;
+}
+
+.loc-slack-help {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.5;
 }
 
 </style>
