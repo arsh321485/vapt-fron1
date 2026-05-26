@@ -374,6 +374,7 @@ export default {
   height: auto;
   min-height: 0;
   flex: 0 0 auto;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .auto-tab-content > :last-child {
@@ -520,8 +521,11 @@ export default {
 
 .ds-text {
   font-size: 13px;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: #374151;
   line-height: 1.65;
+  margin: 0;
+  white-space: pre-line;
 }
 
 .two-col-grid {

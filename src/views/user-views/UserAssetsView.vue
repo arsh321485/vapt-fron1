@@ -1959,6 +1959,7 @@ class TLSConfigurator:
 
 .vuln-accordion-body {
   padding: 14px 16px 20px;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .vuln-meta-grid {
@@ -2345,6 +2346,7 @@ class TLSConfigurator:
 
 .av-db-text {
   font-size: 13px;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: #374151;
   line-height: 1.65;
   margin: 0;

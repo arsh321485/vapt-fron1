@@ -26,6 +26,7 @@ export default {
 <style scoped>
 .automation-not-safe-block {
   margin-bottom: 16px;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .ans-heading {
@@ -59,6 +60,7 @@ export default {
 
 .ans-warning-title {
   font-size: 13px;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-weight: 700;
   color: #92400e;
   margin-bottom: 6px;
@@ -67,6 +69,7 @@ export default {
 .ans-warning-text {
   margin: 0;
   font-size: 12px;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.6;
   color: #78350f;
 }

@@ -14,13 +14,19 @@
           </router-link>
          </div>
 
-         <!-- CALENDAR -->
+        <!-- FIX -->
         <div>
-          <button class="btn border-0" :class="{ activeBtn: isActive('/calendar') }" @click="navigateTo('/calendar')">
-            <i class="bi bi-calendar3 nav-menu"></i>
-            <p class="menu-heading">Calendar</p>
-          </button>
+          <button class="btn border-0" :class="{ activeBtn: isActive('/assets') }" @click="navigateTo('/assets')">
+          <i class="bi bi-laptop nav-menu"></i>
+          <p class="menu-heading">Fix</p></button>
         </div>
+
+         <!-- REGISTRATION -->
+         <div>
+          <button class="btn border-0" :class="{ activeBtn: isActive('/vulnerabilityregister') }" @click="navigateTo('/vulnerabilityregister')">
+          <i class="bi bi-list-ul nav-menu"></i>
+          <p class="menu-heading">Register</p></button>
+         </div>
 
          <!-- TEAM -->
          <div>
@@ -38,27 +44,22 @@
           <p class="menu-heading">Team Performance</p></button>
         </div>
 
-         <!-- REGISTRATION -->
-         <div>
-          <button class="btn border-0" :class="{ activeBtn: isActive('/vulnerabilityregister') }" @click="navigateTo('/vulnerabilityregister')">
-          <i class="bi bi-list-ul nav-menu"></i>
-          <p class="menu-heading">Register</p></button>
-         </div>
-
-        <!-- FIX -->
+         <!-- CALENDAR -->
         <div>
-          <button class="btn border-0" :class="{ activeBtn: isActive('/assets') }" @click="navigateTo('/assets')">
-          <i class="bi bi-laptop nav-menu"></i>
-          <p class="menu-heading">Fix</p></button>
-          </div>
+          <button class="btn border-0" :class="{ activeBtn: isActive('/calendar') }" @click="navigateTo('/calendar')">
+            <i class="bi bi-calendar3 nav-menu"></i>
+            <p class="menu-heading">Calendar</p>
+          </button>
+        </div>
 
-        <!-- TOOLBOX -->
+        <!-- TOOLBOX (commented out)
         <div>
           <button class="btn border-0" :class="{ activeBtn: isActive('/toolbox') }" @click="navigateTo('/toolbox')">
             <i class="bi bi-tools nav-menu"></i>
             <p class="menu-heading">Toolbox</p>
           </button>
         </div>
+        -->
 
          <!-- SUPPORT REQUEST -->
          <div>
@@ -75,7 +76,7 @@
           </button>
         </div> -->
 
-       
+
 
       </div>
 

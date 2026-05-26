@@ -40,7 +40,7 @@ import NotificationPanel from "../components/admin-component/NotificationPanel.v
 
 // user import
 import UserAssetsView from "../views/user-views/UserAssetsView.vue";
-import UserToolboxView from "../views/user-views/UserToolboxView.vue";
+// import UserToolboxView from "../views/user-views/UserToolboxView.vue"; // Toolbox commented out
 import DelayedvulnerabilitiesView from "../views/user-views/DelayedvulnerabilitiesView.vue";
 import DelayedvulnerabilitycardView from "../views/user-views/DelayedvulnerabilitycardView.vue";
 import UserExceptionsView from "../views/user-views/UserExceptionsView.vue";
@@ -62,7 +62,7 @@ import ScopeView from "../views/admin-dashboard/ScopeView.vue";
 import MicrosoftCallbackView from "../views/admin-views/MicrosoftCallbackView.vue";
 import PerformanceMonitoringView from "../views/admin-dashboard/PerformanceMonitoringView.vue";
 import ViewReportPage from "../views/admin-dashboard/ViewReportPage.vue";
-import ToolboxView from "../views/admin-dashboard/ToolboxView.vue";
+// import ToolboxView from "../views/admin-dashboard/ToolboxView.vue"; // Toolbox commented out
 import ScopingFormView from "../views/admin-dashboard/ScopingFormView.vue";
 import ScopingFormView2 from "../views/admin-dashboard/ScopingFormView2.vue";
 import UserSetPasswordView from "../views/user-views/UserSetPasswordView.vue";
@@ -320,12 +320,13 @@ const router = createRouter({
       component: AssetsView,
       meta: { requiresAuth: true, requiresAdmin: true },
     },
-    {
-      path: "/toolbox",
-      name: "toolbox",
-      component: ToolboxView,
-      meta: { requiresAuth: true, requiresAdmin: true },
-    },
+    // Toolbox route commented out
+    // {
+    //   path: "/toolbox",
+    //   name: "toolbox",
+    //   component: ToolboxView,
+    //   meta: { requiresAuth: true, requiresAdmin: true },
+    // },
     {
       path: "/performance-monitoring",
       name: "performance-monitoring",
@@ -416,12 +417,13 @@ const router = createRouter({
       component: UserAssetsView,
       meta: { requiresAuth: true },
     },
-    {
-      path: "/user-toolbox",
-      name: "user-toolbox",
-      component: UserToolboxView,
-      meta: { requiresAuth: true },
-    },
+    // User Toolbox route commented out
+    // {
+    //   path: "/user-toolbox",
+    //   name: "user-toolbox",
+    //   component: UserToolboxView,
+    //   meta: { requiresAuth: true },
+    // },
     {
       path: "/delayedvulnerabilities",
       name: "delayedvulnerabilities",
