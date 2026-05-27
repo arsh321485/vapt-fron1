@@ -1061,16 +1061,13 @@ export const useAuthStore = defineStore("auth", {
     },
 
     //Microsoft Teams
-    async getMicrosoftOAuthUrl(redirectUri: string, adminId: string) {
+    async getMicrosoftOAuthUrl(redirectUri: string, adminId?: string | null) {
       try {
-        if (!adminId) {
-          return { status: false, message: "admin_id is required" };
+        let url = `/api/admin/users/microsoft-teams/oauth-url/?redirect_uri=${encodeURIComponent(redirectUri)}`;
+        if (adminId) {
+          url += `&admin_id=${encodeURIComponent(adminId)}`;
         }
-        const res = await endpoint.get(
-          `/api/admin/users/microsoft-teams/oauth-url/?redirect_uri=${encodeURIComponent(
-            redirectUri,
-          )}&admin_id=${encodeURIComponent(adminId)}`,
-        );
+        const res = await endpoint.get(url);
 
         if (res.data?.auth_url) {
           return { status: true, data: res.data };
@@ -1127,6 +1124,15 @@ export const useAuthStore = defineStore("auth", {
 
         // mark Teams connected
         localStorage.setItem("teams_connected", "true");
+
+        const appAccess = data.tokens?.access;
+        if (appAccess && data.user) {
+          this.setAuth(appAccess, data.user);
+          sessionStorage.setItem("authenticated", "true");
+          if (data.is_new_user) {
+            sessionStorage.setItem("isNewUser", "true");
+          }
+        }
 
         return {
           status: true,
@@ -1317,19 +1323,17 @@ export const useAuthStore = defineStore("auth", {
     },
 
     // Slack
-    async getSlackOAuthUrl(baseUrl: string, adminId: string) {
-      if (!adminId) {
-        return { status: false, message: "admin_id is required" };
-      }
+    async getSlackOAuthUrl(baseUrl: string, adminId?: string | null) {
       console.log(
         "Calling POST /api/admin/users/slack/oauth-url/ with baseUrl and adminId:",
         baseUrl,
-        adminId,
+        adminId || "(signup)",
       );
-      const res = await endpoint.post("/api/admin/users/slack/oauth-url/", {
-        base_url: baseUrl,
-        admin_id: adminId,
-      });
+      const payload: { base_url: string; admin_id?: string } = { base_url: baseUrl };
+      if (adminId) {
+        payload.admin_id = adminId;
+      }
+      const res = await endpoint.post("/api/admin/users/slack/oauth-url/", payload);
       console.log("Slack OAuth URL response:", res.data);
 
       if (res.data.success) {
@@ -1376,6 +1380,21 @@ export const useAuthStore = defineStore("auth", {
           // ✅ Save local app user
           if (data.local_user) {
             localStorage.setItem("local_user", JSON.stringify(data.local_user));
+          }
+
+          const jwtAccess =
+            data.jwt_tokens?.access || data.tokens?.access || data.access_token;
+          const jwtRefresh = data.jwt_tokens?.refresh || data.tokens?.refresh;
+          const appUser = data.local_user || data.user;
+          if (jwtAccess) {
+            this.setAuth(jwtAccess, appUser || {});
+            if (jwtRefresh) {
+              sessionStorage.setItem("refreshToken", jwtRefresh);
+            }
+            sessionStorage.setItem("authenticated", "true");
+            if (data.is_new_user) {
+              sessionStorage.setItem("isNewUser", "true");
+            }
           }
 
           return { status: true, data };
@@ -2184,6 +2203,132 @@ export const useAuthStore = defineStore("auth", {
           status: false,
           message: "Failed to fetch assets",
           details: error.response?.data || null,
+        };
+      }
+    },
+
+    /** Which login methods this user may use (slack | microsoft_teams | email). */
+    async getUserLoginPlatform(email: string) {
+      try {
+        const res = await endpoint.get(
+          `/api/admin/users/user-login-platform/?email=${encodeURIComponent(email)}`,
+        );
+        return { status: true, data: res.data };
+      } catch (error: any) {
+        const errorData = error.response?.data;
+        return {
+          status: false,
+          message:
+            errorData?.message || errorData?.error || errorData?.detail || "Failed to fetch login platform",
+          data: { platform: "email", found: false },
+        };
+      }
+    },
+
+    _applyMemberAuthFromResponse(data: Record<string, any>) {
+      const access =
+        data?.access_token ||
+        data?.tokens?.access ||
+        data?.jwt_tokens?.access;
+      const refresh =
+        data?.refresh_token || data?.tokens?.refresh || data?.jwt_tokens?.refresh;
+      const user = data?.user;
+      if (access && typeof access === "string") {
+        clearAllAuthTokens();
+        this.setAuth(access, user || {});
+        if (refresh) {
+          sessionStorage.setItem("refreshToken", refresh);
+        }
+        sessionStorage.setItem("authenticated", "true");
+        return true;
+      }
+      return false;
+    },
+
+    async slackMemberLogin(payload: { slack_user_id: string; slack_team_id: string }) {
+      try {
+        const res = await endpoint.post("/api/admin/users/slack/member-login/", payload);
+        const body = res.data;
+        const inner = body?.data ?? body;
+        if (body?.success !== false && this._applyMemberAuthFromResponse(inner || body)) {
+          return { status: true, data: body, message: body?.message };
+        }
+        return {
+          status: false,
+          message: body?.message || body?.error || "Slack member login failed",
+        };
+      } catch (error: any) {
+        const errorData = error.response?.data;
+        return {
+          status: false,
+          message:
+            errorData?.message || errorData?.error || errorData?.detail || "Slack member login failed",
+        };
+      }
+    },
+
+    async teamsMemberLogin(payload: {
+      email: string;
+      ms_user_id?: string;
+      access_token?: string;
+    }) {
+      try {
+        const res = await endpoint.post("/api/admin/users/teams/member-login/", payload);
+        const body = res.data;
+        const inner = body?.data ?? body;
+        if (body?.success !== false && this._applyMemberAuthFromResponse(inner || body)) {
+          return { status: true, data: body, message: body?.message };
+        }
+        return {
+          status: false,
+          message: body?.message || body?.error || "Microsoft Teams member login failed",
+        };
+      } catch (error: any) {
+        const errorData = error.response?.data;
+        return {
+          status: false,
+          message:
+            errorData?.message ||
+            errorData?.error ||
+            errorData?.detail ||
+            "Microsoft Teams member login failed",
+        };
+      }
+    },
+
+    async getSlackMemberOAuthUrl(baseUrl: string, email: string) {
+      try {
+        const res = await endpoint.post("/api/admin/users/slack/oauth-url/", {
+          base_url: baseUrl,
+          email,
+          purpose: "member",
+        });
+        if (res.data?.success && res.data?.auth_url) {
+          return { status: true, data: res.data };
+        }
+        return { status: false, message: res.data?.message || "Auth URL not received" };
+      } catch (error: any) {
+        return {
+          status: false,
+          message: error.response?.data?.message || "Failed to start Slack login",
+        };
+      }
+    },
+
+    async getMicrosoftMemberOAuthUrl(redirectUri: string, email: string) {
+      try {
+        const url =
+          `/api/admin/users/microsoft-teams/oauth-url/?redirect_uri=${encodeURIComponent(redirectUri)}` +
+          `&email=${encodeURIComponent(email)}&purpose=member`;
+        const res = await endpoint.get(url);
+        if (res.data?.auth_url) {
+          return { status: true, data: res.data };
+        }
+        return { status: false, message: "Auth URL not received" };
+      } catch (error: any) {
+        return {
+          status: false,
+          message: error.response?.data?.message || "Failed to start Microsoft login",
         };
       }
     },

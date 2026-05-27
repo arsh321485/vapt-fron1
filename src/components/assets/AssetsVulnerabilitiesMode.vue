@@ -258,6 +258,9 @@
                   <span :class="getStatusBadgeClass(v.status)">
                     <span :class="getStatusDotClass(v.status)"></span>{{ getStatusLabel(v.status) }}
                   </span>
+                  <span :class="getVulnTeamChipClass(v.assigned_team, v.vul_name)" style="font-size:0.68rem; padding:2px 8px;">
+                    {{ getVulnTeamLabel(v.assigned_team, v.vul_name) }}
+                  </span>
                 </div>
               </div>
               <div class="d-flex align-items-center gap-3 flex-shrink-0 vuln-accordion-actions">
@@ -1130,6 +1133,30 @@ export default {
     getStatusDotClass(status) {
       return this.getStatusLabel(status) === 'Closed' ? 'status-dot-closed' : 'status-dot-open';
     },
+    getVulnTeamLabel(assignedTeam, vulnName) {
+      // 1st priority: use real assigned_team from API data
+      const t = String(assignedTeam || '').trim();
+      if (t) return t;
+      // 2nd priority: keyword fallback from vulnerability name
+      const n = String(vulnName || '').toLowerCase();
+      if (/inject|xss|csrf|cross.site|sql|rce|buffer.overflow|deseri|privilege|ldap|xxe|ssrf|code.execut|authentication|session.hijack/.test(n))
+        return 'Architectural Flaws';
+      if (/deprecat|outdated|end.of.life|eol|obsolete|unsupported/.test(n))
+        return 'Patch Management';
+      if (/missing|hsts|header|cors|cookie|misconfigur|config|default.password|weak.password|policy|setting/.test(n))
+        return 'Configuration Management';
+      if (/tls|ssl|protocol|cipher|encrypt|certif|port|network|dns|smtp|ftp|firewall|vpn/.test(n))
+        return 'Network Security';
+      return 'Patch Management';
+    },
+    getVulnTeamChipClass(assignedTeam, vulnName) {
+      const team = this.getVulnTeamLabel(assignedTeam, vulnName);
+      if (team === 'Architectural Flaws')      return 'rt-team-chip rt-team-architectural';
+      if (team === 'Network Security')         return 'rt-team-chip rt-team-network';
+      if (team === 'Configuration Management') return 'rt-team-chip rt-team-configuration';
+      if (team === 'Patch Management')         return 'rt-team-chip rt-team-patch';
+      return 'rt-team-chip rt-team-default';
+    },
     isDescriptionExpanded(key) {
       return !!this.expandedDescriptions[key];
     },
@@ -1552,6 +1579,7 @@ export default {
   flex-direction: column;
   background: #f8f9fc;
   overflow: hidden;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 /* .av-right uses .assets-right-panel — header/scroll spacing in main.css */
@@ -1695,6 +1723,7 @@ export default {
 
 .av-db-text {
   font-size: 13px;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: #374151;
   line-height: 1.65;
   margin: 0;
@@ -2915,6 +2944,7 @@ export default {
 
 .vuln-accordion-body {
   padding: 14px 16px 20px;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .vuln-accordion-body .av-description-block {

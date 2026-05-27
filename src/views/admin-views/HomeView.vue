@@ -351,6 +351,10 @@
     <SignUpModal
       :show="showSignUpModal"
       :preSelectedType="signUpPreSelectedType"
+      :userInitialTab="signUpUserInitialTab"
+      :setPasswordUidb64="setPasswordUidb64"
+      :setPasswordToken="setPasswordToken"
+      :setPasswordEmail="setPasswordEmail"
       @close="closeSignUpModal"
       @open-admin-signup="handleOpenAdminSignUpFromSignIn"
     />
@@ -378,6 +382,10 @@ export default {
       showAdminSignUpModal: false,
       showSignUpModal: false,
       signUpPreSelectedType: '',
+      signUpUserInitialTab: '',
+      setPasswordUidb64: '',
+      setPasswordToken: '',
+      setPasswordEmail: '',
       highlightSliderPaused: false,
       highlightWindowWidth: 1200,
       reviewSlideIndex: 0,
@@ -518,6 +526,7 @@ export default {
     this.highlightWindowWidth = window.innerWidth;
     window.addEventListener('resize', this.onHighlightResize);
     this.startReviewSlider();
+    this.applyUserSetPasswordDeepLink();
   },
   beforeUnmount() {
     window.removeEventListener('resize', this.onHighlightResize);
@@ -581,6 +590,38 @@ export default {
     closeSignUpModal() {
       this.showSignUpModal = false;
       this.signUpPreSelectedType = '';
+      this.signUpUserInitialTab = '';
+      this.setPasswordUidb64 = '';
+      this.setPasswordToken = '';
+      this.setPasswordEmail = '';
+    },
+    applyUserSetPasswordDeepLink() {
+      if (this.$route.path !== '/home') return;
+      const q = this.$route.query || {};
+      const pick = (v) => {
+        if (v === undefined || v === null) return '';
+        return (Array.isArray(v) ? v[0] : v).toString().trim();
+      };
+      const token = pick(q.token);
+      const uid = pick(q.uidb64) || pick(q.uid);
+      const actionRaw = pick(q.action).toLowerCase();
+      const backendSetPassword = actionRaw === 'set-password' || actionRaw === 'setpassword';
+      const tabVal = pick(q.tab);
+      const tabRaw = tabVal.toLowerCase();
+      const signin = pick(q.signin);
+      const legacyTab =
+        signin === 'user' && (tabRaw === 'set-password' || tabVal === 'setPassword');
+      if (!token || !uid) return;
+      if (!backendSetPassword && !legacyTab) return;
+      this.signUpPreSelectedType = 'user';
+      this.signUpUserInitialTab = 'setPassword';
+      this.setPasswordUidb64 = uid;
+      this.setPasswordToken = token;
+      this.setPasswordEmail = pick(q.email);
+      this.showSignUpModal = true;
+      this.$nextTick(() => {
+        this.$router.replace({ path: '/home' });
+      });
     },
     handleOpenSignInFromAdminSignUp() {
       this.closeAdminSignUpModal();
@@ -590,6 +631,14 @@ export default {
     handleOpenAdminSignUpFromSignIn() {
       this.closeSignUpModal();
       this.showAdminSignUpModal = true;
+    }
+  },
+  watch: {
+    $route: {
+      handler() {
+        this.applyUserSetPasswordDeepLink();
+      },
+      immediate: false
     }
   }
 };

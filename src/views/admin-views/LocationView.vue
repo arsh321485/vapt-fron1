@@ -20,195 +20,102 @@
         </div>
       </div>
 
-      <!-- MAIN LAYOUT -->
+      <div class="loc-page-header">
+        <h1 class="loc-title">Setup Organization</h1>
+        <p class="loc-subtitle">Add team members to your organization. They will receive an email to set their password and access the dashboard.</p>
+      </div>
+
+      <!-- MAIN LAYOUT: form + users sidebar (aligned) -->
       <div class="loc-layout">
 
         <!-- LEFT: Main Content -->
         <div class="loc-content">
 
-          <div class="loc-page-header">
-            <h1 class="loc-title">Setup Organization</h1>
-            <p class="loc-subtitle">Configure your team's communication and issue tracking tools to streamline your security workflow.</p>
-          </div>
-
-          <!-- Communication Platforms -->
-          <div class="loc-section">
-            <div class="loc-section-header">
-              <i class="bi bi-chat-dots loc-section-icon"></i>
-              <span class="loc-section-title">Communication Platforms</span>
-            </div>
-            <div class="loc-cards-grid">
-              <div
-                v-for="platform in communicationPlatforms"
-                :key="platform.value"
-                class="loc-tool-card"
-                :class="{ 'loc-tool-card-active': selectedCommunication === platform.value }"
-                @click.stop="handleCommunicationClick(platform.value)"
-              >
-                <div class="loc-tool-card-top">
-                  <div class="loc-tool-icon-wrap">
-                    <img v-if="platform.icon" :src="platform.icon" class="loc-tool-icon" />
-                    <i v-else class="bi bi-app loc-tool-icon-fallback"></i>
-                  </div>
-                  <div class="loc-tool-radio" :class="{ 'loc-tool-radio-active': selectedCommunication === platform.value }">
-                    <div v-if="selectedCommunication === platform.value" class="loc-tool-radio-dot"></div>
-                  </div>
-                </div>
-                <h6 class="loc-tool-name">{{ platform.label }}</h6>
-                <p class="loc-tool-desc">
-                  {{ platform.value === 'teams' ? 'Sync security alerts directly to your enterprise channels.' : 'Real-time collaboration for devsecops teams.' }}
-                </p>
-              </div>
-
-            </div>
-
-            <!-- Slack Integration Button -->
-            <div v-if="selectedCommunication === 'slack'" class="loc-slack-integration mt-3">
-              <div class="loc-slack-status">
-                <div v-if="slackConnected" class="loc-status-connected">
-                  <i class="bi bi-check-circle-fill"></i>
-                  <span>Connected to Slack</span>
-                </div>
-                <div v-else class="loc-status-disconnected">
-                  <i class="bi bi-circle"></i>
-                  <span>Not connected</span>
-                </div>
-              </div>
-
-              <div v-if="!slackConnected" class="loc-slack-button-wrapper">
-                <a
-                  @click.prevent="startSlackLogin"
-                  href="#"
-                  class="loc-slack-btn"
-                >
-                  <img
-                    alt="Add to Slack"
-                    height="40"
-                    width="139"
-                    src="https://platform.slack-edge.com/img/add_to_slack.png"
-                    srcset="https://platform.slack-edge.com/img/add_to_slack.png 1x, https://platform.slack-edge.com/img/add_to_slack@2x.png 2x"
-                  />
-                </a>
-                <p class="loc-slack-help">Click to connect your Slack workspace and enable real-time notifications</p>
-              </div>
-            </div>
-
-          </div>
-
-          <!-- Project Management -->
-          <div class="loc-section">
-            <div class="loc-section-header">
-              <i class="bi bi-check-circle loc-section-icon"></i>
-              <span class="loc-section-title">Project Management</span>
-            </div>
-            <div class="loc-cards-grid">
-              <div
-                v-for="tool in projectPlatforms"
-                :key="tool.value"
-                class="loc-tool-card"
-                :class="{ 'loc-tool-card-active': selectedProject === tool.value }"
-                @click.stop="handleProjectClick(tool.value)"
-              >
-                <div class="loc-tool-card-top">
-                  <div class="loc-tool-icon-wrap">
-                    <img v-if="tool.icon" :src="tool.icon" class="loc-tool-icon" />
-                    <i v-else class="bi bi-kanban loc-tool-icon-fallback"></i>
-                  </div>
-                  <div class="loc-tool-radio" :class="{ 'loc-tool-radio-active': selectedProject === tool.value }">
-                    <i v-if="selectedProject === tool.value" class="bi bi-check-circle-fill loc-tool-check"></i>
-                  </div>
-                </div>
-                <h6 class="loc-tool-name">{{ tool.label }}</h6>
-                <p class="loc-tool-desc">Automated ticket creation for vulnerabilities.</p>
-              </div>
-
-            </div>
-
-            <!-- Jira Connected User -->
-            <div v-if="jiraConnected && jiraUser" class="loc-jira-user mt-3">
-              <img :src="jiraUser.picture" class="loc-jira-avatar" />
-              <div class="loc-jira-info">
-                <div class="loc-jira-name">{{ jiraUser.name }}</div>
-                <div class="loc-jira-email">{{ jiraUser.email }}</div>
-              </div>
-              <span class="loc-jira-badge"><i class="bi bi-check-circle-fill me-1"></i>Connected</span>
-            </div>
-
-            <!-- Jira Cloud Resources -->
-            <div v-if="jiraConnected && jiraResources.length" class="loc-jira-resources mt-3">
-              <div class="loc-jira-res-title">
-                <i class="bi bi-check-circle-fill text-success me-1"></i>
-                Jira Connected — Select your workspace:
-              </div>
-              <div class="loc-jira-res-list mt-2">
-                <div
-                  v-for="resource in jiraResources"
-                  :key="resource.id"
-                  class="loc-jira-res-item"
-                  :class="{ active: selectedJiraCloudId === resource.id }"
-                  @click="selectedJiraCloudId = resource.id"
-                >
-                  <img :src="resource.avatarUrl" class="loc-jira-res-avatar" />
-                  <div>
-                    <div class="loc-jira-res-name">{{ resource.name }}</div>
-                    <div class="loc-jira-res-url">{{ resource.url }}</div>
-                  </div>
-                  <i v-if="selectedJiraCloudId === resource.id" class="bi bi-check-circle-fill text-success ms-auto"></i>
-                </div>
-              </div>
-            </div>
-          </div>
-
           <!-- Add Team Members -->
-          <div class="loc-section">
-                <div class="loc-section-header">
-                  <i class="bi bi-people loc-section-icon"></i>
-                  <span class="loc-section-title">Add Team Members</span>
-                </div>
+          <div class="loc-section loc-member-section">
+            <div class="loc-section-header">
+              <i class="bi bi-person-plus loc-section-icon"></i>
+              <span class="loc-section-title">Add Team Members</span>
+            </div>
 
-                <div class="loc-form-row">
-                  <!-- Type -->
-                  <div class="loc-form-group loc-form-type">
-                    <label class="loc-form-label">TYPE</label>
-                    <select v-model="form.user_type" class="loc-select">
-                      <option disabled value="">Select</option>
-                      <option value="internal">Internal</option>
-                      <option value="external">External</option>
-                    </select>
-                  </div>
-                  <!-- First Name -->
-                  <div class="loc-form-group loc-form-name">
-                    <label class="loc-form-label">FIRST NAME</label>
-                    <input class="loc-input" placeholder="John" v-model="form.first_name" />
-                  </div>
-                  <!-- Last Name -->
-                  <div class="loc-form-group loc-form-name">
-                    <label class="loc-form-label">LAST NAME</label>
-                    <input class="loc-input" placeholder="Doe" v-model="form.last_name" />
-                  </div>
-                  <!-- Role -->
-                  <div class="loc-form-group loc-form-role" ref="roleDropdown">
-                    <label class="loc-form-label">ROLE</label>
-                    <div class="loc-select loc-select-custom" @click="toggleRoleDropdown" ref="roleTrigger">
-                      <span class="loc-role-text">{{ selectedRoles.length ? selectedRoles.join(', ') : 'Select Role' }}</span>
-                      <i class="bi bi-chevron-down loc-select-arrow"></i>
-                    </div>
-                    <teleport to="body">
-                      <div v-if="isRoleOpen" class="loc-dropdown-list" :style="roleDropdownStyle">
-                        <label v-for="role in roleOptions" :key="role.short" class="loc-dropdown-item">
-                          <input type="checkbox" :value="role.short" v-model="selectedRoles" class="me-2" />
-                          {{ role.full }}
-                        </label>
-                      </div>
-                    </teleport>
-                  </div>
+            <form class="loc-member-form" @submit.prevent="addUser">
+              <div class="loc-field-group">
+                <label class="loc-field-label">Type</label>
+                <div class="loc-input-row">
+                  <i class="bi bi-diagram-3 loc-field-icon"></i>
+                  <select v-model="form.user_type" class="loc-field-input loc-field-select">
+                    <option disabled value="">Select type</option>
+                    <option value="internal">Internal</option>
+                    <option value="external">External</option>
+                  </select>
+                  <i class="bi bi-chevron-down loc-field-chevron"></i>
                 </div>
+              </div>
 
-                <!-- Email row -->
-                <div class="loc-email-row">
-                  <input class="loc-input loc-email-input" placeholder="email@company.com" type="email" v-model="form.email" />
-                  <button class="loc-btn-draft" @click="addUser">Save User</button>
+              <div class="loc-field-group">
+                <label class="loc-field-label">First Name</label>
+                <div class="loc-input-row">
+                  <i class="bi bi-person loc-field-icon"></i>
+                  <input
+                    class="loc-field-input"
+                    placeholder="John"
+                    v-model="form.first_name"
+                    autocomplete="given-name"
+                  />
                 </div>
+              </div>
+
+              <div class="loc-field-group">
+                <label class="loc-field-label">Last Name</label>
+                <div class="loc-input-row">
+                  <i class="bi bi-person loc-field-icon"></i>
+                  <input
+                    class="loc-field-input"
+                    placeholder="Doe"
+                    v-model="form.last_name"
+                    autocomplete="family-name"
+                  />
+                </div>
+              </div>
+
+              <div class="loc-field-group" ref="roleDropdown">
+                <label class="loc-field-label">Role</label>
+                <div class="loc-input-row loc-input-row-clickable" @click="toggleRoleDropdown" ref="roleTrigger">
+                  <i class="bi bi-shield-check loc-field-icon"></i>
+                  <span class="loc-field-input loc-field-role-display" :class="{ 'is-placeholder': !selectedRoles.length }">
+                    {{ selectedRoles.length ? selectedRoleLabels : 'Select role(s)' }}
+                  </span>
+                  <i class="bi bi-chevron-down loc-field-chevron"></i>
+                </div>
+                <teleport to="body">
+                  <div v-if="isRoleOpen" class="loc-dropdown-list" :style="roleDropdownStyle">
+                    <label v-for="role in roleOptions" :key="role.short" class="loc-dropdown-item">
+                      <input type="checkbox" :value="role.short" v-model="selectedRoles" class="me-2" />
+                      {{ role.full }}
+                    </label>
+                  </div>
+                </teleport>
+              </div>
+
+              <div class="loc-field-group">
+                <label class="loc-field-label">Email Address</label>
+                <div class="loc-input-row">
+                  <i class="bi bi-at loc-field-icon"></i>
+                  <input
+                    class="loc-field-input"
+                    placeholder="email@company.com"
+                    type="email"
+                    v-model="form.email"
+                    autocomplete="email"
+                  />
+                </div>
+              </div>
+
+              <button type="submit" class="loc-submit-btn">
+                <i class="bi bi-person-plus me-2"></i>
+                Save User
+              </button>
+            </form>
           </div>
 
           <!-- Footer Buttons -->
@@ -226,72 +133,63 @@
 
         </div>
 
-        <!-- RIGHT: Sidebar -->
-        <div class="loc-sidebar">
-
-          <!-- Integration Help -->
-          <div class="loc-help-card">
-            <div class="loc-help-header">
-              <i class="bi bi-lightning-charge-fill loc-help-icon"></i>
-              <span class="loc-help-title">Integration Help</span>
-            </div>
-            <div class="loc-help-item">
-              <i class="bi bi-shield-check loc-help-item-icon"></i>
-              <div>
-                <span class="loc-help-bold">OAuth 2.0 Secure:</span>
-                <span class="loc-help-text"> All third-party integrations use encrypted token-based authentication.</span>
+        <!-- RIGHT: Users list -->
+        <aside class="loc-sidebar">
+          <div class="loc-users-panel">
+            <div class="loc-users-panel-header">
+              <div class="loc-users-panel-title-wrap">
+                <i class="bi bi-people-fill loc-users-panel-icon"></i>
+                <h3 class="loc-users-panel-title">Users Added</h3>
               </div>
+              <span class="loc-users-panel-count">{{ addedUsers.length }}</span>
             </div>
-            <div class="loc-help-item mt-2">
-              <i class="bi bi-diagram-3 loc-help-item-icon"></i>
-              <div>
-                <span class="loc-help-bold">Smart Mapping:</span>
-                <span class="loc-help-text"> Automatically assign security findings to the correct Slack channel or Jira project.</span>
-              </div>
-            </div>
-          </div>
 
-          <div class="loc-users-added-card">
-            <div class="loc-users-added-header">
-              <span class="loc-users-added-title"><i class="bi bi-person-check me-1"></i>User Added</span>
-              <span class="loc-users-added-count">{{ addedUsers.length }}</span>
-            </div>
-            <div v-if="addedUsers.length" class="loc-users-added-list">
-              <div v-for="(user, index) in addedUsers" :key="user._id || user.email || index" class="loc-users-added-item">
-                <div class="loc-users-added-initials">{{ getInitials(`${user.first_name} ${user.last_name}`) }}</div>
-                <div class="loc-users-added-meta">
-                  <p class="loc-users-added-name">{{ user.first_name }} {{ user.last_name }}</p>
-                  <p class="loc-users-added-email">{{ user.email }}</p>
-                  <!-- Slack Sync Badge -->
+            <ul v-if="addedUsers.length" class="loc-users-list">
+              <li
+                v-for="(user, index) in addedUsers"
+                :key="user._id || user.email || index"
+                class="loc-user-card"
+              >
+                <div class="loc-user-card-top">
+                  <div class="loc-user-avatar">{{ getInitials(`${user.first_name} ${user.last_name}`) }}</div>
+                  <div class="loc-user-details">
+                    <p class="loc-user-name">{{ user.first_name }} {{ user.last_name }}</p>
+                    <p class="loc-user-email">{{ user.email }}</p>
+                  </div>
+                </div>
+                <div v-if="user.slack_sync_status || hasSlackIntegration" class="loc-user-card-footer">
                   <span v-if="user.slack_sync_status === 'success'" class="loc-slack-badge loc-slack-synced">
-                    <i class="bi bi-check-circle-fill me-1"></i>Slack Synced
+                    <i class="bi bi-check-circle-fill"></i> Slack synced
                   </span>
                   <span v-else-if="user.slack_sync_status === 'pending_workspace_join'" class="loc-slack-badge loc-slack-pending">
-                    <i class="bi bi-clock-fill me-1"></i>Slack Pending
+                    <i class="bi bi-clock-fill"></i> Slack pending
                   </span>
                   <span v-else-if="user.slack_sync_status === 'failed'" class="loc-slack-badge loc-slack-failed">
-                    <i class="bi bi-x-circle-fill me-1"></i>Slack Failed
+                    <i class="bi bi-x-circle-fill"></i> Slack failed
                   </span>
+                  <button
+                    v-if="hasSlackIntegration && (!user.slack_channel_ids || user.slack_channel_ids.length === 0 || user.slack_sync_status !== 'success')"
+                    type="button"
+                    class="loc-resync-btn"
+                    :disabled="user.resyncing"
+                    @click="resyncSlack(user)"
+                  >
+                    <span v-if="user.resyncing" class="spinner-border spinner-border-sm"></span>
+                    <template v-else>
+                      <i class="bi bi-arrow-repeat"></i> Resync
+                    </template>
+                  </button>
                 </div>
-                <!-- Resync Slack Button — show if slack_channel_ids empty or sync failed/pending -->
-                <button
-                  v-if="selectedCommunication === 'slack' && (!user.slack_channel_ids || user.slack_channel_ids.length === 0 || user.slack_sync_status !== 'success')"
-                  class="loc-resync-btn"
-                  :disabled="user.resyncing"
-                  @click="resyncSlack(user)"
-                >
-                  <span v-if="user.resyncing" class="spinner-border spinner-border-sm me-1"></span>
-                  <i v-else class="bi bi-arrow-repeat me-1"></i>
-                  Resync Slack
-                </button>
-              </div>
-            </div>
-            <div v-else class="loc-users-added-empty">
-              No users added yet.
+              </li>
+            </ul>
+
+            <div v-else class="loc-users-empty">
+              <i class="bi bi-person-plus loc-users-empty-icon"></i>
+              <p class="loc-users-empty-text">No users added yet</p>
+              <p class="loc-users-empty-hint">Saved members will appear here</p>
             </div>
           </div>
-
-        </div>
+        </aside>
       </div>
     </div>
   </main>
@@ -301,10 +199,6 @@
 import DashboardHeader from "@/components/admin-component/DashboardHeader.vue";
 import { useAuthStore } from "@/stores/authStore";
 import Swal from "sweetalert2";
-import teamsIcon from "@/assets/images/teams.png";
-import slackIcon from "@/assets/images/slack.png";
-import jiraIcon from "@/assets/images/jira.png";
-import asanaIcon from "@/assets/images/asana.png";
 
 export default {
   name: "LocationView",
@@ -314,25 +208,14 @@ export default {
     return {
       authStore: useAuthStore(),
       roleDropdownStyle: {},
-      locationName: "",
-      showDropdown: false,
-      filteredCountries: [],
-      avatarColors: ["#13b561", "#efbe34", "#ea4544"],
-      selectedLocation: "",
-      externalLocation: "",
       selectedRoles: [],
       isRoleOpen: false,
       addedUsers: [],
-      selectedSecondaryRoles: [],
-      isSecondaryRoleOpen: false,
       form: {
-        admin_id: "",
-        location_id: "",
         first_name: "",
         last_name: "",
         user_type: "",
         email: "",
-        Member_role: []
       },
       roleOptions: [
         { short: "PM", full: "Patch Management" },
@@ -340,50 +223,19 @@ export default {
         { short: "NS", full: "Network Security" },
         { short: "AF", full: "Architectural Flaws" }
       ],
-      selectedCommunication: null,
-      pendingCommunication: null,
-      communicationNoneSelected: false,
-      communicationPlatforms: [
-        { value: "teams", label: "Microsoft Teams", icon: teamsIcon },
-        { value: "slack", label: "Slack", icon: slackIcon },
-        // { value: "none", label: "None" }
-      ],
-      selectedProject: null,
-      pendingProject: null,
-      projectNoneSelected: false,
-      projectPlatforms: [
-        { value: "jira", label: "Jira", icon: jiraIcon },
-        // { value: "asana", label: "Asana", icon: asanaIcon },
-        // { value: "none", label: "None" }
-      ],
-      slackPopup: null,
-      slackChannels: [],
-      slackUsers: [],
-      teams: [],
-      channels: [],
-      selectedTeamId: null,
-      backendBase: "https://vaptbackend.secureitlab.com",
-      jiraResources: [],
-      jiraConnected: false,
-      jiraUser: null,
-      selectedJiraCloudId: localStorage.getItem("jira_cloud_id") || null,
     };
-  },
-  watch: {
-    selectedJiraCloudId(val) {
-      if (val) {
-        localStorage.setItem("jira_cloud_id", val);
-      } else {
-        localStorage.removeItem("jira_cloud_id");
-      }
-    },
   },
   computed: {
     returnTo() {
       return this.$route.query.returnTo || null;
     },
-    isFromOnboarding() {
-      return !this.returnTo;
+    hasSlackIntegration() {
+      return !!localStorage.getItem("slack_bot_token");
+    },
+    selectedRoleLabels() {
+      return this.selectedRoles
+        .map((r) => this.roleOptions.find((o) => o.short === r)?.full || r)
+        .join(", ");
     },
     // generatedInviteLink() {
     //   const base = "https://vaptbackend.secureitlab.com";
@@ -425,7 +277,7 @@ export default {
   },
   methods: {
     initChipSelection() {
-      // Active state is handled by Vue :class binding — no manual DOM manipulation needed
+      // Active state is handled by Vue :class binding â€” no manual DOM manipulation needed
     },
     toggleRoleDropdown(e) {
       e && e.stopPropagation();
@@ -474,33 +326,8 @@ export default {
         return;
       }
 
-      // Gate Add User until OAuth connect is complete
-      if (this.selectedCommunication === "slack") {
-        const botToken = localStorage.getItem("slack_bot_token");
-        if (!botToken) {
-          Swal.fire("Slack not connected", "Please connect Slack first.", "warning");
-          return;
-        }
-      }
+      const platform = this.detectAdminCommunicationPlatform();
 
-      if (this.selectedCommunication === "teams") {
-        const graphToken = localStorage.getItem("microsoft_graph_token");
-        const vaptfixTeam = JSON.parse(
-          localStorage.getItem("vaptfix_team") || "null"
-        );
-        const teamId = vaptfixTeam?.id || vaptfixTeam?.team_id;
-
-        if (!graphToken || !teamId) {
-          Swal.fire(
-            "Microsoft Teams not connected",
-            "Please connect Microsoft Teams first.",
-            "warning"
-          );
-          return;
-        }
-      }
-
-      // Base payload
       const payload = {
         admin_id: adminId,
         first_name: this.form.first_name,
@@ -512,8 +339,7 @@ export default {
         )
       };
 
-      // MS Teams: add access_token + team_id if Teams is selected
-      if (this.selectedCommunication === "teams") {
+      if (platform === "teams") {
         const graphToken = localStorage.getItem("microsoft_graph_token");
         const vaptfixTeam = JSON.parse(localStorage.getItem("vaptfix_team") || "null");
         const teamId = vaptfixTeam?.id || vaptfixTeam?.team_id;
@@ -523,15 +349,12 @@ export default {
         }
       }
 
-      // Slack: add slack_bot_token if Slack is selected
-      if (this.selectedCommunication === "slack") {
+      if (platform === "slack") {
         const botToken = localStorage.getItem("slack_bot_token");
         if (botToken) {
           payload.slack_bot_token = botToken;
         }
       }
-
-      console.log("FINAL PAYLOAD 👉", payload);
 
       const res = await this.authStore.createUserDetail(payload);
 
@@ -543,11 +366,10 @@ export default {
           email: this.form.email.trim(),
         });
 
-        // slack_sync status-based message
         const slackSync = res.slack_sync || res.data?.slack_sync;
         let msg = "User added successfully";
 
-        if (this.selectedCommunication === "teams") {
+        if (platform === "teams") {
           msg = "User added and added to Microsoft Teams";
         } else if (slackSync?.status === "success") {
           msg = "User added and invited to Slack channels";
@@ -620,12 +442,12 @@ export default {
   //     r => this.roleOptions.find(o => o.short === r)?.full
   //   ),
 
-  //   // 🔥 NEW FIELDS FOR SLACK SYNC
+  //   // ðŸ”¥ NEW FIELDS FOR SLACK SYNC
   //   slack_bot_token: botToken,
   //   slack_user_id: this.selectedSlackUserId  // must come from mapping
   // };
 
-  // console.log("FINAL PAYLOAD 👉", payload);
+  // console.log("FINAL PAYLOAD ðŸ‘‰", payload);
 
   // const res = await this.authStore.createUserDetail(payload);
 
@@ -732,710 +554,30 @@ export default {
 
       Swal.fire({ icon, title, text, timer: 3000, showConfirmButton: false });
     },
+    detectAdminCommunicationPlatform() {
+      const slackToken = localStorage.getItem("slack_bot_token");
+      if (slackToken) return "slack";
+      const graphToken = localStorage.getItem("microsoft_graph_token");
+      const vaptfixTeam = JSON.parse(localStorage.getItem("vaptfix_team") || "null");
+      const teamId = vaptfixTeam?.id || vaptfixTeam?.team_id;
+      if (graphToken && teamId) return "teams";
+      return null;
+    },
     closeOnOutside(e) {
       const role = this.$refs.roleDropdown;
-      const secondary = this.$refs.secondaryRoleDropdown;
-      // Also check if click is inside teleported dropdown
       const teleportedDropdown = document.querySelector('.loc-dropdown-list');
       if (teleportedDropdown && teleportedDropdown.contains(e.target)) return;
       if (role && !role.contains(e.target)) {
         this.isRoleOpen = false;
       }
-      if (secondary && !secondary.contains(e.target)) {
-        this.isSecondaryRoleOpen = false;
-      }
-    },
-    async handleCommunicationClick(value) {
-      // NONE logic
-      if (value === "none") {
-        this.communicationNoneSelected = !this.communicationNoneSelected;
-        this.selectedCommunication = this.communicationNoneSelected ? "none" : null;
-        return;
-      }
-
-      // If NONE active → block others
-      if (this.communicationNoneSelected) return;
-      if (!this.selectedCommunication) {
-        if (value === "teams") {
-          await this.startMicrosoftLogin();
-          // selectedCommunication = "teams" will be set after OAuth success
-        } else if (value === "slack") {
-          this.selectedCommunication = value;
-          await this.startSlackLogin();
-        } else {
-          this.selectedCommunication = value;
-        }
-        return;
-      }
-
-
-      // Clicking same platform → do nothing
-      if (this.selectedCommunication === value) return;
-
-      // Switching platform → ask confirmation FIRST
-      this.pendingCommunication = value;
-
-      // const res = await Swal.fire({
-      //   title: "Switch platform?",
-      //   text: "Are you sure you want to switch the communication platform?",
-      //   icon: "warning",
-      //   showCancelButton: true,
-      //   confirmButtonText: "Yes",
-      //   cancelButtonText: "No",
-      // });
-
-
-      const res = await Swal.fire({
-        title: "Switch platform?",
-        text: "Are you sure you want to switch the communication platform?",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonText: "Yes",
-        cancelButtonText: "No",
-      });
-
-      if (res.isConfirmed) {
-        if (this.pendingCommunication === "teams") {
-          await this.startMicrosoftLogin();
-          // selectedCommunication = "teams" will be set after OAuth success
-        } else {
-          this.selectedCommunication = this.pendingCommunication;
-        }
-        if (this.pendingCommunication === "slack") {
-          await this.startSlackLogin();
-        }
-      }
-
-      this.pendingCommunication = null;
-
-
-      // if (res.isConfirmed) {
-
-      //   this.selectedCommunication = this.pendingCommunication;
-      // }
-
-
-
-      // Cleanup
-      this.pendingCommunication = null;
-    },
-    async handleProjectClick(value) {
-      // NONE logic
-      if (value === "none") {
-        this.projectNoneSelected = !this.projectNoneSelected;
-        this.selectedProject = this.projectNoneSelected ? "none" : null;
-        return;
-      }
-
-      // If NONE active → block others
-      if (this.projectNoneSelected) return;
-
-      // First-time selection → apply immediately
-      if (!this.selectedProject) {
-        this.selectedProject = value;
-
-        // ✅ Start Jira OAuth when Jira is selected
-        if (value === "jira") {
-          await this.startJiraLogin();
-        }
-        return;
-      }
-
-      // Clicking same tool → do nothing
-      if (this.selectedProject === value) return;
-
-      // Switching tool → ask confirmation FIRST
-      this.pendingProject = value;
-
-      const res = await Swal.fire({
-        title: "Switch platform?",
-        text: "Are you sure you want to switch the project management tool?",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonText: "Yes",
-        cancelButtonText: "No",
-      });
-
-      if (res.isConfirmed) {
-        // ✅ Apply active ONLY after Yes
-        this.selectedProject = this.pendingProject;
-
-        // ✅ Start Jira OAuth when switching to Jira
-        if (this.pendingProject === "jira") {
-          await this.startJiraLogin();
-        }
-      }
-
-      // Cleanup
-      this.pendingProject = null;
     },
     handleContinue() {
-      // 🟢 Always go to /riskcriteria in onboarding flow
-      // returnTo is only used when explicitly navigating from dashboard settings
-      // Check if at least 1 location exists
-      // if (!this.authStore.locations || this.authStore.locations.length === 0) {
-      //   Swal.fire({
-      //     icon: 'warning',
-      //     title: 'No Location Added',
-      //     text: 'Please add at least one location before proceeding to Risk Criteria.',
-      //     confirmButtonColor: '#5a44ff'
-      //   });
-      //   return;
-      // }
-
-      // Mark step 1 as completed
       this.authStore.markStepCompleted(1);
-
-      // Navigate to next page
       this.$router.push('/riskcriteria');
-    },
-
-    // Teams Start
-    async startMicrosoftLogin() {
-  try {
-    const redirectUri = `${window.location.origin}/microsoft/callback`;
-    const adminId = this.authStore.user?._id || this.authStore.user?.id;
-    if (!adminId) {
-      Swal.fire("Error", "Please login again", "error");
-      return;
-    }
-    const res = await this.authStore.getMicrosoftOAuthUrl(redirectUri, adminId);
-    if (res.status && res.data.auth_url) {
-      // ✅ Open Microsoft OAuth in NEW TAB
-       window.open(res.data.auth_url, "_blank");
-      // window.location.href = res.data.auth_url;
-    } else {
-      Swal.fire("Error", "Failed to start Microsoft login", "error");
-    }
-  } catch (err) {
-    console.error("Microsoft login error:", err);
-    Swal.fire("Error", "Microsoft login failed", "error");
-  }
-    },
-  getPreferredTeamsUrl(teamObj) {
-    return (
-      teamObj?.teams_tab_url ||
-      teamObj?.teams_url ||
-      "https://teams.cloud.microsoft"
-    );
-  },
-  async onTeamsConnected(event) {
-    const allowedOrigins = [
-      window.location.origin,
-      "https://vaptbackend.secureitlab.com",
-    ];
-    if (!allowedOrigins.includes(event.origin)) return;
-    if (event.data?.type !== "TEAMS_CONNECTED") return;
-
-    const graphToken = event.data.tokens?.access_token;
-    const teamObj = event.data.vaptfix_team || null;
-    const tenantId = event.data.tokens?.tenant_id;
-
-    if (graphToken) localStorage.setItem("microsoft_graph_token", graphToken);
-    if (teamObj) localStorage.setItem("vaptfix_team", JSON.stringify(teamObj));
-    if (event.data.django_access_token) {
-      localStorage.setItem("django_access_token", event.data.django_access_token);
-    }
-    if (tenantId) localStorage.setItem("microsoft_tenant_id", tenantId);
-
-    if (teamObj) {
-      this.teams = [{
-        id: teamObj.team_id,
-        displayName: teamObj.team_name || "Vaptfix",
-      }];
-      this.channels = teamObj.channels || [];
-      localStorage.setItem("vaptfix_channels", JSON.stringify(this.channels));
-    }
-    this.selectedCommunication = "teams";
-
-    Swal.fire({
-      icon: "success",
-      title: "Microsoft Teams connected successfully",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-
-    const teamId = teamObj?.team_id;
-    if (teamId) {
-      await this.authStore.subscribeTeamsWebhook(teamId);
-    }
-  },
-
-    onStorageChange(event) {
-      if (event.key === "microsoft_graph_token" && event.newValue) {
-        const savedChannels = localStorage.getItem("vaptfix_channels");
-        if (savedChannels) {
-          this.channels = JSON.parse(savedChannels);
-        }
-        this.selectedCommunication = "teams";
-        this.fetchTeams();
-        Swal.fire({
-          icon: "success",
-          title: "Microsoft Teams Connected",
-          timer: 2000,
-          showConfirmButton: false
-        });
-      }
-    },
-    async fetchTeams() {
-      const res = await this.authStore.fetchMicrosoftTeams();
-      if (res?.status) {
-        this.teams = res.teams;
-
-        // ✅ Backend ne silently refresh kiya — localStorage update karo
-        if (res.refreshed_access_token) {
-          localStorage.setItem("microsoft_graph_token", res.refreshed_access_token);
-        }
-
-        // Auto-fetch channels for the VAPTFIX team using the saved team ID
-        const vaptfixTeam = JSON.parse(localStorage.getItem("vaptfix_team") || "null");
-        const teamId = vaptfixTeam?.id || vaptfixTeam?.team_id;
-        if (teamId) {
-          await this.fetchChannels(teamId);
-        }
-      } else {
-        // Token expired — try silent refresh first
-        const refreshRes = await this.authStore.refreshMicrosoftTeamsToken();
-        if (refreshRes.status && refreshRes.access_token) {
-          // Token refreshed silently — retry fetchTeams
-          const retryRes = await this.authStore.fetchMicrosoftTeams();
-          if (retryRes?.status) {
-            this.teams = retryRes.teams;
-            const vaptfixTeam = JSON.parse(localStorage.getItem("vaptfix_team") || "null");
-            const teamId = vaptfixTeam?.id || vaptfixTeam?.team_id;
-            if (teamId) await this.fetchChannels(teamId);
-            return;
-          }
-        }
-        // Refresh also failed — clear data and show reconnect
-        localStorage.removeItem("microsoft_graph_token");
-        localStorage.removeItem("teams_connected");
-        localStorage.removeItem("vaptfix_team");
-        localStorage.removeItem("vaptfix_channels");
-        this.selectedCommunication = null;
-        this.teams = [];
-        this.channels = [];
-        Swal.fire({
-          icon: "warning",
-          title: "Microsoft Teams Session Expired",
-          text: "Please reconnect Microsoft Teams to continue.",
-          confirmButtonColor: "#5a44ff"
-        });
-      }
-    },
-    async fetchChannels(teamId) {
-    this.selectedTeamId = teamId;
-
-    const res = await this.authStore.fetchTeamChannels(teamId);
-
-    if (res?.status) {
-      this.channels = res.channels;
-    } else {
-      console.log("Channels not fetched");
-    }
-    },
-    async sendTeamsMessage(teamId, channelId, message) {
-    const res = await this.authStore.sendMessageToTeamsChannel({
-      teamId,
-      channelId,
-      message,
-    });
-
-    if (res.status) {
-      console.log("Message sent successfully", res);
-    } else {
-      console.log("Message sending failed");
-    }
-    },
-    // Teams End
-
-    // slack start
-    async startSlackLogin() {
-  try {
-    const adminId = this.authStore.user?._id || this.authStore.user?.id;
-    if (!adminId) {
-      Swal.fire("Error", "Please login again", "error");
-      return;
-    }
-    const res = await this.authStore.getSlackOAuthUrl(this.backendBase, adminId);
-
-    if (res.status && res.data?.auth_url) {
-
-      const width = 1000;
-      const height = 700;
-      const left = window.screenX + (window.outerWidth - width) / 2;
-      const top = window.screenY + (window.outerHeight - height) / 2;
-
-      const popup = window.open(
-        res.data.auth_url,
-        "SlackOAuth",
-        `width=${width},height=${height},left=${left},top=${top}`
-      );
-
-      if (!popup) {
-        alert("Popup blocked! Please allow popups for this site.");
-      }
-
-    } else {
-      Swal.fire("Error", "Unable to start Slack login", "error");
-    }
-  } catch (error) {
-    Swal.fire("Error", "Something went wrong while connecting Slack", "error");
-  }
-    },
-    handleSlackMessage(event) {
-    console.log("Message received from popup:", event);
-
-    const allowedOrigins = [
-      window.location.origin,
-      "https://vaptbackend.secureitlab.com"
-    ];
-
-    if (!allowedOrigins.includes(event.origin)) {
-      console.warn("Blocked message origin:", event.origin);
-      return;
-    }
-
-    if (event.data?.type === "SLACK_CONNECTED") {
-      console.log("SLACK_CONNECTED event received");
-
-      // ✅ localStorage mein save karo
-      if (event.data.bot_token) {
-        localStorage.setItem("slack_bot_token", event.data.bot_token);
-      }
-      if (event.data.slack_user_id) {
-        localStorage.setItem("slack_user_id", event.data.slack_user_id);
-      }
-      if (event.data.django_access_token) {
-        localStorage.setItem("django_access_token", event.data.django_access_token);
-      }
-
-      this.checkSlackConnection();
-      this.fetchSlackChannels();
-      this.fetchSlackUsers();
-    }
-  },
-    async checkSlackConnection() {
-  try {
-    console.log("checkSlackConnection started");
-
-    const botToken = localStorage.getItem("slack_bot_token");
-    console.log("Bot token from storage:", botToken);
-
-    if (!botToken) {
-      console.warn("No Slack token found");
-      return;
-    }
-
-    const res = await this.authStore.validateSlackToken(botToken);
-
-    console.log("validateSlackToken response:", res);
-
-    if (res.success) {
-      this.slackConnected = true;
-    } else {
-      this.slackConnected = false;
-    }
-
-  } catch (err) {
-    console.error("Slack validation error:", err);
-  }
-    },
-    async fetchSlackChannels() {
-  try {
-    console.log("fetchSlackChannels started");
-
-    const res = await this.authStore.listSlackChannels();
-
-    console.log("listSlackChannels response:", res);
-
-    if (res.status) {
-      this.slackChannels = res.channels;
-    }
-
-  } catch (err) {
-    console.error("Slack channels fetch error:", err);
-  }
-    },
-    async sendTestMessage(channelId) {
-  try {
-    console.log("sendTestMessage triggered");
-
-    const botToken = localStorage.getItem("slack_bot_token");
-
-    if (!botToken) {
-      Swal.fire("Error", "Slack not connected", "error");
-      return;
-    }
-
-    const res = await this.authStore.sendSlackMessage(
-      botToken,
-      channelId,
-      "🚀 Message sent from VAPT Project"
-    );
-
-    if (res.status) {
-      Swal.fire({
-        icon: "success",
-        title: "Message Sent",
-        text: "Slack message delivered successfully",
-        timer: 2000,
-        showConfirmButton: false
-      });
-    } else {
-      Swal.fire("Error", "Failed to send message", "error");
-    }
-
-  } catch (err) {
-    console.error("Send message error:", err);
-  }
-    },
-    async fetchSlackUsers() {
-  try {
-    console.log("fetchSlackUsers started");
-
-    const botToken = localStorage.getItem("slack_bot_token");
-
-    if (!botToken) {
-      console.warn("No Slack token found");
-      return;
-    }
-
-    const res = await this.authStore.listSlackUsers(botToken);
-
-    console.log("Slack users API result:", res);
-
-    if (res.status) {
-      this.slackUsers = res.users;
-    }
-
-  } catch (err) {
-    console.error("Slack users error:", err);
-  }
-    },
-    async addUserToProjectSlack(channelId, slackUserId, userEmail, userName) {
-  try {
-    const botToken = localStorage.getItem("slack_bot_token");
-
-    if (!botToken) {
-      console.warn("Slack not connected");
-      return;
-    }
-
-    const res = await this.authStore.addUserToSlackChannel(
-      botToken,
-      channelId,
-      slackUserId,
-      userEmail,
-      userName
-    );
-
-    console.log("Slack add user result:", res);
-
-  } catch (err) {
-    console.error("Slack add user error:", err);
-  }
-    },
-
-    async addUserToProjectTeams(teamId, channelId, userEmail) {
-  try {
-    const graphToken = localStorage.getItem("microsoft_graph_token");
-
-    if (!graphToken) {
-      console.warn("Microsoft Teams not connected");
-      return;
-    }
-
-    const res = await this.authStore.addUserToTeamsChannel({
-      teamId,
-      channelId,
-      userEmail,
-    });
-
-    console.log("Teams add user result:", res);
-
-  } catch (err) {
-    console.error("Teams add user error:", err);
-  }
-    },
-    async inviteProjectTeam(channelId, slackUserIds) {
-  const botToken = localStorage.getItem("slack_bot_token");
-  if (!botToken) return;
-  await this.authStore.inviteUsersToSlackChannel(
-    botToken,
-    channelId,
-    slackUserIds
-  );
-    },
-    async handleVulnerabilitySlack(channelId, slackUserIds) {
-  const botToken = localStorage.getItem("slack_bot_token");
-
-  if (!botToken) return;
-
-  // Step 1: bot joins
-  await this.authStore.joinSlackChannel(botToken, channelId);
-
-  // Step 2: invite team
-  await this.authStore.inviteUsersToSlackChannel(
-    botToken,
-    channelId,
-    slackUserIds
-  );
-
-  // Step 3: send alert
-  await this.authStore.sendSlackMessage(
-    botToken,
-    channelId,
-    "🚨 New vulnerability detected"
-  );
-    },
-    // slack end
-
-    // ✅ Jira OAuth Login
-    async startJiraLogin() {
-      try {
-        const res = await this.authStore.getJiraAuthUrl();
-
-        if (res.status && res.url) {
-          // Store state for verification
-          localStorage.setItem("jira_oauth_state", res.state);
-
-          // Open Jira OAuth in new tab (not popup)
-          window.open(res.url, "_blank");
-        } else {
-          Swal.fire("Error", res.message || "Failed to start Jira login", "error");
-        }
-      } catch (err) {
-        console.error("Jira login error:", err);
-        Swal.fire("Error", "Jira login failed", "error");
-      }
-    },
-    // ✅ Handle Jira Connected Event
-    onJiraConnected(event) {
-      if (event.data?.type === "JIRA_CONNECTED") {
-        this.jiraConnected = true;
-        this.fetchJiraResources();
-        this.fetchJiraUser();
-        Swal.fire({
-          icon: "success",
-          title: "Jira Connected",
-          text: "Jira has been connected successfully!",
-          timer: 2000,
-          showConfirmButton: false
-        });
-      }
-    },
-    // ✅ Validate Jira Token (with auto-refresh on expiry)
-    async checkJiraConnection() {
-      const jiraToken = localStorage.getItem("jira_access_token");
-      if (!jiraToken) return;
-
-      const res = await this.authStore.validateJiraToken(jiraToken);
-      if (res.valid) {
-        this.jiraConnected = true;
-        this.selectedProject = "jira";
-        this.fetchJiraResources();
-        this.fetchJiraUser();
-        return;
-      }
-
-      // Token invalid — try refreshing
-      const refreshToken = localStorage.getItem("jira_refresh_token");
-      if (refreshToken) {
-        const refreshRes = await this.authStore.refreshJiraToken(refreshToken);
-        if (refreshRes.status) {
-          // Refresh succeeded — validate new token
-          this.jiraConnected = true;
-          this.selectedProject = "jira";
-          this.fetchJiraResources();
-          this.fetchJiraUser();
-          return;
-        }
-      }
-
-      // Refresh also failed — clear and ask to reconnect
-      localStorage.removeItem("jira_access_token");
-      localStorage.removeItem("jira_refresh_token");
-      localStorage.removeItem("jira_oauth_state");
-      this.jiraConnected = false;
-      this.selectedProject = null;
-      Swal.fire({
-        icon: "warning",
-        title: "Jira Session Expired",
-        text: "Please reconnect Jira to continue.",
-        confirmButtonColor: "#5a44ff",
-      });
-    },
-    // ✅ Fetch Jira Resources (Cloud IDs)
-    async fetchJiraResources() {
-      const res = await this.authStore.getJiraResources();
-      if (res.status) {
-        this.jiraResources = res.data;
-        this.jiraConnected = true;
-      }
-    },
-    // ✅ Fetch Jira Connected User Info
-    async fetchJiraUser() {
-      const res = await this.authStore.getJiraUser();
-      if (res.status) {
-        this.jiraUser = res.user;
-      }
     },
   },
   mounted() {
-    window.addEventListener("message", this.onTeamsConnected);
-    window.addEventListener("storage", this.onStorageChange);
-
-    const graphToken = localStorage.getItem("microsoft_graph_token");
-    if (graphToken) {
-      this.selectedCommunication = "teams";
-
-      // Restore saved channels from login response immediately
-      const savedChannels = localStorage.getItem("vaptfix_channels");
-      if (savedChannels) {
-        this.channels = JSON.parse(savedChannels);
-      }
-
-      this.fetchTeams(); // will also re-fetch fresh channels via fetchChannels()
-    }
-
-    window.addEventListener("message", this.handleSlackMessage);
-    console.log("Slack message listener attached");
-
-    // Check if Slack already connected
-    const slackBotToken = localStorage.getItem("slack_bot_token");
-    if (slackBotToken) {
-      this.slackConnected = true;
-      this.selectedCommunication = "slack";
-      this.checkSlackConnection();
-      this.fetchSlackChannels();
-      this.fetchSlackUsers();
-    }
-
-
-    // ✅ Jira event listener
-    window.addEventListener("message", this.onJiraConnected);
-
-    // Check if Jira already connected (or just returned from OAuth callback)
-    const jiraToken = localStorage.getItem("jira_access_token");
-    if (jiraToken) {
-      this.checkJiraConnection();
-    } else if (this.$route.query.jira_connected === "true") {
-      // Returned from backend redirect after server-side token exchange
-      const storedToken = localStorage.getItem("jira_access_token");
-      if (storedToken) {
-        this.jiraConnected = true;
-        this.selectedProject = "jira";
-        this.fetchJiraResources();
-        this.fetchJiraUser();
-      }
-      // Clean query param from URL
-      this.$router.replace({ query: {} });
-    }
-
     document.addEventListener("click", this.closeOnOutside);
-    console.log("Route query:", this.$route.query);
-    this.initChipSelection();
     const user =
       this.authStore.user ||
       JSON.parse(localStorage.getItem("user") || "null");
@@ -1446,384 +588,12 @@ export default {
   },
   beforeUnmount() {
     document.removeEventListener("click", this.closeOnOutside);
-     window.removeEventListener("message", this.handleSlackMessage);
-    window.removeEventListener("message", this.onTeamsConnected);
-    window.removeEventListener("message", this.onJiraConnected);
-    window.removeEventListener("storage", this.onStorageChange);
   },
-
 };
 </script>
 
-
 <style scoped>
-  .invite-link.disabled {
-  cursor: default;
-  /* pointer-events: none; */
-  background: #f9fafb;
-  color: #9ca3af;
-}
-
-.chip.disabled {
-  opacity: 0.45;
-  pointer-events: none;
-  background: #f3f4f6;
-  border-color: #d1d5db;
-  box-shadow: none;
-}
-
-.invite-link {
-  cursor: pointer;
-  background: #f9fafb;
-}
-
-.invite-link:focus {
-  box-shadow: 0 0 0 3px rgba(90, 68, 255, 0.25);
-}
-
-/* new add css */
-.dropdown-list {
-  position: absolute;
-  background: #fff;
-  border: 1px solid #e6e9f2;
-  border-radius: 12px;
-  padding: 8px;
-  width: 100%;
-  z-index: 20;
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.08);
-}
-
-.dropdown-list label {
-  display: flex;
-  gap: 8px;
-  font-size: 13px;
-  padding: 6px;
-  cursor: pointer;
-}
-
-.dropdown-list label:hover {
-  background: #f5f6ff;
-}
-
-/* existing css */
-
-.topbar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 64px;
-  background: #F3F5FA;
-  border-bottom: 1px solid #e6e9f2;
-  display: flex;
-  align-items: center;
-  padding: 0 32px;
-  z-index: 1000;
-}
-
-.app {
-  display: flex;
-}
-
-/* ===== CONTENT ===== */
-
-.content {
-  margin-left: 260px;
-  /* space for stepper */
-  margin-top: 64px;
-  /* space for topbar */
-  height: calc(100vh - 64px);
-  overflow-y: auto;
-  padding: 48px 64px;
-}
-
-.content h1 {
-  font-size: 26px;
-  font-weight: 700;
-  margin-bottom: 6px;
-}
-
-.content p {
-  color: #6b7280;
-  margin-bottom: 48px;
-}
-
-/* ===== SECTION ===== */
-.section {
-  margin-bottom: 48px;
-}
-
-.section-title {
-  font-size: 15px;
-  font-weight: 600;
-  margin-bottom: 16px;
-}
-
-/* ===== INTEGRATION CHIPS ===== */
-.chip-group {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.chip {
-  padding: 14px 22px;
-  border-radius: 14px;
-  border: 1.5px solid #e6e9f2;
-  background: #fff;
-  font-size: 14px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 210px;
-  justify-content: center;
-  transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
-  /* box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08); */
-  box-shadow: 10px 10px 22px rgba(15, 23, 42, 0.08);
-}
-
-
-.chip:hover {
-  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
-  transform: translateY(-2px);
-}
-
-
-.chip.active {
-  border-color: #5a44ff;
-  background: rgba(90, 68, 255, 0.06);
-  font-weight: 600;
-  box-shadow: 0 8px 18px rgba(90, 68, 255, 0.2);
-}
-
-.chip img {
-  width: 22px;
-  height: 22px;
-}
-
-.location-circle {
-  margin-top: 4px;
-}
-
-/* ===== FORMS ===== */
-.form-control,
-.form-select {
-  border-radius: 12px;
-  padding: 14px;
-  font-size: 14px;
-  box-shadow: 10px 10px 22px rgba(15, 23, 42, 0.08);
-}
-
-.form-control:focus,
-.form-select:focus {
-  border-color: #5a44ff;
-  /* box-shadow: 0 0 0 3px rgba(90, 68, 255, 0.15); */
-  box-shadow: 10px 10px 22px rgba(15, 23, 42, 0.08);
-}
-
-.row-users {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1.6fr 1.2fr;
-  gap: 14px;
-}
-
-.row-invite {
-  display: grid;
-  grid-template-columns: 1fr 1fr 2fr;
-  gap: 14px;
-}
-
-/* ===== CTA ===== */
-.cta {
-  margin-top: 64px;
-  text-align: right;
-}
-
-.btn-primary {
-  background: #5a44ff;
-  border: none;
-  border-radius: 14px;
-  padding: 16px 36px;
-  font-weight: 600;
-  font-size: 15px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  box-shadow: 0 10px 22px rgba(90, 68, 255, 0.28);
-}
-
-.btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 22px rgba(90, 68, 255, 0.38);
-}
-
-.chip,
-.form-control,
-.form-select,
-.btn-primary {
-  transition:
-    box-shadow 0.25s ease,
-    transform 0.25s ease,
-    border-color 0.25s ease;
-}
-.chip:hover {
-  transform: translateY(-2px);
-}
-
-/* ===== RESPONSIVE ===== */
-/* iPad Air */
-@media (max-width: 992px) {
-  .app {
-    grid-template-columns: 720px;
-    justify-content: center;
-  }
-  .content {
-    margin-left: 0;
-    margin-top: 180px;
-    height: auto;
-    padding: 20px 40px;
-  }
-  .row-invite {
-    grid-template-columns: 1fr;
-  }
-  .row-users {
-    grid-template-columns:
-      minmax(95px, 2fr)
-      minmax(70px, 2fr)
-      minmax(70px, 2fr)
-      minmax(125px, 3fr)
-      minmax(118px, 3fr)
-      minmax(110px, 2.5fr);
-    gap: 5px;
-  }
-  .btn-primary {
-    padding: 13px 29px;
-  }
-  .row-invite[data-v-9a2bf7bb] {
-    grid-template-columns: 1fr 1fr 2fr;
-    gap: 5px;
-  }
-  .location-circle {
-    margin-top: 3px;
-  }
-}
-
-/* iPad Pro */
-@media (max-width: 1200px) {
-  .chip-group {
-    display: flex;
-    gap: 15px;
-    flex-wrap: wrap;
-  }
-  .content {
-    margin-left: 10px;
-    margin-top: 210px;
-    height: auto;
-  }
-  .cta {
-    margin-top: 174px;
-  }
-}
-
-
-/* iPad Mini */
-@media (max-width: 768px) {
-  .chip-group {
-    display: flex;
-    gap: 5px;
-    flex-wrap: wrap;
-  }
-}
-
-
-/* ── Jira Connected User ── */
-.jira-user-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  border: 1.5px solid #d1fae5;
-  border-radius: 12px;
-  background: #f0fdf4;
-}
-
-.jira-user-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.jira-user-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: #111827;
-}
-
-.jira-user-email {
-  font-size: 12px;
-  color: #6b7280;
-}
-
-.jira-user-badge {
-  margin-left: auto;
-  font-size: 12px;
-  font-weight: 600;
-  color: #16a34a;
-}
-
-/* ── Jira Cloud Resources ── */
-.jira-resources-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: #374151;
-}
-
-.jira-resource-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.jira-resource-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  border: 1.5px solid #e6e9f2;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: border-color 0.2s, background 0.2s;
-  background: #fff;
-}
-
-.jira-resource-item:hover {
-  border-color: #5a44ff;
-  background: #f5f4ff;
-}
-
-.jira-resource-item.active {
-  border-color: #5a44ff;
-  background: #f0eeff;
-}
-
-.jira-resource-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  object-fit: cover;
-}
-
-.jira-resource-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: #111827;
-}
-
-.jira-resource-url {
-  font-size: 12px;
-  color: #6b7280;
-}
-/* ── LocationView New Design ── */
+/* LocationView */
 .loc-main { background: #f4f5f8; min-height: 100vh; font-family: 'Inter', sans-serif; }
 
 /* Topbar */
@@ -1843,7 +613,7 @@ export default {
 .loc-avatar { width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,0.15); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 700; border: 1.5px solid rgba(255,255,255,0.3); }
 
 /* Page */
-.loc-page { max-width: 960px; margin: 0 auto; padding: 84px 20px 60px; }
+.loc-page { max-width: 1080px; margin: 0 auto; padding: 84px 24px 60px; }
 
 /* Stepper */
 .loc-stepper-row { display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 28px; }
@@ -1865,8 +635,8 @@ export default {
 .loc-line-done { background: #0f696e; }
 
 /* Layout */
-.loc-layout { display: grid; grid-template-columns: 1fr 260px; gap: 24px; align-items: flex-start; }
-.loc-sidebar { padding-top: 100px; }
+.loc-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 28px; align-items: start; }
+.loc-sidebar { position: sticky; top: 84px; }
 
 /* Content */
 .loc-page-header { margin-bottom: 24px; }
@@ -1925,59 +695,196 @@ export default {
 .loc-jira-res-name { font-size: 0.82rem; font-weight: 700; color: #1e293b; }
 .loc-jira-res-url { font-size: 0.72rem; color: #64748b; }
 
-/* Form */
-.loc-form-row { display: grid; grid-template-columns: 120px 1fr 1fr 180px; gap: 12px; margin-bottom: 12px; align-items: flex-start; }
-.loc-form-group { display: flex; flex-direction: column; gap: 4px; position: relative; }
-.loc-form-type { min-width: 0; }
-.loc-form-name { min-width: 0; }
-.loc-form-role { min-width: 0; }
-.loc-users-added-card {
+/* Add member form — stacked fields (Get Started style) */
+.loc-member-section .loc-section-header { margin-bottom: 18px; }
+.loc-member-form { display: flex; flex-direction: column; gap: 2px; width: 100%; }
+.loc-field-group { margin-bottom: 10px; position: relative; }
+.loc-field-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #41454b;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+.loc-input-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.loc-input-row-clickable { cursor: pointer; }
+.loc-field-icon {
+  position: absolute;
+  left: 14px;
+  color: #9ca3af;
+  font-size: 16px;
+  z-index: 1;
+  pointer-events: none;
+}
+.loc-field-chevron {
+  position: absolute;
+  right: 14px;
+  color: #9ca3af;
+  font-size: 12px;
+  pointer-events: none;
+}
+.loc-field-input {
+  width: 100%;
+  height: 42px;
+  padding: 0 36px 0 42px;
+  background: #f3f4f6;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #111827;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.loc-field-input:focus {
+  outline: none;
+  background: #ededf8;
+  box-shadow: 0 0 0 2px rgba(36, 20, 71, 0.15);
+}
+.loc-field-input::placeholder { color: #9ca3af; }
+.loc-field-select {
+  appearance: none;
+  cursor: pointer;
+}
+.loc-field-role-display {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: none;
+}
+.loc-field-role-display.is-placeholder { color: #9ca3af; }
+.loc-submit-btn {
+  width: 100%;
+  height: 46px;
+  margin-top: 8px;
   background: #241447;
   color: #fff;
-  border-radius: 14px;
-  padding: 14px;
-  min-height: 142px;
-  margin-top: 190px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
 }
-.loc-users-added-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.loc-users-added-title { font-size: 0.88rem; font-weight: 700; }
-.loc-users-added-count { background: rgba(161, 236, 242, 0.24); color: #a1ecf2; border-radius: 999px; padding: 2px 8px; font-size: 0.74rem; font-weight: 700; }
-.loc-users-added-list {
+.loc-submit-btn:hover { background: #1a0f38; }
+
+/* Users sidebar panel */
+.loc-users-panel {
+  background: #fff;
+  border: 1px solid #e8ecf2;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 2px 12px rgba(36, 20, 71, 0.06);
+}
+.loc-users-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.loc-users-panel-title-wrap { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.loc-users-panel-icon { color: #241447; font-size: 1rem; flex-shrink: 0; }
+.loc-users-panel-title {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #1e293b;
+}
+.loc-users-panel-count {
+  flex-shrink: 0;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #241447;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.loc-users-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  max-height: 220px;
+  gap: 10px;
+  max-height: calc(100vh - 220px);
   overflow-y: auto;
   overflow-x: hidden;
-  padding-right: 4px;
 }
-.loc-users-added-list::-webkit-scrollbar { width: 5px; }
-.loc-users-added-list::-webkit-scrollbar-thumb {
-  background: rgba(161,236,242,0.45);
-  border-radius: 10px;
+.loc-users-list::-webkit-scrollbar { width: 5px; }
+.loc-users-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+.loc-user-card {
+  background: #f8f9fc;
+  border: 1px solid #eef2f7;
+  border-radius: 12px;
+  padding: 12px;
 }
-.loc-users-added-list::-webkit-scrollbar-track { background: transparent; }
-.loc-users-added-item { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 8px; background: rgba(255,255,255,0.09); border: 1px solid rgba(161,236,242,0.25); border-radius: 10px; padding: 8px; }
-.loc-users-added-initials { width: 30px; height: 30px; border-radius: 50%; background: #a1ecf2; color: #241447; font-size: 0.7rem; font-weight: 800; display: flex; align-items: center; justify-content: center; }
-.loc-users-added-meta { min-width: 0; }
-.loc-users-added-name { margin: 0; font-size: 0.8rem; font-weight: 700; color: #fff; line-height: 1.2; }
-.loc-users-added-empty { border: 1px dashed rgba(161,236,242,0.35); border-radius: 10px; padding: 14px 10px; text-align: center; font-size: 0.76rem; color: rgba(255,255,255,0.78); }
-.loc-form-label { font-size: 0.65rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; }
-.loc-input {
-  border: 1px solid #e2e8f0; border-radius: 8px; padding: 9px 12px;
-  font-size: 0.85rem; color: #1e293b; background: #fff; outline: none;
-  transition: border-color 0.15s;
+.loc-user-card-top { display: flex; align-items: flex-start; gap: 10px; }
+.loc-user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #241447 0%, #0f696e 100%);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
-.loc-input:focus { border-color: #0f696e; box-shadow: 0 0 0 2px rgba(15,105,110,0.1); }
-.loc-select {
-  border: 1px solid #e2e8f0; border-radius: 8px; padding: 9px 12px;
-  font-size: 0.85rem; color: #1e293b; background: #fff; outline: none;
-  appearance: none; cursor: pointer;
+.loc-user-details { min-width: 0; flex: 1; }
+.loc-user-name {
+  margin: 0 0 2px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.3;
+  word-break: break-word;
 }
-.loc-select:focus { border-color: #0f696e; }
-.loc-select-custom { display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; overflow: hidden; }
-.loc-select-arrow { font-size: 0.7rem; color: #94a3b8; flex-shrink: 0; margin-left: 4px; }
-.loc-role-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; font-size: 0.85rem; color: #1e293b; }
+.loc-user-email {
+  margin: 0;
+  font-size: 0.72rem;
+  color: #64748b;
+  line-height: 1.35;
+  word-break: break-all;
+}
+.loc-user-card-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #e2e8f0;
+}
+.loc-users-empty {
+  text-align: center;
+  padding: 28px 12px;
+  border: 1px dashed #e2e8f0;
+  border-radius: 12px;
+  background: #fafbfc;
+}
+.loc-users-empty-icon { font-size: 1.5rem; color: #cbd5e1; display: block; margin-bottom: 8px; }
+.loc-users-empty-text { margin: 0 0 4px; font-size: 0.82rem; font-weight: 700; color: #64748b; }
+.loc-users-empty-hint { margin: 0; font-size: 0.72rem; color: #94a3b8; }
 .loc-dropdown-list {
   position: fixed;
   background: #fff;
@@ -1992,41 +899,33 @@ export default {
 .loc-dropdown-item { display: flex; align-items: center; padding: 8px 10px; font-size: 0.82rem; cursor: pointer; border-radius: 6px; white-space: nowrap; color: #1e293b; font-weight: 500; }
 .loc-dropdown-item:hover { background: #f0fdf9; color: #0f696e; }
 
-.loc-email-row { display: flex; align-items: center; gap: 12px; }
-.loc-email-input { flex: 1; }
-
-.loc-users-added-email {
-  font-size: 11px;
-  color: #94a3b8;
-  margin: 0;
-}
 .loc-slack-badge {
   display: inline-flex;
   align-items: center;
+  gap: 4px;
   font-size: 10px;
   font-weight: 700;
-  padding: 2px 8px;
+  padding: 3px 8px;
   border-radius: 20px;
-  margin-top: 3px;
 }
 .loc-slack-synced  { background: #dcfce7; color: #15803d; }
 .loc-slack-pending { background: #fef3c7; color: #b45309; }
 .loc-slack-failed  { background: #fee2e2; color: #dc2626; }
 .loc-resync-btn {
   margin-left: auto;
-  background: #f0f9ff;
-  border: 1.5px solid #7dd3fc;
+  background: #fff;
+  border: 1px solid #7dd3fc;
   color: #0369a1;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   border-radius: 8px;
-  padding: 4px 10px;
+  padding: 4px 8px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  gap: 4px;
   transition: background 0.15s;
   white-space: nowrap;
-  flex-shrink: 0;
 }
 .loc-resync-btn:hover { background: #e0f2fe; }
 .loc-resync-btn:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -2050,24 +949,6 @@ export default {
 }
 .loc-btn-continue:hover { opacity: 0.88; }
 
-/* Sidebar */
-.loc-sidebar { display: flex; flex-direction: column; gap: 16px; }
-
-/* Integration Help */
-.loc-help-card {
-  background: #241447; border-radius: 14px; padding: 20px;
-  color: #fff;
-}
-.loc-help-header { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
-.loc-help-icon { color: #a1ecf2; font-size: 1rem; }
-.loc-help-title { font-size: 0.95rem; font-weight: 700; }
-.loc-help-item { display: flex; align-items: flex-start; gap: 8px; font-size: 0.78rem; line-height: 1.5; }
-.loc-help-item-icon { color: #a1ecf2; flex-shrink: 0; margin-top: 2px; }
-.loc-help-bold { font-weight: 700; color: #fff; }
-.loc-help-text { color: rgba(255,255,255,0.75); }
-.loc-help-link { display: inline-flex; align-items: center; margin-top: 16px; font-size: 0.72rem; font-weight: 700; color: #a1ecf2; text-decoration: none; letter-spacing: 0.06em; }
-.loc-help-link:hover { text-decoration: underline; color: #a1ecf2; }
-
 /* Pending Setup */
 .loc-pending-card { background: #fff; border-radius: 14px; padding: 18px; border: 1px solid #f1f5f9; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
 .loc-pending-title { font-size: 0.9rem; font-weight: 700; color: #1e293b; margin: 0 0 12px; }
@@ -2079,7 +960,9 @@ export default {
 .flex-1 { flex: 1; }
 
 @media (max-width: 992px) {
-  .loc-users-added-card { min-height: auto; margin-top: 0; }
+  .loc-layout { grid-template-columns: 1fr; }
+  .loc-sidebar { position: static; }
+  .loc-users-list { max-height: 320px; }
 }
 
 /* Slack Integration Styles */

@@ -124,6 +124,7 @@
       :userInitialTab="signUpUserInitialTab"
       :setPasswordUidb64="setPasswordUidb64"
       :setPasswordToken="setPasswordToken"
+      :setPasswordEmail="setPasswordEmail"
       @close="closeSignUpModal"
       @open-signin="handleOpenSignInFromSignUp"
       @open-admin-signup="handleOpenAdminSignUpFromSignIn"
@@ -157,6 +158,7 @@ export default {
       signUpUserInitialTab: '',
       setPasswordUidb64: '',
       setPasswordToken: '',
+      setPasswordEmail: '',
       showAdminSignUpModal: false
     };
   },
@@ -201,6 +203,7 @@ export default {
       this.signUpUserInitialTab = 'setPassword';
       this.setPasswordUidb64 = uid;
       this.setPasswordToken = token;
+      this.setPasswordEmail = pick(q.email);
       this.showSignUpModal = true;
       this.$nextTick(() => {
         this.$router.replace({ path: '/home' });
@@ -211,6 +214,7 @@ export default {
       this.signUpUserInitialTab = '';
       this.setPasswordUidb64 = '';
       this.setPasswordToken = '';
+      this.setPasswordEmail = '';
       this.showSignUpModal = true;
     },
     closeSignUpModal() {
@@ -219,6 +223,7 @@ export default {
       this.signUpUserInitialTab = '';
       this.setPasswordUidb64 = '';
       this.setPasswordToken = '';
+      this.setPasswordEmail = '';
     },
     openAdminSignUpModal() {
       this.showAdminSignUpModal = true;
@@ -232,6 +237,7 @@ export default {
       this.signUpUserInitialTab = '';
       this.setPasswordUidb64 = '';
       this.setPasswordToken = '';
+      this.setPasswordEmail = '';
       this.showSignUpModal = true;
     },
     handleOpenSignInFromAdminSignUp() {
@@ -240,6 +246,7 @@ export default {
       this.signUpUserInitialTab = '';
       this.setPasswordUidb64 = '';
       this.setPasswordToken = '';
+      this.setPasswordEmail = '';
       this.showSignUpModal = true;
     },
     handleOpenAdminSignUpFromSignIn() {

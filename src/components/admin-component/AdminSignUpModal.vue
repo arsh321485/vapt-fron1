@@ -104,6 +104,46 @@
               Send OTP
             </button>
 
+            <div class="social-divider">
+              <span class="social-divider-line"></span>
+              <span class="social-divider-text">or</span>
+              <span class="social-divider-line"></span>
+            </div>
+
+            <div class="social-signup-btns">
+              <button
+                v-if="!slackConnected"
+                type="button"
+                class="social-btn social-btn-slack"
+                :disabled="isSlackDisabled"
+                @click.prevent="startSlackLogin"
+              >
+                <img :src="slackIcon" alt="" class="social-btn-icon" />
+                Sign up with Slack
+              </button>
+              <div v-else class="social-connected-btn social-connected-slack">
+                <img :src="slackIcon" alt="" class="social-btn-icon" />
+                <i class="bi bi-check-circle-fill"></i>
+                Slack connected
+              </div>
+
+              <button
+                v-if="!teamsConnected"
+                type="button"
+                class="social-btn social-btn-teams"
+                :disabled="isTeamsDisabled"
+                @click.prevent="startMicrosoftLogin"
+              >
+                <img :src="teamsIcon" alt="" class="social-btn-icon" />
+                Sign up with Microsoft Teams
+              </button>
+              <div v-else class="social-connected-btn social-connected-teams">
+                <img :src="teamsIcon" alt="" class="social-btn-icon" />
+                <i class="bi bi-check-circle-fill"></i>
+                Microsoft Teams connected
+              </div>
+            </div>
+
             <!-- Already have account -->
             <p class="footer-text">
               Already have an account?
@@ -165,6 +205,8 @@
 <script>
 import { useAuthStore } from '@/stores/authStore';
 import Swal from 'sweetalert2';
+import teamsIcon from '@/assets/images/teams.png';
+import slackIcon from '@/assets/images/slack.png';
 
 export default {
   name: 'AdminSignUpModal',
@@ -176,6 +218,7 @@ export default {
   },
   data() {
     return {
+      authStore: useAuthStore(),
       form: { email: '', password: '', confirm_password: '' },
       showPassword: false,
       showConfirmPassword: false,
@@ -186,10 +229,21 @@ export default {
       recaptchaToken: '',
       recaptchaWidgetId: null,
       recaptchaKey: 0,
-      recaptchaSiteKey: '6LevYjAsAAAAAH5H0o33_0IvZAbvvOiZ82ZwA8ny'
+      recaptchaSiteKey: '6LevYjAsAAAAAH5H0o33_0IvZAbvvOiZ82ZwA8ny',
+      slackIcon,
+      teamsIcon,
+      slackConnected: false,
+      teamsConnected: false,
+      backendBase: 'https://vaptbackend.secureitlab.com'
     };
   },
   computed: {
+    isSlackDisabled() {
+      return this.teamsConnected && !this.slackConnected;
+    },
+    isTeamsDisabled() {
+      return this.slackConnected && !this.teamsConnected;
+    },
     recaptchaContainerId() {
       return `recaptcha-signup-modal-${this.recaptchaKey}`;
     },
@@ -213,12 +267,21 @@ export default {
   watch: {
     show(newVal) {
       if (newVal) {
-        this.$nextTick(() => this.renderRecaptcha());
+        this.$nextTick(() => {
+          this.renderRecaptcha();
+          this.syncPlatformConnectionState();
+        });
       }
     }
   },
   mounted() {
     this.loadRecaptchaScript();
+    window.addEventListener('message', this.onTeamsConnected);
+    window.addEventListener('message', this.handleSlackMessage);
+    window.addEventListener('storage', this.onStorageChange);
+    if (this.show) {
+      this.$nextTick(() => this.renderRecaptcha());
+    }
   },
   methods: {
     closeModal() {
@@ -362,9 +425,235 @@ export default {
     goToSignIn() {
       this.$emit('close');
       this.$emit('open-signin');
+    },
+    getAdminId() {
+      return this.authStore.user?._id || this.authStore.user?.id || null;
+    },
+    checkTeamsConnection() {
+      const graphToken = localStorage.getItem('microsoft_graph_token');
+      const teamsFlag = localStorage.getItem('teams_connected') === 'true';
+      this.teamsConnected = !!(graphToken || teamsFlag);
+    },
+    async syncPlatformConnectionState() {
+      const slackToken = localStorage.getItem('slack_bot_token');
+      if (slackToken) {
+        await this.checkSlackConnection();
+      } else {
+        this.slackConnected = false;
+      }
+      this.checkTeamsConnection();
+      if (this.slackConnected && this.teamsConnected) {
+        this.teamsConnected = false;
+      }
+    },
+  // —— Slack / Teams: same as LocationView (/communication) ——
+    async startMicrosoftLogin() {
+      if (this.teamsConnected || this.isTeamsDisabled) return;
+      try {
+        const redirectUri = `${window.location.origin}/microsoft/callback`;
+        const adminId = this.getAdminId();
+        const res = await this.authStore.getMicrosoftOAuthUrl(redirectUri, adminId);
+        if (res.status && res.data.auth_url) {
+          window.open(res.data.auth_url, '_blank');
+        } else {
+          Swal.fire('Error', 'Failed to start Microsoft login', 'error');
+        }
+      } catch (err) {
+        console.error('Microsoft login error:', err);
+        Swal.fire('Error', 'Microsoft login failed', 'error');
+      }
+    },
+    async onTeamsConnected(event) {
+      const allowedOrigins = [
+        window.location.origin,
+        'https://vaptbackend.secureitlab.com'
+      ];
+      if (!allowedOrigins.includes(event.origin)) return;
+      if (event.data?.type !== 'TEAMS_CONNECTED') return;
+
+      const graphToken = event.data.tokens?.access_token;
+      const teamObj = event.data.vaptfix_team || null;
+      const tenantId = event.data.tokens?.tenant_id;
+
+      if (graphToken) localStorage.setItem('microsoft_graph_token', graphToken);
+      if (teamObj) localStorage.setItem('vaptfix_team', JSON.stringify(teamObj));
+      if (event.data.django_access_token) {
+        localStorage.setItem('django_access_token', event.data.django_access_token);
+      }
+      if (tenantId) localStorage.setItem('microsoft_tenant_id', tenantId);
+
+      if (teamObj) {
+        const channels = teamObj.channels || [];
+        localStorage.setItem('vaptfix_channels', JSON.stringify(channels));
+      }
+
+      localStorage.setItem('teams_connected', 'true');
+      this.teamsConnected = true;
+      this.slackConnected = false;
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Microsoft Teams connected successfully',
+        timer: 2000,
+        showConfirmButton: false
+      });
+
+      const teamId = teamObj?.team_id || teamObj?.id;
+      if (teamId && typeof this.authStore.subscribeTeamsWebhook === 'function') {
+        await this.authStore.subscribeTeamsWebhook(teamId);
+      }
+
+      this.maybeFinishSignupAfterOAuth();
+    },
+    onStorageChange(event) {
+      if (event.key === 'microsoft_graph_token' && event.newValue) {
+        this.teamsConnected = true;
+        this.slackConnected = false;
+        Swal.fire({
+          icon: 'success',
+          title: 'Microsoft Teams Connected',
+          timer: 2000,
+          showConfirmButton: false
+        });
+        this.maybeFinishSignupAfterOAuth();
+      }
+    },
+    async startSlackLogin() {
+      if (this.slackConnected || this.isSlackDisabled) return;
+      try {
+        const adminId = this.getAdminId();
+        const res = await this.authStore.getSlackOAuthUrl(this.backendBase, adminId);
+
+        if (res.status && res.data?.auth_url) {
+          const width = 1000;
+          const height = 700;
+          const left = window.screenX + (window.outerWidth - width) / 2;
+          const top = window.screenY + (window.outerHeight - height) / 2;
+
+          const popup = window.open(
+            res.data.auth_url,
+            'SlackOAuth',
+            `width=${width},height=${height},left=${left},top=${top}`
+          );
+
+          if (!popup) {
+            alert('Popup blocked! Please allow popups for this site.');
+          }
+        } else {
+          Swal.fire('Error', 'Unable to start Slack login', 'error');
+        }
+      } catch (error) {
+        Swal.fire('Error', 'Something went wrong while connecting Slack', 'error');
+      }
+    },
+    handleSlackMessage(event) {
+      const allowedOrigins = [
+        window.location.origin,
+        'https://vaptbackend.secureitlab.com'
+      ];
+
+      if (!allowedOrigins.includes(event.origin)) {
+        return;
+      }
+
+      if (event.data?.type === 'SLACK_CONNECTED') {
+        if (event.data.bot_token) {
+          localStorage.setItem('slack_bot_token', event.data.bot_token);
+        }
+        if (event.data.slack_user_id) {
+          localStorage.setItem('slack_user_id', event.data.slack_user_id);
+        }
+        if (event.data.django_access_token) {
+          localStorage.setItem('django_access_token', event.data.django_access_token);
+        }
+
+        this.onSlackConnected();
+      }
+    },
+    async onSlackConnected() {
+      await this.checkSlackConnection();
+      await this.fetchSlackChannels();
+      await this.fetchSlackUsers();
+
+      if (this.slackConnected) {
+        this.teamsConnected = false;
+        Swal.fire({
+          icon: 'success',
+          title: 'Slack connected successfully',
+          timer: 2000,
+          showConfirmButton: false
+        });
+      }
+
+      this.maybeFinishSignupAfterOAuth();
+    },
+    async checkSlackConnection() {
+      try {
+        const botToken = localStorage.getItem('slack_bot_token');
+        if (!botToken) return;
+
+        const res = await this.authStore.validateSlackToken(botToken);
+        this.slackConnected = !!res.success;
+      } catch (err) {
+        console.error('Slack validation error:', err);
+        this.slackConnected = false;
+      }
+    },
+    async fetchSlackChannels() {
+      try {
+        const res = await this.authStore.listSlackChannels();
+        if (res.status) {
+          localStorage.setItem('slack_channels', JSON.stringify(res.channels || []));
+        }
+      } catch (err) {
+        console.error('Slack channels fetch error:', err);
+      }
+    },
+    async fetchSlackUsers() {
+      try {
+        const botToken = localStorage.getItem('slack_bot_token');
+        if (!botToken) return;
+
+        const res = await this.authStore.listSlackUsers(botToken);
+        if (res.status) {
+          localStorage.setItem('slack_users', JSON.stringify(res.users || []));
+        }
+      } catch (err) {
+        console.error('Slack users error:', err);
+      }
+    },
+    maybeFinishSignupAfterOAuth() {
+      const hasSession =
+        this.authStore.authenticated ||
+        sessionStorage.getItem('authorization') ||
+        sessionStorage.getItem('authenticated') === 'true';
+
+      if (!hasSession) {
+        const djangoToken = localStorage.getItem('django_access_token');
+        const localUserRaw = localStorage.getItem('local_user');
+        if (djangoToken) {
+          const localUser = localUserRaw ? JSON.parse(localUserRaw) : null;
+          this.authStore.setAuth(djangoToken, localUser || this.authStore.user || {});
+          sessionStorage.setItem('authenticated', 'true');
+        }
+      }
+
+      const loggedIn =
+        this.authStore.authenticated ||
+        sessionStorage.getItem('authorization');
+
+      if (!loggedIn) return;
+
+      sessionStorage.setItem('isNewUser', 'true');
+      this.resetForm();
+      this.$emit('close');
+      this.$router.push('/scoping-form-2');
     }
   },
   beforeUnmount() {
+    window.removeEventListener('message', this.onTeamsConnected);
+    window.removeEventListener('message', this.handleSlackMessage);
+    window.removeEventListener('storage', this.onStorageChange);
     try {
       if (window.grecaptcha && this.recaptchaWidgetId !== null) window.grecaptcha.reset(this.recaptchaWidgetId);
     } catch (e) {}
@@ -399,7 +688,7 @@ export default {
 /* Panel */
 .signup-panel {
   width: 100%;
-  max-width: 440px;
+  max-width: 620px;
   animation: slideDown 0.22s ease;
 }
 
@@ -412,19 +701,12 @@ export default {
 .modal-content {
   background: #ffffff;
   border-radius: 20px;
-  padding: 20px 28px 24px;
-  padding-top: 38px;
+  padding: 16px 32px 20px;
+  padding-top: 34px;
   position: relative;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-  max-height: 92vh;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: visible;
 }
-
-.modal-content::-webkit-scrollbar { width: 4px; }
-.modal-content::-webkit-scrollbar-track { background: transparent; }
-.modal-content::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 10px; }
-.modal-content { scrollbar-width: thin; scrollbar-color: rgba(0,0,0,0.12) transparent; }
 
 /* Close Button */
 .btn-close-x {
@@ -450,25 +732,26 @@ export default {
 /* Header */
 .signup-header {
   text-align: center;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 .form-title {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   color: #0f172a;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 .form-subtitle {
-  font-size: 13px;
+  font-size: 12px;
   color: #6b7280;
   margin: 0;
+  line-height: 1.4;
 }
 
 /* Divider */
 .form-divider {
   border: none;
   border-top: 2px solid #241447;
-  margin: 0 0 14px 0;
+  margin: 0 0 10px 0;
   opacity: 1;
 }
 
@@ -479,7 +762,7 @@ export default {
 }
 
 /* Field Group */
-.field-group { margin-bottom: 12px; }
+.field-group { margin-bottom: 8px; }
 
 .field-label {
   display: block;
@@ -507,7 +790,7 @@ export default {
 }
 .field-input {
   width: 100%;
-  height: 48px;
+  height: 42px;
   padding: 0 16px 0 42px;
   background: #f3f4f6;
   border: none;
@@ -536,11 +819,11 @@ export default {
 
 /* Password Rules */
 .pwd-rules {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  font-size: 12px;
-  margin-top: 8px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 12px;
+  font-size: 11px;
+  margin-top: 6px;
 }
 .pwd-rule { display: flex; align-items: center; gap: 6px; transition: all 0.2s; }
 .pwd-rule-fail { color: #dc3545; }
@@ -548,13 +831,18 @@ export default {
 .pwd-rule i { font-size: 13px; }
 
 /* reCAPTCHA */
-.recaptcha-field { margin-bottom: 14px; }
-.recaptcha-wrap { display: flex; justify-content: center; }
+.recaptcha-field { margin-bottom: 8px; }
+.recaptcha-wrap {
+  display: flex;
+  justify-content: center;
+  transform: scale(0.92);
+  transform-origin: center top;
+}
 
 /* Submit Button */
 .submit-btn {
   width: 100%;
-  height: 52px;
+  height: 46px;
   background: #241447;
   color: #ffffff;
   border: none;
@@ -565,7 +853,7 @@ export default {
   text-transform: uppercase;
   cursor: pointer;
   transition: background 0.2s;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
   box-shadow: 0 4px 16px rgba(36, 20, 71, 0.2);
   display: flex;
   align-items: center;
@@ -573,6 +861,86 @@ export default {
 }
 .submit-btn:hover:not(:disabled) { background: #1a0f38; }
 .submit-btn:disabled { background: #241447; opacity: 1; cursor: not-allowed; }
+
+/* Social signup */
+.social-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0 10px;
+}
+.social-divider-line {
+  flex: 1;
+  height: 1px;
+  background: #e5e7eb;
+}
+.social-divider-text {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.social-signup-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.social-btn {
+  width: 100%;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #111827;
+  transition: all 0.2s;
+}
+.social-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.4);
+  background: #f1f5f9;
+}
+.social-btn-slack:hover:not(:disabled) {
+  border-color: #611f69;
+  background: #faf5fb;
+}
+.social-btn-teams:hover:not(:disabled) {
+  border-color: #5059c9;
+  background: #f5f6fd;
+}
+.social-connected-btn {
+  width: 100%;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid #86efac;
+  background: #dcfce7;
+  color: #166534;
+}
+.social-connected-btn .bi-check-circle-fill {
+  color: #22c55e;
+  font-size: 14px;
+}
+.social-btn-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
 
 /* Footer */
 .footer-text {
@@ -623,10 +991,12 @@ export default {
 .otp-note-text { font-size: 12px; color: #92400e; margin: 0; line-height: 1.5; }
 .otp-note-text strong { font-weight: 700; }
 
-@media (max-width: 576px) {
+@media (max-width: 640px) {
   .signup-overlay { padding-right: 12px; padding-left: 12px; justify-content: center; }
   .signup-panel { max-width: 100%; }
-  .modal-content { padding: 28px 20px; padding-top: 44px; }
+  .modal-content { padding: 20px 18px; padding-top: 40px; }
+  .social-signup-btns { grid-template-columns: 1fr; }
+  .pwd-rules { grid-template-columns: 1fr; }
   .otp-box { width: 42px; height: 46px; font-size: 18px; }
 }
 </style>

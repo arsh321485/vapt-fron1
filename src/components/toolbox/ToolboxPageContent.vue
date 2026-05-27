@@ -19,7 +19,7 @@
               <th class="col-expand"></th>
               <th class="col-title">Vulnerability Name</th>
               <th class="col-severity">Severity</th>
-              <th class="col-verified">Verified Status</th>
+
               <th class="col-automation">Automation</th>
             </tr>
           </thead>
@@ -46,17 +46,7 @@
                     {{ getSeverityLabel(fix.tags) }}
                   </span>
                 </td>
-                <td class="col-verified">
-                  <span
-                    v-if="hasVerifiedTag(fix.tags)"
-                    class="vr-status-pill vr-status-closed"
-                  >
-                    Verified Patch
-                  </span>
-                  <span v-else class="vr-status-pill vr-status-unverified">
-                    Not Verified
-                  </span>
-                </td>
+
                 <td class="col-automation">
                   <span
                     v-if="hasAutomationTag(fix.tags)"
@@ -72,7 +62,7 @@
 
               <!-- Expanded Content Row -->
               <tr v-if="expandedIndex === index" class="expanded-row">
-                <td colspan="5" class="expanded-cell">
+                <td colspan="4" class="expanded-cell">
                   <div class="expanded-content">
 
                     <!-- Dependencies -->
@@ -337,9 +327,7 @@ export default {
   width: 150px;
 }
 
-.col-verified {
-  width: 180px;
-}
+
 
 .col-automation {
   width: 160px;
@@ -694,9 +682,5 @@ export default {
   }
 }
 
-@media (max-width: 1200px) {
-  .col-verified {
-    display: none;
-  }
-}
+
 </style>

@@ -117,8 +117,20 @@
               <label class="field-label">Email Address / Username</label>
               <div class="input-row">
                 <i class="bi bi-at field-icon"></i>
-                <input type="text" class="field-input" v-model="userForm.email" placeholder="name@vaptfix.com" autocomplete="new-password" required />
+                <input
+                  type="text"
+                  class="field-input"
+                  v-model="userForm.email"
+                  placeholder="name@vaptfix.com"
+                  autocomplete="username"
+                  required
+                  @blur="onUserEmailBlur"
+                />
               </div>
+              <p v-if="platformLoading" class="platform-hint">
+                <span class="spinner-border spinner-border-sm me-1"></span>
+                Checking your account...
+              </p>
             </div>
 
             <div class="field-group">
@@ -132,6 +144,48 @@
                 <i class="bi password-toggle" :class="showUserPassword ? 'bi-eye-slash' : 'bi-eye'" @click="showUserPassword = !showUserPassword"></i>
               </div>
             </div>
+
+            <div class="social-divider">
+              <span class="social-divider-line"></span>
+              <span class="social-divider-text">or</span>
+              <span class="social-divider-line"></span>
+            </div>
+
+            <div class="social-signup-btns">
+              <button
+                type="button"
+                class="social-btn social-btn-slack"
+                :disabled="slackLoginDisabled"
+                @click.prevent="startUserSlackLogin"
+              >
+                <span v-if="userOAuthLoading === 'slack'" class="spinner-border spinner-border-sm"></span>
+                <template v-else>
+                  <img :src="slackIcon" alt="" class="social-btn-icon" />
+                  Sign in with Slack
+                </template>
+              </button>
+              <button
+                type="button"
+                class="social-btn social-btn-teams"
+                :disabled="teamsLoginDisabled"
+                @click.prevent="startUserTeamsLogin"
+              >
+                <span v-if="userOAuthLoading === 'teams'" class="spinner-border spinner-border-sm"></span>
+                <template v-else>
+                  <img :src="teamsIcon" alt="" class="social-btn-icon" />
+                  Sign in with Teams
+                </template>
+              </button>
+            </div>
+
+            <p v-if="platformChecked && userPlatform === 'slack'" class="platform-hint platform-hint--ok">
+              <i class="bi bi-info-circle me-1"></i>
+              This account was added via Slack. Use Slack or your password below.
+            </p>
+            <p v-else-if="platformChecked && userPlatform === 'microsoft_teams'" class="platform-hint platform-hint--ok">
+              <i class="bi bi-info-circle me-1"></i>
+              This account was added via Microsoft Teams. Use Teams or your password below.
+            </p>
 
             <div class="recaptcha-field">
               <div :id="userRecaptchaContainerId" :key="userRecaptchaKey" class="recaptcha-wrap"></div>
@@ -231,6 +285,8 @@ import { useAuthStore } from '@/stores/authStore';
 import { markPostLoginSuccess } from '@/utils/postLoginSuccess';
 import router from '@/router';
 import Swal from 'sweetalert2';
+import teamsIcon from '@/assets/images/teams.png';
+import slackIcon from '@/assets/images/slack.png';
 
 export default {
   name: 'SignUpModal',
@@ -258,10 +314,21 @@ export default {
     setPasswordToken: {
       type: String,
       default: ''
+    },
+    setPasswordEmail: {
+      type: String,
+      default: ''
     }
   },
   data() {
     return {
+      slackIcon,
+      teamsIcon,
+      userPlatform: null,
+      platformChecked: false,
+      platformLoading: false,
+      userOAuthLoading: false,
+      backendBase: 'https://vaptbackend.secureitlab.com',
       showForm: false,
       formType: '',
       userActiveTab: 'signIn',
@@ -287,7 +354,8 @@ export default {
       showForgotModal: false,
       forgotEmail: '',
       forgotLoading: false,
-      forgotType: 'user'
+      forgotType: 'user',
+      _platformEmailTimer: null,
     };
   },
   computed: {
@@ -313,8 +381,31 @@ export default {
     allSetPasswordRulesPass() {
       return Object.values(this.setPasswordRules).every(Boolean);
     },
+    hasValidUserEmail() {
+      const email = (this.userForm.email || '').trim();
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    },
+    slackLoginDisabled() {
+      if (!this.hasValidUserEmail) return true;
+      if (this.platformLoading || this.userOAuthLoading === 'teams') return true;
+      if (!this.platformChecked) return false;
+      return this.userPlatform !== 'slack';
+    },
+    teamsLoginDisabled() {
+      if (!this.hasValidUserEmail) return true;
+      if (this.platformLoading || this.userOAuthLoading === 'slack') return true;
+      if (!this.platformChecked) return false;
+      return this.userPlatform !== 'microsoft_teams';
+    },
   },
   watch: {
+    'userForm.email'() {
+      clearTimeout(this._platformEmailTimer);
+      if (this.formType !== 'user' || this.userActiveTab !== 'signIn' || !this.showForm) return;
+      this._platformEmailTimer = setTimeout(() => {
+        this.fetchUserLoginPlatform();
+      }, 450);
+    },
     userActiveTab(newVal) {
       if (newVal === 'signIn') {
         this.$nextTick(() => this.renderUserRecaptcha());
@@ -332,10 +423,24 @@ export default {
           } else {
             this.userActiveTab = 'signIn';
           }
+          if (this.setPasswordEmail) {
+            this.userForm.email = this.setPasswordEmail;
+          }
+          if (this.formType === 'user' && this.userForm.email) {
+            this.$nextTick(() => this.fetchUserLoginPlatform());
+          }
         } else {
           this.showForm = false;
           this.formType = '';
         }
+      } else {
+        this.resetPlatformState();
+      }
+    },
+    setPasswordEmail(val) {
+      if (val && this.show && this.formType === 'user') {
+        this.userForm.email = val;
+        this.fetchUserLoginPlatform();
       }
     },
     formType(newVal) {
@@ -348,14 +453,194 @@ export default {
   },
   mounted() {
     this.loadRecaptchaScript();
+    window.addEventListener('message', this.handleMemberOAuthMessage);
+    window.addEventListener('storage', this.onMemberStorageChange);
   },
   methods: {
+    resetPlatformState() {
+      this.userPlatform = null;
+      this.platformChecked = false;
+      this.platformLoading = false;
+      this.userOAuthLoading = false;
+    },
+    async onUserEmailBlur() {
+      await this.fetchUserLoginPlatform();
+    },
+    async fetchUserLoginPlatform() {
+      const email = (this.userForm.email || '').trim();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        this.resetPlatformState();
+        return;
+      }
+      this.platformLoading = true;
+      try {
+        const authStore = useAuthStore();
+        const res = await authStore.getUserLoginPlatform(email);
+        this.platformChecked = true;
+        const platform = res.data?.platform;
+        if (platform === 'slack' || platform === 'microsoft_teams') {
+          this.userPlatform = platform;
+        } else {
+          this.userPlatform = 'email';
+        }
+      } catch {
+        this.platformChecked = true;
+        this.userPlatform = 'email';
+      } finally {
+        this.platformLoading = false;
+      }
+    },
+    async redirectUserToDashboard(message) {
+      this.$emit('close');
+      if (message) markPostLoginSuccess(message);
+      try {
+        await router.replace({ path: '/userdashboard' });
+      } catch {
+        await router.push({ path: '/userdashboard' });
+      }
+    },
+    handleMemberOAuthMessage(event) {
+      const allowed = [window.location.origin, 'https://vaptbackend.secureitlab.com'];
+      if (event.origin && !allowed.includes(event.origin)) return;
+
+      if (event.data?.type === 'SLACK_MEMBER_LOGGED_IN' && event.data?.success) {
+        this.userOAuthLoading = false;
+        this.redirectUserToDashboard('Signed in with Slack successfully.');
+        return;
+      }
+      if (event.data?.type === 'TEAMS_MEMBER_LOGGED_IN' && event.data?.success) {
+        this.userOAuthLoading = false;
+        this.redirectUserToDashboard('Signed in with Microsoft Teams successfully.');
+      }
+    },
+    onMemberStorageChange(event) {
+      if (event.key === 'microsoft_graph_token' && event.newValue && sessionStorage.getItem('pending_member_flow') === 'teams') {
+        const authStore = useAuthStore();
+        if (authStore.authenticated) {
+          this.redirectUserToDashboard();
+        }
+      }
+    },
+    async startUserSlackLogin() {
+      const email = (this.userForm.email || '').trim();
+      if (!email) {
+        Swal.fire({ icon: 'warning', title: 'Email required', text: 'Enter your email first.', confirmButtonColor: '#241447' });
+        return;
+      }
+      await this.fetchUserLoginPlatform();
+      if (this.userPlatform === 'microsoft_teams') {
+        Swal.fire({
+          icon: 'info',
+          title: 'Use Microsoft Teams',
+          text: 'This account signs in with Microsoft Teams. Use the Teams button.',
+          confirmButtonColor: '#241447',
+        });
+        return;
+      }
+      if (this.userPlatform === 'email') {
+        Swal.fire({
+          icon: 'info',
+          title: 'Use email sign in',
+          text: 'This account uses email and password. Sign in below.',
+          confirmButtonColor: '#241447',
+        });
+        return;
+      }
+
+      this.userOAuthLoading = 'slack';
+      sessionStorage.setItem('pending_member_email', email);
+      sessionStorage.setItem('pending_member_flow', 'slack');
+      try {
+        const authStore = useAuthStore();
+        const callbackBase = `${window.location.origin}/slack/callback?flow=member`;
+        const res = await authStore.getSlackMemberOAuthUrl(callbackBase, email);
+        if (res.status && res.data?.auth_url) {
+          const width = 1000;
+          const height = 700;
+          const left = window.screenX + (window.outerWidth - width) / 2;
+          const top = window.screenY + (window.outerHeight - height) / 2;
+          const popup = window.open(
+            res.data.auth_url,
+            'SlackMemberOAuth',
+            `width=${width},height=${height},left=${left},top=${top}`
+          );
+          if (!popup) {
+            alert('Popup blocked! Please allow popups for this site.');
+          }
+        } else {
+          Swal.fire({ icon: 'error', title: 'Error', text: res.message || 'Unable to start Slack login', confirmButtonColor: '#241447' });
+        }
+      } catch {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Something went wrong while connecting Slack', confirmButtonColor: '#241447' });
+      } finally {
+        this.userOAuthLoading = false;
+      }
+    },
+    async startUserTeamsLogin() {
+      const email = (this.userForm.email || '').trim();
+      if (!email) {
+        Swal.fire({ icon: 'warning', title: 'Email required', text: 'Enter your email first.', confirmButtonColor: '#241447' });
+        return;
+      }
+      await this.fetchUserLoginPlatform();
+      if (this.userPlatform === 'slack') {
+        Swal.fire({
+          icon: 'info',
+          title: 'Use Slack',
+          text: 'This account signs in with Slack. Use the Slack button.',
+          confirmButtonColor: '#241447',
+        });
+        return;
+      }
+      if (this.userPlatform === 'email') {
+        Swal.fire({
+          icon: 'info',
+          title: 'Use email sign in',
+          text: 'This account uses email and password. Sign in below.',
+          confirmButtonColor: '#241447',
+        });
+        return;
+      }
+
+      this.userOAuthLoading = 'teams';
+      sessionStorage.setItem('pending_member_email', email);
+      sessionStorage.setItem('pending_member_flow', 'teams');
+      try {
+        const authStore = useAuthStore();
+        const redirectUri = `${window.location.origin}/microsoft/callback?flow=member`;
+        const res = await authStore.getMicrosoftMemberOAuthUrl(redirectUri, email);
+        if (res.status && res.data?.auth_url) {
+          const width = 1000;
+          const height = 700;
+          const left = window.screenX + (window.outerWidth - width) / 2;
+          const top = window.screenY + (window.outerHeight - height) / 2;
+          const popup = window.open(
+            res.data.auth_url,
+            'TeamsMemberOAuth',
+            `width=${width},height=${height},left=${left},top=${top}`
+          );
+          if (!popup) {
+            alert('Popup blocked! Please allow popups for this site.');
+          }
+        } else {
+          Swal.fire({ icon: 'error', title: 'Error', text: res.message || 'Failed to start Microsoft Teams login', confirmButtonColor: '#241447' });
+        }
+      } catch {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Microsoft Teams login failed', confirmButtonColor: '#241447' });
+      } finally {
+        this.userOAuthLoading = false;
+      }
+    },
     closeModal() {
       this.showForm = false;
       this.formType = '';
       this.userActiveTab = 'signIn';
       this.userErrorMessage = '';
       this.adminErrorMessage = '';
+      this.resetPlatformState();
+      sessionStorage.removeItem('pending_member_email');
+      sessionStorage.removeItem('pending_member_flow');
       this.$emit('close');
     },
     goBack() {
@@ -367,6 +652,8 @@ export default {
     selectUserSignIn() {
       this.formType = 'user';
       this.showForm = true;
+      this.userActiveTab = 'signIn';
+      this.$nextTick(() => this.renderUserRecaptcha());
     },
     selectAdminSignIn() {
       this.formType = 'admin';
@@ -522,6 +809,17 @@ export default {
             });
         if (result.status) {
           this.userSetPasswordForm = { newPassword: '', confirmPassword: '' };
+          if (result.loggedIn) {
+            await Swal.fire({
+              icon: 'success',
+              title: 'Password Set Successfully!',
+              timer: 2000,
+              showConfirmButton: false,
+              allowOutsideClick: false
+            });
+            await this.redirectUserToDashboard(result.message);
+            return;
+          }
           await Swal.fire({
             icon: 'success',
             title: 'Password Set Successfully!',
@@ -535,6 +833,9 @@ export default {
             }
           });
           this.userActiveTab = 'signIn';
+          if (this.setPasswordEmail || this.userForm.email) {
+            await this.fetchUserLoginPlatform();
+          }
         } else {
           await Swal.fire({ icon: 'error', title: 'Failed to Set Password', text: result.message || 'Unable to set password. Please try again.', confirmButtonColor: '#241447', confirmButtonText: 'Try Again', allowOutsideClick: false });
         }
@@ -671,6 +972,9 @@ export default {
     }
   },
   beforeUnmount() {
+    clearTimeout(this._platformEmailTimer);
+    window.removeEventListener('message', this.handleMemberOAuthMessage);
+    window.removeEventListener('storage', this.onMemberStorageChange);
     try {
       if (window.grecaptcha) {
         if (this.userRecaptchaWidgetId !== null) window.grecaptcha.reset(this.userRecaptchaWidgetId);
@@ -1028,6 +1332,81 @@ export default {
   text-decoration: none;
 }
 .footer-link:hover { text-decoration: underline; }
+
+.platform-hint {
+  font-size: 11px;
+  color: #64748b;
+  margin: 6px 0 0;
+  display: flex;
+  align-items: center;
+}
+.platform-hint--ok {
+  color: #0f696e;
+  margin: 0 0 10px;
+  line-height: 1.4;
+}
+.social-signup-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.social-signup-btns .social-btn {
+  margin-bottom: 0;
+  font-size: 11px;
+  padding: 0 8px;
+}
+.social-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 10px;
+}
+.social-divider-line {
+  flex: 1;
+  height: 1px;
+  background: #e5e7eb;
+}
+.social-divider-text {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+}
+.social-btn {
+  width: 100%;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #111827;
+  margin-bottom: 10px;
+  transition: all 0.2s;
+}
+.social-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.social-btn-slack:hover:not(:disabled) {
+  border-color: #611f69;
+  background: #faf5fb;
+}
+.social-btn-teams:hover:not(:disabled) {
+  border-color: #5059c9;
+  background: #f5f6fd;
+}
+.social-btn-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
 
 /* Error Alert */
 .error-alert {

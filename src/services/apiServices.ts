@@ -53,6 +53,11 @@ const PUBLIC_URL_PATTERNS = [
   "/api/admin/users/user-login/",
   "/api/admin/users/signup/send-otp/",
   "/api/admin/users/signup/verify-otp/",
+  "/api/admin/users/user-login-platform/",
+  "/api/admin/users/slack/member-login/",
+  "/api/admin/users/teams/member-login/",
+  "/api/admin/users/slack/oauth-url/",
+  "/api/admin/users/microsoft-teams/oauth-url/",
 ];
 const REALTIME_ENDPOINT_PATTERNS = ["/api/notifications/"];
 

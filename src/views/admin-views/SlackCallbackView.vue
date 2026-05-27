@@ -1,21 +1,18 @@
 <template>
   <div class="callback-container">
     <div class="callback-card">
-      <!-- Loading State -->
       <div v-if="status === 'loading'" class="callback-content">
         <div class="loader"></div>
         <h2>Connecting to Slack...</h2>
         <p>Please wait while we complete the authentication.</p>
       </div>
 
-      <!-- Success State -->
       <div v-else-if="status === 'success'" class="callback-content">
         <i class="bi bi-check-circle-fill success-icon"></i>
         <h2>Slack Connected!</h2>
         <p>You can close this window now.</p>
       </div>
 
-      <!-- Error State -->
       <div v-else-if="status === 'error'" class="callback-content">
         <i class="bi bi-x-circle-fill error-icon"></i>
         <h2>Connection Failed</h2>
@@ -40,96 +37,135 @@ export default {
     };
   },
   async mounted() {
-    console.log("SlackCallbackView loaded in popup");
-    console.log("=== SlackCallbackView MOUNTED ===");
-    console.log("Current URL:", window.location.href);
-    console.log("Query params:", window.location.search);
     this.authStore = useAuthStore();
     await this.handleCallback();
   },
   methods: {
-    async handleCallback() {
-  try {
-    console.log("=== handleCallback STARTED ===");
-
-    const urlParams = new URLSearchParams(window.location.search);
-
-    const botToken = urlParams.get("bot_access_token");
-    const userToken = urlParams.get("user_access_token");
-    const error = urlParams.get("error");
-
-    console.log("Bot token:", botToken);
-    console.log("User token:", userToken);
-    console.log("Error:", error);
-
-    if (error) {
-      this.status = "error";
-      this.errorMessage =
-        urlParams.get("error_description") || "Slack authorization failed.";
-      return;
-    }
-
-    if (!botToken || !userToken) {
-      this.status = "error";
-      this.errorMessage = "Slack tokens not received from backend.";
-      return;
-    }
-
-    // 🔹 STEP 1 — Save tokens IMMEDIATELY (before any API calls)
-    localStorage.setItem("slack_bot_token", botToken);
-    localStorage.setItem("slack_user_token", userToken);
-    console.log("Slack tokens saved to localStorage");
-
-    // 🔹 STEP 2 — Call Slack login API
-    const res = await this.authStore.loginWithSlack(botToken, userToken);
-
-    if (res.status) {
-      console.log("Slack login API success");
-
-      // 🔹 STEP 3 — Validate token & save workspace info
-      const validateRes = await this.authStore.validateSlackToken(botToken);
-
-      if (validateRes.success && validateRes.data) {
-        console.log("Slack token valid:", validateRes.data);
-        localStorage.setItem("slack_team_id", validateRes.data.team_id);
-        localStorage.setItem("slack_team_name", validateRes.data.team);
-      }
-
-      this.status = "success";
-
-      // 🔹 STEP 4 — Notify parent window
+    isMemberFlow() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("flow") === "member";
+    },
+    notifyOpener(payload) {
       if (window.opener) {
-        console.log("Sending message to parent...");
-        window.opener.postMessage(
-          {
-            type: "SLACK_CONNECTED",
-            team: validateRes?.data?.team || "",
-            user: validateRes?.data?.user?.name || ""
-          },
-          "*"
-        );
-      } else {
-        console.log("window.opener is NULL");
+        window.opener.postMessage(payload, window.location.origin);
+      }
+    },
+    async handleMemberCallback(urlParams, botToken, userToken) {
+      let slackUserId = urlParams.get("slack_user_id") || "";
+      let slackTeamId = urlParams.get("slack_team_id") || "";
+
+      const tokenForValidate = botToken || userToken;
+      if (tokenForValidate) {
+        const validateRes = await this.authStore.validateSlackToken(tokenForValidate);
+        if (validateRes.success && validateRes.data) {
+          slackUserId = slackUserId || validateRes.data.user?.id || "";
+          slackTeamId = slackTeamId || validateRes.data.team_id || "";
+          if (botToken) {
+            localStorage.setItem("slack_bot_token", botToken);
+          }
+          if (userToken) {
+            localStorage.setItem("slack_user_token", userToken);
+          }
+          if (validateRes.data.team) {
+            localStorage.setItem("slack_team_id", validateRes.data.team_id || "");
+            localStorage.setItem("slack_team_name", validateRes.data.team);
+          }
+        }
       }
 
-      // 🔹 STEP 5 — Close popup
-      setTimeout(() => window.close(), 1200);
-    } else {
-      // Login API failed but tokens are already saved in localStorage
-      this.status = "error";
-      this.errorMessage = res.message || "Slack login failed.";
-    }
-  } catch (err) {
-    console.error("Slack callback error:", err);
-    this.status = "error";
-    this.errorMessage = "Unexpected error occurred.";
-  }
+      if (!slackUserId || !slackTeamId) {
+        this.status = "error";
+        this.errorMessage = "Slack user or workspace ID not received. Join the Slack channel first, then try again.";
+        return;
+      }
+
+      const res = await this.authStore.slackMemberLogin({
+        slack_user_id: slackUserId,
+        slack_team_id: slackTeamId,
+      });
+
+      if (res.status) {
+        this.status = "success";
+        this.notifyOpener({ type: "SLACK_MEMBER_LOGGED_IN", success: true });
+        setTimeout(() => window.close(), 1200);
+      } else {
+        this.status = "error";
+        this.errorMessage = res.message || "Slack member login failed.";
+      }
+    },
+    async handleAdminCallback(botToken, userToken) {
+      localStorage.setItem("slack_bot_token", botToken);
+      localStorage.setItem("slack_user_token", userToken);
+
+      const res = await this.authStore.loginWithSlack(botToken, userToken);
+
+      if (res.status) {
+        const validateRes = await this.authStore.validateSlackToken(botToken);
+
+        if (validateRes.success && validateRes.data) {
+          localStorage.setItem("slack_team_id", validateRes.data.team_id);
+          localStorage.setItem("slack_team_name", validateRes.data.team);
+        }
+
+        this.status = "success";
+
+        const loginData = res.data || {};
+        this.notifyOpener({
+          type: "SLACK_CONNECTED",
+          team: validateRes?.data?.team || "",
+          user: validateRes?.data?.user?.name || "",
+          bot_token: botToken,
+          slack_user_id: validateRes?.data?.user?.id || "",
+          django_access_token:
+            loginData.jwt_tokens?.access ||
+            loginData.tokens?.access ||
+            loginData.access_token ||
+            sessionStorage.getItem("authorization") ||
+            "",
+        });
+
+        setTimeout(() => window.close(), 1200);
+      } else {
+        this.status = "error";
+        this.errorMessage = res.message || "Slack login failed.";
+      }
+    },
+    async handleCallback() {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const botToken = urlParams.get("bot_access_token");
+        const userToken = urlParams.get("user_access_token");
+        const error = urlParams.get("error");
+
+        if (error) {
+          this.status = "error";
+          this.errorMessage =
+            urlParams.get("error_description") || "Slack authorization failed.";
+          return;
+        }
+
+        if (this.isMemberFlow()) {
+          await this.handleMemberCallback(urlParams, botToken, userToken);
+          return;
+        }
+
+        if (!botToken || !userToken) {
+          this.status = "error";
+          this.errorMessage = "Slack tokens not received from backend.";
+          return;
+        }
+
+        await this.handleAdminCallback(botToken, userToken);
+      } catch (err) {
+        console.error("Slack callback error:", err);
+        this.status = "error";
+        this.errorMessage = "Unexpected error occurred.";
+      }
     },
     retry() {
-      // Close this window and let user try again
       window.close();
-    }
-  }
+    },
+  },
 };
 </script>
 
@@ -200,11 +236,5 @@ export default {
   font-size: 14px;
   color: #fff;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 18px rgba(97, 31, 105, 0.25);
 }
 </style>

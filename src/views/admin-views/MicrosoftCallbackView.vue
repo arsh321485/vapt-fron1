@@ -1,105 +1,130 @@
 <template>
   <div class="callback-loading">
-    <p>Connecting Microsoft Teams...</p>
+    <p>{{ statusMessage }}</p>
   </div>
 </template>
 
 <script>
 import { useAuthStore } from "@/stores/authStore";
+import Swal from "sweetalert2";
 
 export default {
-  async mounted() {
-    const authStore = useAuthStore();
-
-    // try {
-    //   const params = new URLSearchParams(window.location.search);
-    //   const accessToken =
-    //     params.get("access_token") ||
-    //     params.get("token") ||
-    //     params.get("ms_token");
-
-    //   // const queryParams = new URLSearchParams(window.location.search);
-    //   // const hashParams = new URLSearchParams(window.location.hash.replace("#", ""));
-    //   // const accessToken =
-    //   //   queryParams.get("access_token") ||
-    //   //   queryParams.get("token") ||
-    //   //   queryParams.get("ms_token") ||
-    //   //   hashParams.get("access_token");
-
-    //   if (!accessToken) {
-    //     Swal.fire("Error", "Microsoft access token missing", "error");
-    //     this.$router.push("/settings");
-    //     return;
-    //   }
-
-    //   // 🔥 CALL LOGIN API
-    //   const res = await authStore.microsoftLogin(accessToken);
-
-    //   if (res.status) {
-    //     Swal.fire({
-    //       icon: "success",
-    //       title: "Success",
-    //       text: "Microsoft Teams connected successfully",
-    //       timer: 2000,
-    //       showConfirmButton: false
-    //     });
-
-    //     // notify parent window if needed
-    //     window.opener?.postMessage({ type: "TEAMS_CONNECTED" }, "*");
-
-    //     this.$router.push("/settings");
-    //   } else {
-    //     Swal.fire("Error", "Microsoft login failed", "error");
-    //     this.$router.push("/settings");
-    //   }
-    // } catch (err) {
-    //   console.error("Microsoft callback error:", err);
-    //   Swal.fire("Error", "Microsoft connection failed", "error");
-    //   this.$router.push("/settings");
-    // }
-
-    try {
+  data() {
+    return {
+      statusMessage: "Connecting Microsoft Teams...",
+    };
+  },
+  methods: {
+    isMemberFlow() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("flow") === "member";
+    },
+    notifyOpener(payload) {
+      if (window.opener) {
+        window.opener.postMessage(payload, window.location.origin);
+      }
+    },
+    getAccessToken() {
       const queryParams = new URLSearchParams(window.location.search);
       const hashParams = new URLSearchParams(window.location.hash.replace("#", ""));
-
-      const accessToken =
+      return (
         queryParams.get("access_token") ||
         queryParams.get("token") ||
         queryParams.get("ms_token") ||
-        hashParams.get("access_token");
+        hashParams.get("access_token")
+      );
+    },
+    async handleMemberCallback(accessToken) {
+      const authStore = useAuthStore();
+      const queryParams = new URLSearchParams(window.location.search);
+      const email =
+        sessionStorage.getItem("pending_member_email") ||
+        queryParams.get("email") ||
+        "";
+      const msUserId = queryParams.get("ms_user_id") || queryParams.get("user_id") || "";
 
-      if (!accessToken) {
-        Swal.fire("Error", "Microsoft access token missing", "error");
-        this.$router.push("/settings");
-        return;
+      const res = await authStore.teamsMemberLogin({
+        email,
+        access_token: accessToken,
+        ms_user_id: msUserId || undefined,
+      });
+
+      if (res.status) {
+        localStorage.setItem("microsoft_graph_token", accessToken);
+        localStorage.setItem("teams_connected", "true");
+        sessionStorage.removeItem("pending_member_flow");
+        this.notifyOpener({ type: "TEAMS_MEMBER_LOGGED_IN", success: true });
+        this.statusMessage = "Success! You can close this window.";
+        setTimeout(() => window.close(), 1200);
+      } else {
+        await Swal.fire("Error", res.message || "Microsoft Teams member login failed", "error");
+        if (window.opener) {
+          window.close();
+        } else {
+          this.$router.push("/home");
+        }
       }
-
+    },
+    async handleAdminCallback(accessToken) {
+      const authStore = useAuthStore();
       const res = await authStore.microsoftLogin(accessToken);
 
       if (res.status) {
-        window.opener?.postMessage({
+        this.notifyOpener({
           type: "TEAMS_CONNECTED",
           success: true,
-          django_access_token: res.data?.django_access_token || localStorage.getItem("access_token"),
-          django_refresh_token: res.data?.django_refresh_token || localStorage.getItem("refresh_token"),
+          django_access_token:
+            res.data?.django_access_token || localStorage.getItem("access_token"),
+          django_refresh_token:
+            res.data?.django_refresh_token || localStorage.getItem("refresh_token"),
           user: res.data?.user,
-          vaptfix_team: res.data?.vaptfix_team || JSON.parse(localStorage.getItem("vaptfix_team") || "null"),
+          vaptfix_team:
+            res.data?.vaptfix_team ||
+            JSON.parse(localStorage.getItem("vaptfix_team") || "null"),
           tokens: {
-            access_token: res.data?.tokens?.access_token || localStorage.getItem("microsoft_graph_token"),
-            tenant_id: res.data?.tokens?.tenant_id || localStorage.getItem("microsoft_tenant_id"),
+            access_token:
+              res.data?.tokens?.access_token ||
+              localStorage.getItem("microsoft_graph_token"),
+            tenant_id:
+              res.data?.tokens?.tenant_id || localStorage.getItem("microsoft_tenant_id"),
           },
-        }, "*");
+        });
         this.$router.push("/settings");
       } else {
-        Swal.fire("Error", "Microsoft login failed", "error");
+        await Swal.fire("Error", "Microsoft login failed", "error");
         this.$router.push("/settings");
       }
+    },
+  },
+  async mounted() {
+    try {
+      const accessToken = this.getAccessToken();
 
+      if (!accessToken) {
+        await Swal.fire("Error", "Microsoft access token missing", "error");
+        if (this.isMemberFlow()) {
+          window.close();
+        } else {
+          this.$router.push("/settings");
+        }
+        return;
+      }
+
+      if (this.isMemberFlow()) {
+        await this.handleMemberCallback(accessToken);
+        return;
+      }
+
+      await this.handleAdminCallback(accessToken);
     } catch (err) {
       console.error("Microsoft callback error:", err);
-      Swal.fire("Error", "Microsoft connection failed", "error");
-      this.$router.push("/settings");
+      await Swal.fire("Error", "Microsoft connection failed", "error");
+      if (this.isMemberFlow() && window.opener) {
+        window.close();
+      } else {
+        this.$router.push("/settings");
+      }
     }
-  }
+  },
 };
 </script>
