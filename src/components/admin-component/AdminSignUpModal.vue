@@ -121,11 +121,16 @@
                 <img :src="slackIcon" alt="" class="social-btn-icon" />
                 Sign up with Slack
               </button>
-              <div v-else class="social-connected-btn social-connected-slack">
+              <button
+                v-else
+                type="button"
+                class="social-connected-btn social-connected-slack"
+                @click.prevent="startSlackLogin"
+              >
                 <img :src="slackIcon" alt="" class="social-btn-icon" />
                 <i class="bi bi-check-circle-fill"></i>
                 Slack connected
-              </div>
+              </button>
 
               <button
                 v-if="!teamsConnected"
@@ -137,11 +142,16 @@
                 <img :src="teamsIcon" alt="" class="social-btn-icon" />
                 Sign up with Microsoft Teams
               </button>
-              <div v-else class="social-connected-btn social-connected-teams">
+              <button
+                v-else
+                type="button"
+                class="social-connected-btn social-connected-teams"
+                @click.prevent="startMicrosoftLogin"
+              >
                 <img :src="teamsIcon" alt="" class="social-btn-icon" />
                 <i class="bi bi-check-circle-fill"></i>
                 Microsoft Teams connected
-              </div>
+              </button>
             </div>
 
             <!-- Already have account -->
@@ -448,7 +458,11 @@ export default {
     },
   // —— Slack / Teams: same as LocationView (/communication) ——
     async startMicrosoftLogin() {
-      if (this.teamsConnected || this.isTeamsDisabled) return;
+      if (this.teamsConnected) {
+        window.open('https://teams.microsoft.com/', '_blank');
+        return;
+      }
+      if (this.isTeamsDisabled && !this.teamsConnected) return;
       try {
         const redirectUri = `${window.location.origin}/microsoft/callback`;
         const adminId = this.getAdminId();
@@ -519,7 +533,23 @@ export default {
       }
     },
     async startSlackLogin() {
-      if (this.slackConnected || this.isSlackDisabled) return;
+      if (this.slackConnected) {
+        const slackTeamRaw = localStorage.getItem('slack_team');
+        let targetUrl = 'https://app.slack.com/client';
+        if (slackTeamRaw) {
+          try {
+            const slackTeam = JSON.parse(slackTeamRaw);
+            if (slackTeam?.url) {
+              targetUrl = slackTeam.url;
+            } else if (slackTeam?.domain) {
+              targetUrl = `https://${slackTeam.domain}.slack.com`;
+            }
+          } catch (e) {}
+        }
+        window.open(targetUrl, '_blank');
+        return;
+      }
+      if (this.isSlackDisabled && !this.slackConnected) return;
       try {
         const adminId = this.getAdminId();
         const res = await this.authStore.getSlackOAuthUrl(this.backendBase, adminId);
@@ -930,6 +960,12 @@ export default {
   border: 1px solid #86efac;
   background: #dcfce7;
   color: #166534;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+.social-connected-btn:hover {
+  background: #bbf7d0;
+  border-color: #4ade80;
 }
 .social-connected-btn .bi-check-circle-fill {
   color: #22c55e;

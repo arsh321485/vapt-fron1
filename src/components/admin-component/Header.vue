@@ -196,6 +196,19 @@ export default {
       const legacyTab =
         signin === 'user' && (tabRaw === 'set-password' || tabVal === 'setPassword');
 
+      // ✅ NEW: Sign In tab deep-link — /home?signin=user&tab=signIn
+      const isSignInTab =
+        signin === 'user' && (tabRaw === 'signin' || tabRaw === 'sign-in' || tabVal === 'signIn');
+      if (isSignInTab) {
+        this.signUpPreSelectedType = 'user';
+        this.signUpUserInitialTab = 'signIn';
+        this.showSignUpModal = true;
+        this.$nextTick(() => {
+          this.$router.replace({ path: '/home' });
+        });
+        return;
+      }
+
       if (!token || !uid) return;
       if (!backendSetPassword && !legacyTab) return;
 

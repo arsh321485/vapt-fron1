@@ -611,6 +611,17 @@ export default {
       const signin = pick(q.signin);
       const legacyTab =
         signin === 'user' && (tabRaw === 'set-password' || tabVal === 'setPassword');
+      const isSignInTab =
+        signin === 'user' && (tabRaw === 'signin' || tabRaw === 'sign-in' || tabVal === 'signIn');
+      if (isSignInTab) {
+        this.signUpPreSelectedType = 'user';
+        this.signUpUserInitialTab = 'signIn';
+        this.showSignUpModal = true;
+        this.$nextTick(() => {
+          this.$router.replace({ path: '/home' });
+        });
+        return;
+      }
       if (!token || !uid) return;
       if (!backendSetPassword && !legacyTab) return;
       this.signUpPreSelectedType = 'user';
