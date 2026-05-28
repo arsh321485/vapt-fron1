@@ -55,6 +55,64 @@
           <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
           Sign In
         </button>
+
+        <div class="social-divider">
+          <span class="social-divider-line"></span>
+          <span class="social-divider-text">or</span>
+          <span class="social-divider-line"></span>
+        </div>
+
+        <div class="social-signin-btns">
+          <button
+            v-if="!slackConnected"
+            type="button"
+            class="social-btn social-btn-slack"
+            :disabled="oauthLoading === 'teams'"
+            @click.prevent="startSlackLogin"
+          >
+            <span v-if="oauthLoading === 'slack'" class="spinner-border spinner-border-sm"></span>
+            <template v-else>
+              <img :src="slackIcon" alt="" class="social-btn-icon" />
+              Sign in with Slack
+            </template>
+          </button>
+          <button
+            v-else
+            type="button"
+            class="social-connected-btn social-connected-slack"
+            :disabled="oauthLoading === 'teams'"
+            @click.prevent="startSlackLogin"
+          >
+            <img :src="slackIcon" alt="" class="social-btn-icon" />
+            <i class="bi bi-check-circle-fill"></i>
+            Slack connected
+          </button>
+
+          <button
+            v-if="!teamsConnected"
+            type="button"
+            class="social-btn social-btn-teams"
+            :disabled="oauthLoading === 'slack'"
+            @click.prevent="startTeamsLogin"
+          >
+            <span v-if="oauthLoading === 'teams'" class="spinner-border spinner-border-sm"></span>
+            <template v-else>
+              <img :src="teamsIcon" alt="" class="social-btn-icon" />
+              Sign in with Teams
+            </template>
+          </button>
+          <button
+            v-else
+            type="button"
+            class="social-connected-btn social-connected-teams"
+            :disabled="oauthLoading === 'slack'"
+            @click.prevent="startTeamsLogin"
+          >
+            <img :src="teamsIcon" alt="" class="social-btn-icon" />
+            <i class="bi bi-check-circle-fill"></i>
+            Teams connected
+          </button>
+        </div>
       </form>
 
       <p class="text-center mt-3 small">
@@ -100,6 +158,8 @@
 import { useAuthStore } from '@/stores/authStore'
 import { markPostLoginSuccess } from '@/utils/postLoginSuccess'
 import Swal from 'sweetalert2'
+import teamsIcon from '@/assets/images/teams.png'
+import slackIcon from '@/assets/images/slack.png'
 
 export default {
   name: 'SignInView',
@@ -108,13 +168,166 @@ export default {
       form: { email: '', password: '' },
       showPassword: false,
       loading: false,
+      oauthLoading: false,
       recaptchaWidgetId: null,
       showForgotModal: false,
       forgotEmail: '',
-      forgotLoading: false
+      forgotLoading: false,
+      slackConnected: false,
+      teamsConnected: false,
+      teamsIcon,
+      slackIcon,
+      backendBase: 'https://vaptbackend.secureitlab.com'
     }
   },
   methods: {
+    async syncConnectionState() {
+      this.teamsConnected = !!(
+        localStorage.getItem('microsoft_graph_token') || localStorage.getItem('teams_connected') === 'true'
+      )
+      const botToken = localStorage.getItem('slack_bot_token')
+      if (!botToken) {
+        this.slackConnected = false
+        return
+      }
+      try {
+        const authStore = useAuthStore()
+        const validateRes = await authStore.validateSlackToken(botToken)
+        this.slackConnected = !!validateRes.success
+      } catch {
+        this.slackConnected = false
+      }
+    },
+    ensureOAuthSession(payload = null) {
+      const djangoAccessToken =
+        payload?.django_access_token || localStorage.getItem('django_access_token')
+      const djangoRefreshToken =
+        payload?.django_refresh_token || localStorage.getItem('django_refresh_token')
+      const oauthUser = payload?.user || JSON.parse(localStorage.getItem('local_user') || 'null')
+      if (!djangoAccessToken) return false
+      try {
+        const authStore = useAuthStore()
+        if (typeof authStore.setAuth === 'function') {
+          authStore.setAuth(djangoAccessToken, oauthUser || authStore.user || {})
+        }
+      } catch (e) {
+        console.error('Failed to hydrate session from OAuth:', e)
+      }
+      sessionStorage.setItem('authorization', djangoAccessToken)
+      if (djangoRefreshToken) sessionStorage.setItem('refreshToken', djangoRefreshToken)
+      sessionStorage.setItem('authenticated', 'true')
+      return true
+    },
+    async finishOAuthSignIn() {
+      const hasSession = this.ensureOAuthSession() ||
+        !!sessionStorage.getItem('authorization') ||
+        sessionStorage.getItem('authenticated') === 'true'
+      if (!hasSession) return
+      await this.checkAndRedirect()
+    },
+    async startSlackLogin() {
+      if (this.slackConnected) {
+        await this.finishOAuthSignIn()
+        return
+      }
+      this.oauthLoading = 'slack'
+      try {
+        const authStore = useAuthStore()
+        const adminId = authStore.user?._id || authStore.user?.id || null
+        const res = await authStore.getSlackOAuthUrl(this.backendBase, adminId)
+        if (res.status && res.data?.auth_url) {
+          const width = 1000
+          const height = 700
+          const left = window.screenX + (window.outerWidth - width) / 2
+          const top = window.screenY + (window.outerHeight - height) / 2
+          const popup = window.open(
+            res.data.auth_url,
+            'SlackOAuth',
+            `width=${width},height=${height},left=${left},top=${top}`
+          )
+          if (!popup) {
+            alert('Popup blocked! Please allow popups for this site.')
+          }
+        } else {
+          Swal.fire('Error', 'Unable to start Slack login', 'error')
+        }
+      } catch {
+        Swal.fire('Error', 'Something went wrong while connecting Slack', 'error')
+      } finally {
+        this.oauthLoading = false
+      }
+    },
+    async startTeamsLogin() {
+      if (this.teamsConnected) {
+        await this.finishOAuthSignIn()
+        return
+      }
+      this.oauthLoading = 'teams'
+      try {
+        const authStore = useAuthStore()
+        const adminId = authStore.user?._id || authStore.user?.id || null
+        const redirectUri = `${window.location.origin}/microsoft/callback`
+        const res = await authStore.getMicrosoftOAuthUrl(redirectUri, adminId)
+        if (res.status && res.data?.auth_url) {
+          const width = 1000
+          const height = 700
+          const left = window.screenX + (window.outerWidth - width) / 2
+          const top = window.screenY + (window.outerHeight - height) / 2
+          const popup = window.open(
+            res.data.auth_url,
+            'TeamsOAuth',
+            `width=${width},height=${height},left=${left},top=${top}`
+          )
+          if (!popup) {
+            alert('Popup blocked! Please allow popups for this site.')
+          }
+        } else {
+          Swal.fire('Error', 'Failed to start Microsoft Teams login', 'error')
+        }
+      } catch {
+        Swal.fire('Error', 'Microsoft Teams login failed', 'error')
+      } finally {
+        this.oauthLoading = false
+      }
+    },
+    async handleAdminOAuthMessage(event) {
+      const allowed = [window.location.origin, 'https://vaptbackend.secureitlab.com']
+      if (event.origin && !allowed.includes(event.origin)) return
+      if (event.data?.type === 'SLACK_CONNECTED') {
+        if (event.data.bot_token) localStorage.setItem('slack_bot_token', event.data.bot_token)
+        if (event.data.slack_user_id) localStorage.setItem('slack_user_id', event.data.slack_user_id)
+        if (event.data.django_access_token) localStorage.setItem('django_access_token', event.data.django_access_token)
+        if (event.data.user) localStorage.setItem('local_user', JSON.stringify(event.data.user))
+        this.slackConnected = true
+        this.teamsConnected = false
+        this.ensureOAuthSession(event.data)
+        await this.finishOAuthSignIn()
+        return
+      }
+      if (event.data?.type === 'TEAMS_CONNECTED' && event.data?.success) {
+        const graphToken = event.data.tokens?.access_token
+        const tenantId = event.data.tokens?.tenant_id
+        if (graphToken) localStorage.setItem('microsoft_graph_token', graphToken)
+        if (tenantId) localStorage.setItem('microsoft_tenant_id', tenantId)
+        if (event.data.vaptfix_team) localStorage.setItem('vaptfix_team', JSON.stringify(event.data.vaptfix_team))
+        if (event.data.django_access_token) localStorage.setItem('django_access_token', event.data.django_access_token)
+        if (event.data.django_refresh_token) localStorage.setItem('django_refresh_token', event.data.django_refresh_token)
+        if (event.data.user) localStorage.setItem('local_user', JSON.stringify(event.data.user))
+        localStorage.setItem('teams_connected', 'true')
+        this.teamsConnected = true
+        this.slackConnected = false
+        this.ensureOAuthSession(event.data)
+        await this.finishOAuthSignIn()
+      }
+    },
+    async onOAuthStorageChange(event) {
+      if (event.key === 'microsoft_graph_token' && event.newValue) {
+        this.teamsConnected = true
+        this.slackConnected = false
+        this.ensureOAuthSession()
+        await this.finishOAuthSignIn()
+      }
+    },
     async handleLogin() {
       const recaptchaResponse = window.grecaptcha?.getResponse(this.recaptchaWidgetId)
       if (!recaptchaResponse) {
@@ -241,6 +454,10 @@ export default {
   },
 
   mounted() {
+    this.syncConnectionState()
+    window.addEventListener('message', this.handleAdminOAuthMessage)
+    window.addEventListener('storage', this.onOAuthStorageChange)
+
     const googleScript = document.createElement('script')
     googleScript.src = 'https://accounts.google.com/gsi/client'
     googleScript.async = true
@@ -276,6 +493,8 @@ export default {
   },
 
   beforeUnmount() {
+    window.removeEventListener('message', this.handleAdminOAuthMessage)
+    window.removeEventListener('storage', this.onOAuthStorageChange)
     try {
       if (window.grecaptcha && this.recaptchaWidgetId !== null) {
         window.grecaptcha.reset(this.recaptchaWidgetId)
@@ -388,6 +607,86 @@ export default {
 .signin-btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.social-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0;
+}
+.social-divider-line {
+  flex: 1;
+  height: 1px;
+  background: #e5e7eb;
+}
+.social-divider-text {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+}
+.social-signin-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.social-btn {
+  width: 100%;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #111827;
+  transition: all 0.2s;
+}
+.social-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.social-btn-slack:hover:not(:disabled) {
+  border-color: #611f69;
+  background: #faf5fb;
+}
+.social-btn-teams:hover:not(:disabled) {
+  border-color: #5059c9;
+  background: #f5f6fd;
+}
+.social-connected-btn {
+  width: 100%;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid #86efac;
+  background: #dcfce7;
+  color: #166534;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+.social-connected-btn:hover {
+  background: #bbf7d0;
+  border-color: #4ade80;
+}
+.social-connected-btn .bi-check-circle-fill {
+  color: #22c55e;
+  font-size: 14px;
+}
+.social-btn-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
 }
 
 .signup-link {

@@ -541,14 +541,25 @@ export const useAuthStore = defineStore("auth", {
     // ✅ Get User Profile
     async getUserProfile() {
       try {
-        const response = await endpoint.get("/api/admin/users/profile");
+        const response = await endpoint.get("/api/admin/users/profile/");
         const data = response.data;
-        if (data.status) {
+        const userObj = data?.user ?? data?.data?.user ?? null;
+
+        if (userObj) {
+          this.user = userObj;
+          sessionStorage.setItem("user", JSON.stringify(userObj));
+          localStorage.setItem("user", JSON.stringify(userObj));
+          return { status: true, data: { ...data, user: userObj } };
+        }
+
+        if (data?.status === true && data?.user) {
           this.user = data.user;
           sessionStorage.setItem("user", JSON.stringify(data.user));
+          localStorage.setItem("user", JSON.stringify(data.user));
           return { status: true, data };
         }
-        return { status: false, message: data.message };
+
+        return { status: false, message: data?.message || "Unable to fetch profile" };
       } catch (error) {
         console.error("Profile fetch error:", error);
         return { status: false, message: "Unable to fetch profile" };
