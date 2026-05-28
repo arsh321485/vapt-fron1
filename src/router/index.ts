@@ -374,8 +374,7 @@ const router = createRouter({
     },
     {
       path: "/user-set-password/:uidb64/:token",
-      name: "user-set-password",
-      beforeEnter: (to) => ({
+      redirect: (to) => ({
         path: "/home",
         query: {
           action: "set-password",
