@@ -451,6 +451,23 @@ export default {
     // Extract uid/token for set-password flow (user-side email link)
     this.uidb64 = this.$route.query.uid || this.$route.query.uidb64 || "";
     this.token = this.$route.query.token || "";
+    const email = this.$route.query.email || "";
+
+    // If email link lands on /auth with token, always open Home user modal on Set Password tab.
+    if (this.uidb64 && this.token) {
+      this.$router.replace({
+        path: "/home",
+        query: {
+          action: "set-password",
+          signin: "user",
+          tab: "setPassword",
+          uidb64: this.uidb64,
+          token: this.token,
+          email: typeof email === "string" ? email : "",
+        },
+      });
+      return;
+    }
 
     // Normalize legacy/local alias (?mode=signinlocal) to signin.
     const rawMode = this.$route.query.mode;

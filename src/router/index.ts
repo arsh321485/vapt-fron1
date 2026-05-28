@@ -65,7 +65,6 @@ import ViewReportPage from "../views/admin-dashboard/ViewReportPage.vue";
 // import ToolboxView from "../views/admin-dashboard/ToolboxView.vue"; // Toolbox commented out
 import ScopingFormView from "../views/admin-dashboard/ScopingFormView.vue";
 import ScopingFormView2 from "../views/admin-dashboard/ScopingFormView2.vue";
-import UserSetPasswordView from "../views/user-views/UserSetPasswordView.vue";
 import RemediationTimelineView from "../views/admin-dashboard/RemediationTimelineView.vue";
 import UserRemediationTimelineView from "../views/user-views/UserRemediationTimelineView.vue";
 import CalendarView from "../views/admin-dashboard/CalendarView.vue";
@@ -376,7 +375,17 @@ const router = createRouter({
     {
       path: "/user-set-password/:uidb64/:token",
       name: "user-set-password",
-      component: UserSetPasswordView,
+      beforeEnter: (to) => ({
+        path: "/home",
+        query: {
+          action: "set-password",
+          signin: "user",
+          tab: "setPassword",
+          uidb64: String(to.params.uidb64 ?? ""),
+          token: String(to.params.token ?? ""),
+          email: typeof to.query.email === "string" ? to.query.email : "",
+        },
+      }),
     },
     {
       path: "/reset-password/:uidb64/:token",
