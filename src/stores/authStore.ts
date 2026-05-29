@@ -541,14 +541,25 @@ export const useAuthStore = defineStore("auth", {
     // ✅ Get User Profile
     async getUserProfile() {
       try {
-        const response = await endpoint.get("/api/admin/users/profile");
+        const response = await endpoint.get("/api/admin/users/profile/");
         const data = response.data;
-        if (data.status) {
+        const userObj = data?.user ?? data?.data?.user ?? null;
+
+        if (userObj) {
+          this.user = userObj;
+          sessionStorage.setItem("user", JSON.stringify(userObj));
+          localStorage.setItem("user", JSON.stringify(userObj));
+          return { status: true, data: { ...data, user: userObj } };
+        }
+
+        if (data?.status === true && data?.user) {
           this.user = data.user;
           sessionStorage.setItem("user", JSON.stringify(data.user));
+          localStorage.setItem("user", JSON.stringify(data.user));
           return { status: true, data };
         }
-        return { status: false, message: data.message };
+
+        return { status: false, message: data?.message || "Unable to fetch profile" };
       } catch (error) {
         console.error("Profile fetch error:", error);
         return { status: false, message: "Unable to fetch profile" };
@@ -1995,6 +2006,160 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    extractUploadedFileName(payload: unknown): string | null {
+      const FILE_KEYS = [
+        "file_name",
+        "filename",
+        "uploaded_file_name",
+        "original_filename",
+        "report_file_name",
+        "report_filename",
+        "uploaded_filename",
+        "source_file",
+        "scan_file",
+        "original_name",
+        "file",
+        "uploaded_file",
+        "uploaded_file_path",
+        "file_path",
+        "report_file_path",
+      ];
+      const FILE_EXT = /\.(xlsx|xls|csv|xml|nessus|pdf|html|htm|zip|json|txt)$/i;
+
+      const isFileKey = (key: string) => /file|filename/i.test(key);
+
+      const normalize = (value: unknown, key = ""): string | null => {
+        if (value == null) return null;
+        const raw = String(value).trim();
+        if (!raw || raw === "[object Object]") return null;
+        const base = raw.split(/[/\\]/).pop()?.trim() || raw;
+        if (FILE_EXT.test(base)) return base;
+        if (isFileKey(key) && base.length > 2 && base.length < 180) return base;
+        return null;
+      };
+
+      const visit = (node: unknown, depth = 0): string | null => {
+        if (node == null || depth > 5) return null;
+        if (typeof node === "string") return normalize(node, "file");
+
+        if (typeof node !== "object") return null;
+        if (Array.isArray(node)) {
+          for (const item of node) {
+            const found = visit(item, depth + 1);
+            if (found) return found;
+          }
+          return null;
+        }
+
+        const obj = node as Record<string, unknown>;
+        for (const key of FILE_KEYS) {
+          if (!(key in obj)) continue;
+          const val = obj[key];
+          if (typeof val === "string") {
+            const found = normalize(val, key);
+            if (found) return found;
+          } else if (val && typeof val === "object") {
+            const nested =
+              normalize((val as Record<string, unknown>).file_name, "file_name") ||
+              normalize((val as Record<string, unknown>).filename, "filename") ||
+              normalize((val as Record<string, unknown>).name, "file_name");
+            if (nested) return nested;
+          }
+        }
+
+        for (const val of Object.values(obj)) {
+          if (val && typeof val === "object") {
+            const found = visit(val, depth + 1);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+
+      return visit(payload);
+    },
+
+    // 🔹 Report header metadata (generated date, program, testing date, uploaded file name)
+    async fetchReportHeaderMetadata() {
+      const pickPayload = (res: any) => {
+        const d = res?.data;
+        if (!d || typeof d !== "object") return {};
+        if (d.data && typeof d.data === "object" && !Array.isArray(d.data)) return d.data;
+        return d;
+      };
+
+      const merged: Record<string, any> = {};
+      const assign = (source: Record<string, any>) => {
+        if (!source || typeof source !== "object") return;
+        Object.keys(source).forEach((key) => {
+          if (key === "vulnerabilities" || key === "rows") return;
+          const val = source[key];
+          if (val !== undefined && val !== null && val !== "") merged[key] = val;
+        });
+        if (source.report && typeof source.report === "object") assign(source.report);
+      };
+
+      const paths = [
+        "/api/admin/admindashboard/dashboard/report-status/",
+        "/api/admin/admindashboard/dashboard/report-metadata/",
+        "/api/admin/admindashboard/dashboard/report-info/",
+        "/api/admin/admindashboard/dashboard/report-details/",
+        "/api/admin/adminregister/register/latest/vulns/",
+        "/api/admin/adminmitigationstrategy/vuln-asset-count/",
+      ];
+
+      for (const path of paths) {
+        try {
+          const res = await endpoint.get(path);
+          assign(pickPayload(res));
+        } catch {
+          /* optional endpoint */
+        }
+      }
+
+      try {
+        const summary = await endpoint.get("/api/admin/admindashboard/dashboard/summary/");
+        assign(pickPayload(summary));
+      } catch {
+        /* optional */
+      }
+
+      try {
+        const detailed = await endpoint.get(
+          "/api/admin/admindashboard/dashboard/detailed-vulnerabilities/",
+        );
+        assign(pickPayload(detailed));
+      } catch {
+        /* optional */
+      }
+
+      try {
+        const project = await endpoint.get("/api/admin/scoping/project-details/");
+        assign(pickPayload(project));
+      } catch {
+        /* optional */
+      }
+
+      try {
+        const userRaw = sessionStorage.getItem("user") || localStorage.getItem("user");
+        const user = userRaw ? JSON.parse(userRaw) : null;
+        const adminId = user?.id || user?._id;
+        if (adminId) {
+          const scope = await endpoint.get(`/api/admin/scope/names/${adminId}/`);
+          const names = scope.data?.scope_names || scope.data?.data?.scope_names;
+          if (Array.isArray(names) && names[0]) merged.scope_project_name = names[0];
+        }
+      } catch {
+        /* optional */
+      }
+
+      const fileName = this.extractUploadedFileName(merged);
+      if (fileName) merged.resolved_file_name = fileName;
+
+      this.uploadedReportDetails = merged;
+      return { status: true, data: merged, fileName };
+    },
+
     // ✅ User dashboard summary (single endpoint for top cards)
     async fetchUserDashboardSummary(team?: string, force = false) {
       const normalizedTeam = (team || "").trim();
@@ -2551,7 +2716,12 @@ export const useAuthStore = defineStore("auth", {
 
         console.log("Latest Report ID:", this.latestReportId);
 
-        return { status: true, data: this.vulnerabilityRows };
+        return {
+          status: true,
+          data: this.vulnerabilityRows,
+          reportPayload: res.data,
+          fileName: this.extractUploadedFileName(res.data),
+        };
       } catch (error: any) {
         console.error(
           "Vulnerability Register error:",
