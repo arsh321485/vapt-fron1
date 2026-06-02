@@ -447,6 +447,29 @@ export default {
         return false;
       }
     },
+    ensureAuthSessionFromOAuth(payload = null) {
+      const djangoAccessToken =
+        payload?.django_access_token || localStorage.getItem('django_access_token');
+      const djangoRefreshToken =
+        payload?.django_refresh_token || localStorage.getItem('django_refresh_token');
+      const oauthUser = payload?.user || JSON.parse(localStorage.getItem('local_user') || 'null');
+      if (!djangoAccessToken) return false;
+
+      try {
+        if (typeof this.authStore.setAuth === 'function') {
+          this.authStore.setAuth(djangoAccessToken, oauthUser || this.authStore.user || {});
+        }
+      } catch (e) {
+        console.error('Failed to hydrate auth session from OAuth:', e);
+      }
+
+      sessionStorage.setItem('authorization', djangoAccessToken);
+      if (djangoRefreshToken) {
+        sessionStorage.setItem('refreshToken', djangoRefreshToken);
+      }
+      sessionStorage.setItem('authenticated', 'true');
+      return true;
+    },
     checkTeamsConnection() {
       const graphToken = localStorage.getItem('microsoft_graph_token');
       const teamsFlag = localStorage.getItem('teams_connected') === 'true';
