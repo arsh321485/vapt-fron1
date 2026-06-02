@@ -439,6 +439,29 @@ export default {
     getAdminId() {
       return this.authStore.user?._id || this.authStore.user?.id || null;
     },
+    ensureAuthSessionFromOAuth(payload = null) {
+      const djangoAccessToken =
+        payload?.django_access_token || localStorage.getItem('django_access_token');
+      const djangoRefreshToken =
+        payload?.django_refresh_token || localStorage.getItem('django_refresh_token');
+      const oauthUser = payload?.user || JSON.parse(localStorage.getItem('local_user') || 'null');
+      if (!djangoAccessToken) return false;
+
+      try {
+        if (typeof this.authStore.setAuth === 'function') {
+          this.authStore.setAuth(djangoAccessToken, oauthUser || this.authStore.user || {});
+        }
+      } catch (e) {
+        console.error('Failed to hydrate auth session from OAuth:', e);
+      }
+
+      sessionStorage.setItem('authorization', djangoAccessToken);
+      if (djangoRefreshToken) {
+        sessionStorage.setItem('refreshToken', djangoRefreshToken);
+      }
+      sessionStorage.setItem('authenticated', 'true');
+      return true;
+    },
     checkTeamsConnection() {
       const graphToken = localStorage.getItem('microsoft_graph_token');
       const teamsFlag = localStorage.getItem('teams_connected') === 'true';
@@ -494,6 +517,12 @@ export default {
       if (event.data.django_access_token) {
         localStorage.setItem('django_access_token', event.data.django_access_token);
       }
+      if (event.data.django_refresh_token) {
+        localStorage.setItem('django_refresh_token', event.data.django_refresh_token);
+      }
+      if (event.data.user) {
+        localStorage.setItem('local_user', JSON.stringify(event.data.user));
+      }
       if (tenantId) localStorage.setItem('microsoft_tenant_id', tenantId);
 
       if (teamObj) {
@@ -517,6 +546,7 @@ export default {
         await this.authStore.subscribeTeamsWebhook(teamId);
       }
 
+      this.ensureAuthSessionFromOAuth(event.data);
       this.maybeFinishSignupAfterOAuth();
     },
     onStorageChange(event) {
@@ -529,6 +559,7 @@ export default {
           timer: 2000,
           showConfirmButton: false
         });
+        this.ensureAuthSessionFromOAuth();
         this.maybeFinishSignupAfterOAuth();
       }
     },
@@ -653,20 +684,10 @@ export default {
       }
     },
     maybeFinishSignupAfterOAuth() {
-      const hasSession =
+      const hasSession = this.ensureAuthSessionFromOAuth() ||
         this.authStore.authenticated ||
-        sessionStorage.getItem('authorization') ||
+        !!sessionStorage.getItem('authorization') ||
         sessionStorage.getItem('authenticated') === 'true';
-
-      if (!hasSession) {
-        const djangoToken = localStorage.getItem('django_access_token');
-        const localUserRaw = localStorage.getItem('local_user');
-        if (djangoToken) {
-          const localUser = localUserRaw ? JSON.parse(localUserRaw) : null;
-          this.authStore.setAuth(djangoToken, localUser || this.authStore.user || {});
-          sessionStorage.setItem('authenticated', 'true');
-        }
-      }
 
       const loggedIn =
         this.authStore.authenticated ||

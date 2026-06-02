@@ -326,7 +326,7 @@ export default {
         return;
       }
 
-      const platform = this.detectAdminCommunicationPlatform();
+      const platform = this.authStore.detectAdminCommunicationPlatform();
 
       const payload = {
         admin_id: adminId,
@@ -339,16 +339,6 @@ export default {
         )
       };
 
-      if (platform === "teams") {
-        const graphToken = localStorage.getItem("microsoft_graph_token");
-        const vaptfixTeam = JSON.parse(localStorage.getItem("vaptfix_team") || "null");
-        const teamId = vaptfixTeam?.id || vaptfixTeam?.team_id;
-        if (graphToken && teamId) {
-          payload.access_token = graphToken;
-          payload.team_id = teamId;
-        }
-      }
-
       if (platform === "slack") {
         const botToken = localStorage.getItem("slack_bot_token");
         if (botToken) {
@@ -359,6 +349,13 @@ export default {
       const res = await this.authStore.createUserDetail(payload);
 
       if (res.status) {
+        let platformSync = { status: true, skipped: true };
+        if (platform) {
+          platformSync = await this.authStore.syncNewUserToCommunicationPlatform(
+            this.form.email.trim(),
+          );
+        }
+
         this.addedUsers.unshift({
           _id: res.data?._id || res.data?.id || null,
           first_name: this.form.first_name.trim(),
@@ -370,7 +367,9 @@ export default {
         let msg = "User added successfully";
 
         if (platform === "teams") {
-          msg = "User added and added to Microsoft Teams";
+          msg = platformSync.status
+            ? "User added and added to Microsoft Teams"
+            : `User created in VaptFix, but Teams sync failed: ${platformSync.message || "unknown"}`;
         } else if (slackSync?.status === "success") {
           msg = "User added and invited to Slack channels";
         } else if (slackSync?.status === "pending_workspace_join") {
@@ -382,7 +381,7 @@ export default {
         }
 
         Swal.fire({
-          icon: "success",
+          icon: platform === "teams" && !platformSync.status ? "warning" : "success",
           title: msg,
           timer: 2500,
           showConfirmButton: false,
@@ -553,15 +552,6 @@ export default {
       }
 
       Swal.fire({ icon, title, text, timer: 3000, showConfirmButton: false });
-    },
-    detectAdminCommunicationPlatform() {
-      const slackToken = localStorage.getItem("slack_bot_token");
-      if (slackToken) return "slack";
-      const graphToken = localStorage.getItem("microsoft_graph_token");
-      const vaptfixTeam = JSON.parse(localStorage.getItem("vaptfix_team") || "null");
-      const teamId = vaptfixTeam?.id || vaptfixTeam?.team_id;
-      if (graphToken && teamId) return "teams";
-      return null;
     },
     closeOnOutside(e) {
       const role = this.$refs.roleDropdown;
