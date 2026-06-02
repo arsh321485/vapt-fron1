@@ -618,6 +618,21 @@ export const useAuthStore = defineStore("auth", {
       const fromStore = this.user?._id || this.user?.id;
       if (fromStore) return String(fromStore);
 
+      // ✅ JWT token se user_id nikalo — Slack login ke baad most reliable source
+      try {
+        const token =
+          sessionStorage.getItem("authorization") || localStorage.getItem("authorization");
+        if (token) {
+          const parts = token.split(".");
+          if (parts.length === 3) {
+            const payload = JSON.parse(atob(parts[1]));
+            if (payload.user_id) return String(payload.user_id);
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+
       for (const key of ["local_user", "user"] as const) {
         try {
           const raw = localStorage.getItem(key) || sessionStorage.getItem(key);
@@ -1657,7 +1672,8 @@ export const useAuthStore = defineStore("auth", {
       const roles = memberRoles.map((r) => String(r).trim()).filter(Boolean);
 
       for (const role of roles) {
-        const keywords = roleKeywords[role] || [role.split(/\s+/)[0]?.toLowerCase()].filter(Boolean);
+        const keywords =
+          roleKeywords[role] || [role.split(/\s+/)[0]?.toLowerCase()].filter(Boolean);
         for (const ch of channels) {
           const name = String(ch.name || ch.channel_name || "").toLowerCase();
           if (keywords.some((kw) => kw && name.includes(kw))) {
@@ -1684,7 +1700,10 @@ export const useAuthStore = defineStore("auth", {
         return slack;
       }
       const localPart = email.split("@")[0] || "";
-      const parts = localPart.replace(/[._+-]/g, " ").split(/\s+/).filter(Boolean);
+      const parts = localPart
+        .replace(/[._+-]/g, " ")
+        .split(/\s+/)
+        .filter(Boolean);
       return {
         first_name: parts[0] ? parts[0].charAt(0).toUpperCase() + parts[0].slice(1) : "Teams",
         last_name: parts.slice(1).join(" ") || "Member",
@@ -1692,7 +1711,9 @@ export const useAuthStore = defineStore("auth", {
       };
     },
 
-    resolveTeamsChannelsByMemberRoles(memberRoles: string[]): { channelId: string; channelName: string }[] {
+    resolveTeamsChannelsByMemberRoles(
+      memberRoles: string[],
+    ): { channelId: string; channelName: string }[] {
       const channels = this.getTeamsChannelsFromStorage();
       if (!Array.isArray(channels) || channels.length === 0) {
         const single = this.resolveDefaultTeamsChannel();
@@ -1710,7 +1731,8 @@ export const useAuthStore = defineStore("auth", {
       const roles = memberRoles.map((r) => String(r).trim()).filter(Boolean);
 
       for (const role of roles) {
-        const keywords = roleKeywords[role] || [role.split(/\s+/)[0]?.toLowerCase()].filter(Boolean);
+        const keywords =
+          roleKeywords[role] || [role.split(/\s+/)[0]?.toLowerCase()].filter(Boolean);
         for (const ch of channels) {
           const name = String(ch.displayName || ch.name || ch.channel_name || "").toLowerCase();
           if (keywords.some((kw) => kw && name.includes(kw))) {
@@ -1861,12 +1883,7 @@ export const useAuthStore = defineStore("auth", {
             errors.push(inviteRes.message || `Invite failed for channel ${channelId}`);
           }
         } else {
-          const addRes = await this.addUserToSlackChannel(
-            botToken,
-            channelId,
-            "",
-            email,
-          );
+          const addRes = await this.addUserToSlackChannel(botToken, channelId, "", email);
           if (!addRes.status) {
             errors.push(addRes.message || `Add failed for channel ${channelId}`);
           }
@@ -1961,8 +1978,7 @@ export const useAuthStore = defineStore("auth", {
             localStorage.setItem("local_user", JSON.stringify(data.local_user));
           }
 
-          const jwtAccess =
-            data.jwt_tokens?.access || data.tokens?.access || data.access_token;
+          const jwtAccess = data.jwt_tokens?.access || data.tokens?.access || data.access_token;
           const jwtRefresh = data.jwt_tokens?.refresh || data.tokens?.refresh;
           const appUser = data.local_user || data.user;
           if (jwtAccess) {
@@ -2950,19 +2966,18 @@ export const useAuthStore = defineStore("auth", {
         return {
           status: false,
           message:
-            errorData?.message || errorData?.error || errorData?.detail || "Failed to fetch login platform",
+            errorData?.message ||
+            errorData?.error ||
+            errorData?.detail ||
+            "Failed to fetch login platform",
           data: { platform: "email", found: false },
         };
       }
     },
 
     _applyMemberAuthFromResponse(data: Record<string, any>) {
-      const access =
-        data?.access_token ||
-        data?.tokens?.access ||
-        data?.jwt_tokens?.access;
-      const refresh =
-        data?.refresh_token || data?.tokens?.refresh || data?.jwt_tokens?.refresh;
+      const access = data?.access_token || data?.tokens?.access || data?.jwt_tokens?.access;
+      const refresh = data?.refresh_token || data?.tokens?.refresh || data?.jwt_tokens?.refresh;
       const user = data?.user;
       if (access && typeof access === "string") {
         clearAllAuthTokens();
@@ -2993,16 +3008,15 @@ export const useAuthStore = defineStore("auth", {
         return {
           status: false,
           message:
-            errorData?.message || errorData?.error || errorData?.detail || "Slack member login failed",
+            errorData?.message ||
+            errorData?.error ||
+            errorData?.detail ||
+            "Slack member login failed",
         };
       }
     },
 
-    async teamsMemberLogin(payload: {
-      email: string;
-      ms_user_id?: string;
-      access_token?: string;
-    }) {
+    async teamsMemberLogin(payload: { email: string; ms_user_id?: string; access_token?: string }) {
       try {
         const res = await endpoint.post("/api/admin/users/teams/member-login/", payload);
         const body = res.data;
@@ -3086,14 +3100,21 @@ export const useAuthStore = defineStore("auth", {
         const data = raw && typeof raw === "object" && raw.data != null ? raw.data : raw;
         const tokens = (data && (data.tokens || data.jwt)) || {};
         const access: string | undefined =
-          tokens.access || data?.access || data?.access_token || (typeof data?.token === "string" ? data.token : undefined);
+          tokens.access ||
+          data?.access ||
+          data?.access_token ||
+          (typeof data?.token === "string" ? data.token : undefined);
         const refreshToken = tokens.refresh || data?.refresh || data?.refresh_token;
         const userObj = data?.user ?? data?.profile ?? null;
 
         if (!access || typeof access !== "string") {
           return {
             status: false,
-            message: data?.message || data?.detail || raw?.message || "Login response missing access token.",
+            message:
+              data?.message ||
+              data?.detail ||
+              raw?.message ||
+              "Login response missing access token.",
             details: raw,
           };
         }

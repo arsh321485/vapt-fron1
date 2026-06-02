@@ -641,10 +641,18 @@ export default {
         if (event.data.django_refresh_token) {
           localStorage.setItem('django_refresh_token', event.data.django_refresh_token);
         }
-        const appUser = event.data.local_user || event.data.user;
+        // ✅ Only save Django local_user — never Slack user object
+        const appUser = event.data.local_user || null;
         if (appUser && typeof appUser === 'object') {
           localStorage.setItem('local_user', JSON.stringify(appUser));
         }
+
+        // ✅ Immediately set auth in parent window with correct token + Django admin user
+        this.ensureAuthSessionFromOAuth({
+          django_access_token: event.data.django_access_token,
+          django_refresh_token: event.data.django_refresh_token,
+          user: appUser,
+        });
 
         this.onSlackConnected();
       }

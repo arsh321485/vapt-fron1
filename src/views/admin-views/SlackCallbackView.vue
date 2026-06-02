@@ -110,7 +110,8 @@ export default {
         this.status = "success";
 
         const loginData = res.data || {};
-        const localUser = loginData.local_user || loginData.user || null;
+        // ✅ Only use Django local_user — never fallback to Slack user object
+        const localUser = loginData.local_user || null;
         this.notifyOpener({
           type: "SLACK_CONNECTED",
           team: validateRes?.data?.team || "",
