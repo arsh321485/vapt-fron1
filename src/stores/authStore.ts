@@ -10,7 +10,10 @@ interface CreateUserPayload {
   admin_id: string;
   user_type: string;
   email: string;
-  Member_role: string;
+  first_name?: string;
+  last_name?: string;
+  Member_role: string | string[];
+  slack_bot_token?: string;
 }
 
 interface RiskCriteriaPayload {
@@ -541,14 +544,25 @@ export const useAuthStore = defineStore("auth", {
     // ✅ Get User Profile
     async getUserProfile() {
       try {
-        const response = await endpoint.get("/api/admin/users/profile");
+        const response = await endpoint.get("/api/admin/users/profile/");
         const data = response.data;
-        if (data.status) {
+        const userObj = data?.user ?? data?.data?.user ?? null;
+
+        if (userObj) {
+          this.user = userObj;
+          sessionStorage.setItem("user", JSON.stringify(userObj));
+          localStorage.setItem("user", JSON.stringify(userObj));
+          return { status: true, data: { ...data, user: userObj } };
+        }
+
+        if (data?.status === true && data?.user) {
           this.user = data.user;
           sessionStorage.setItem("user", JSON.stringify(data.user));
+          localStorage.setItem("user", JSON.stringify(data.user));
           return { status: true, data };
         }
-        return { status: false, message: data.message };
+
+        return { status: false, message: data?.message || "Unable to fetch profile" };
       } catch (error) {
         console.error("Profile fetch error:", error);
         return { status: false, message: "Unable to fetch profile" };
@@ -599,6 +613,66 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    /** Admin id for add-user-detail — survives Slack/Teams OAuth popup flow. */
+    resolveAdminId(): string | null {
+      const fromStore = this.user?._id || this.user?.id;
+      if (fromStore) return String(fromStore);
+
+      for (const key of ["local_user", "user"] as const) {
+        try {
+          const raw = localStorage.getItem(key) || sessionStorage.getItem(key);
+          if (!raw) continue;
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === "object") {
+            const id = parsed._id || parsed.id;
+            if (id) return String(id);
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+      return null;
+    },
+
+    /** Prefer full app user object over Slack display name string from postMessage. */
+    resolveOAuthAppUser(payload: Record<string, any> | null = null): Record<string, any> | null {
+      const candidates = [payload?.local_user, payload?.user, payload?.app_user];
+      for (const c of candidates) {
+        if (c && typeof c === "object" && !Array.isArray(c)) {
+          return c as Record<string, any>;
+        }
+      }
+      try {
+        const localUser = JSON.parse(localStorage.getItem("local_user") || "null");
+        if (localUser && typeof localUser === "object") return localUser;
+      } catch {
+        /* ignore */
+      }
+      if (this.user && typeof this.user === "object") return this.user as Record<string, any>;
+      return null;
+    },
+
+    hydrateAuthSessionFromOAuth(payload: Record<string, any> | null = null): boolean {
+      const djangoAccessToken =
+        payload?.django_access_token ||
+        sessionStorage.getItem("authorization") ||
+        localStorage.getItem("django_access_token");
+      const djangoRefreshToken =
+        payload?.django_refresh_token ||
+        sessionStorage.getItem("refreshToken") ||
+        localStorage.getItem("django_refresh_token");
+
+      if (!djangoAccessToken) return false;
+
+      const oauthUser = this.resolveOAuthAppUser(payload);
+      this.setAuth(djangoAccessToken, oauthUser || this.user || {});
+      if (djangoRefreshToken) {
+        sessionStorage.setItem("refreshToken", djangoRefreshToken);
+      }
+      sessionStorage.setItem("authenticated", "true");
+      return true;
+    },
+
     // ✅ Create User Detail
     async createUserDetail(payload: CreateUserPayload) {
       try {
@@ -610,6 +684,7 @@ export const useAuthStore = defineStore("auth", {
           status: true,
           message: data.message || "User created successfully",
           data: data.data || {},
+          slack_sync: data.slack_sync,
         };
       } catch (error: unknown) {
         const err = error as any;
@@ -622,6 +697,77 @@ export const useAuthStore = defineStore("auth", {
         };
       }
     },
+
+    /**
+     * DB save (add-user-detail) then Slack/Teams invite — same order as LocationView.
+     * Postman invite/add-user APIs alone do not create VaptFix DB records.
+     * slack_bot_token is NOT sent on create — backend was inviting on Slack without DB row.
+     */
+    async addTeamMemberWithPlatformSync(payload: CreateUserPayload) {
+      const memberRoles = Array.isArray(payload.Member_role)
+        ? payload.Member_role
+        : payload.Member_role
+          ? [payload.Member_role]
+          : [];
+
+      const email = payload.email.trim();
+      const profile = this.resolveMemberProfileByEmail(email);
+      const platforms = this.detectAdminCommunicationPlatforms();
+      const defaultFirst =
+        platforms.includes("teams") && !platforms.includes("slack") ? "Teams" : "Member";
+
+      const dbPayload: CreateUserPayload = {
+        ...payload,
+        email,
+        first_name: (payload.first_name || profile.first_name || defaultFirst).trim(),
+        last_name: (payload.last_name || profile.last_name || "User").trim(),
+      };
+      delete dbPayload.slack_bot_token;
+
+      const res = await this.createUserDetail(dbPayload);
+      if (!res.status) {
+        return { ...res, platformSync: { status: false, skipped: true, message: res.message } };
+      }
+
+      let platformSync: { status: boolean; skipped?: boolean; message?: string } = {
+        status: true,
+        skipped: true,
+      };
+      if (platforms.length > 0) {
+        platformSync = await this.syncNewUserToAllConnectedPlatforms(email, { memberRoles });
+      }
+
+      return { ...res, platformSync };
+    },
+
+    /** User already in Slack/Teams channel but missing in DB — register by email + roles. */
+    async importPlatformMemberToDatabase(payload: {
+      email: string;
+      memberRoles: string[];
+      user_type?: string;
+      first_name?: string;
+      last_name?: string;
+    }) {
+      const adminId = this.resolveAdminId();
+      if (!adminId) {
+        return { status: false, message: "Admin not found. Please sign in again." };
+      }
+      const email = payload.email.trim();
+      const profile = this.resolveMemberProfileByEmail(email);
+      const platforms = this.detectAdminCommunicationPlatforms();
+      const defaultFirst =
+        platforms.includes("teams") && !platforms.includes("slack") ? "Teams" : "Member";
+
+      return this.addTeamMemberWithPlatformSync({
+        admin_id: adminId,
+        email,
+        user_type: payload.user_type || "internal",
+        first_name: (payload.first_name || profile.first_name || defaultFirst).trim(),
+        last_name: (payload.last_name || profile.last_name || "User").trim(),
+        Member_role: payload.memberRoles,
+      });
+    },
+
     // ✅ Create User Detail + Slack Sync
     // async createUserDetail(payload: CreateUserPayload) {
     //   try {
@@ -1322,6 +1468,439 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    async subscribeTeamsWebhook(teamId: string) {
+      try {
+        const graphToken = localStorage.getItem("microsoft_graph_token");
+        if (!graphToken || !teamId) return { status: false };
+        const res = await endpoint.post("/api/admin/users/teams/webhook/subscribe/", {
+          access_token: graphToken,
+          team_id: teamId,
+        });
+        return { status: true, data: res.data };
+      } catch (error) {
+        console.error("Teams webhook subscribe error:", error);
+        return { status: false };
+      }
+    },
+
+    getVaptfixTeamId(): string | null {
+      try {
+        const vaptfixTeam = JSON.parse(localStorage.getItem("vaptfix_team") || "null");
+        const teamId = vaptfixTeam?.team_id || vaptfixTeam?.id;
+        return teamId ? String(teamId) : null;
+      } catch {
+        return null;
+      }
+    },
+
+    getTeamsChannelsFromStorage(): any[] {
+      const merged: any[] = [];
+      const seen = new Set<string>();
+      const addChannel = (ch: any) => {
+        const id = String(ch?.id || ch?.channel_id || "");
+        if (!id || seen.has(id)) return;
+        seen.add(id);
+        merged.push(ch);
+      };
+
+      try {
+        const raw = localStorage.getItem("vaptfix_channels");
+        const parsed = raw ? JSON.parse(raw) : [];
+        if (Array.isArray(parsed)) parsed.forEach(addChannel);
+      } catch {
+        /* ignore */
+      }
+
+      const teamId = this.getVaptfixTeamId();
+      if (teamId) {
+        try {
+          const rawTeam = localStorage.getItem(`teams_channels_${teamId}`);
+          const parsedTeam = rawTeam ? JSON.parse(rawTeam) : [];
+          if (Array.isArray(parsedTeam)) parsedTeam.forEach(addChannel);
+        } catch {
+          /* ignore */
+        }
+      }
+      return merged;
+    },
+
+    /** Load Teams channels from API if cache empty (needed for PM/CM channel mapping). */
+    async ensureTeamsChannelsCached(): Promise<void> {
+      if (this.getTeamsChannelsFromStorage().length > 0) return;
+
+      const teamId = this.getVaptfixTeamId();
+      if (!teamId) return;
+
+      const res = await this.fetchTeamChannels(teamId);
+      if (res.status && Array.isArray(res.channels) && res.channels.length > 0) {
+        localStorage.setItem("vaptfix_channels", JSON.stringify(res.channels));
+        localStorage.setItem(`teams_channels_${teamId}`, JSON.stringify(res.channels));
+      }
+    },
+
+    /** All connected platforms — Slack no longer blocks Teams when both are linked. */
+    detectAdminCommunicationPlatforms(): ("slack" | "teams")[] {
+      const platforms: ("slack" | "teams")[] = [];
+      if (localStorage.getItem("slack_bot_token")) platforms.push("slack");
+      const graphToken = localStorage.getItem("microsoft_graph_token");
+      const teamId = this.getVaptfixTeamId();
+      if (graphToken && teamId) platforms.push("teams");
+      return platforms;
+    },
+
+    detectAdminCommunicationPlatform(): "slack" | "teams" | null {
+      const platforms = this.detectAdminCommunicationPlatforms();
+      if (platforms.includes("teams") && localStorage.getItem("teams_connected") === "true") {
+        return "teams";
+      }
+      return platforms[0] || null;
+    },
+
+    resolveDefaultTeamsChannel(): { channelId: string; channelName: string } | null {
+      try {
+        const channels = this.getTeamsChannelsFromStorage();
+        if (!Array.isArray(channels) || channels.length === 0) return null;
+        const preferred =
+          channels.find((c) =>
+            /general/i.test(String(c.displayName || c.name || c.channel_name || "")),
+          ) || channels[0];
+        const channelId = preferred.id || preferred.channel_id;
+        const channelName =
+          preferred.displayName || preferred.name || preferred.channel_name || "General";
+        if (!channelId) return null;
+        return { channelId: String(channelId), channelName: String(channelName) };
+      } catch {
+        return null;
+      }
+    },
+
+    resolveDefaultSlackChannelId(): string | null {
+      try {
+        const raw = localStorage.getItem("slack_channels");
+        const channels = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(channels) || channels.length === 0) return null;
+        const ch = channels[0];
+        const id = ch?.id || ch?.channel_id;
+        return id ? String(id) : null;
+      } catch {
+        return null;
+      }
+    },
+
+    resolveSlackUserIdByEmail(email: string): string | null {
+      try {
+        const raw = localStorage.getItem("slack_users");
+        const users = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(users)) return null;
+        const normalized = email.trim().toLowerCase();
+        const match = users.find(
+          (u) => String(u.profile?.email || u.email || "").toLowerCase() === normalized,
+        );
+        const id = match?.id || match?.user_id;
+        return id ? String(id) : null;
+      } catch {
+        return null;
+      }
+    },
+
+    resolveSlackProfileByEmail(email: string): {
+      first_name: string;
+      last_name: string;
+      slack_user_id: string | null;
+    } {
+      try {
+        const raw = localStorage.getItem("slack_users");
+        const users = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(users)) {
+          return { first_name: "", last_name: "", slack_user_id: null };
+        }
+        const normalized = email.trim().toLowerCase();
+        const match = users.find(
+          (u) => String(u.profile?.email || u.email || "").toLowerCase() === normalized,
+        );
+        if (!match) {
+          return { first_name: "", last_name: "", slack_user_id: null };
+        }
+        const fullName = String(
+          match.profile?.real_name || match.real_name || match.name || "",
+        ).trim();
+        const parts = fullName.split(/\s+/).filter(Boolean);
+        return {
+          first_name: parts[0] || "",
+          last_name: parts.slice(1).join(" ") || "",
+          slack_user_id: match.id || match.user_id || null,
+        };
+      } catch {
+        return { first_name: "", last_name: "", slack_user_id: null };
+      }
+    },
+
+    /** Map VaptFix roles (Patch Management, etc.) to Slack channel names. */
+    resolveSlackChannelIdsByMemberRoles(memberRoles: string[]): string[] {
+      const roleKeywords: Record<string, string[]> = {
+        "Patch Management": ["patch"],
+        "Configuration Management": ["config"],
+        "Network Security": ["network"],
+        "Architectural Flaws": ["architect", "flaw"],
+      };
+
+      let channels: any[] = [];
+      try {
+        const raw = localStorage.getItem("slack_channels");
+        channels = raw ? JSON.parse(raw) : [];
+      } catch {
+        channels = [];
+      }
+      if (!Array.isArray(channels) || channels.length === 0) return [];
+
+      const ids = new Set<string>();
+      const roles = memberRoles.map((r) => String(r).trim()).filter(Boolean);
+
+      for (const role of roles) {
+        const keywords = roleKeywords[role] || [role.split(/\s+/)[0]?.toLowerCase()].filter(Boolean);
+        for (const ch of channels) {
+          const name = String(ch.name || ch.channel_name || "").toLowerCase();
+          if (keywords.some((kw) => kw && name.includes(kw))) {
+            const id = ch.id || ch.channel_id;
+            if (id) ids.add(String(id));
+          }
+        }
+      }
+
+      if (ids.size === 0) {
+        const fallback = this.resolveDefaultSlackChannelId();
+        if (fallback) ids.add(fallback);
+      }
+      return [...ids];
+    },
+
+    resolveMemberProfileByEmail(email: string): {
+      first_name: string;
+      last_name: string;
+      slack_user_id: string | null;
+    } {
+      const slack = this.resolveSlackProfileByEmail(email);
+      if (slack.first_name || slack.last_name) {
+        return slack;
+      }
+      const localPart = email.split("@")[0] || "";
+      const parts = localPart.replace(/[._+-]/g, " ").split(/\s+/).filter(Boolean);
+      return {
+        first_name: parts[0] ? parts[0].charAt(0).toUpperCase() + parts[0].slice(1) : "Teams",
+        last_name: parts.slice(1).join(" ") || "Member",
+        slack_user_id: slack.slack_user_id,
+      };
+    },
+
+    resolveTeamsChannelsByMemberRoles(memberRoles: string[]): { channelId: string; channelName: string }[] {
+      const channels = this.getTeamsChannelsFromStorage();
+      if (!Array.isArray(channels) || channels.length === 0) {
+        const single = this.resolveDefaultTeamsChannel();
+        return single ? [single] : [];
+      }
+
+      const roleKeywords: Record<string, string[]> = {
+        "Patch Management": ["patch"],
+        "Configuration Management": ["config"],
+        "Network Security": ["network"],
+        "Architectural Flaws": ["architect", "flaw"],
+      };
+
+      const matched: { channelId: string; channelName: string }[] = [];
+      const roles = memberRoles.map((r) => String(r).trim()).filter(Boolean);
+
+      for (const role of roles) {
+        const keywords = roleKeywords[role] || [role.split(/\s+/)[0]?.toLowerCase()].filter(Boolean);
+        for (const ch of channels) {
+          const name = String(ch.displayName || ch.name || ch.channel_name || "").toLowerCase();
+          if (keywords.some((kw) => kw && name.includes(kw))) {
+            const channelId = ch.id || ch.channel_id;
+            if (channelId) {
+              matched.push({
+                channelId: String(channelId),
+                channelName: String(ch.displayName || ch.name || ch.channel_name || "General"),
+              });
+            }
+          }
+        }
+      }
+
+      if (matched.length === 0) {
+        const single = this.resolveDefaultTeamsChannel();
+        return single ? [single] : [];
+      }
+
+      const seen = new Set<string>();
+      return matched.filter((c) => {
+        if (seen.has(c.channelId)) return false;
+        seen.add(c.channelId);
+        return true;
+      });
+    },
+
+    async syncNewUserToAllConnectedPlatforms(
+      userEmail: string,
+      options: { memberRoles?: string[] } = {},
+    ): Promise<{ status: boolean; skipped?: boolean; message?: string }> {
+      const platforms = this.detectAdminCommunicationPlatforms();
+      if (platforms.length === 0) {
+        return { status: true, skipped: true };
+      }
+
+      const errors: string[] = [];
+      let anySuccess = false;
+
+      for (const platform of platforms) {
+        if (platform === "teams") {
+          await this.ensureTeamsChannelsCached();
+        }
+        const res = await this.syncNewUserToCommunicationPlatform(userEmail, {
+          ...options,
+          forcePlatform: platform,
+        });
+        if (res.status) anySuccess = true;
+        else if (!res.skipped) errors.push(`${platform}: ${res.message || "failed"}`);
+      }
+
+      if (anySuccess) {
+        return {
+          status: true,
+          message:
+            errors.length > 0
+              ? `Synced with warnings: ${errors.join("; ")}`
+              : "User synced to connected platform(s)",
+        };
+      }
+      return {
+        status: false,
+        message: errors.join("; ") || "Failed to sync user to Slack/Teams",
+      };
+    },
+
+    async syncNewUserToCommunicationPlatform(
+      userEmail: string,
+      options: { memberRoles?: string[]; forcePlatform?: "slack" | "teams" } = {},
+    ) {
+      const platform = options.forcePlatform || this.detectAdminCommunicationPlatform();
+      if (!platform) {
+        return { status: true, skipped: true };
+      }
+
+      const memberRoles = (options.memberRoles || []).map((r) => String(r).trim()).filter(Boolean);
+      const email = userEmail.trim();
+
+      if (platform === "teams") {
+        await this.ensureTeamsChannelsCached();
+        const teamId = this.getVaptfixTeamId();
+        const channels = this.resolveTeamsChannelsByMemberRoles(memberRoles);
+        if (!teamId || channels.length === 0) {
+          return {
+            status: false,
+            message: "Teams team or channel not configured. Reconnect Microsoft Teams.",
+          };
+        }
+
+        const errors: string[] = [];
+        for (const channel of channels) {
+          const res = await this.addUserToTeamsChannel({
+            teamId: String(teamId),
+            channelId: channel.channelId,
+            channelName: channel.channelName,
+            userEmail: email,
+            userRole: "member",
+          });
+          if (!res.status) {
+            errors.push(res.message || `Failed for ${channel.channelName}`);
+          }
+        }
+        if (errors.length === channels.length) {
+          return { status: false, message: errors.join("; ") };
+        }
+        return {
+          status: true,
+          message:
+            errors.length > 0
+              ? `Added to some Teams channels. Issues: ${errors.join("; ")}`
+              : "User added to Microsoft Teams channel(s)",
+        };
+      }
+
+      const botToken = localStorage.getItem("slack_bot_token");
+      if (!botToken) {
+        return { status: false, message: "Slack not connected" };
+      }
+
+      const usersRes = await this.listSlackUsers(botToken);
+      if (usersRes.status && usersRes.users?.length) {
+        localStorage.setItem("slack_users", JSON.stringify(usersRes.users));
+      }
+
+      let channelIds = this.resolveSlackChannelIdsByMemberRoles(memberRoles);
+      if (channelIds.length === 0) {
+        const channelsRes = await this.listSlackChannels();
+        if (channelsRes.status && channelsRes.channels?.length) {
+          localStorage.setItem("slack_channels", JSON.stringify(channelsRes.channels));
+          channelIds = this.resolveSlackChannelIdsByMemberRoles(memberRoles);
+        }
+      }
+
+      if (channelIds.length === 0) {
+        return {
+          status: false,
+          message: "Slack channel not configured. Reconnect Slack or pick a default channel.",
+        };
+      }
+
+      const slackUserId = this.resolveSlackUserIdByEmail(email);
+      const errors: string[] = [];
+
+      for (const channelId of channelIds) {
+        if (slackUserId) {
+          const inviteRes = await this.inviteSlackUser(channelId, [slackUserId]);
+          if (!inviteRes.status) {
+            errors.push(inviteRes.message || `Invite failed for channel ${channelId}`);
+          }
+        } else {
+          const addRes = await this.addUserToSlackChannel(
+            botToken,
+            channelId,
+            "",
+            email,
+          );
+          if (!addRes.status) {
+            errors.push(addRes.message || `Add failed for channel ${channelId}`);
+          }
+        }
+      }
+
+      if (errors.length === channelIds.length) {
+        return { status: false, message: errors.join("; ") };
+      }
+      return {
+        status: true,
+        message:
+          errors.length > 0
+            ? `Invited to some Slack channels. Issues: ${errors.join("; ")}`
+            : "User invited to Slack channel(s)",
+      };
+    },
+
+    async inviteSlackUser(channelId: string, slackUserIds: string[]) {
+      try {
+        const botToken = localStorage.getItem("slack_bot_token");
+        if (!botToken) return { status: false, message: "Slack not connected" };
+        const res = await endpoint.post("/api/admin/users/slack/channel/invite/", {
+          access_token: botToken,
+          channel: channelId,
+          users: slackUserIds,
+        });
+        return { status: !!res.data?.success, data: res.data, message: res.data?.message };
+      } catch (error) {
+        console.error("Slack invite error:", error);
+        return { status: false, message: "Failed to invite user to Slack channel" };
+      }
+    },
+
     // Slack
     async getSlackOAuthUrl(baseUrl: string, adminId?: string | null) {
       console.log(
@@ -1551,7 +2130,7 @@ export const useAuthStore = defineStore("auth", {
       try {
         console.log("Calling Invite Users to Slack Channel API...");
 
-        const djangoToken = localStorage.getItem("access_token");
+        const djangoToken = sessionStorage.getItem("authorization");
         const res = await endpoint.post(
           "/api/admin/users/slack/channel/invite/",
           {
@@ -1559,11 +2138,9 @@ export const useAuthStore = defineStore("auth", {
             channel: channel,
             users: users,
           },
-          {
-            headers: {
-              Authorization: `Bearer ${djangoToken}`,
-            },
-          },
+          djangoToken && djangoToken !== "null" && djangoToken !== "undefined"
+            ? { headers: { Authorization: `Bearer ${djangoToken}` } }
+            : undefined,
         );
 
         console.log("Invite users response:", res.data);
@@ -1993,6 +2570,160 @@ export const useAuthStore = defineStore("auth", {
           details: error.response?.data || null,
         };
       }
+    },
+
+    extractUploadedFileName(payload: unknown): string | null {
+      const FILE_KEYS = [
+        "file_name",
+        "filename",
+        "uploaded_file_name",
+        "original_filename",
+        "report_file_name",
+        "report_filename",
+        "uploaded_filename",
+        "source_file",
+        "scan_file",
+        "original_name",
+        "file",
+        "uploaded_file",
+        "uploaded_file_path",
+        "file_path",
+        "report_file_path",
+      ];
+      const FILE_EXT = /\.(xlsx|xls|csv|xml|nessus|pdf|html|htm|zip|json|txt)$/i;
+
+      const isFileKey = (key: string) => /file|filename/i.test(key);
+
+      const normalize = (value: unknown, key = ""): string | null => {
+        if (value == null) return null;
+        const raw = String(value).trim();
+        if (!raw || raw === "[object Object]") return null;
+        const base = raw.split(/[/\\]/).pop()?.trim() || raw;
+        if (FILE_EXT.test(base)) return base;
+        if (isFileKey(key) && base.length > 2 && base.length < 180) return base;
+        return null;
+      };
+
+      const visit = (node: unknown, depth = 0): string | null => {
+        if (node == null || depth > 5) return null;
+        if (typeof node === "string") return normalize(node, "file");
+
+        if (typeof node !== "object") return null;
+        if (Array.isArray(node)) {
+          for (const item of node) {
+            const found = visit(item, depth + 1);
+            if (found) return found;
+          }
+          return null;
+        }
+
+        const obj = node as Record<string, unknown>;
+        for (const key of FILE_KEYS) {
+          if (!(key in obj)) continue;
+          const val = obj[key];
+          if (typeof val === "string") {
+            const found = normalize(val, key);
+            if (found) return found;
+          } else if (val && typeof val === "object") {
+            const nested =
+              normalize((val as Record<string, unknown>).file_name, "file_name") ||
+              normalize((val as Record<string, unknown>).filename, "filename") ||
+              normalize((val as Record<string, unknown>).name, "file_name");
+            if (nested) return nested;
+          }
+        }
+
+        for (const val of Object.values(obj)) {
+          if (val && typeof val === "object") {
+            const found = visit(val, depth + 1);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+
+      return visit(payload);
+    },
+
+    // 🔹 Report header metadata (generated date, program, testing date, uploaded file name)
+    async fetchReportHeaderMetadata() {
+      const pickPayload = (res: any) => {
+        const d = res?.data;
+        if (!d || typeof d !== "object") return {};
+        if (d.data && typeof d.data === "object" && !Array.isArray(d.data)) return d.data;
+        return d;
+      };
+
+      const merged: Record<string, any> = {};
+      const assign = (source: Record<string, any>) => {
+        if (!source || typeof source !== "object") return;
+        Object.keys(source).forEach((key) => {
+          if (key === "vulnerabilities" || key === "rows") return;
+          const val = source[key];
+          if (val !== undefined && val !== null && val !== "") merged[key] = val;
+        });
+        if (source.report && typeof source.report === "object") assign(source.report);
+      };
+
+      const paths = [
+        "/api/admin/admindashboard/dashboard/report-status/",
+        "/api/admin/admindashboard/dashboard/report-metadata/",
+        "/api/admin/admindashboard/dashboard/report-info/",
+        "/api/admin/admindashboard/dashboard/report-details/",
+        "/api/admin/adminregister/register/latest/vulns/",
+        "/api/admin/adminmitigationstrategy/vuln-asset-count/",
+      ];
+
+      for (const path of paths) {
+        try {
+          const res = await endpoint.get(path);
+          assign(pickPayload(res));
+        } catch {
+          /* optional endpoint */
+        }
+      }
+
+      try {
+        const summary = await endpoint.get("/api/admin/admindashboard/dashboard/summary/");
+        assign(pickPayload(summary));
+      } catch {
+        /* optional */
+      }
+
+      try {
+        const detailed = await endpoint.get(
+          "/api/admin/admindashboard/dashboard/detailed-vulnerabilities/",
+        );
+        assign(pickPayload(detailed));
+      } catch {
+        /* optional */
+      }
+
+      try {
+        const project = await endpoint.get("/api/admin/scoping/project-details/");
+        assign(pickPayload(project));
+      } catch {
+        /* optional */
+      }
+
+      try {
+        const userRaw = sessionStorage.getItem("user") || localStorage.getItem("user");
+        const user = userRaw ? JSON.parse(userRaw) : null;
+        const adminId = user?.id || user?._id;
+        if (adminId) {
+          const scope = await endpoint.get(`/api/admin/scope/names/${adminId}/`);
+          const names = scope.data?.scope_names || scope.data?.data?.scope_names;
+          if (Array.isArray(names) && names[0]) merged.scope_project_name = names[0];
+        }
+      } catch {
+        /* optional */
+      }
+
+      const fileName = this.extractUploadedFileName(merged);
+      if (fileName) merged.resolved_file_name = fileName;
+
+      this.uploadedReportDetails = merged;
+      return { status: true, data: merged, fileName };
     },
 
     // ✅ User dashboard summary (single endpoint for top cards)
@@ -2551,7 +3282,12 @@ export const useAuthStore = defineStore("auth", {
 
         console.log("Latest Report ID:", this.latestReportId);
 
-        return { status: true, data: this.vulnerabilityRows };
+        return {
+          status: true,
+          data: this.vulnerabilityRows,
+          reportPayload: res.data,
+          fileName: this.extractUploadedFileName(res.data),
+        };
       } catch (error: any) {
         console.error(
           "Vulnerability Register error:",

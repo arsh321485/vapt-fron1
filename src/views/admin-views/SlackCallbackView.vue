@@ -110,10 +110,12 @@ export default {
         this.status = "success";
 
         const loginData = res.data || {};
+        const localUser = loginData.local_user || loginData.user || null;
         this.notifyOpener({
           type: "SLACK_CONNECTED",
           team: validateRes?.data?.team || "",
-          user: validateRes?.data?.user?.name || "",
+          user: localUser,
+          local_user: localUser,
           bot_token: botToken,
           slack_user_id: validateRes?.data?.user?.id || "",
           django_access_token:
@@ -121,6 +123,10 @@ export default {
             loginData.tokens?.access ||
             loginData.access_token ||
             sessionStorage.getItem("authorization") ||
+            "",
+          django_refresh_token:
+            loginData.jwt_tokens?.refresh ||
+            loginData.tokens?.refresh ||
             "",
         });
 

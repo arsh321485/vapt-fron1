@@ -9,30 +9,44 @@
           <div class="col-1 ps-0 menubar-col1">
             <DashboardMenu />
           </div>
-          <div class="col vr-content px-0" ref="reportWrap">
-            <div class="report-page">
+          <div class="col vr-content px-0">
+            <div class="report-page" ref="reportContent">
+              <div class="report-watermark-layer" :style="watermarkLayerStyle" aria-hidden="true"></div>
               <div class="meta-header">
                 <div class="meta-left">
                   <p class="eyebrow">Comprehensive Audit</p>
-                  <h2 class="page-title">Security Intelligence Report</h2>
+                  <h2 class="page-title">Vul management program Report</h2>
                   <div class="meta-items">
                     <div class="meta-item">
-                      <span>Client</span>
-                      <strong>Enterprise Logic Corp</strong>
+                      <span>Report generated on</span>
+                      <strong>{{ reportMeta.reportGeneratedOn || '—' }}</strong>
                     </div>
                     <div class="meta-item">
-                      <span>Test Date</span>
-                      <strong>Jan 13 - Feb 16, 2026</strong>
+                      <span>Vul management program</span>
+                      <strong class="meta-file-name" :title="reportMeta.vulManagementProgram">{{ reportMeta.vulManagementProgram || '—' }}</strong>
                     </div>
                     <div class="meta-item">
-                      <span>Author</span>
-                      <strong>VaptFix Pro Intelligence Unit</strong>
+                      <span>Date of testing</span>
+                      <strong>{{ reportMeta.dateOfTesting || '—' }}</strong>
                     </div>
                   </div>
                 </div>
-                <div class="meta-right">
-                  <span>Generated On</span>
-                  <strong>April 10, 2026</strong>
+                <div class="meta-right-col">
+                  <div class="export-dropdown no-export" ref="exportDropdown">
+                    <button
+                      class="btn-export"
+                      type="button"
+                      :disabled="pdfExporting"
+                      @click="toggleExportMenu"
+                    >
+                      {{ pdfExporting ? 'Exporting…' : 'Export Report' }}
+                      <span class="export-chevron" :class="{ open: exportMenuOpen }">▾</span>
+                    </button>
+                    <div v-show="exportMenuOpen" class="export-menu" role="menu">
+                      <button type="button" role="menuitem" @click="downloadReportAsHtml">Download as HTML</button>
+                      <button type="button" role="menuitem" @click="exportReportPdf">Export PDF</button>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -60,6 +74,26 @@
                       <strong>{{ hasOverdueFindings ? 'HIGH' : 'MODERATE' }}</strong>
                     </div>
                   </div>
+                  <div class="scope-mini-section">
+                    <h4 class="scope-mini-heading">Scope of Assessment</h4>
+                    <div class="scope-mini-grid">
+                      <div class="scope-mini-card">
+                        <span><span class="scope-ico">◎</span> External IPs</span>
+                        <strong>{{ uniqueHostsCount }}</strong>
+                        <small>Active Nodes Scanned</small>
+                      </div>
+                      <div class="scope-mini-card">
+                        <span><span class="scope-ico">▣</span> Web Applications</span>
+                        <strong>12</strong>
+                        <small>Production URLs</small>
+                      </div>
+                      <div class="scope-mini-card">
+                        <span><span class="scope-ico">☁</span> Cloud Infrastructure</span>
+                        <strong>2</strong>
+                        <small>AWS / Azure Subsets</small>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div class="card progress-card dark-card">
@@ -74,28 +108,11 @@
                 </div>
               </div>
 
-              <div class="stats-and-scope-grid">
-                <div class="card scope-card">
-                  <h4>Scope of Assessment</h4>
-                  <div class="scope-list">
-                    <div class="scope-item">
-                      <strong><span class="scope-ico">◎</span> External IPs</strong>
-                      <span>{{ uniqueHostsCount }} Active Nodes Scanned</span>
-                    </div>
-                    <div class="scope-item">
-                      <strong><span class="scope-ico">▣</span> Web Applications</strong>
-                      <span>12 Production URLs</span>
-                    </div>
-                    <div class="scope-item">
-                      <strong><span class="scope-ico">☁</span> Cloud Infrastructure</strong>
-                      <span>AWS / Azure Subsets</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="stat-card critical"><span>Critical</span><strong>{{ vulnStats.critical }}</strong><small>+2 from last scan</small></div>
-                <div class="stat-card high"><span>High</span><strong>{{ vulnStats.high }}</strong><small>-5 remediated</small></div>
-                <div class="stat-card medium"><span>Medium</span><strong>{{ vulnStats.medium }}</strong><small>Stable</small></div>
-                <div class="stat-card low"><span>Low</span><strong>{{ vulnStats.low }}</strong><small>Maintenance only</small></div>
+              <div class="severity-stats-grid">
+                <div class="stat-card stat-card--compact critical"><span>Critical</span><strong>{{ vulnStats.critical }}</strong><small>+2 from last scan</small></div>
+                <div class="stat-card stat-card--compact high"><span>High</span><strong>{{ vulnStats.high }}</strong><small>-5 remediated</small></div>
+                <div class="stat-card stat-card--compact medium"><span>Medium</span><strong>{{ vulnStats.medium }}</strong><small>Stable</small></div>
+                <div class="stat-card stat-card--compact low"><span>Low</span><strong>{{ vulnStats.low }}</strong><small>Maintenance only</small></div>
               </div>
 
               <div class="chart-grid">
@@ -185,9 +202,6 @@
                 </div>
               </div>
 
-              <div class="bottom-actions">
-                <button class="btn-export" @click="downloadReport">Export Report</button>
-              </div>
             </div>
           </div>
         </div>
@@ -200,8 +214,19 @@
 import DashboardMenu from '@/components/admin-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/admin-component/DashboardHeader.vue';
 import Chart from 'chart.js/auto';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import { useAuthStore } from '@/stores/authStore';
 import { PERFORMANCE_TEAM_CONFIGS, TEAM_COLORS } from '@/utils/teamColors';
+
+const REPORT_WATERMARK_TEXT = 'vaptfix.ai';
+/** Manual uploaded scan file name until API field is wired */
+const REPORT_UPLOAD_FILE_NAME = 'Ibdar_Int_July';
+const WATERMARK_TILE_W = 580;
+const WATERMARK_TILE_H = 420;
+const WATERMARK_ANGLE = -38;
+const WATERMARK_FONT_SIZE = 52;
+const WATERMARK_FILL = 'rgba(140, 145, 155, 0.135)';
 
 export default {
   name: 'ViewReportPage',
@@ -219,6 +244,14 @@ export default {
       teamDetail: {},
       tableLoading: false,
       tableData: [],
+      exportMenuOpen: false,
+      pdfExporting: false,
+      reportMetaLoading: false,
+      reportMeta: {
+        reportGeneratedOn: '',
+        vulManagementProgram: REPORT_UPLOAD_FILE_NAME,
+        dateOfTesting: '',
+      },
       remediationSchedule: [
         {
           severity: 'Critical',
@@ -329,25 +362,143 @@ export default {
         ...PERFORMANCE_TEAM_CONFIGS.map(c => ({ ...c })),
       ];
     },
+    watermarkLayerStyle() {
+      return {
+        backgroundImage: this.getWatermarkBackgroundImage(),
+        backgroundRepeat: 'repeat',
+        backgroundSize: `${WATERMARK_TILE_W}px ${WATERMARK_TILE_H}px`,
+      };
+    },
   },
 
   async mounted() {
-    await Promise.all([this.fetchVulnerabilities(), this.fetchTeamDistribution(), this.fetchTeamDetail(), this.fetchDetailedVulnerabilities()]);
+    this._onDocClick = (e) => {
+      const el = this.$refs.exportDropdown;
+      if (el && !el.contains(e.target)) this.exportMenuOpen = false;
+    };
+    document.addEventListener('click', this._onDocClick);
+    await Promise.all([
+      this.fetchVulnerabilities(),
+      this.fetchTeamDistribution(),
+      this.fetchTeamDetail(),
+      this.fetchDetailedVulnerabilities(),
+      this.fetchReportMetadata(),
+    ]);
     this.$nextTick(() => {
       this.initCharts();
     });
   },
 
   beforeUnmount() {
+    document.removeEventListener('click', this._onDocClick);
     this.charts.forEach(c => c.destroy());
     this.charts = [];
   },
 
   methods: {
+    pickMetaField(sources, keys) {
+      for (const source of sources) {
+        if (!source || typeof source !== 'object') continue;
+        for (const key of keys) {
+          const val = source[key];
+          if (val !== undefined && val !== null && String(val).trim() !== '') return val;
+        }
+      }
+      return '';
+    },
+
+    formatMetaDate(value) {
+      if (!value) return '';
+      const raw = String(value).trim();
+      if (!raw) return '';
+      const d = new Date(raw.includes('T') ? raw : raw.replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$3-$2-$1'));
+      if (!Number.isNaN(d.getTime())) {
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+      return raw;
+    },
+
+    applyReportMetaFromSources(...sources) {
+      const flat = sources.filter(Boolean);
+      const reportGeneratedOn = this.formatMetaDate(
+        this.pickMetaField(flat, [
+          'report_generated_on',
+          'generated_on',
+          'report_generated_at',
+          'generated_at',
+          'created_at',
+          'uploaded_at',
+          'report_date',
+        ]),
+      );
+      const dateOfTesting = this.formatMetaDate(
+        this.pickMetaField(flat, [
+          'date_of_testing',
+          'testing_date',
+          'test_date',
+          'scan_date',
+          'assessment_date',
+          'testing_period',
+          'test_period',
+        ]),
+      );
+      const store = useAuthStore();
+      const uploadedFileName =
+        this.pickMetaField(flat, [
+          'resolved_file_name',
+          'file_name',
+          'filename',
+          'uploaded_file_name',
+          'original_filename',
+          'report_file_name',
+          'uploaded_file',
+          'source_file',
+        ]) || store.extractUploadedFileName(Object.assign({}, ...flat));
+
+      if (reportGeneratedOn) this.reportMeta.reportGeneratedOn = reportGeneratedOn;
+      if (dateOfTesting) this.reportMeta.dateOfTesting = dateOfTesting;
+      // Uploaded file name under Vul management program (API when available, else manual default)
+      this.reportMeta.vulManagementProgram = uploadedFileName || REPORT_UPLOAD_FILE_NAME;
+    },
+
+    async fetchReportMetadata() {
+      this.reportMetaLoading = true;
+      const store = useAuthStore();
+      try {
+        const [metaRes, summaryRes, projectRes, registerRes] = await Promise.all([
+          store.fetchReportHeaderMetadata(),
+          store.fetchDashboardSummary(),
+          store.getProjectDetails(),
+          store.fetchVulnerabilityRegister(true),
+        ]);
+
+        const sources = [];
+        if (metaRes.status && metaRes.data) sources.push(metaRes.data);
+        if (summaryRes.status && summaryRes.data) sources.push(summaryRes.data);
+        if (projectRes.status && projectRes.data) sources.push(projectRes.data);
+        if (registerRes.reportPayload) sources.push(registerRes.reportPayload);
+
+        this.applyReportMetaFromSources(...sources);
+
+        const apiFileName = metaRes.fileName || registerRes.fileName;
+        if (apiFileName) this.reportMeta.vulManagementProgram = apiFileName;
+        else if (!this.reportMeta.vulManagementProgram) {
+          this.reportMeta.vulManagementProgram = REPORT_UPLOAD_FILE_NAME;
+        }
+      } catch (err) {
+        console.error('Report metadata fetch failed:', err);
+      } finally {
+        this.reportMetaLoading = false;
+      }
+    },
+
     async fetchDetailedVulnerabilities() {
       this.tableLoading = true;
       const store = useAuthStore();
       const result = await store.fetchDetailedVulnerabilities();
+      if (result.status && result.data) {
+        this.applyReportMetaFromSources(result.data, result.data.report);
+      }
       if (result.status && Array.isArray(result.data?.vulnerabilities)) {
         const teamKeyMap = {
           'Network Security': 'network',
@@ -530,11 +681,55 @@ export default {
       });
     },
 
-    downloadReport() {
-      const reportContent = this.$refs.reportWrap;
-      if (!reportContent) return;
+    toggleExportMenu(e) {
+      e.stopPropagation();
+      this.exportMenuOpen = !this.exportMenuOpen;
+    },
+
+    getWatermarkBackgroundImage() {
+      const cx = WATERMARK_TILE_W / 2;
+      const cy = WATERMARK_TILE_H / 2;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${WATERMARK_TILE_W}" height="${WATERMARK_TILE_H}" viewBox="0 0 ${WATERMARK_TILE_W} ${WATERMARK_TILE_H}">
+  <text x="${cx}" y="${cy}" transform="rotate(${WATERMARK_ANGLE} ${cx} ${cy})" font-family="Inter,Arial,Helvetica,sans-serif" font-size="${WATERMARK_FONT_SIZE}" font-weight="700" fill="${WATERMARK_FILL}" text-anchor="middle" dominant-baseline="middle">${REPORT_WATERMARK_TEXT}</text>
+</svg>`;
+      return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+    },
+
+    applyWatermarkStyles(el) {
+      if (!el) return;
+      el.style.backgroundImage = this.getWatermarkBackgroundImage();
+      el.style.backgroundRepeat = 'repeat';
+      el.style.backgroundSize = `${WATERMARK_TILE_W}px ${WATERMARK_TILE_H}px`;
+    },
+
+    getWatermarkCssBlock() {
+      const uri = this.getWatermarkBackgroundImage();
+      return `
+    .report-page,
+    .report-download-wrapper { position: relative; }
+    .report-watermark-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 50;
+      pointer-events: none;
+      background-image: ${uri};
+      background-repeat: repeat;
+      background-size: ${WATERMARK_TILE_W}px ${WATERMARK_TILE_H}px;
+    }
+    @media print {
+      .report-watermark-layer {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+    }`;
+    },
+
+    buildReportClone() {
+      const reportContent = this.$refs.reportContent;
+      if (!reportContent) return null;
 
       const clone = reportContent.cloneNode(true);
+      clone.querySelectorAll('.no-export').forEach((el) => el.remove());
       clone.style.padding = '0';
 
       const liveCanvases = reportContent.querySelectorAll('canvas');
@@ -577,10 +772,20 @@ export default {
       if (clonedSelects[1]) clonedSelects[1].setAttribute('id', 'dl-sev-filter');
       if (clonedSelects[2]) clonedSelects[2].setAttribute('id', 'dl-status-filter');
 
+      return clone;
+    },
+
+    downloadReportAsHtml() {
+      this.exportMenuOpen = false;
+      const clone = this.buildReportClone();
+      if (!clone) return;
+
+      clone.querySelectorAll('.report-watermark-layer').forEach((el) => this.applyWatermarkStyles(el));
+
       let cssText = '';
-      Array.from(document.styleSheets).forEach(sheet => {
+      Array.from(document.styleSheets).forEach((sheet) => {
         try {
-          Array.from(sheet.cssRules || []).forEach(rule => {
+          Array.from(sheet.cssRules || []).forEach((rule) => {
             if (rule.type === CSSRule.MEDIA_RULE) return;
             cssText += rule.cssText.replace(/\[data-v-[a-zA-Z0-9]+\]/g, '') + '\n';
           });
@@ -607,6 +812,7 @@ export default {
     .bento-card { overflow: visible !important; }
     .section-label { margin-top: 24px !important; }
     .hero-grid, .chart-grid, .stats-grid, .risk-grid { break-inside: avoid; page-break-inside: avoid; }
+    ${this.getWatermarkCssBlock()}
   </style>
 </head>
 <body>
@@ -646,6 +852,56 @@ export default {
       a.click();
       URL.revokeObjectURL(url);
     },
+
+    async exportReportPdf() {
+      this.exportMenuOpen = false;
+      const reportContent = this.$refs.reportContent;
+      if (!reportContent || this.pdfExporting) return;
+
+      this.pdfExporting = true;
+      const hiddenEls = [];
+      reportContent.querySelectorAll('.no-export').forEach((el) => {
+        hiddenEls.push({ el, display: el.style.display });
+        el.style.display = 'none';
+      });
+      try {
+        const canvas = await html2canvas(reportContent, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#f5f6fa',
+          windowWidth: reportContent.scrollWidth,
+          scrollY: -window.scrollY,
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const imgWidth = pageWidth;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        let heightLeft = imgHeight;
+        let position = 0;
+
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+
+        while (heightLeft > 0) {
+          position = heightLeft - imgHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+        }
+
+        pdf.save('security-intelligence-report.pdf');
+      } catch (err) {
+        console.error('PDF export failed:', err);
+        alert('PDF export failed. Please try again.');
+      } finally {
+        hiddenEls.forEach(({ el, display }) => { el.style.display = display; });
+        this.pdfExporting = false;
+      }
+    },
   },
 };
 </script>
@@ -653,17 +909,66 @@ export default {
 <style scoped>
 * { box-sizing: border-box; }
 .vr-content { min-height: 100vh; background: #f5f6fa; overflow-y: scroll; scrollbar-gutter: stable; }
-.report-page { width: 100%; max-width: none; margin: 0; padding: 20px 10px 40px; display: flex; flex-direction: column; gap: 14px; }
-.report-page { padding-top: 84px; }
+.report-page {
+  position: relative;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 20px 10px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 84px;
+  overflow: hidden;
+}
+.report-watermark-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  background-repeat: repeat;
+}
 .meta-header { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
 .eyebrow { margin: 0; color: #0f696e; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
 .page-title { margin: 2px 0 10px; color: #241447; font-size: 44px; font-weight: 800; letter-spacing: -.02em; line-height: 1.05; }
 .meta-items { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.meta-item strong.meta-file-name {
+  word-break: break-all;
+  font-size: 13px;
+  line-height: 1.35;
+}
 .meta-item span { display: block; font-size: 10px; color: #8b95a7; text-transform: uppercase; font-weight: 700; letter-spacing: .08em; }
 .meta-item strong { font-size: 14px; color: #20293a; font-weight: 700; line-height: 1.3; }
-.meta-right { min-width: 160px; background: #fff; border: 1px solid #e7e8ef; border-radius: 22px; padding: 10px 14px; text-align: right; }
-.meta-right span { display: block; font-size: 10px; color: #8b95a7; text-transform: uppercase; font-weight: 700; letter-spacing: .08em; }
-.meta-right strong { color: #242c40; font-size: 22px; line-height: 1.1; }
+.meta-right-col { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; flex-shrink: 0; }
+.export-dropdown { position: relative; }
+.export-chevron { margin-left: 6px; font-size: 10px; display: inline-block; transition: transform .2s; }
+.export-chevron.open { transform: rotate(180deg); }
+.export-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 200px;
+  background: #fff;
+  border: 1px solid #e7e8ef;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(36, 20, 71, .12);
+  padding: 6px;
+  z-index: 20;
+}
+.export-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #242c40;
+  cursor: pointer;
+}
+.export-menu button:hover { background: #f4f5f8; }
 
 .top-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; }
 .card { background: #fff; border: 1px solid #e8e8ef; border-radius: 18px; padding: 18px; }
@@ -684,15 +989,44 @@ export default {
 .progress-text { position: absolute; font-size: 44px; font-weight: 800; color: #fff; }
 .progress-meta { color: #d6d3e8; font-size: 13px; display: flex; justify-content: space-between; gap: 10px; }
 
-.stats-and-scope-grid { display: grid; grid-template-columns: 1.35fr repeat(4, .9fr); gap: 12px; }
-.scope-card h4 { margin: 0 0 10px; font-size: 11px; color: #8b95a7; text-transform: uppercase; letter-spacing: .08em; font-weight: 800; }
-.scope-list { display: flex; flex-direction: column; gap: 8px; }
-.scope-item { border: 1px solid #ececf2; border-radius: 10px; padding: 10px; background: #fff; }
-.scope-item strong { display: block; font-size: 13px; color: #1f2940; }
-.scope-ico { color: #0f696e; margin-right: 6px; font-size: 12px; }
-.scope-item span { font-size: 12px; color: #6a7488; }
+.scope-mini-section { margin-top: 12px; }
+.scope-mini-heading { margin: 0 0 8px; font-size: 10px; color: #8b95a7; text-transform: uppercase; letter-spacing: .08em; font-weight: 800; }
+.scope-mini-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.scope-mini-card {
+  background: #fff;
+  border: 1px solid #ececf2;
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 88px;
+  box-shadow: 0 1px 3px rgba(36, 20, 71, .06);
+  border-bottom: 3px solid #0f696e;
+}
+.scope-mini-card span {
+  font-size: 9px;
+  color: #8b95a7;
+  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: .06em;
+  line-height: 1.3;
+}
+.scope-mini-card strong { font-size: 28px; line-height: 1; font-weight: 800; color: #0f696e; }
+.scope-mini-card small { color: #8b95a7; font-size: 10px; line-height: 1.3; }
+.scope-ico { color: #0f696e; margin-right: 4px; font-size: 10px; }
+
+.severity-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 
 .stat-card { background: #fff; border: 1px solid #ececf2; border-radius: 18px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; min-height: 160px; box-shadow: 0 1px 4px rgba(36,20,71,.08); }
+.stat-card--compact {
+  min-height: 118px;
+  padding: 10px 12px;
+  border-radius: 14px;
+}
+.stat-card--compact span { font-size: 10px; }
+.stat-card--compact strong { font-size: 36px; }
+.stat-card--compact small { font-size: 11px; }
 .stat-card span { font-size: 11px; color: #8b95a7; text-transform: uppercase; font-weight: 800; letter-spacing: .07em; }
 .stat-card strong { font-size: 52px; line-height: 1; font-weight: 800; }
 .stat-card small { color: #8b95a7; font-size: 12px; }
@@ -821,19 +1155,33 @@ export default {
 .team-pill-architectural { color: #6b21a8; background: #f3e8ff; border-color: #d8b4fe; }
 .table-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 4px 0; color: #7b8497; font-size: 12px; }
 .table-footer-actions button { border: none; background: transparent; color: #6b7280; font-size: 12px; margin-left: 8px; }
-.bottom-actions { display: flex; justify-content: flex-end; }
-.btn-export { background: #241447; color: #fff; border: none; border-radius: 999px; padding: 10px 18px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.btn-export {
+  background: #241447;
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+}
+.btn-export:disabled { opacity: .7; cursor: wait; }
 
 @media (max-width: 1200px) {
   .top-grid, .chart-grid { grid-template-columns: 1fr; }
-  .stats-and-scope-grid { grid-template-columns: 1fr 1fr; }
+  .scope-mini-grid { grid-template-columns: 1fr; }
+  .severity-stats-grid { grid-template-columns: 1fr 1fr; }
   .meta-items { grid-template-columns: 1fr; }
   .severity-visual { grid-template-columns: 1fr; }
 }
 @media (max-width: 768px) {
   .report-page { padding: 14px 8px 24px; }
   .page-title { font-size: 30px; }
-  .stats-and-scope-grid { grid-template-columns: 1fr; }
+  .severity-stats-grid { grid-template-columns: 1fr; }
+  .scope-mini-grid { grid-template-columns: 1fr; }
   .score-grid { grid-template-columns: 1fr; }
 }
 </style>

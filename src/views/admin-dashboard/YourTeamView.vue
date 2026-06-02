@@ -455,9 +455,9 @@ export default {
   async saveUser() {
   try {
     // 🔐 Admin ID
-    const adminId = this.authStore.user?._id || this.authStore.user?.id;
+    const adminId = this.authStore.resolveAdminId();
     if (!adminId) {
-      Swal.fire("Error", "Admin not found. Please login again.", "error");
+      Swal.fire("Error", "Admin not found. Please sign in again (email or Slack/Teams).", "error");
       return;
     }
 
@@ -485,7 +485,8 @@ export default {
       return;
     }
 
-    // 📦 Payload
+    const platform = this.authStore.detectAdminCommunicationPlatform();
+
     const payload = {
       admin_id: adminId,
       user_type: this.form.user_type,
@@ -495,20 +496,36 @@ export default {
       Member_role: memberRoles,
     };
 
-    // 🚀 API CALL
-    const res = await this.authStore.createUserDetail(payload);
+    const res = await this.authStore.addTeamMemberWithPlatformSync(payload);
 
     if (!res.status) {
       Swal.fire("Error", res.message, "error");
       return;
     }
 
-    // ✅ Success
+    const platformSync = res.platformSync || { status: true, skipped: true };
+
+    const slackSync = res.slack_sync || res.data?.slack_sync;
+    let successText = res.message || "User added successfully";
+
+    if (platform === "teams") {
+      successText = platformSync.status
+        ? "User added and added to Microsoft Teams"
+        : `User created in VaptFix, but Teams sync failed: ${platformSync.message || "unknown"}`;
+    } else if (slackSync?.status === "success") {
+      successText = "User added and invited to Slack channels";
+    } else if (slackSync?.status === "pending_workspace_join") {
+      successText =
+        "User created. Slack workspace invite sent; channel mapping pending.";
+    } else if (platform === "slack" && platformSync.status && !platformSync.skipped) {
+      successText = "User added and invited to Slack channel";
+    }
+
     Swal.fire({
-      icon: "success",
+      icon: platformSync.status === false ? "warning" : "success",
       title: "User Added",
-      text: res.message,
-      timer: 2000,
+      text: successText,
+      timer: 2500,
       showConfirmButton: false,
     });
 

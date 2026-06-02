@@ -188,6 +188,32 @@
               <p class="loc-users-empty-text">No users added yet</p>
               <p class="loc-users-empty-hint">Saved members will appear here</p>
             </div>
+
+            <div v-if="hasSlackIntegration || hasTeamsIntegration" class="loc-platform-import">
+              <p class="loc-platform-import-title">
+                <i class="bi bi-slack"></i>
+                Already added in Slack/Teams only?
+              </p>
+              <p class="loc-platform-import-hint">
+                Invite in Slack does not save to VaptFix DB. Enter the same email and roles here to register.
+              </p>
+              <input
+                v-model="platformImportEmail"
+                type="email"
+                class="loc-field-input loc-platform-import-input"
+                placeholder="user@company.com"
+                autocomplete="email"
+              />
+              <button
+                type="button"
+                class="loc-platform-import-btn"
+                :disabled="platformImportLoading || !platformImportEmail.trim() || !selectedRoles.length"
+                @click="importFromPlatformOnly"
+              >
+                <span v-if="platformImportLoading" class="spinner-border spinner-border-sm me-1"></span>
+                Save to database
+              </button>
+            </div>
           </div>
         </aside>
       </div>
@@ -211,6 +237,8 @@ export default {
       selectedRoles: [],
       isRoleOpen: false,
       addedUsers: [],
+      platformImportEmail: "",
+      platformImportLoading: false,
       form: {
         first_name: "",
         last_name: "",
@@ -231,6 +259,11 @@ export default {
     },
     hasSlackIntegration() {
       return !!localStorage.getItem("slack_bot_token");
+    },
+    hasTeamsIntegration() {
+      return !!(
+        localStorage.getItem("microsoft_graph_token") || localStorage.getItem("teams_connected") === "true"
+      );
     },
     selectedRoleLabels() {
       return this.selectedRoles
@@ -297,6 +330,52 @@ export default {
         });
       }
     },
+    async importFromPlatformOnly() {
+      const email = (this.platformImportEmail || "").trim();
+      if (!email) {
+        Swal.fire("Missing email", "Enter the Slack/Teams member email.", "warning");
+        return;
+      }
+      if (!this.selectedRoles.length) {
+        Swal.fire("Select roles", "Choose Patch Management / Configuration Management (or other roles) in the form first.", "warning");
+        return;
+      }
+      const adminId = this.authStore.resolveAdminId();
+      if (!adminId) {
+        Swal.fire("Error", "Admin account not found. Please sign in again.", "error");
+        return;
+      }
+
+      this.platformImportLoading = true;
+      try {
+        const memberRoles = this.selectedRoles.map(
+          (r) => this.roleOptions.find((o) => o.short === r)?.full || r,
+        );
+        const res = await this.authStore.importPlatformMemberToDatabase({
+          email,
+          memberRoles,
+          user_type: this.form.user_type || "internal",
+          first_name: this.form.first_name?.trim(),
+          last_name: this.form.last_name?.trim(),
+        });
+
+        if (res.status) {
+          await Swal.fire({
+            icon: "success",
+            title: "Saved to database",
+            text: "User is now in VaptFix and linked to Slack/Teams channels for selected roles.",
+            timer: 2800,
+            showConfirmButton: false,
+          });
+          this.platformImportEmail = "";
+          await this.loadAddedUsers();
+        } else {
+          Swal.fire("Error", res.message || "Could not save user to database", "error");
+        }
+      } finally {
+        this.platformImportLoading = false;
+      }
+    },
     async addUser() {
       // Validate required fields
       if (!this.form.first_name?.trim()) {
@@ -320,13 +399,13 @@ export default {
         return;
       }
 
-      const adminId = this.authStore.user?._id || this.authStore.user?.id;
+      const adminId = this.authStore.resolveAdminId();
       if (!adminId) {
-        Swal.fire("Error", "Please login again", "error");
+        Swal.fire("Error", "Admin account not found. Please sign in again (email or Slack/Teams).", "error");
         return;
       }
 
-      const platform = this.detectAdminCommunicationPlatform();
+      const platform = this.authStore.detectAdminCommunicationPlatform();
 
       const payload = {
         admin_id: adminId,
@@ -339,26 +418,14 @@ export default {
         )
       };
 
-      if (platform === "teams") {
-        const graphToken = localStorage.getItem("microsoft_graph_token");
-        const vaptfixTeam = JSON.parse(localStorage.getItem("vaptfix_team") || "null");
-        const teamId = vaptfixTeam?.id || vaptfixTeam?.team_id;
-        if (graphToken && teamId) {
-          payload.access_token = graphToken;
-          payload.team_id = teamId;
-        }
-      }
+      // DB via add-user-detail; Slack/Teams invite runs after (per role channels).
+      // Do not pass slack_bot_token on create — it caused Slack-only sync without DB row.
 
-      if (platform === "slack") {
-        const botToken = localStorage.getItem("slack_bot_token");
-        if (botToken) {
-          payload.slack_bot_token = botToken;
-        }
-      }
-
-      const res = await this.authStore.createUserDetail(payload);
+      const res = await this.authStore.addTeamMemberWithPlatformSync(payload);
 
       if (res.status) {
+        const platformSync = res.platformSync || { status: true, skipped: true };
+
         this.addedUsers.unshift({
           _id: res.data?._id || res.data?.id || null,
           first_name: this.form.first_name.trim(),
@@ -370,7 +437,9 @@ export default {
         let msg = "User added successfully";
 
         if (platform === "teams") {
-          msg = "User added and added to Microsoft Teams";
+          msg = platformSync.status
+            ? "User added and added to Microsoft Teams"
+            : `User created in VaptFix, but Teams sync failed: ${platformSync.message || "unknown"}`;
         } else if (slackSync?.status === "success") {
           msg = "User added and invited to Slack channels";
         } else if (slackSync?.status === "pending_workspace_join") {
@@ -382,7 +451,7 @@ export default {
         }
 
         Swal.fire({
-          icon: "success",
+          icon: platform === "teams" && !platformSync.status ? "warning" : "success",
           title: msg,
           timer: 2500,
           showConfirmButton: false,
@@ -554,15 +623,6 @@ export default {
 
       Swal.fire({ icon, title, text, timer: 3000, showConfirmButton: false });
     },
-    detectAdminCommunicationPlatform() {
-      const slackToken = localStorage.getItem("slack_bot_token");
-      if (slackToken) return "slack";
-      const graphToken = localStorage.getItem("microsoft_graph_token");
-      const vaptfixTeam = JSON.parse(localStorage.getItem("vaptfix_team") || "null");
-      const teamId = vaptfixTeam?.id || vaptfixTeam?.team_id;
-      if (graphToken && teamId) return "teams";
-      return null;
-    },
     closeOnOutside(e) {
       const role = this.$refs.roleDropdown;
       const teleportedDropdown = document.querySelector('.loc-dropdown-list');
@@ -576,7 +636,7 @@ export default {
       this.$router.push('/riskcriteria');
     },
   },
-  mounted() {
+  async mounted() {
     document.addEventListener("click", this.closeOnOutside);
     const user =
       this.authStore.user ||
@@ -584,6 +644,18 @@ export default {
     if (user) {
       this.authStore.user = user;
       this.loadAddedUsers();
+    }
+    if (this.hasTeamsIntegration) {
+      await this.authStore.ensureTeamsChannelsCached();
+    }
+    if (this.hasSlackIntegration) {
+      const botToken = localStorage.getItem("slack_bot_token");
+      if (botToken) {
+        const chRes = await this.authStore.listSlackChannels();
+        if (chRes.status && chRes.channels?.length) {
+          localStorage.setItem("slack_channels", JSON.stringify(chRes.channels));
+        }
+      }
     }
   },
   beforeUnmount() {
@@ -885,6 +957,45 @@ export default {
 .loc-users-empty-icon { font-size: 1.5rem; color: #cbd5e1; display: block; margin-bottom: 8px; }
 .loc-users-empty-text { margin: 0 0 4px; font-size: 0.82rem; font-weight: 700; color: #64748b; }
 .loc-users-empty-hint { margin: 0; font-size: 0.72rem; color: #94a3b8; }
+
+.loc-platform-import {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed #e2e8f0;
+}
+.loc-platform-import-title {
+  margin: 0 0 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #334155;
+}
+.loc-platform-import-hint {
+  margin: 0 0 10px;
+  font-size: 0.7rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+.loc-platform-import-input {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+.loc-platform-import-btn {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #fff;
+  background: #0f696e;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.loc-platform-import-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
 .loc-dropdown-list {
   position: fixed;
   background: #fff;
