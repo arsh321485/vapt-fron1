@@ -155,6 +155,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { markPostLoginSuccess } from "@/utils/postLoginSuccess";
 import router from "@/router";
 import Swal from 'sweetalert2';
+import { buildUserSetPasswordHomeQuery } from '@/utils/userSetPasswordDeepLink';
 
 export default {
   name: "AuthView",
@@ -457,14 +458,11 @@ export default {
     if (this.uidb64 && this.token) {
       this.$router.replace({
         path: "/home",
-        query: {
-          action: "set-password",
-          signin: "user",
-          tab: "setPassword",
-          uidb64: this.uidb64,
-          token: this.token,
-          email: typeof email === "string" ? email : "",
-        },
+        query: buildUserSetPasswordHomeQuery(
+          this.uidb64,
+          this.token,
+          typeof email === "string" ? email : "",
+        ),
       });
       return;
     }

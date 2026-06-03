@@ -25,6 +25,11 @@
 
 <script>
 import { useAuthStore } from "@/stores/authStore";
+import {
+  extractSetPasswordFromPayload,
+  extractSetPasswordParams,
+  redirectToUserSetPasswordHome,
+} from "@/utils/userSetPasswordDeepLink";
 
 export default {
   name: "SlackCallbackView",
@@ -49,6 +54,22 @@ export default {
       if (window.opener) {
         window.opener.postMessage(payload, window.location.origin);
       }
+    },
+    redirectMemberToSetPassword(details) {
+      const setPwd = extractSetPasswordFromPayload(details);
+      if (!setPwd) return false;
+      if (window.opener) {
+        this.notifyOpener({
+          type: "MEMBER_SET_PASSWORD_REQUIRED",
+          uidb64: setPwd.uidb64,
+          token: setPwd.token,
+          email: setPwd.email,
+        });
+        setTimeout(() => window.close(), 400);
+        return true;
+      }
+      redirectToUserSetPasswordHome(setPwd.uidb64, setPwd.token, setPwd.email);
+      return true;
     },
     async handleMemberCallback(urlParams, botToken, userToken) {
       let slackUserId = urlParams.get("slack_user_id") || "";
@@ -88,6 +109,9 @@ export default {
         this.status = "success";
         this.notifyOpener({ type: "SLACK_MEMBER_LOGGED_IN", success: true });
         setTimeout(() => window.close(), 1200);
+      } else if (this.redirectMemberToSetPassword(res.details)) {
+        this.status = "success";
+        this.errorMessage = "";
       } else {
         this.status = "error";
         this.errorMessage = res.message || "Slack member login failed.";
@@ -140,6 +164,18 @@ export default {
     async handleCallback() {
       try {
         const urlParams = new URLSearchParams(window.location.search);
+        const setPwdFromUrl = extractSetPasswordParams(
+          Object.fromEntries(urlParams.entries()),
+        );
+        if (setPwdFromUrl.uidb64 && setPwdFromUrl.token) {
+          redirectToUserSetPasswordHome(
+            setPwdFromUrl.uidb64,
+            setPwdFromUrl.token,
+            setPwdFromUrl.email,
+          );
+          return;
+        }
+
         const botToken = urlParams.get("bot_access_token");
         const userToken = urlParams.get("user_access_token");
         const error = urlParams.get("error");

@@ -70,6 +70,10 @@ import UserRemediationTimelineView from "../views/user-views/UserRemediationTime
 import CalendarView from "../views/admin-dashboard/CalendarView.vue";
 import UserCalendarView from "../views/user-views/UserCalendarView.vue";
 import { tryShowPostLoginSuccessAlert } from "../utils/postLoginSuccess";
+import {
+  buildUserSetPasswordHomeQuery,
+  normalizeUserSetPasswordRoute,
+} from "../utils/userSetPasswordDeepLink";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -376,14 +380,11 @@ const router = createRouter({
       path: "/user-set-password/:uidb64/:token",
       redirect: (to) => ({
         path: "/home",
-        query: {
-          action: "set-password",
-          signin: "user",
-          tab: "setPassword",
-          uidb64: String(to.params.uidb64 ?? ""),
-          token: String(to.params.token ?? ""),
-          email: typeof to.query.email === "string" ? to.query.email : "",
-        },
+        query: buildUserSetPasswordHomeQuery(
+          String(to.params.uidb64 ?? ""),
+          String(to.params.token ?? ""),
+          typeof to.query.email === "string" ? to.query.email : "",
+        ),
       }),
     },
     {
@@ -524,6 +525,11 @@ const router = createRouter({
 });
 
 router.beforeEach((to, _from, next) => {
+  const normalized = normalizeUserSetPasswordRoute(to);
+  if (normalized) {
+    return next({ ...normalized, replace: true });
+  }
+
   if (!to.meta.requiresAuth) return next();
 
   const token = sessionStorage.getItem("authorization") || localStorage.getItem("authorization");

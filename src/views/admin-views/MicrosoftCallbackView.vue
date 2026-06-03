@@ -7,6 +7,11 @@
 <script>
 import { useAuthStore } from "@/stores/authStore";
 import Swal from "sweetalert2";
+import {
+  extractSetPasswordFromPayload,
+  extractSetPasswordParams,
+  redirectToUserSetPasswordHome,
+} from "@/utils/userSetPasswordDeepLink";
 
 export default {
   data() {
@@ -23,6 +28,22 @@ export default {
       if (window.opener) {
         window.opener.postMessage(payload, window.location.origin);
       }
+    },
+    redirectMemberToSetPassword(details) {
+      const setPwd = extractSetPasswordFromPayload(details);
+      if (!setPwd) return false;
+      if (window.opener) {
+        this.notifyOpener({
+          type: "MEMBER_SET_PASSWORD_REQUIRED",
+          uidb64: setPwd.uidb64,
+          token: setPwd.token,
+          email: setPwd.email,
+        });
+        setTimeout(() => window.close(), 400);
+        return true;
+      }
+      redirectToUserSetPasswordHome(setPwd.uidb64, setPwd.token, setPwd.email);
+      return true;
     },
     getAccessToken() {
       const queryParams = new URLSearchParams(window.location.search);
@@ -56,6 +77,8 @@ export default {
         this.notifyOpener({ type: "TEAMS_MEMBER_LOGGED_IN", success: true });
         this.statusMessage = "Success! You can close this window.";
         setTimeout(() => window.close(), 1200);
+      } else if (this.redirectMemberToSetPassword(res.details)) {
+        this.statusMessage = "Redirecting to set your password...";
       } else {
         await Swal.fire("Error", res.message || "Microsoft Teams member login failed", "error");
         if (window.opener) {
@@ -98,6 +121,19 @@ export default {
   },
   async mounted() {
     try {
+      const queryParams = new URLSearchParams(window.location.search);
+      const setPwdFromUrl = extractSetPasswordParams(
+        Object.fromEntries(queryParams.entries()),
+      );
+      if (setPwdFromUrl.uidb64 && setPwdFromUrl.token) {
+        redirectToUserSetPasswordHome(
+          setPwdFromUrl.uidb64,
+          setPwdFromUrl.token,
+          setPwdFromUrl.email,
+        );
+        return;
+      }
+
       const accessToken = this.getAccessToken();
 
       if (!accessToken) {

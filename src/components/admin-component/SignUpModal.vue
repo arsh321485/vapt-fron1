@@ -371,6 +371,7 @@ import router from '@/router';
 import Swal from 'sweetalert2';
 import teamsIcon from '@/assets/images/teams.png';
 import slackIcon from '@/assets/images/slack.png';
+import { buildUserSetPasswordHomeQuery } from '@/utils/userSetPasswordDeepLink';
 
 export default {
   name: 'SignUpModal',
@@ -668,6 +669,20 @@ export default {
     handleMemberOAuthMessage(event) {
       const allowed = [window.location.origin, 'https://vaptbackend.secureitlab.com'];
       if (event.origin && !allowed.includes(event.origin)) return;
+
+      if (event.data?.type === 'MEMBER_SET_PASSWORD_REQUIRED') {
+        this.userOAuthLoading = false;
+        const uidb64 = event.data.uidb64 || '';
+        const token = event.data.token || '';
+        const email = event.data.email || this.userForm.email || '';
+        if (uidb64 && token) {
+          router.replace({
+            path: '/home',
+            query: buildUserSetPasswordHomeQuery(uidb64, token, email),
+          });
+        }
+        return;
+      }
 
       if (event.data?.type === 'SLACK_MEMBER_LOGGED_IN' && event.data?.success) {
         this.userOAuthLoading = false;

@@ -3002,6 +3002,7 @@ export const useAuthStore = defineStore("auth", {
         return {
           status: false,
           message: body?.message || body?.error || "Slack member login failed",
+          details: body,
         };
       } catch (error: any) {
         const errorData = error.response?.data;
@@ -3012,6 +3013,7 @@ export const useAuthStore = defineStore("auth", {
             errorData?.error ||
             errorData?.detail ||
             "Slack member login failed",
+          details: errorData,
         };
       }
     },
@@ -3027,6 +3029,7 @@ export const useAuthStore = defineStore("auth", {
         return {
           status: false,
           message: body?.message || body?.error || "Microsoft Teams member login failed",
+          details: body,
         };
       } catch (error: any) {
         const errorData = error.response?.data;
@@ -3037,6 +3040,7 @@ export const useAuthStore = defineStore("auth", {
             errorData?.error ||
             errorData?.detail ||
             "Microsoft Teams member login failed",
+          details: errorData,
         };
       }
     },

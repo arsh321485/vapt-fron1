@@ -143,6 +143,10 @@
 <script>
 import SignUpModal from './SignUpModal.vue';
 import AdminSignUpModal from './AdminSignUpModal.vue';
+import {
+  extractSetPasswordParams,
+  isUserSetPasswordDeepLink,
+} from '@/utils/userSetPasswordDeepLink';
 
 export default {
   name: 'Header',
@@ -162,20 +166,22 @@ export default {
       showAdminSignUpModal: false
     };
   },
+  mounted() {
+    this.applyUserSetPasswordDeepLink();
+  },
   watch: {
     $route: {
       handler() {
         this.applyUserSetPasswordDeepLink();
       },
-      immediate: false
+      immediate: true
     }
   },
   methods: {
     /**
-     * Email "Set password" opens: /home → User Sign In modal → Set Password tab.
-     * Supported URLs:
-     * - Backend: /home?action=set-password&uid=...&token=...
-     * - Legacy:   /home?signin=user&tab=set-password&uidb64=...&token=... (uid / setPassword tab variants ok)
+     * Set password deep-link → User Sign In modal → Set Password tab.
+     * Canonical: /home?signin=user&tab=setPassword&uidb64=...&token=...
+     * Also: email action=set-password, Slack/Teams ?platform=slack|teams, uid+token only.
      */
     applyUserSetPasswordDeepLink() {
       if (this.$route.path !== '/home') return;
@@ -184,19 +190,10 @@ export default {
         if (v === undefined || v === null) return '';
         return (Array.isArray(v) ? v[0] : v).toString().trim();
       };
-      const token = pick(q.token);
-      const uid = pick(q.uidb64) || pick(q.uid);
 
-      const actionRaw = pick(q.action).toLowerCase();
-      const backendSetPassword = actionRaw === 'set-password' || actionRaw === 'setpassword';
-
+      const signin = pick(q.signin);
       const tabVal = pick(q.tab);
       const tabRaw = tabVal.toLowerCase();
-      const signin = pick(q.signin);
-      const legacyTab =
-        signin === 'user' && (tabRaw === 'set-password' || tabVal === 'setPassword');
-
-      // ✅ NEW: Sign In tab deep-link — /home?signin=user&tab=signIn
       const isSignInTab =
         signin === 'user' && (tabRaw === 'signin' || tabRaw === 'sign-in' || tabVal === 'signIn');
       if (isSignInTab) {
@@ -209,14 +206,14 @@ export default {
         return;
       }
 
-      if (!token || !uid) return;
-      if (!backendSetPassword && !legacyTab) return;
+      if (!isUserSetPasswordDeepLink(q)) return;
 
+      const { token, uidb64, email } = extractSetPasswordParams(q);
       this.signUpPreSelectedType = 'user';
       this.signUpUserInitialTab = 'setPassword';
-      this.setPasswordUidb64 = uid;
+      this.setPasswordUidb64 = uidb64;
       this.setPasswordToken = token;
-      this.setPasswordEmail = pick(q.email);
+      this.setPasswordEmail = email;
       this.showSignUpModal = true;
       this.$nextTick(() => {
         this.$router.replace({ path: '/home' });

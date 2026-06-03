@@ -367,6 +367,10 @@ import Footer from '@/components/admin-component/Footer.vue';
 import AdminSignUpModal from '@/components/admin-component/AdminSignUpModal.vue';
 import SignUpModal from '@/components/admin-component/SignUpModal.vue';
 import AnimatedDashboard from '@/components/home-components/AnimatedDashboard.vue';
+import {
+  extractSetPasswordParams,
+  isUserSetPasswordDeepLink,
+} from '@/utils/userSetPasswordDeepLink';
 
 export default {
   name: 'HomeView',
@@ -602,15 +606,9 @@ export default {
         if (v === undefined || v === null) return '';
         return (Array.isArray(v) ? v[0] : v).toString().trim();
       };
-      const token = pick(q.token);
-      const uid = pick(q.uidb64) || pick(q.uid);
-      const actionRaw = pick(q.action).toLowerCase();
-      const backendSetPassword = actionRaw === 'set-password' || actionRaw === 'setpassword';
+      const signin = pick(q.signin);
       const tabVal = pick(q.tab);
       const tabRaw = tabVal.toLowerCase();
-      const signin = pick(q.signin);
-      const legacyTab =
-        signin === 'user' && (tabRaw === 'set-password' || tabVal === 'setPassword');
       const isSignInTab =
         signin === 'user' && (tabRaw === 'signin' || tabRaw === 'sign-in' || tabVal === 'signIn');
       if (isSignInTab) {
@@ -622,13 +620,13 @@ export default {
         });
         return;
       }
-      if (!token || !uid) return;
-      if (!backendSetPassword && !legacyTab) return;
+      if (!isUserSetPasswordDeepLink(q)) return;
+      const { token, uidb64, email } = extractSetPasswordParams(q);
       this.signUpPreSelectedType = 'user';
       this.signUpUserInitialTab = 'setPassword';
-      this.setPasswordUidb64 = uid;
+      this.setPasswordUidb64 = uidb64;
       this.setPasswordToken = token;
-      this.setPasswordEmail = pick(q.email);
+      this.setPasswordEmail = email;
       this.showSignUpModal = true;
       this.$nextTick(() => {
         this.$router.replace({ path: '/home' });
@@ -649,7 +647,7 @@ export default {
       handler() {
         this.applyUserSetPasswordDeepLink();
       },
-      immediate: false
+      immediate: true
     }
   }
 };
