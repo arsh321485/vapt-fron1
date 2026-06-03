@@ -1483,6 +1483,27 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    // ✅ MS Teams members sync karo — backend API
+    async syncTeamsMembers(teamId?: string) {
+      try {
+        const body: Record<string, string> = {};
+        if (teamId) body.team_id = teamId;
+        const res = await endpoint.post("/api/admin/users/teams/sync-members/", body);
+        const data = res.data;
+        console.log(`✅ Teams sync: ${data.new_count ?? 0} new member(s) added`);
+        return {
+          status: true,
+          new_count: data.new_count ?? 0,
+          synced_count: data.synced_count ?? 0,
+          members: data.members ?? [],
+          message: data.message ?? "",
+        };
+      } catch (error: any) {
+        console.error("❌ Teams sync error:", error);
+        return { status: false, message: error?.response?.data?.message || "Sync failed" };
+      }
+    },
+
     async subscribeTeamsWebhook(teamId: string) {
       try {
         const graphToken = localStorage.getItem("microsoft_graph_token");

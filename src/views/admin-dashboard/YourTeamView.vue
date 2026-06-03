@@ -147,7 +147,7 @@
               <div class="col-12 mt-4">
                 <!-- Dynamic Content per Tab -->
                 <div v-for="(tab, index) in tabs" :key="index" v-show="activeTab === index">
-                  
+
                     <!-- ================= INTERNAL SECTION ================= -->
                     <div class="team-section mb-5">
                       <div class="subtab-header">
@@ -232,7 +232,7 @@
 
 
 
-                            
+
                             </tr>
                           </tbody>
                         </table>
@@ -303,7 +303,7 @@
                                 </div>
                               </td>
 
-                             
+
                             </tr>
                           </tbody>
                         </table>
@@ -377,7 +377,7 @@ export default {
         "Architectural Flaws": "AF"
       },
       assetDropdownOpen: false,
-     
+
       internalSubTab: "list",
       externalSubTab: "list",
       assignUsersOpen: false,
@@ -554,6 +554,14 @@ this.isOpen[newUser._id] = false;
 
     this.closeModal();
 
+    // ✅ MS Teams se sync karo user add hone ke baad
+    if (platform === "teams") {
+      const teamId = localStorage.getItem("vaptfix_team")
+        ? JSON.parse(localStorage.getItem("vaptfix_team") || "{}")?.id
+        : undefined;
+      await this.authStore.syncTeamsMembers(teamId);
+    }
+
   } catch (err) {
     console.error("❌ Add user failed:", err);
     Swal.fire("Error", "Something went wrong", "error");
@@ -666,7 +674,7 @@ this.isOpen[newUser._id] = false;
         return matchType && matchRole;
       });
     },
-    
+
     //  Remove user from current role tab
     async removeUserFromCurrentTab(user) {
       const roleToRemove = this.tabs[this.activeTab].name; // now matches backend exactly
@@ -885,6 +893,20 @@ async deleteRoleFromUser(user, roleToRemove) {
   },
   async mounted() {
     document.addEventListener("click", this.onClickOutside);
+
+    // ✅ MS Teams se naye members sync karo jab page load ho
+    const platform = this.authStore.detectAdminCommunicationPlatform();
+    if (platform === "teams") {
+      const teamId = localStorage.getItem("vaptfix_team")
+        ? JSON.parse(localStorage.getItem("vaptfix_team") || "{}")?.id
+        : undefined;
+      this.authStore.syncTeamsMembers(teamId).then((syncRes) => {
+        if (syncRes.status && syncRes.new_count > 0) {
+          this.authStore.cachedUsersByAdmin = [];
+          this.authStore.usersByAdminFetched = false;
+        }
+      });
+    }
 
     const res = await this.authStore.fetchUsersByAdmin();
 
