@@ -145,6 +145,15 @@
               </div>
             </div>
 
+            <div class="recaptcha-field">
+              <div :id="userRecaptchaContainerId" :key="userRecaptchaKey" class="recaptcha-wrap"></div>
+            </div>
+
+            <button type="submit" class="submit-btn" :disabled="userLoading">
+              <span v-if="userLoading" class="spinner-border spinner-border-sm me-2"></span>
+              Sign In to Dashboard
+            </button>
+
             <div class="social-divider">
               <span class="social-divider-line"></span>
               <span class="social-divider-text">or</span>
@@ -210,15 +219,6 @@
               <i class="bi bi-info-circle me-1"></i>
               This account was added via Microsoft Teams. Use Teams or your password below.
             </p>
-
-            <div class="recaptcha-field">
-              <div :id="userRecaptchaContainerId" :key="userRecaptchaKey" class="recaptcha-wrap"></div>
-            </div>
-
-            <button type="submit" class="submit-btn" :disabled="userLoading">
-              <span v-if="userLoading" class="spinner-border spinner-border-sm me-2"></span>
-              Sign In to Dashboard
-            </button>
           </form>
         </div>
 
@@ -445,6 +445,8 @@ export default {
       forgotLoading: false,
       forgotType: 'user',
       _platformEmailTimer: null,
+      _userRecaptchaTimer: null,
+      _adminRecaptchaTimer: null,
     };
   },
   computed: {
@@ -497,7 +499,7 @@ export default {
     },
     userActiveTab(newVal) {
       if (newVal === 'signIn') {
-        this.$nextTick(() => this.renderUserRecaptcha());
+        this.scheduleUserRecaptchaRender();
       } else if (newVal === 'setPassword') {
         this.$nextTick(() => this.renderUserSetPasswordRecaptcha());
       }
@@ -518,6 +520,12 @@ export default {
           if (this.formType === 'user' && this.userForm.email) {
             this.$nextTick(() => this.fetchUserLoginPlatform());
           }
+          if (this.formType === 'user' && this.userActiveTab === 'signIn') {
+            this.scheduleUserRecaptchaRender();
+          }
+          if (this.formType === 'admin') {
+            this.scheduleAdminRecaptchaRender();
+          }
         } else {
           this.showForm = false;
           this.formType = '';
@@ -533,10 +541,10 @@ export default {
       }
     },
     formType(newVal) {
-      if (newVal === 'user' && this.showForm) {
-        this.$nextTick(() => this.renderUserRecaptcha());
+      if (newVal === 'user' && this.showForm && this.userActiveTab === 'signIn') {
+        this.scheduleUserRecaptchaRender();
       } else if (newVal === 'admin' && this.showForm) {
-        this.$nextTick(() => this.renderAdminRecaptcha());
+        this.scheduleAdminRecaptchaRender();
       }
     }
   },
@@ -939,11 +947,12 @@ export default {
       this.formType = 'user';
       this.showForm = true;
       this.userActiveTab = 'signIn';
-      this.$nextTick(() => this.renderUserRecaptcha());
+      this.scheduleUserRecaptchaRender();
     },
     selectAdminSignIn() {
       this.formType = 'admin';
       this.showForm = true;
+      this.scheduleAdminRecaptchaRender();
     },
     resetForms() {
       this.userForm = { email: '', password: '' };
@@ -951,22 +960,59 @@ export default {
       this.showUserPassword = false;
       this.showAdminPassword = false;
     },
-    loadRecaptchaScript() {
-      if (window.grecaptcha) return;
+    loadRecaptchaScript(onReady) {
+      const done = () => {
+        if (typeof onReady === 'function') onReady();
+      };
+      if (window.grecaptcha && typeof window.grecaptcha.render === 'function') {
+        window.grecaptcha.ready(done);
+        return;
+      }
+      if (document.getElementById('signup-modal-recaptcha-script')) {
+        const poll = setInterval(() => {
+          if (window.grecaptcha?.render) {
+            clearInterval(poll);
+            window.grecaptcha.ready(done);
+          }
+        }, 100);
+        return;
+      }
+      window.__signupModalRecaptchaOnload = () => {
+        window.grecaptcha?.ready(done);
+      };
       const script = document.createElement('script');
-      script.src = 'https://www.google.com/recaptcha/api.js?render=explicit';
+      script.id = 'signup-modal-recaptcha-script';
+      script.src = 'https://www.google.com/recaptcha/api.js?onload=__signupModalRecaptchaOnload&render=explicit';
       script.async = true;
       script.defer = true;
       document.head.appendChild(script);
     },
+    scheduleUserRecaptchaRender() {
+      clearTimeout(this._userRecaptchaTimer);
+      this._userRecaptchaTimer = setTimeout(() => this.reinitializeUserRecaptcha(), 100);
+    },
+    scheduleAdminRecaptchaRender() {
+      clearTimeout(this._adminRecaptchaTimer);
+      this._adminRecaptchaTimer = setTimeout(() => this.reinitializeAdminRecaptcha(), 100);
+    },
+    reinitializeUserRecaptcha() {
+      this.userRecaptchaWidgetId = null;
+      this.userRecaptchaKey++;
+      this.$nextTick(() => this.renderUserRecaptcha());
+    },
+    reinitializeAdminRecaptcha() {
+      this.adminRecaptchaWidgetId = null;
+      this.adminRecaptchaKey++;
+      this.$nextTick(() => this.renderAdminRecaptcha());
+    },
     renderUserRecaptcha() {
-      if (!window.grecaptcha) {
-        setTimeout(() => this.renderUserRecaptcha(), 500);
-        return;
-      }
-      window.grecaptcha.ready(() => {
+      this.loadRecaptchaScript(() => {
         const container = document.getElementById(this.userRecaptchaContainerId);
-        if (!container) return;
+        if (!container) {
+          setTimeout(() => this.renderUserRecaptcha(), 300);
+          return;
+        }
+        if (this.userRecaptchaWidgetId !== null) return;
         container.innerHTML = '';
         try {
           this.userRecaptchaWidgetId = window.grecaptcha.render(container, {
@@ -974,6 +1020,9 @@ export default {
           });
         } catch (e) {
           console.error('User reCAPTCHA render error:', e);
+          this.userRecaptchaWidgetId = null;
+          this.userRecaptchaKey++;
+          setTimeout(() => this.renderUserRecaptcha(), 300);
         }
       });
     },
@@ -996,22 +1045,23 @@ export default {
       });
     },
     renderAdminRecaptcha() {
-      if (!window.grecaptcha) {
-        setTimeout(() => this.renderAdminRecaptcha(), 500);
-        return;
-      }
-      window.grecaptcha.ready(() => {
+      this.loadRecaptchaScript(() => {
         const container = document.getElementById(this.recaptchaContainerId);
-        if (!container) return;
+        if (!container) {
+          setTimeout(() => this.renderAdminRecaptcha(), 300);
+          return;
+        }
+        if (this.adminRecaptchaWidgetId !== null) return;
         container.innerHTML = '';
         try {
           this.adminRecaptchaWidgetId = window.grecaptcha.render(container, {
-            sitekey: this.recaptchaSiteKey,
-            callback: (token) => { this.adminRecaptchaToken = token; },
-            'expired-callback': () => { this.adminRecaptchaToken = ''; }
+            sitekey: this.recaptchaSiteKey
           });
         } catch (e) {
           console.error('Admin reCAPTCHA render error:', e);
+          this.adminRecaptchaWidgetId = null;
+          this.adminRecaptchaKey++;
+          setTimeout(() => this.renderAdminRecaptcha(), 300);
         }
       });
     },
@@ -1259,6 +1309,8 @@ export default {
   },
   beforeUnmount() {
     clearTimeout(this._platformEmailTimer);
+    clearTimeout(this._userRecaptchaTimer);
+    clearTimeout(this._adminRecaptchaTimer);
     window.removeEventListener('message', this.handleMemberOAuthMessage);
     window.removeEventListener('message', this.handleAdminOAuthMessage);
     window.removeEventListener('storage', this.onMemberStorageChange);
@@ -1582,7 +1634,11 @@ export default {
 
 /* reCAPTCHA */
 .recaptcha-field { margin-bottom: 20px; }
-.recaptcha-wrap { display: flex; justify-content: center; }
+.recaptcha-wrap {
+  display: flex;
+  justify-content: center;
+  min-height: 78px;
+}
 
 /* Submit Button */
 .submit-btn {
