@@ -554,12 +554,19 @@ this.isOpen[newUser._id] = false;
 
     this.closeModal();
 
-    // ✅ MS Teams se sync karo user add hone ke baad
+    // ✅ MS Teams sync — turant return hoga, 3 sec baad list refresh
     if (platform === "teams") {
       const teamId = localStorage.getItem("vaptfix_team")
         ? JSON.parse(localStorage.getItem("vaptfix_team") || "{}")?.id
         : undefined;
-      await this.authStore.syncTeamsMembers(teamId);
+      this.authStore.syncTeamsMembers(teamId).then(() => {
+        setTimeout(async () => {
+          this.authStore.cachedUsersByAdmin = [];
+          this.authStore.usersByAdminFetched = false;
+          const refreshed = await this.authStore.fetchUsersByAdmin();
+          if (refreshed.status) this.users = refreshed.data;
+        }, 3000);
+      });
     }
 
   } catch (err) {
@@ -894,17 +901,19 @@ async deleteRoleFromUser(user, roleToRemove) {
   async mounted() {
     document.addEventListener("click", this.onClickOutside);
 
-    // ✅ MS Teams se naye members sync karo jab page load ho
+    // ✅ MS Teams sync — backend background mein karta hai, 3 sec baad list refresh
     const platform = this.authStore.detectAdminCommunicationPlatform();
     if (platform === "teams") {
       const teamId = localStorage.getItem("vaptfix_team")
         ? JSON.parse(localStorage.getItem("vaptfix_team") || "{}")?.id
         : undefined;
-      this.authStore.syncTeamsMembers(teamId).then((syncRes) => {
-        if (syncRes.status && syncRes.new_count > 0) {
+      this.authStore.syncTeamsMembers(teamId).then(() => {
+        setTimeout(async () => {
           this.authStore.cachedUsersByAdmin = [];
           this.authStore.usersByAdminFetched = false;
-        }
+          const refreshed = await this.authStore.fetchUsersByAdmin();
+          if (refreshed.status) this.users = refreshed.data;
+        }, 3000);
       });
     }
 
