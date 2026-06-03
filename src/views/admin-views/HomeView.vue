@@ -1,6 +1,6 @@
 <template>
   <div>
-    <Header />
+    <Header ref="pageHeader" />
 
     <!-- HERO SECTION -->
     <section class="hv-hero">
@@ -347,17 +347,6 @@
       @open-signin="handleOpenSignInFromAdminSignUp"
     />
 
-    <!-- Sign In Modal -->
-    <SignUpModal
-      :show="showSignUpModal"
-      :preSelectedType="signUpPreSelectedType"
-      :userInitialTab="signUpUserInitialTab"
-      :setPasswordUidb64="setPasswordUidb64"
-      :setPasswordToken="setPasswordToken"
-      :setPasswordEmail="setPasswordEmail"
-      @close="closeSignUpModal"
-      @open-admin-signup="handleOpenAdminSignUpFromSignIn"
-    />
   </div>
 </template>
 
@@ -365,12 +354,7 @@
 import Header from '@/components/admin-component/Header.vue';
 import Footer from '@/components/admin-component/Footer.vue';
 import AdminSignUpModal from '@/components/admin-component/AdminSignUpModal.vue';
-import SignUpModal from '@/components/admin-component/SignUpModal.vue';
 import AnimatedDashboard from '@/components/home-components/AnimatedDashboard.vue';
-import {
-  extractSetPasswordParams,
-  isUserSetPasswordDeepLink,
-} from '@/utils/userSetPasswordDeepLink';
 
 export default {
   name: 'HomeView',
@@ -378,18 +362,11 @@ export default {
     Header,
     Footer,
     AdminSignUpModal,
-    SignUpModal,
     AnimatedDashboard,
   },
   data() {
     return {
       showAdminSignUpModal: false,
-      showSignUpModal: false,
-      signUpPreSelectedType: '',
-      signUpUserInitialTab: '',
-      setPasswordUidb64: '',
-      setPasswordToken: '',
-      setPasswordEmail: '',
       highlightSliderPaused: false,
       highlightWindowWidth: 1200,
       reviewSlideIndex: 0,
@@ -530,7 +507,6 @@ export default {
     this.highlightWindowWidth = window.innerWidth;
     window.addEventListener('resize', this.onHighlightResize);
     this.startReviewSlider();
-    this.applyUserSetPasswordDeepLink();
   },
   beforeUnmount() {
     window.removeEventListener('resize', this.onHighlightResize);
@@ -587,69 +563,15 @@ export default {
     closeAdminSignUpModal() {
       this.showAdminSignUpModal = false;
     },
-    openSignUpModal() {
-      this.signUpPreSelectedType = '';
-      this.showSignUpModal = true;
-    },
-    closeSignUpModal() {
-      this.showSignUpModal = false;
-      this.signUpPreSelectedType = '';
-      this.signUpUserInitialTab = '';
-      this.setPasswordUidb64 = '';
-      this.setPasswordToken = '';
-      this.setPasswordEmail = '';
-    },
-    applyUserSetPasswordDeepLink() {
-      if (this.$route.path !== '/home') return;
-      const q = this.$route.query || {};
-      const pick = (v) => {
-        if (v === undefined || v === null) return '';
-        return (Array.isArray(v) ? v[0] : v).toString().trim();
-      };
-      const signin = pick(q.signin);
-      const tabVal = pick(q.tab);
-      const tabRaw = tabVal.toLowerCase();
-      const isSignInTab =
-        signin === 'user' && (tabRaw === 'signin' || tabRaw === 'sign-in' || tabVal === 'signIn');
-      if (isSignInTab) {
-        this.signUpPreSelectedType = 'user';
-        this.signUpUserInitialTab = 'signIn';
-        this.showSignUpModal = true;
-        this.$nextTick(() => {
-          this.$router.replace({ path: '/home' });
-        });
-        return;
-      }
-      if (!isUserSetPasswordDeepLink(q)) return;
-      const { token, uidb64, email } = extractSetPasswordParams(q);
-      this.signUpPreSelectedType = 'user';
-      this.signUpUserInitialTab = 'setPassword';
-      this.setPasswordUidb64 = uidb64;
-      this.setPasswordToken = token;
-      this.setPasswordEmail = email;
-      this.showSignUpModal = true;
-      this.$nextTick(() => {
-        this.$router.replace({ path: '/home' });
-      });
-    },
     handleOpenSignInFromAdminSignUp() {
       this.closeAdminSignUpModal();
-      this.signUpPreSelectedType = '';
-      this.showSignUpModal = true;
+      this.$refs.pageHeader?.openSignUpModal();
     },
     handleOpenAdminSignUpFromSignIn() {
-      this.closeSignUpModal();
+      this.$refs.pageHeader?.closeSignUpModal();
       this.showAdminSignUpModal = true;
     }
   },
-  watch: {
-    $route: {
-      handler() {
-        this.applyUserSetPasswordDeepLink();
-      },
-      immediate: true
-    }
-  }
 };
 </script>
 

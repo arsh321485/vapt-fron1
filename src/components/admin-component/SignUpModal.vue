@@ -371,7 +371,12 @@ import router from '@/router';
 import Swal from 'sweetalert2';
 import teamsIcon from '@/assets/images/teams.png';
 import slackIcon from '@/assets/images/slack.png';
-import { buildUserSetPasswordHomeQuery } from '@/utils/userSetPasswordDeepLink';
+import {
+  buildUserSetPasswordHomeQuery,
+  extractSetPasswordParams,
+  isUserSetPasswordDeepLink,
+  readStoredSetPasswordDeepLink,
+} from '@/utils/userSetPasswordDeepLink';
 
 export default {
   name: 'SignUpModal',
@@ -507,33 +512,30 @@ export default {
     },
     show(newVal) {
       if (newVal) {
-        if (this.preSelectedType) {
-          this.formType = this.preSelectedType;
-          this.showForm = true;
-          if (this.preSelectedType === 'user' && this.userInitialTab === 'setPassword') {
-            this.userActiveTab = 'setPassword';
-          } else {
-            this.userActiveTab = 'signIn';
-          }
-          if (this.setPasswordEmail) {
-            this.userForm.email = this.setPasswordEmail;
-          }
-          if (this.formType === 'user' && this.userForm.email) {
-            this.$nextTick(() => this.fetchUserLoginPlatform());
-          }
-          if (this.formType === 'user' && this.userActiveTab === 'signIn') {
-            this.scheduleUserRecaptchaRender();
-          }
-          if (this.formType === 'admin') {
-            this.scheduleAdminRecaptchaRender();
-          }
-        } else {
-          this.showForm = false;
-          this.formType = '';
-        }
+        this.syncModalFromDeepLink();
+        this.syncAdminConnectionState();
+        this.syncUserMemberSessionState();
       } else {
         this.resetPlatformState();
       }
+    },
+    preSelectedType() {
+      if (this.show) this.syncModalFromDeepLink();
+    },
+    userInitialTab() {
+      if (this.show) this.syncModalFromDeepLink();
+    },
+    setPasswordUidb64() {
+      if (this.show) this.syncModalFromDeepLink();
+    },
+    setPasswordToken() {
+      if (this.show) this.syncModalFromDeepLink();
+    },
+    '$route.query': {
+      handler() {
+        if (this.show) this.syncModalFromDeepLink();
+      },
+      deep: true,
     },
     setPasswordEmail(val) {
       if (val && this.show && this.formType === 'user') {
@@ -542,10 +544,16 @@ export default {
       }
     },
     formType(newVal) {
-      if (newVal === 'user' && this.showForm && this.userActiveTab === 'signIn') {
-        this.scheduleUserRecaptchaRender();
-      } else if (newVal === 'admin' && this.showForm) {
-        this.scheduleAdminRecaptchaRender();
+      if (newVal === 'user') {
+        this.syncUserMemberSessionState();
+        if (this.showForm && this.userActiveTab === 'signIn') {
+          this.scheduleUserRecaptchaRender();
+        }
+      } else if (newVal === 'admin') {
+        this.syncAdminConnectionState();
+        if (this.showForm) {
+          this.scheduleAdminRecaptchaRender();
+        }
       }
     }
   },
@@ -558,44 +566,144 @@ export default {
     this.syncAdminConnectionState();
   },
   methods: {
-    canRedirectConnectedUser(email, platform) {
-      if (!email) return false;
-      const authStore = useAuthStore();
-      const authToken = sessionStorage.getItem('authorization');
-      if (!authToken) return false;
+    syncModalFromDeepLink() {
+      const fromProps =
+        !!(this.setPasswordUidb64 && this.setPasswordToken) ||
+        (this.preSelectedType === 'user' && this.userInitialTab === 'setPassword');
 
+      let fromRoute = false;
+      let routeEmail = '';
+      if (this.$route?.path === '/home' && isUserSetPasswordDeepLink(this.$route.query)) {
+        const q = extractSetPasswordParams(this.$route.query);
+        fromRoute = !!(q.uidb64 && q.token);
+        routeEmail = q.email;
+      }
+
+      const stored = readStoredSetPasswordDeepLink();
+      const openSetPassword =
+        fromProps ||
+        fromRoute ||
+        !!stored ||
+        (this.preSelectedType === 'user' && this.userInitialTab === 'setPassword');
+
+      if (openSetPassword) {
+        this.formType = 'user';
+        this.showForm = true;
+        this.userActiveTab = 'setPassword';
+        const email = this.setPasswordEmail || routeEmail || stored?.email || '';
+        if (email) this.userForm.email = email;
+        return;
+      }
+
+      if (this.preSelectedType) {
+        this.formType = this.preSelectedType;
+        this.showForm = true;
+        if (this.preSelectedType === 'user' && this.userInitialTab === 'setPassword') {
+          this.userActiveTab = 'setPassword';
+        } else if (this.preSelectedType === 'user') {
+          this.userActiveTab = 'signIn';
+        }
+        if (this.setPasswordEmail) {
+          this.userForm.email = this.setPasswordEmail;
+        }
+        if (this.formType === 'user' && this.userForm.email) {
+          this.$nextTick(() => this.fetchUserLoginPlatform());
+        }
+        if (this.formType === 'user' && this.userActiveTab === 'signIn') {
+          this.scheduleUserRecaptchaRender();
+        }
+        if (this.formType === 'admin') {
+          this.scheduleAdminRecaptchaRender();
+        }
+        return;
+      }
+
+      this.showForm = false;
+      this.formType = '';
+    },
+    hasActiveAuthSession() {
+      const authStore = useAuthStore();
+      return !!(
+        sessionStorage.getItem('authorization') ||
+        authStore.authenticated ||
+        sessionStorage.getItem('authenticated') === 'true'
+      );
+    },
+    getSessionUser() {
+      const authStore = useAuthStore();
       let sessionUser = authStore.user;
       if (!sessionUser) {
         try {
-          sessionUser = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || 'null');
+          sessionUser = JSON.parse(
+            sessionStorage.getItem('user') || localStorage.getItem('user') || 'null',
+          );
         } catch {
           sessionUser = null;
         }
       }
-      if (!sessionUser) return false;
-
-      const sessionEmail = String(sessionUser.email || '').trim().toLowerCase();
-      const enteredEmail = String(email).trim().toLowerCase();
-      if (!sessionEmail || sessionEmail !== enteredEmail) return false;
-
-      const provider = String(sessionUser.login_provider || '').trim().toLowerCase();
-      return provider === platform;
+      return sessionUser;
     },
-    async syncAdminConnectionState() {
-      this.adminTeamsConnected = !!(
-        localStorage.getItem('microsoft_graph_token') || localStorage.getItem('teams_connected') === 'true'
-      );
-      const botToken = localStorage.getItem('slack_bot_token');
-      if (!botToken) {
-        this.adminSlackConnected = false;
+    sessionEmailMatches(email) {
+      if (!email) return true;
+      const sessionUser = this.getSessionUser();
+      if (!sessionUser?.email) return true;
+      const sessionEmail = String(sessionUser.email).trim().toLowerCase();
+      const enteredEmail = String(email).trim().toLowerCase();
+      return sessionEmail === enteredEmail;
+    },
+    syncUserMemberSessionState() {
+      if (!this.hasActiveAuthSession()) return;
+
+      if (sessionStorage.getItem('member_slack_connected') === 'true') {
+        this.userPlatform = 'slack';
+        this.platformChecked = true;
+        this.userSlackConnected = true;
+        this.userTeamsConnected = false;
         return;
       }
-      try {
-        const authStore = useAuthStore();
-        const validateRes = await authStore.validateSlackToken(botToken);
-        this.adminSlackConnected = !!validateRes.success;
-      } catch {
-        this.adminSlackConnected = false;
+      if (sessionStorage.getItem('member_teams_connected') === 'true') {
+        this.userPlatform = 'microsoft_teams';
+        this.platformChecked = true;
+        this.userTeamsConnected = true;
+        this.userSlackConnected = false;
+      }
+    },
+    async tryFinishUserOAuthSignIn(email = '') {
+      const authStore = useAuthStore();
+      authStore.hydrateAuthSessionFromOAuth();
+
+      if (!this.hasActiveAuthSession()) return false;
+      if (email && !this.sessionEmailMatches(email)) return false;
+
+      const msg =
+        this.userPlatform === 'microsoft_teams'
+          ? 'Signed in with Microsoft Teams successfully.'
+          : 'Signed in with Slack successfully.';
+      await this.redirectUserToDashboard(msg);
+      return true;
+    },
+    async syncAdminConnectionState() {
+      const hasTeamsToken = !!(
+        localStorage.getItem('microsoft_graph_token') ||
+        localStorage.getItem('teams_connected') === 'true'
+      );
+      const botToken = localStorage.getItem('slack_bot_token');
+      let slackOk = false;
+      if (botToken) {
+        try {
+          const authStore = useAuthStore();
+          const validateRes = await authStore.validateSlackToken(botToken);
+          slackOk = !!validateRes.success;
+        } catch {
+          slackOk = false;
+        }
+      }
+      this.adminSlackConnected = slackOk || sessionStorage.getItem('admin_slack_connected') === 'true';
+      this.adminTeamsConnected =
+        (hasTeamsToken && !this.adminSlackConnected) ||
+        sessionStorage.getItem('admin_teams_connected') === 'true';
+      if (this.adminSlackConnected && this.adminTeamsConnected) {
+        this.adminTeamsConnected = false;
       }
     },
     ensureAdminAuthSessionFromOAuth(payload = null) {
@@ -643,6 +751,7 @@ export default {
           this.userPlatform = platform;
           this.userSlackConnected = platform === 'slack';
           this.userTeamsConnected = platform === 'microsoft_teams';
+          this.syncUserMemberSessionState();
         } else {
           this.userPlatform = 'email';
           this.userSlackConnected = false;
@@ -676,39 +785,54 @@ export default {
         const token = event.data.token || '';
         const email = event.data.email || this.userForm.email || '';
         if (uidb64 && token) {
-          router.replace({
-            path: '/home',
-            query: buildUserSetPasswordHomeQuery(uidb64, token, email),
-          });
+          const query = buildUserSetPasswordHomeQuery(uidb64, token, email);
+          this.formType = 'user';
+          this.showForm = true;
+          this.userActiveTab = 'setPassword';
+          if (email) this.userForm.email = email;
+          router.replace({ path: '/home', query });
         }
         return;
       }
 
       if (event.data?.type === 'SLACK_MEMBER_LOGGED_IN' && event.data?.success) {
         this.userOAuthLoading = false;
+        sessionStorage.setItem('member_slack_connected', 'true');
+        sessionStorage.removeItem('member_teams_connected');
         this.userSlackConnected = true;
         this.userTeamsConnected = false;
+        this.userPlatform = 'slack';
+        this.platformChecked = true;
         this.redirectUserToDashboard('Signed in with Slack successfully.');
         return;
       }
       if (event.data?.type === 'TEAMS_MEMBER_LOGGED_IN' && event.data?.success) {
         this.userOAuthLoading = false;
+        sessionStorage.setItem('member_teams_connected', 'true');
+        sessionStorage.removeItem('member_slack_connected');
         this.userTeamsConnected = true;
         this.userSlackConnected = false;
+        this.userPlatform = 'microsoft_teams';
+        this.platformChecked = true;
         this.redirectUserToDashboard('Signed in with Microsoft Teams successfully.');
       }
     },
     onMemberStorageChange(event) {
       if (event.key === 'microsoft_graph_token' && event.newValue && sessionStorage.getItem('pending_member_flow') === 'teams') {
+        sessionStorage.setItem('member_teams_connected', 'true');
+        sessionStorage.removeItem('member_slack_connected');
         this.userTeamsConnected = true;
         this.userSlackConnected = false;
+        this.userPlatform = 'microsoft_teams';
+        this.platformChecked = true;
         const authStore = useAuthStore();
-        if (authStore.authenticated) {
-          this.redirectUserToDashboard();
+        if (authStore.authenticated || sessionStorage.getItem('authorization')) {
+          this.redirectUserToDashboard('Signed in with Microsoft Teams successfully.');
         }
       }
     },
     async startAdminSlackLogin() {
+      await this.syncAdminConnectionState();
       if (this.adminSlackConnected) {
         await this.finishAdminOAuthSignIn();
         return;
@@ -741,6 +865,7 @@ export default {
       }
     },
     async startAdminTeamsLogin() {
+      await this.syncAdminConnectionState();
       if (this.adminTeamsConnected) {
         await this.finishAdminOAuthSignIn();
         return;
@@ -783,6 +908,8 @@ export default {
         if (event.data.user) localStorage.setItem('local_user', JSON.stringify(event.data.user));
         this.adminSlackConnected = true;
         this.adminTeamsConnected = false;
+        sessionStorage.setItem('admin_slack_connected', 'true');
+        sessionStorage.removeItem('admin_teams_connected');
         this.ensureAdminAuthSessionFromOAuth(event.data);
         await Swal.fire({
           icon: 'success',
@@ -805,6 +932,8 @@ export default {
         localStorage.setItem('teams_connected', 'true');
         this.adminTeamsConnected = true;
         this.adminSlackConnected = false;
+        sessionStorage.setItem('admin_teams_connected', 'true');
+        sessionStorage.removeItem('admin_slack_connected');
         this.ensureAdminAuthSessionFromOAuth(event.data);
         await Swal.fire({
           icon: 'success',
@@ -830,8 +959,8 @@ export default {
         return;
       }
       await this.fetchUserLoginPlatform();
-      if (this.userSlackConnected && this.canRedirectConnectedUser(email, 'slack')) {
-        await this.redirectUserToDashboard();
+      this.syncUserMemberSessionState();
+      if (this.userSlackConnected && (await this.tryFinishUserOAuthSignIn(email))) {
         return;
       }
       if (this.userPlatform === 'microsoft_teams') {
@@ -889,8 +1018,8 @@ export default {
         return;
       }
       await this.fetchUserLoginPlatform();
-      if (this.userTeamsConnected && this.canRedirectConnectedUser(email, 'microsoft_teams')) {
-        await this.redirectUserToDashboard();
+      this.syncUserMemberSessionState();
+      if (this.userTeamsConnected && (await this.tryFinishUserOAuthSignIn(email))) {
         return;
       }
       if (this.userPlatform === 'slack') {
@@ -962,11 +1091,13 @@ export default {
       this.formType = 'user';
       this.showForm = true;
       this.userActiveTab = 'signIn';
+      this.syncUserMemberSessionState();
       this.scheduleUserRecaptchaRender();
     },
     selectAdminSignIn() {
       this.formType = 'admin';
       this.showForm = true;
+      this.syncAdminConnectionState();
       this.scheduleAdminRecaptchaRender();
     },
     resetForms() {

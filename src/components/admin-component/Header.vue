@@ -144,8 +144,10 @@
 import SignUpModal from './SignUpModal.vue';
 import AdminSignUpModal from './AdminSignUpModal.vue';
 import {
-  extractSetPasswordParams,
+  applySetPasswordModalState,
+  clearStoredSetPasswordDeepLink,
   isUserSetPasswordDeepLink,
+  readStoredSetPasswordDeepLink,
 } from '@/utils/userSetPasswordDeepLink';
 
 export default {
@@ -206,18 +208,18 @@ export default {
         return;
       }
 
-      if (!isUserSetPasswordDeepLink(q)) return;
+      if (!isUserSetPasswordDeepLink(q)) {
+        if (readStoredSetPasswordDeepLink()) {
+          applySetPasswordModalState(this, q);
+        }
+        return;
+      }
 
-      const { token, uidb64, email } = extractSetPasswordParams(q);
-      this.signUpPreSelectedType = 'user';
-      this.signUpUserInitialTab = 'setPassword';
-      this.setPasswordUidb64 = uidb64;
-      this.setPasswordToken = token;
-      this.setPasswordEmail = email;
-      this.showSignUpModal = true;
-      this.$nextTick(() => {
-        this.$router.replace({ path: '/home' });
-      });
+      if (applySetPasswordModalState(this, q)) {
+        this.$nextTick(() => {
+          this.$router.replace({ path: '/home' });
+        });
+      }
     },
     openSignUpModal() {
       this.signUpPreSelectedType = '';
@@ -234,6 +236,7 @@ export default {
       this.setPasswordUidb64 = '';
       this.setPasswordToken = '';
       this.setPasswordEmail = '';
+      clearStoredSetPasswordDeepLink();
     },
     openAdminSignUpModal() {
       this.showAdminSignUpModal = true;

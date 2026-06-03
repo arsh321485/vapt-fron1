@@ -29,6 +29,7 @@ import {
   extractSetPasswordFromPayload,
   extractSetPasswordParams,
   redirectToUserSetPasswordHome,
+  storeSetPasswordDeepLink,
 } from "@/utils/userSetPasswordDeepLink";
 
 export default {
@@ -58,6 +59,7 @@ export default {
     redirectMemberToSetPassword(details) {
       const setPwd = extractSetPasswordFromPayload(details);
       if (!setPwd) return false;
+      storeSetPasswordDeepLink(setPwd);
       if (window.opener) {
         this.notifyOpener({
           type: "MEMBER_SET_PASSWORD_REQUIRED",
