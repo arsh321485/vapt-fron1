@@ -153,7 +153,12 @@
           @open-python-guide="openPythonGuideFromAlert"
         />
         <div class="right-panel-header">
-          <h1 class="asset-detail-title mb-0">{{ selectedVuln.vul_name }}</h1>
+          <div class="d-flex align-items-center justify-content-between">
+            <h1 class="asset-detail-title mb-0">{{ selectedVuln.vul_name }}</h1>
+            <button v-if="isUser" class="rt-btn-support" @click="openVulnSupportModal">
+              Support Request
+            </button>
+          </div>
           <div class="detail-tabs">
             <button
               type="button"
@@ -377,11 +382,13 @@
                       v-else
                       :key="v._key + '-' + i"
                       :severity="v.severity"
+                      :vuln-name="v.vul_name"
                       :asset-ip="v.assets?.[0]"
                       :asset-index="panelVulnDemoIndex(v)"
                       :can-automate="canAutomate"
                       :must-manual="mustManual"
                       :recommended-text="recommendedText"
+                      :is-user="isUser"
                       @view-code="showCodeModal = true"
                     />
                   </div>
@@ -553,6 +560,69 @@
       </div>
     </div>
   </div>
+
+  <!-- Vuln Support Request Modal (User only) -->
+  <div class="modal fade" id="vulnSrModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content vc-modal-content">
+        <div class="modal-header vc-modal-header">
+          <h5 class="modal-title vc-modal-title"><i class="bi bi-headset me-2"></i>Raise Support Request</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <p class="vc-modal-section-label mb-1">Vulnerability</p>
+          <p class="fw-semibold mb-3" style="font-size:14px;">{{ selectedVuln?.vul_name }}</p>
+          <p v-if="selectedVuln?.assets?.length > 1" class="vc-modal-section-label mb-2">Select Asset <span class="text-danger">*</span></p>
+          <select v-if="selectedVuln?.assets?.length > 1" v-model="vulnSrAsset" class="vc-textarea mb-3" style="resize:none;padding:8px 12px;cursor:pointer;">
+            <option value="">-- Select Asset --</option>
+            <option v-for="a in selectedVuln.assets" :key="a" :value="a">{{ a }}</option>
+          </select>
+          <h6 class="vc-modal-section-label mb-3">Choose the step for which you want support</h6>
+          <div class="row g-2 mt-1">
+            <div class="col-4" v-for="n in 6" :key="n">
+              <span
+                class="vc-step-pill"
+                :class="[
+                  vulnSrRaisedSteps.includes(n) ? 'vc-step-pill-raised' : '',
+                  vulnSrStep === n && !vulnSrRaisedSteps.includes(n) ? 'vc-step-pill-active' : ''
+                ]"
+                :style="vulnSrRaisedSteps.includes(n) ? 'cursor:not-allowed;opacity:0.6;' : 'cursor:pointer;'"
+                :title="vulnSrRaisedSteps.includes(n) ? 'Support already raised for this step' : ''"
+                @click="!vulnSrRaisedSteps.includes(n) && (vulnSrStep = n)"
+              >Step {{ n }}</span>
+            </div>
+          </div>
+          <p class="vc-modal-section-label mt-4 mb-2">Description <span class="text-danger">*</span></p>
+          <textarea v-model="vulnSrDescription" class="vc-textarea" rows="4" placeholder="Write your issue here..."></textarea>
+          <div v-if="vulnSrRaised" class="rt-support-raised-note mt-3">
+            <i class="bi bi-check-circle-fill me-2" style="color:#0f696e;"></i>
+            Support request has been raised successfully.
+          </div>
+        </div>
+        <div class="modal-footer vc-modal-footer">
+          <button
+            v-if="!vulnSrRaised"
+            class="vc-btn-primary"
+            :disabled="!vulnSrStep || !vulnSrDescription.trim() || vulnSrSubmitting || (selectedVuln?.assets?.length > 1 && !vulnSrAsset)"
+            @click="submitVulnSr"
+          >
+            <span v-if="vulnSrSubmitting"><span class="spinner-border spinner-border-sm me-1"></span>Submitting...</span>
+            <span v-else>Submit</span>
+          </button>
+          <button
+            v-else
+            class="vc-btn-primary"
+            :disabled="!hasNextVulnSrStep"
+            @click="prepareAnotherVulnSr"
+          >
+            Raise Support Request for other Steps
+          </button>
+          <button class="vc-btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </template>
 
 <script>
@@ -663,6 +733,13 @@ export default {
       selectedSupportRequest: null,
       showCodeModal: false,
       showPythonModal: false,
+      vulnSrStep: null,
+      vulnSrAsset: '',
+      vulnSrDescription: '',
+      vulnSrSubmitting: false,
+      vulnSrRaised: false,
+      vulnSrRaisedSteps: [],
+      vulnSrFixVulnId: null,
       codeCopied: false,
       automationCode: `import paramiko\nimport requests\nimport subprocess\nimport re\nfrom datetime import import datetime\n\nclass TLSConfigurator:\n    def __init__(self, host, username, password):\n        self.host = host\n        self.username = username\n        self.password = password\n        self.ssh_client = paramiko.SSHClient()\n        self.log = []\n\n    def connect(self):\n        """Establish SSH connection to target host"""\n        self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())\n        try:\n            self.ssh_client.connect(self.host, username=self.username, password=self.password)\n            self.log_action("SSH connection established")\n            return True\n        except Exception as e:\n            self.log_action(f"Connection failed: {str(e)}")\n            return False`,
     };
@@ -746,6 +823,15 @@ export default {
     },
     statusCountClosed() {
       return this.vulnsForStatusCounts.filter(v => matchesVulnStatusFilter(v, ['closed'])).length;
+    },
+    nextVulnSrStep() {
+      for (let s = 1; s <= 6; s++) {
+        if (!this.vulnSrRaisedSteps.includes(s)) return s;
+      }
+      return null;
+    },
+    hasNextVulnSrStep() {
+      return this.nextVulnSrStep !== null;
     },
     filteredVulns() {
       let list = this.vulnsForStatusCounts;
@@ -1064,6 +1150,65 @@ export default {
       this.supportRequestsForVuln = [];
       this.supportRequestCount = 0;
       this.$nextTick(() => this.scrollToAccordion(item._key));
+    },
+    openVulnSupportModal() {
+      this.vulnSrStep = null;
+      this.vulnSrAsset = this.selectedVuln?.assets?.length === 1 ? this.selectedVuln.assets[0] : '';
+      this.vulnSrDescription = '';
+      this.vulnSrRaised = false;
+      this.vulnSrRaisedSteps = [];
+      this.vulnSrFixVulnId = null;
+      const modal = new bootstrap.Modal(document.getElementById('vulnSrModal'));
+      modal.show();
+    },
+    prepareAnotherVulnSr() {
+      const step = this.nextVulnSrStep;
+      if (!step) return;
+      this.vulnSrStep = step;
+      this.vulnSrRaised = false;
+      this.vulnSrDescription = '';
+    },
+    async submitVulnSr() {
+      if (!this.vulnSrStep || !this.vulnSrDescription.trim()) return;
+      const asset = this.vulnSrAsset || (this.selectedVuln?.assets?.[0] ?? '');
+      if (!asset) { Swal.fire('Error', 'Asset not found', 'error'); return; }
+      this.vulnSrSubmitting = true;
+      const reportId = this.authStore.userLatestReportId;
+      if (!reportId) {
+        this.vulnSrSubmitting = false;
+        Swal.fire('Error', 'Report ID not found', 'error');
+        return;
+      }
+      let fixVulnId = this.vulnSrFixVulnId;
+      if (!fixVulnId) {
+        const createRes = await this.authStore.createUserFixVulnerability(reportId, asset, {
+          plugin_name: this.selectedVuln.vul_name,
+          risk_factor: this.selectedVuln.severity || 'Medium',
+        });
+        fixVulnId =
+          createRes.data?.fix_vulnerability_id ||
+          createRes.data?._id ||
+          createRes.details?.fix_vulnerability_id ||
+          createRes.details?._id;
+        if (!fixVulnId) {
+          this.vulnSrSubmitting = false;
+          Swal.fire('Error', createRes.message || 'Failed to create fix vulnerability', 'error');
+          return;
+        }
+        this.vulnSrFixVulnId = fixVulnId;
+      }
+      const res = await this.authStore.raiseUserSupportRequest(fixVulnId, {
+        step_number: this.vulnSrStep,
+        description: this.vulnSrDescription,
+      });
+      this.vulnSrSubmitting = false;
+      if (res.status) {
+        this.vulnSrRaisedSteps.push(this.vulnSrStep);
+        this.vulnSrRaised = true;
+        Swal.fire({ icon: 'success', title: 'Support Request Raised', timer: 2000, showConfirmButton: false });
+      } else {
+        Swal.fire('Error', res.message || 'Failed to raise support request', 'error');
+      }
     },
     openSupportRequestModal(req) {
       this.selectedSupportRequest = req;
@@ -3008,4 +3153,22 @@ export default {
   background: #16a34a;
   flex-shrink: 0;
 }
+
+/* ─── Support Request Button ───────────────────────────────── */
+.rt-btn-support { background: #e0f2f1; color: #0f696e; border: 1px solid rgba(15,105,110,0.2); border-radius: 999px; padding: 8px 18px; font-size: 0.84rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+.rt-btn-support:hover { background: #a1ecf2; }
+.vc-modal-content  { border-radius: 16px; overflow: hidden; border: none; }
+.vc-modal-header   { background: #241447; color: #fff; border-bottom: none; padding: 18px 24px; }
+.vc-modal-title    { font-size: 1rem; font-weight: 700; color: #fff; margin: 0; }
+.vc-modal-section-label { font-size: 0.82rem; font-weight: 700; color: #241447; text-transform: uppercase; letter-spacing: 0.05em; }
+.vc-modal-footer   { border-top: 1px solid #f1f5f9; padding: 14px 24px; display: flex; justify-content: flex-end; gap: 10px; }
+.vc-step-pill { display: inline-flex; align-items: center; justify-content: center; padding: 6px 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; color: #475569; background: #f1f5f9; border: 1.5px solid #e2e8f0; cursor: pointer; transition: all 0.15s; width: 100%; text-align: center; }
+.vc-step-pill-active { background: #e0f2f1; color: #0f696e; border-color: #0f696e; }
+.vc-step-pill-raised { background: #fff7ed; color: #c2410c; border-color: #fdba74; }
+.vc-textarea { width: 100%; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; font-size: 0.875rem; color: #1e293b; background: #f8f9fc; outline: none; resize: vertical; font-family: inherit; }
+.vc-textarea:focus { box-shadow: 0 0 0 2px rgba(15,105,110,0.2); border-color: #0f696e; }
+.vc-btn-primary { background: #241447; color: white; border: none; border-radius: 8px; padding: 8px 18px; font-size: 0.875rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+.vc-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.vc-btn-secondary { background: white; color: #241447; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 18px; font-size: 0.875rem; font-weight: 600; cursor: pointer; }
+.rt-support-raised-note { font-size: 0.84rem; color: #0f696e; display: flex; align-items: center; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px; }
 </style>

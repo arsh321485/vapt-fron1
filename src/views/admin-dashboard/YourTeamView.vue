@@ -89,7 +89,12 @@
                           </div>
                           <div class="dropdown-list" v-show="isOpen.dropdown2">
                             <label v-for="option in roleOptions" :key="option.short">
-                              <input type="checkbox" :value="option.short" v-model="selectedRoles2" />
+                              <input
+                                type="checkbox"
+                                :value="option.short"
+                                v-model="selectedRoles2"
+                                @change="onRoleToggle2(option, $event)"
+                              />
                               <TeamNameText :name="option.full" />
                             </label>
                           </div>
@@ -101,6 +106,22 @@
                         <input class="team-form-input" type="email" placeholder="Enter email address" v-model="form.email"/>
                       </div>
 
+                    </div>
+
+                    <div v-if="selectedRoles2.length" class="row mt-2">
+                      <div class="col-12">
+                        <div class="yt-assignment-summary">
+                          <button
+                            type="button"
+                            class="yt-assignment-link"
+                            @click="openAssignmentModal(selectedRoles2[selectedRoles2.length - 1])"
+                          >
+                            <i class="bi bi-sliders"></i>
+                            <span>Configure assets & vulnerabilities</span>
+                          </button>
+                          <span class="yt-assignment-counts">{{ assignmentSummaryText }}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -322,12 +343,26 @@
       </div>
 
     </section>
+
+    <RoleAssignmentDrawer
+      :show="showAssignmentModal"
+      :active-role="activeAssignmentRole"
+      :selected-roles="selectedRoles2"
+      :role-options="roleOptions"
+      :role-assignments="roleAssignments"
+      :catalog="roleAssignmentCatalog"
+      @update:show="showAssignmentModal = $event"
+      @update:active-role="activeAssignmentRole = $event"
+      @close="closeAssignmentModal"
+      @apply="applyAssignmentModal"
+    />
   </main>
 </template>
 
 <script>
 import DashboardMenu from '@/components/admin-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/admin-component/DashboardHeader.vue';
+import RoleAssignmentDrawer from '@/components/admin-component/RoleAssignmentDrawer.vue';
 import { useAuthStore } from "@/stores/authStore";
 import endpoint from "@/services/apiServices";
 import {
@@ -336,12 +371,20 @@ import {
   getTeamTabNavStyle,
   getTeamTabUnderlineStyle,
 } from '@/utils/teamColors';
+import {
+  ROLE_ASSIGNMENT_CATALOG,
+  createEmptyRoleAssignments,
+  getAssignmentSummaryText,
+  clearRoleAssignments,
+  resetAllRoleAssignments,
+} from '@/utils/roleAssignmentData';
 
 export default {
   name: 'YourTeamView',
   components: {
     DashboardMenu,
     DashboardHeader,
+    RoleAssignmentDrawer,
   },
   data() {
     return {
@@ -389,7 +432,11 @@ export default {
         first_name: "",
         last_name: "",
         email: "",
-      }
+      },
+      showAssignmentModal: false,
+      activeAssignmentRole: null,
+      roleAssignments: createEmptyRoleAssignments(),
+      roleAssignmentCatalog: ROLE_ASSIGNMENT_CATALOG,
     };
   },
   computed: {
@@ -435,7 +482,10 @@ export default {
     },
     tabWidth() {
       return 100 / this.tabs.length;
-    }
+    },
+    assignmentSummaryText() {
+      return getAssignmentSummaryText(this.selectedRoles2, this.roleAssignments);
+    },
   },
   methods: {
     getTeamColor,
@@ -450,6 +500,35 @@ export default {
   closeModal() {
     const modal = bootstrap.Modal.getInstance(this.$refs.addUserModal);
     modal?.hide();
+    this.resetRoleAssignments();
+  },
+  onRoleToggle2(role, event) {
+    const isChecked = event?.target?.checked;
+    if (isChecked) {
+      this.isOpen.dropdown2 = false;
+      this.openAssignmentModal(role.short);
+      return;
+    }
+    clearRoleAssignments(this.roleAssignments, role.short);
+    if (this.activeAssignmentRole === role.short) {
+      this.closeAssignmentModal();
+    }
+  },
+  openAssignmentModal(roleShort) {
+    if (!roleShort || !this.selectedRoles2.includes(roleShort)) return;
+    this.activeAssignmentRole = roleShort;
+    this.showAssignmentModal = true;
+  },
+  closeAssignmentModal() {
+    this.showAssignmentModal = false;
+  },
+  applyAssignmentModal() {
+    this.closeAssignmentModal();
+  },
+  resetRoleAssignments() {
+    resetAllRoleAssignments(this.roleAssignments);
+    this.activeAssignmentRole = null;
+    this.closeAssignmentModal();
   },
 
   async saveUser() {
@@ -551,6 +630,7 @@ this.isOpen[newUser._id] = false;
       email: "",
     };
     this.selectedRoles2 = [];
+    this.resetRoleAssignments();
 
     this.closeModal();
 
@@ -1669,5 +1749,49 @@ async deleteRoleFromUser(user, roleToRemove) {
   .section-title {
     font-size: 14px;
   }
+}
+
+.yt-assignment-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  background: #f8fafc;
+  border: 1px solid #e8ecf2;
+  border-radius: 10px;
+}
+.yt-assignment-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: #0f696e;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.2;
+  text-align: left;
+  flex: 1;
+  min-width: 0;
+}
+.yt-assignment-link span {
+  white-space: nowrap;
+}
+.yt-assignment-link:hover { opacity: 0.8; }
+.yt-assignment-counts {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  color: #475569;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 4px 10px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
 }
 </style>

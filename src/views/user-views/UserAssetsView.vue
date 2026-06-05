@@ -172,7 +172,12 @@
                 />
                 <!-- Detail Header -->
                 <div class="right-panel-header">
-                  <h1 class="asset-detail-title mb-0">{{ selectedAsset?.asset }}</h1>
+                  <div class="d-flex align-items-center justify-content-between">
+                    <h1 class="asset-detail-title mb-0">{{ selectedAsset?.asset }}</h1>
+                    <button class="rt-btn-support" @click="openAssetSupportModal">
+                      Support Request
+                    </button>
+                  </div>
                   <div
                     v-if="selectedAsset?.host_information?.['Netbios Name'] || selectedAsset?.host_information?.['DNS Name'] || selectedAsset?.assigned_teams?.length"
                     class="right-panel-meta"
@@ -181,14 +186,7 @@
                       <p class="meta-label">Hostname</p>
                       <p class="meta-value">{{ selectedAsset.host_information['Netbios Name'] }}</p>
                     </div>
-                    <div v-if="selectedAsset?.host_information?.['DNS Name']">
-                      <p class="meta-label">DNS Name</p>
-                      <p class="meta-value">{{ selectedAsset.host_information['DNS Name'] }}</p>
-                    </div>
-                    <div v-if="selectedAsset?.assigned_teams?.length">
-                      <p class="meta-label">Teams</p>
-                      <p class="meta-value">{{ selectedAsset.assigned_teams.join(', ') }}</p>
-                    </div>
+
                   </div>
                   <div class="detail-tabs">
                     <button class="detail-tab" :class="{ 'detail-tab-active': activeTab === 'vulnerabilities' }" @click="activeTab = 'vulnerabilities'">
@@ -283,6 +281,9 @@
                               <span :class="getStatusBadgeClass(vuln.status)">
                                 <span :class="getStatusDotClass(vuln.status)"></span>{{ getStatusLabel(vuln.status) }}
                               </span>
+                              <span :class="getVulnTeamChipClass(vuln)" style="font-size:0.68rem; padding:2px 8px;">
+                                {{ getVulnTeamLabel(vuln) }}
+                              </span>
                             </div>
                           </div>
                           <div class="d-flex align-items-center gap-3 flex-shrink-0 vuln-accordion-actions">
@@ -364,8 +365,10 @@
                                   v-else
                                   :key="vuln.vul_name + '-' + idx"
                                   :severity="vuln.severity"
+                                  :vuln-name="vuln.vul_name"
                                   :asset-ip="selectedAssetIp"
                                   :asset-index="selectedAssetDemoIndex"
+                                  :is-user="true"
                                   @view-code="showCodeModal = true"
                                 />
                               </div>
@@ -640,6 +643,67 @@
         </div>
       </div>
     </div>
+
+  <!-- Asset Support Request Modal -->
+  <div class="modal fade" id="assetSrModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content vc-modal-content">
+        <div class="modal-header vc-modal-header">
+          <h5 class="modal-title vc-modal-title"><i class="bi bi-headset me-2"></i>Raise Support Request</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <p class="vc-modal-section-label mb-2">Select Vulnerability <span class="text-danger">*</span></p>
+          <select v-model="assetSrVulnName" class="vc-textarea mb-3" style="resize:none;padding:8px 12px;cursor:pointer;">
+            <option value="">-- Select Vulnerability --</option>
+            <option v-for="v in filteredVulnerabilities" :key="v.vul_name" :value="v.vul_name">{{ v.vul_name }}</option>
+          </select>
+          <h6 class="vc-modal-section-label mb-3">Choose the step for which you want support</h6>
+          <div class="row g-2 mt-1">
+            <div class="col-4" v-for="n in 6" :key="n">
+              <span
+                class="vc-step-pill"
+                :class="[
+                  assetSrRaisedSteps.includes(n) ? 'vc-step-pill-raised' : '',
+                  assetSrStep === n && !assetSrRaisedSteps.includes(n) ? 'vc-step-pill-active' : ''
+                ]"
+                :style="assetSrRaisedSteps.includes(n) ? 'cursor:not-allowed;opacity:0.6;' : 'cursor:pointer;'"
+                :title="assetSrRaisedSteps.includes(n) ? 'Support already raised for this step' : ''"
+                @click="!assetSrRaisedSteps.includes(n) && (assetSrStep = n)"
+              >Step {{ n }}</span>
+            </div>
+          </div>
+          <p class="vc-modal-section-label mt-4 mb-2">Description <span class="text-danger">*</span></p>
+          <textarea v-model="assetSrDescription" class="vc-textarea" rows="4" placeholder="Write your issue here..."></textarea>
+          <div v-if="assetSrRaised" class="rt-support-raised-note mt-3">
+            <i class="bi bi-check-circle-fill me-2" style="color:#0f696e;"></i>
+            Support request has been raised successfully.
+          </div>
+        </div>
+        <div class="modal-footer vc-modal-footer">
+          <button
+            v-if="!assetSrRaised"
+            class="vc-btn-primary"
+            :disabled="!assetSrVulnName || !assetSrDescription.trim() || !assetSrStep || assetSrSubmitting"
+            @click="submitAssetSr"
+          >
+            <span v-if="assetSrSubmitting"><span class="spinner-border spinner-border-sm me-1"></span>Submitting...</span>
+            <span v-else>Submit</span>
+          </button>
+          <button
+            v-else
+            class="vc-btn-primary"
+            :disabled="!hasNextAssetSrStep"
+            @click="prepareAnotherAssetSr"
+          >
+            Raise Support Request for other Steps
+          </button>
+          <button class="vc-btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </main>
 </template>
 
@@ -721,6 +785,14 @@ export default {
       extPopupOptionsLoading: false,
       showCodeModal: false,
       showPythonModal: false,
+      assetSrStep: null,
+      assetSrVulnName: '',
+      assetSrDescription: '',
+      assetSrSubmitting: false,
+      assetSrRaised: false,
+      assetSrRaisedSteps: [],
+      assetSrFixVulnId: null,
+
       pythonGuideSeverity: '',
       codeCopied: false,
       automationCode: `import paramiko
@@ -843,6 +915,15 @@ class TLSConfigurator:
     assetSupportRequests() {
       return this.supportRequests;
     },
+    nextAssetSrStep() {
+      for (let s = 1; s <= 6; s++) {
+        if (!this.assetSrRaisedSteps.includes(s)) return s;
+      }
+      return null;
+    },
+    hasNextAssetSrStep() {
+      return this.nextAssetSrStep !== null;
+    },
     extPopupAssetList() {
       if (this.extPopupAssetListApi.length > 0) return this.extPopupAssetListApi;
       return this.assets.map(a => a.asset).filter(Boolean);
@@ -896,6 +977,88 @@ class TLSConfigurator:
           }
         });
       }
+    },
+    openAssetSupportModal() {
+      this.assetSrStep = null;
+      this.assetSrVulnName = '';
+      this.assetSrDescription = '';
+      this.assetSrRaised = false;
+      this.assetSrRaisedSteps = [];
+      this.assetSrFixVulnId = null;
+      const modal = new bootstrap.Modal(document.getElementById('assetSrModal'));
+      modal.show();
+    },
+    prepareAnotherAssetSr() {
+      const step = this.nextAssetSrStep;
+      if (!step) return;
+      this.assetSrStep = step;
+      this.assetSrRaised = false;
+      this.assetSrDescription = '';
+    },
+    async submitAssetSr() {
+      if (!this.assetSrVulnName || !this.assetSrDescription.trim() || !this.assetSrStep) return;
+      this.assetSrSubmitting = true;
+      const reportId = this.authStore.userLatestReportId;
+      const asset = this.activeIndex;
+      if (!reportId || !asset) {
+        this.assetSrSubmitting = false;
+        Swal.fire('Error', 'Asset info not found', 'error');
+        return;
+      }
+      // Fix vuln ID pehle se hai toh dobara create mat karo
+      let fixVulnId = this.assetSrFixVulnId;
+      if (!fixVulnId) {
+        const selectedVuln = this.filteredVulnerabilities.find(v => v.vul_name === this.assetSrVulnName);
+        const createRes = await this.authStore.createUserFixVulnerability(reportId, asset, {
+          plugin_name: this.assetSrVulnName,
+          risk_factor: selectedVuln?.severity || 'Medium',
+        });
+        fixVulnId =
+          createRes.data?.fix_vulnerability_id ||
+          createRes.data?._id ||
+          createRes.details?.fix_vulnerability_id ||
+          createRes.details?._id;
+        if (!fixVulnId) {
+          this.assetSrSubmitting = false;
+          Swal.fire('Error', createRes.message || 'Failed to create fix vulnerability', 'error');
+          return;
+        }
+        this.assetSrFixVulnId = fixVulnId;
+      }
+      const res = await this.authStore.raiseUserSupportRequest(fixVulnId, {
+        step_number: this.assetSrStep,
+        description: this.assetSrDescription,
+      });
+      this.assetSrSubmitting = false;
+      if (res.status) {
+        this.assetSrRaisedSteps.push(this.assetSrStep);
+        this.assetSrRaised = true;
+        Swal.fire({ icon: 'success', title: 'Support Request Raised', timer: 2000, showConfirmButton: false });
+      } else {
+        Swal.fire('Error', res.message || 'Failed to raise support request', 'error');
+      }
+    },
+    getVulnTeamLabel(vuln) {
+      // ✅ Actual assigned team pehle check karo — multiple field names
+      const t = String(
+        vuln?.assigned_team || vuln?.team || vuln?.Member_role?.[0] || ''
+      ).trim();
+      if (t) return t;
+      // Fallback: vuln name se guess karo
+      const n = String(vuln?.vul_name || '').toLowerCase();
+      if (/architect|injection|xss|sqli|rce|csrf|overflow|traversal/.test(n)) return 'Architectural Flaws';
+      if (/tls|ssl|protocol|cipher|encrypt|certif|port|network|firewall|vpn|smtp|ftp/.test(n)) return 'Network Security';
+      if (/deprecat|outdated|end.of.life|eol|obsolete|unsupported|patch/.test(n)) return 'Patch Management';
+      if (/missing|hsts|header|cors|cookie|misconfigur|default.password|weak.password|policy/.test(n)) return 'Configuration Management';
+      return 'Patch Management';
+    },
+    getVulnTeamChipClass(vuln) {
+      const team = this.getVulnTeamLabel(vuln);
+      if (team === 'Architectural Flaws')      return 'rt-team-chip rt-team-architectural';
+      if (team === 'Network Security')         return 'rt-team-chip rt-team-network';
+      if (team === 'Configuration Management') return 'rt-team-chip rt-team-configuration';
+      if (team === 'Patch Management')         return 'rt-team-chip rt-team-patch';
+      return 'rt-team-chip rt-team-default';
     },
     getStatusLabel(status) {
       const normalized = (status || "").toLowerCase();
@@ -1337,8 +1500,19 @@ class TLSConfigurator:
       const res = await this.authStore.submitUserMitigationTimelineExtensionRequest(payload);
       if (res.status) {
         this.closeExtPopup();
+        Swal.fire({
+          icon: 'success',
+          title: 'Request Submitted!',
+          text: 'Your timeline extension request has been submitted successfully.',
+          timer: 2500,
+          showConfirmButton: false,
+        });
       } else {
-        alert(res.message || "Failed to submit extension request");
+        Swal.fire({
+          icon: 'error',
+          title: 'Failed',
+          text: res.message || 'Failed to submit extension request',
+        });
       }
     },
     async confirmHold() {
@@ -2886,4 +3060,23 @@ class TLSConfigurator:
 .code-copy-btn:hover { background: #0284c7; }
 .code-close-btn { padding: 8px 16px; background: #fff; color: #6b7280; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
 .code-close-btn:hover { background: #f9fafb; color: #1f2937; }
+
+/* ─── Support Request Button ─────────────────────────────────────── */
+.rt-btn-support { background: #e0f2f1; color: #0f696e; border: 1px solid rgba(15,105,110,0.2); border-radius: 999px; padding: 8px 18px; font-size: 0.84rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+.rt-btn-support:hover { background: #a1ecf2; }
+
+/* ─── Modal styles ───────────────────────────────────────────────── */
+.vc-modal-content  { border-radius: 16px; overflow: hidden; border: none; }
+.vc-modal-header   { background: #241447; color: #fff; border-bottom: none; padding: 18px 24px; }
+.vc-modal-title    { font-size: 1rem; font-weight: 700; color: #fff; margin: 0; }
+.vc-modal-section-label { font-size: 0.82rem; font-weight: 700; color: #241447; text-transform: uppercase; letter-spacing: 0.05em; }
+.vc-modal-footer   { border-top: 1px solid #f1f5f9; padding: 14px 24px; display: flex; justify-content: flex-end; gap: 10px; }
+.vc-step-pill { display: inline-flex; align-items: center; justify-content: center; padding: 6px 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; color: #475569; background: #f1f5f9; border: 1.5px solid #e2e8f0; cursor: pointer; transition: all 0.15s; width: 100%; text-align: center; }
+.vc-step-pill-active { background: #e0f2f1; color: #0f696e; border-color: #0f696e; }
+.vc-textarea { width: 100%; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; font-size: 0.875rem; color: #1e293b; background: #f8f9fc; outline: none; resize: vertical; font-family: inherit; }
+.vc-textarea:focus { box-shadow: 0 0 0 2px rgba(15,105,110,0.2); border-color: #0f696e; }
+.vc-btn-primary { background: #241447; color: white; border: none; border-radius: 8px; padding: 8px 18px; font-size: 0.875rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+.vc-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.vc-btn-secondary { background: white; color: #241447; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 18px; font-size: 0.875rem; font-weight: 600; cursor: pointer; }
+.rt-support-raised-note { font-size: 0.84rem; color: #0f696e; display: flex; align-items: center; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px; }
 </style>

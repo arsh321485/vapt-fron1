@@ -343,8 +343,10 @@
                                   v-else
                                   :key="v.vul_name + '-' + i"
                                   :severity="v.severity"
+                                  :vuln-name="v.vul_name"
                                   :asset-ip="selectedAssetIp"
                                   :asset-index="selectedAssetDemoIndex"
+                                  :is-user="false"
                                   @view-code="showCodeModal = true"
                                 />
                               </div>

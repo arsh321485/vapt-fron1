@@ -24,6 +24,28 @@
           >
             <i class="bi bi-eye"></i>
           </button>
+          <button
+            type="button"
+            class="cap-feedback-btn cap-feedback-btn--up"
+            :class="thumbsUpClass"
+            :title="thumbsUpTitle"
+            :aria-label="thumbsUpTitle"
+            :disabled="!canVote"
+            @click="handleFeedback('up')"
+          >
+            <i class="bi bi-hand-thumbs-up-fill"></i>
+          </button>
+          <button
+            type="button"
+            class="cap-feedback-btn cap-feedback-btn--down"
+            :class="thumbsDownClass"
+            :title="thumbsDownTitle"
+            :aria-label="thumbsDownTitle"
+            :disabled="!canVote"
+            @click="handleFeedback('down')"
+          >
+            <i class="bi bi-hand-thumbs-down-fill"></i>
+          </button>
         </div>
       </div>
       <div class="cap-bar-col">
@@ -143,6 +165,12 @@
 
 <script>
 import { canonSeverity, resolveAutomationDisplay } from '@/utils/assetVulnerabilities';
+import {
+  buildScriptFeedbackKey,
+  getScriptFeedbackAggregate,
+  getUserScriptFeedback,
+  setUserScriptFeedback,
+} from '@/utils/scriptFeedback';
 
 const DESC_PREVIEW_LIMIT = 200;
 
@@ -227,9 +255,11 @@ const DEFAULT_REC =
 
 export default {
   name: 'AutomatedFixPanel',
-  emits: ['view-code'],
+  emits: ['view-code', 'feedback-change'],
   props: {
     showActions: { type: Boolean, default: true },
+    isUser: { type: Boolean, default: false },
+    vulnName: { type: String, default: '' },
     severity: { type: String, default: '' },
     assetIp: { type: String, default: '' },
     assetIndex: { type: Number, default: null },
@@ -251,15 +281,30 @@ export default {
       descriptionExpanded: false,
       copiedKey: null,
       _copyTimer: null,
+      userFeedback: null,
+      feedbackAggregate: { up: 0, down: 0, total: 0 },
     };
   },
   watch: {
     severity() {
       this.descriptionExpanded = false;
+      this.refreshFeedbackState();
     },
     scriptDescription() {
       this.descriptionExpanded = false;
     },
+    vulnName() {
+      this.refreshFeedbackState();
+    },
+    assetIp() {
+      this.refreshFeedbackState();
+    },
+    resolvedScriptName() {
+      this.refreshFeedbackState();
+    },
+  },
+  mounted() {
+    this.refreshFeedbackState();
   },
   computed: {
     autoDisplay() {
@@ -319,11 +364,88 @@ export default {
     resolvedRecommended() {
       return this.recommendedText || DEFAULT_REC;
     },
+    feedbackKey() {
+      return buildScriptFeedbackKey({
+        scriptName: this.resolvedScriptName,
+        vulnName: this.vulnName,
+        assetIp: this.assetIp,
+        severity: this.severity,
+      });
+    },
+    canVote() {
+      return this.isUser;
+    },
+    thumbsUpClass() {
+      if (this.isUser) {
+        return {
+          'is-active': this.userFeedback === 'up',
+          'is-muted': this.userFeedback === 'down',
+        };
+      }
+      const { up, down } = this.feedbackAggregate;
+      return {
+        'is-active': up > 0 && up >= down,
+        'is-muted': down > up,
+      };
+    },
+    thumbsDownClass() {
+      if (this.isUser) {
+        return {
+          'is-active': this.userFeedback === 'down',
+          'is-muted': this.userFeedback === 'up',
+        };
+      }
+      const { up, down } = this.feedbackAggregate;
+      return {
+        'is-active': down > 0 && down > up,
+        'is-muted': up >= down && up > 0,
+      };
+    },
+    thumbsUpTitle() {
+      if (this.isUser) {
+        return this.userFeedback === 'up'
+          ? 'Script is working properly'
+          : 'Mark script as working properly';
+      }
+      const count = this.feedbackAggregate.up;
+      return count ? `${count} user${count === 1 ? '' : 's'} marked script as working` : 'No thumbs up yet';
+    },
+    thumbsDownTitle() {
+      if (this.isUser) {
+        return this.userFeedback === 'down'
+          ? 'Script is not working properly'
+          : 'Mark script as not working properly';
+      }
+      const count = this.feedbackAggregate.down;
+      return count ? `${count} user${count === 1 ? '' : 's'} marked script as not working` : 'No thumbs down yet';
+    },
   },
   beforeUnmount() {
     if (this._copyTimer) clearTimeout(this._copyTimer);
   },
   methods: {
+    refreshFeedbackState() {
+      if (!this.feedbackKey) {
+        this.userFeedback = null;
+        this.feedbackAggregate = { up: 0, down: 0, total: 0 };
+        return;
+      }
+      this.userFeedback = getUserScriptFeedback(this.feedbackKey);
+      this.feedbackAggregate = getScriptFeedbackAggregate(this.feedbackKey, {
+        useDemoFallback: !this.isUser,
+      });
+    },
+    handleFeedback(vote) {
+      if (!this.canVote || !this.feedbackKey) return;
+      const nextVote = this.userFeedback === vote ? null : vote;
+      setUserScriptFeedback(this.feedbackKey, nextVote);
+      this.refreshFeedbackState();
+      this.$emit('feedback-change', {
+        feedbackKey: this.feedbackKey,
+        vote: this.userFeedback,
+        aggregate: { ...this.feedbackAggregate },
+      });
+    },
     async copyText(text, key = 'cmd') {
       const value = String(text ?? '').trim();
       if (!value) return;
@@ -403,7 +525,50 @@ export default {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  gap: 8px;
   flex-shrink: 0;
+}
+
+.cap-feedback-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  border-radius: 8px;
+  font-size: 1rem;
+  line-height: 1;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, opacity 0.15s;
+}
+
+.cap-feedback-btn:disabled {
+  cursor: default;
+}
+
+.cap-feedback-btn--up.is-active {
+  color: #2563eb;
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.cap-feedback-btn--down.is-active {
+  color: #dc2626;
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+.cap-feedback-btn.is-muted {
+  opacity: 0.38;
+}
+
+.cap-feedback-btn:not(:disabled):hover {
+  filter: brightness(0.97);
 }
 
 .cap-view-code-btn {

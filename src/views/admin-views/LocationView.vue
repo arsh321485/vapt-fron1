@@ -90,11 +90,24 @@
                 <teleport to="body">
                   <div v-if="isRoleOpen" class="loc-dropdown-list" :style="roleDropdownStyle">
                     <label v-for="role in roleOptions" :key="role.short" class="loc-dropdown-item">
-                      <input type="checkbox" :value="role.short" v-model="selectedRoles" class="me-2" />
+                      <input
+                        type="checkbox"
+                        :value="role.short"
+                        v-model="selectedRoles"
+                        class="me-2"
+                        @change="onRoleToggle(role, $event)"
+                      />
                       {{ role.full }}
                     </label>
                   </div>
                 </teleport>
+                <div v-if="selectedRoles.length" class="loc-assignment-summary">
+                  <button type="button" class="loc-assignment-link" @click="openAssignmentModal(selectedRoles[selectedRoles.length - 1])">
+                    <i class="bi bi-sliders"></i>
+                    <span>Configure assets & vulnerabilities</span>
+                  </button>
+                  <span class="loc-assignment-counts">{{ assignmentSummaryText }}</span>
+                </div>
               </div>
 
               <div class="loc-field-group">
@@ -218,18 +231,41 @@
         </aside>
       </div>
     </div>
+
+    <RoleAssignmentDrawer
+      :show="showAssignmentModal"
+      :active-role="activeAssignmentRole"
+      :selected-roles="selectedRoles"
+      :role-options="roleOptions"
+      :role-assignments="roleAssignments"
+      :catalog="roleAssignmentCatalog"
+      @update:show="showAssignmentModal = $event"
+      @update:active-role="activeAssignmentRole = $event"
+      @close="closeAssignmentModal"
+      @apply="applyAssignmentModal"
+    />
   </main>
 </template>
 
 <script>
 import DashboardHeader from "@/components/admin-component/DashboardHeader.vue";
+import RoleAssignmentDrawer from "@/components/admin-component/RoleAssignmentDrawer.vue";
 import { useAuthStore } from "@/stores/authStore";
 import Swal from "sweetalert2";
+import {
+  ROLE_ASSIGNMENT_CATALOG,
+  createEmptyRoleAssignments,
+  getAssignmentSummaryText,
+  clearRoleAssignments,
+  resetAllRoleAssignments,
+} from "@/utils/roleAssignmentData";
 
 export default {
   name: "LocationView",
   components: {
-    DashboardHeader  },
+    DashboardHeader,
+    RoleAssignmentDrawer,
+  },
   data() {
     return {
       authStore: useAuthStore(),
@@ -251,6 +287,10 @@ export default {
         { short: "NS", full: "Network Security" },
         { short: "AF", full: "Architectural Flaws" }
       ],
+      showAssignmentModal: false,
+      activeAssignmentRole: null,
+      roleAssignments: createEmptyRoleAssignments(),
+      roleAssignmentCatalog: ROLE_ASSIGNMENT_CATALOG,
     };
   },
   computed: {
@@ -269,6 +309,9 @@ export default {
       return this.selectedRoles
         .map((r) => this.roleOptions.find((o) => o.short === r)?.full || r)
         .join(", ");
+    },
+    assignmentSummaryText() {
+      return getAssignmentSummaryText(this.selectedRoles, this.roleAssignments);
     },
     // generatedInviteLink() {
     //   const base = "https://vaptbackend.secureitlab.com";
@@ -329,6 +372,34 @@ export default {
           }
         });
       }
+    },
+    onRoleToggle(role, event) {
+      const isChecked = event?.target?.checked;
+      if (isChecked) {
+        this.isRoleOpen = false;
+        this.openAssignmentModal(role.short);
+        return;
+      }
+      clearRoleAssignments(this.roleAssignments, role.short);
+      if (this.activeAssignmentRole === role.short) {
+        this.closeAssignmentModal();
+      }
+    },
+    openAssignmentModal(roleShort) {
+      if (!roleShort || !this.selectedRoles.includes(roleShort)) return;
+      this.activeAssignmentRole = roleShort;
+      this.showAssignmentModal = true;
+    },
+    closeAssignmentModal() {
+      this.showAssignmentModal = false;
+    },
+    applyAssignmentModal() {
+      this.closeAssignmentModal();
+    },
+    resetRoleAssignments() {
+      resetAllRoleAssignments(this.roleAssignments);
+      this.activeAssignmentRole = null;
+      this.closeAssignmentModal();
     },
     async importFromPlatformOnly() {
       const email = (this.platformImportEmail || "").trim();
@@ -468,6 +539,7 @@ export default {
         this.form.user_type = "";
         this.selectedRoles = [];
         this.isRoleOpen = false;
+        this.resetRoleAssignments();
 
       } else {
         let errorMessage = "User detail with this email already exists";
@@ -831,6 +903,50 @@ export default {
   user-select: none;
 }
 .loc-field-role-display.is-placeholder { color: #9ca3af; }
+.loc-assignment-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  background: #f8fafc;
+  border: 1px solid #e8ecf2;
+  border-radius: 10px;
+}
+.loc-assignment-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: #0f696e;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.2;
+  text-align: left;
+  flex: 1;
+  min-width: 0;
+}
+.loc-assignment-link span {
+  white-space: nowrap;
+}
+.loc-assignment-link:hover { opacity: 0.8; }
+.loc-assignment-counts {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  color: #475569;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 4px 10px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+}
 .loc-submit-btn {
   width: 100%;
   height: 46px;
