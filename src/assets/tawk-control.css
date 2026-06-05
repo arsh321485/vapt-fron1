@@ -27,6 +27,16 @@ body.hide-tawk-badge #tawk-bubble-container {
 /* Note: We only hide badges, not the entire chat widget.
    The chat widget itself should remain visible for user interaction. */
 
+/* ─── Move Tawk.to widget to LEFT side (home & public pages) ───── */
+body:not(.hide-tawk-badge) #tawkchat-container,
+body:not(.hide-tawk-badge) #tawk-bubble-container,
+body:not(.hide-tawk-badge) iframe[title="chat widget"],
+body:not(.hide-tawk-badge) iframe[src*="tawk.to"],
+body:not(.hide-tawk-badge) [id^="tawk-"] {
+  right: auto !important;
+  left: 20px !important;
+}
+
 /* Specifically target the notification badge bubble */
 body.hide-tawk-badge .tawk-badge-container,
 body.hide-tawk-badge .tawk-unread-indicator,

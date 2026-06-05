@@ -120,8 +120,19 @@
           <p class="mf-consideration-text">{{ cleanText(task.consideration) }}</p>
         </div>
 
-        <!-- Complete Step Button (User Only) -->
+        <!-- Complete Step + Support Request (User Only) -->
         <div v-if="isUser" class="mf-complete-btn-wrap">
+          <button
+            type="button"
+            class="mf-support-btn"
+            :class="{ 'mf-support-btn--raised': isStepSupportRaised(task.id) }"
+            :disabled="isStepSupportRaised(task.id) || !canRaiseSupport"
+            :title="isStepSupportRaised(task.id) ? 'Support already raised for this step' : 'Raise support request for this step'"
+            @click="openStepSupportModal(task)"
+          >
+            <i class="bi bi-headset" aria-hidden="true"></i>
+            {{ isStepSupportRaised(task.id) ? 'Support Raised' : 'Support Request' }}
+          </button>
           <button
             type="button"
             class="mf-complete-btn"
@@ -153,6 +164,7 @@
         <span>Send verification</span>
       </button>
     </div>
+
   </div>
 </template>
 
@@ -160,19 +172,35 @@
 import Swal from 'sweetalert2';
 import { MOCK_MANUAL_STEPS } from '@/constants/mockManualRemediationSteps';
 import { getTeamColor } from '@/utils/teamColors';
+import { useAuthStore } from '@/stores/authStore';
 
 export default {
   name: 'ManualRemediationStepsPanel',
+  emits: ['support-request-raised', 'open-support-modal'],
   props: {
     isUser: {
       type: Boolean,
       default: false,
     },
+    vulnName: {
+      type: String,
+      default: '',
+    },
+    assetIp: {
+      type: String,
+      default: '',
+    },
+    severity: {
+      type: String,
+      default: 'Medium',
+    },
   },
   data() {
     return {
+      authStore: useAuthStore(),
       subtasks: MOCK_MANUAL_STEPS,
       expandedTasks: [0],
+      raisedSupportSteps: [],
     };
   },
   computed: {
@@ -182,6 +210,22 @@ export default {
     allStepsCompleted() {
       return this.subtasks.length > 0 && this.subtasks.every(t => t.status === 'completed');
     },
+    canRaiseSupport() {
+      return Boolean(this.vulnName && this.assetIp);
+    },
+  },
+  watch: {
+    vulnName() {
+      this.loadRaisedSupportSteps();
+    },
+    assetIp() {
+      this.loadRaisedSupportSteps();
+    },
+  },
+  mounted() {
+    if (this.isUser) {
+      this.loadRaisedSupportSteps();
+    }
   },
   methods: {
     getTeamColor,
@@ -298,6 +342,36 @@ export default {
         text: 'Your remediation steps fix will be sent for verification. You will be notified once it is reviewed.',
         confirmButtonText: 'OK',
       });
+    },
+    isStepSupportRaised(stepId) {
+      return this.raisedSupportSteps.includes(Number(stepId));
+    },
+    async loadRaisedSupportSteps() {
+      if (!this.isUser || !this.assetIp || !this.vulnName) {
+        this.raisedSupportSteps = [];
+        return;
+      }
+      const res = await this.authStore.getUserSupportRequestsByHost(this.assetIp);
+      if (!res.status || !Array.isArray(res.data)) {
+        this.raisedSupportSteps = [];
+        return;
+      }
+      const vulnLower = String(this.vulnName).trim().toLowerCase();
+      const matching = res.data.filter(
+        (item) => String(item.vul_name || '').trim().toLowerCase() === vulnLower,
+      );
+      this.raisedSupportSteps = matching
+        .map((item) => Number(item.step_number))
+        .filter((n) => Number.isFinite(n));
+    },
+    openStepSupportModal(task) {
+      if (this.isStepSupportRaised(task.id)) return;
+      // Emit to parent so the parent's modal opens with vuln + step pre-filled
+      const completedSteps = this.subtasks
+        .filter(t => t.status === 'completed')
+        .map(t => Number(t.id))
+        .filter(n => Number.isFinite(n));
+      this.$emit('open-support-modal', { vulnName: this.vulnName, step: task.id, completedSteps });
     },
   },
 };

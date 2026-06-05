@@ -174,9 +174,6 @@
                 <div class="right-panel-header">
                   <div class="d-flex align-items-center justify-content-between">
                     <h1 class="asset-detail-title mb-0">{{ selectedAsset?.asset }}</h1>
-                    <button class="rt-btn-support" @click="openAssetSupportModal">
-                      Support Request
-                    </button>
                   </div>
                   <div
                     v-if="selectedAsset?.host_information?.['Netbios Name'] || selectedAsset?.host_information?.['DNS Name'] || selectedAsset?.assigned_teams?.length"
@@ -378,7 +375,14 @@
                                   <div class="av-asset-label">
                                     <span class="av-asset-os-lbl">Linux</span>
                                   </div>
-                                  <ManualRemediationStepsPanel :is-user="true" />
+                                  <ManualRemediationStepsPanel
+                                    :is-user="true"
+                                    :vuln-name="vuln.vul_name"
+                                    :asset-ip="activeIndex"
+                                    :severity="vuln.severity"
+                                    @support-request-raised="loadSupportRequestsByHost(activeIndex)"
+                                    @open-support-modal="({ vulnName, step, completedSteps }) => openAssetSupportModal(vulnName, step, completedSteps)"
+                                  />
                                 </div>
                               </div>
                             </div>
@@ -653,36 +657,50 @@
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body p-4">
-          <p class="vc-modal-section-label mb-2">Select Vulnerability <span class="text-danger">*</span></p>
-          <select v-model="assetSrVulnName" class="vc-textarea mb-3" style="resize:none;padding:8px 12px;cursor:pointer;">
-            <option value="">-- Select Vulnerability --</option>
-            <option v-for="v in filteredVulnerabilities" :key="v.vul_name" :value="v.vul_name">{{ v.vul_name }}</option>
-          </select>
+          <!-- Vulnerability display (auto-filled from selected vuln, or dropdown if none selected) -->
+          <p class="vc-modal-section-label mb-1">Vulnerability <span class="text-danger">*</span></p>
+          <template v-if="assetSrVulnName && !assetSrVulnDropdown">
+            <p class="fw-semibold mb-3" style="font-size:14px;color:#1e293b;">{{ assetSrVulnName }}</p>
+          </template>
+          <template v-else>
+            <select v-model="assetSrVulnName" class="vc-textarea mb-3" style="resize:none;padding:8px 12px;cursor:pointer;" @change="onAssetSrVulnChange">
+              <option value="">-- Select Vulnerability --</option>
+              <option v-for="v in filteredVulnerabilities" :key="v.vul_name" :value="v.vul_name">{{ v.vul_name }}</option>
+            </select>
+          </template>
           <h6 class="vc-modal-section-label mb-3">Choose the step for which you want support</h6>
           <div class="row g-2 mt-1">
-            <div class="col-4" v-for="n in 6" :key="n">
+            <div class="col-4" v-for="n in assetSrTotalSteps" :key="n">
               <span
                 class="vc-step-pill"
                 :class="[
+                  assetSrCompletedSteps.includes(n) && !assetSrRaisedSteps.includes(n) ? 'vc-step-pill-disabled' : '',
                   assetSrRaisedSteps.includes(n) ? 'vc-step-pill-raised' : '',
-                  assetSrStep === n && !assetSrRaisedSteps.includes(n) ? 'vc-step-pill-active' : ''
+                  assetSrStep === n && !assetSrRaisedSteps.includes(n) && !assetSrCompletedSteps.includes(n) ? 'vc-step-pill-active' : ''
                 ]"
-                :style="assetSrRaisedSteps.includes(n) ? 'cursor:not-allowed;opacity:0.6;' : 'cursor:pointer;'"
-                :title="assetSrRaisedSteps.includes(n) ? 'Support already raised for this step' : ''"
-                @click="!assetSrRaisedSteps.includes(n) && (assetSrStep = n)"
+                :style="(assetSrCompletedSteps.includes(n) && !assetSrRaisedSteps.includes(n)) ? 'cursor:not-allowed;opacity:0.6;' : 'cursor:pointer;'"
+                :title="assetSrCompletedSteps.includes(n) && !assetSrRaisedSteps.includes(n) ? 'Step already completed' : assetSrRaisedSteps.includes(n) ? 'Support already raised — click to view' : ''"
+                @click="selectAssetSrStep(n)"
               >Step {{ n }}</span>
             </div>
           </div>
-          <p class="vc-modal-section-label mt-4 mb-2">Description <span class="text-danger">*</span></p>
-          <textarea v-model="assetSrDescription" class="vc-textarea" rows="4" placeholder="Write your issue here..."></textarea>
-          <div v-if="assetSrRaised" class="rt-support-raised-note mt-3">
+          <p class="vc-modal-section-label mt-4 mb-2">Description <span v-if="!assetSrIsViewingRaised" class="text-danger">*</span></p>
+          <textarea
+            v-model="assetSrDescription"
+            class="vc-textarea"
+            rows="4"
+            placeholder="Write your issue here..."
+            :readonly="assetSrIsViewingRaised"
+            :disabled="assetSrIsViewingRaised"
+          ></textarea>
+          <div v-if="assetSrIsViewingRaised" class="rt-support-raised-note mt-3">
             <i class="bi bi-check-circle-fill me-2" style="color:#0f696e;"></i>
             Support request has been raised successfully.
           </div>
         </div>
         <div class="modal-footer vc-modal-footer">
           <button
-            v-if="!assetSrRaised"
+            v-if="!assetSrIsViewingRaised"
             class="vc-btn-primary"
             :disabled="!assetSrVulnName || !assetSrDescription.trim() || !assetSrStep || assetSrSubmitting"
             @click="submitAssetSr"
@@ -691,9 +709,8 @@
             <span v-else>Submit</span>
           </button>
           <button
-            v-else
+            v-else-if="hasNextAssetSrStep"
             class="vc-btn-primary"
-            :disabled="!hasNextAssetSrStep"
             @click="prepareAnotherAssetSr"
           >
             Raise Support Request for other Steps
@@ -787,10 +804,14 @@ export default {
       showPythonModal: false,
       assetSrStep: null,
       assetSrVulnName: '',
+      assetSrVulnDropdown: false,
+      assetSrTotalSteps: 6,
+      assetSrCompletedSteps: [],
       assetSrDescription: '',
       assetSrSubmitting: false,
-      assetSrRaised: false,
+      assetSrIsViewingRaised: false,
       assetSrRaisedSteps: [],
+      assetSrRequestsByStep: {},
       assetSrFixVulnId: null,
 
       pythonGuideSeverity: '',
@@ -916,8 +937,8 @@ class TLSConfigurator:
       return this.supportRequests;
     },
     nextAssetSrStep() {
-      for (let s = 1; s <= 6; s++) {
-        if (!this.assetSrRaisedSteps.includes(s)) return s;
+      for (let s = 1; s <= this.assetSrTotalSteps; s++) {
+        if (!this.assetSrRaisedSteps.includes(s) && !this.assetSrCompletedSteps.includes(s)) return s;
       }
       return null;
     },
@@ -978,21 +999,94 @@ class TLSConfigurator:
         });
       }
     },
-    openAssetSupportModal() {
-      this.assetSrStep = null;
-      this.assetSrVulnName = '';
+    async openAssetSupportModal(preVulnName = null, preStep = null, preCompletedSteps = []) {
+      this.assetSrVulnDropdown = !preVulnName;
+      this.assetSrVulnName = preVulnName || '';
+      this.assetSrCompletedSteps = Array.isArray(preCompletedSteps) ? preCompletedSteps : [];
       this.assetSrDescription = '';
-      this.assetSrRaised = false;
+      this.assetSrIsViewingRaised = false;
+      this.assetSrStep = null;
       this.assetSrRaisedSteps = [];
+      this.assetSrRequestsByStep = {};
       this.assetSrFixVulnId = null;
-      const modal = new bootstrap.Modal(document.getElementById('assetSrModal'));
+      this.assetSrTotalSteps = 6;
+
+      if (this.assetSrVulnName) {
+        await this.loadAssetSrExistingRequests();
+      }
+
+      if (preStep) {
+        if (this.assetSrRaisedSteps.includes(preStep)) {
+          this.selectAssetSrStep(preStep);
+        } else if (!this.assetSrCompletedSteps.includes(preStep)) {
+          this.assetSrStep = preStep;
+        } else {
+          const firstAvailable = this.getFirstAvailableAssetSrStep();
+          if (firstAvailable) this.assetSrStep = firstAvailable;
+        }
+      }
+
+      const el = document.getElementById('assetSrModal');
+      const modal = bootstrap.Modal.getOrCreateInstance(el);
       modal.show();
+    },
+    async loadAssetSrExistingRequests() {
+      const asset = this.activeIndex;
+      const vulnName = this.assetSrVulnName;
+      this.assetSrRequestsByStep = {};
+      this.assetSrRaisedSteps = [];
+      if (!asset || !vulnName) return;
+
+      const res = await this.authStore.getUserSupportRequestsByHost(asset);
+      if (!res.status || !Array.isArray(res.data)) return;
+
+      const vulnLower = String(vulnName).trim().toLowerCase();
+      res.data
+        .filter((item) => String(item.vul_name || '').trim().toLowerCase() === vulnLower)
+        .forEach((item) => {
+          const step = Number(item.step_number);
+          if (!Number.isFinite(step)) return;
+          this.assetSrRequestsByStep[step] = item;
+          if (!this.assetSrRaisedSteps.includes(step)) {
+            this.assetSrRaisedSteps.push(step);
+          }
+          if (item.fix_vulnerability_id || item.fix_vuln_id) {
+            this.assetSrFixVulnId = item.fix_vulnerability_id || item.fix_vuln_id;
+          }
+        });
+    },
+    getFirstAvailableAssetSrStep() {
+      for (let s = 1; s <= this.assetSrTotalSteps; s++) {
+        if (!this.assetSrRaisedSteps.includes(s) && !this.assetSrCompletedSteps.includes(s)) return s;
+      }
+      return null;
+    },
+    selectAssetSrStep(n) {
+      if (this.assetSrCompletedSteps.includes(n) && !this.assetSrRaisedSteps.includes(n)) return;
+
+      if (this.assetSrRaisedSteps.includes(n)) {
+        this.assetSrStep = n;
+        this.assetSrIsViewingRaised = true;
+        this.assetSrDescription = this.assetSrRequestsByStep[n]?.description || '';
+        return;
+      }
+
+      this.assetSrStep = n;
+      this.assetSrIsViewingRaised = false;
+      this.assetSrDescription = '';
+    },
+    async onAssetSrVulnChange() {
+      this.assetSrStep = null;
+      this.assetSrCompletedSteps = [];
+      this.assetSrIsViewingRaised = false;
+      this.assetSrDescription = '';
+      await this.loadAssetSrExistingRequests();
     },
     prepareAnotherAssetSr() {
       const step = this.nextAssetSrStep;
       if (!step) return;
       this.assetSrStep = step;
-      this.assetSrRaised = false;
+      this.assetSrIsViewingRaised = false;
       this.assetSrDescription = '';
     },
     async submitAssetSr() {
@@ -1031,8 +1125,16 @@ class TLSConfigurator:
       });
       this.assetSrSubmitting = false;
       if (res.status) {
-        this.assetSrRaisedSteps.push(this.assetSrStep);
-        this.assetSrRaised = true;
+        const step = this.assetSrStep;
+        if (!this.assetSrRaisedSteps.includes(step)) {
+          this.assetSrRaisedSteps.push(step);
+        }
+        this.assetSrRequestsByStep[step] = {
+          step_number: step,
+          description: this.assetSrDescription,
+          vul_name: this.assetSrVulnName,
+        };
+        this.assetSrIsViewingRaised = true;
         Swal.fire({ icon: 'success', title: 'Support Request Raised', timer: 2000, showConfirmButton: false });
       } else {
         Swal.fire('Error', res.message || 'Failed to raise support request', 'error');
@@ -3073,6 +3175,8 @@ class TLSConfigurator:
 .vc-modal-footer   { border-top: 1px solid #f1f5f9; padding: 14px 24px; display: flex; justify-content: flex-end; gap: 10px; }
 .vc-step-pill { display: inline-flex; align-items: center; justify-content: center; padding: 6px 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; color: #475569; background: #f1f5f9; border: 1.5px solid #e2e8f0; cursor: pointer; transition: all 0.15s; width: 100%; text-align: center; }
 .vc-step-pill-active { background: #e0f2f1; color: #0f696e; border-color: #0f696e; }
+.vc-step-pill-raised { background: #dbeafe; color: #1d4ed8; border-color: #93c5fd; }
+.vc-step-pill-disabled { background: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; }
 .vc-textarea { width: 100%; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; font-size: 0.875rem; color: #1e293b; background: #f8f9fc; outline: none; resize: vertical; font-family: inherit; }
 .vc-textarea:focus { box-shadow: 0 0 0 2px rgba(15,105,110,0.2); border-color: #0f696e; }
 .vc-btn-primary { background: #241447; color: white; border: none; border-radius: 8px; padding: 8px 18px; font-size: 0.875rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }

@@ -160,6 +160,24 @@
       </div>
     </div>
 
+    <!-- Action buttons: Complete all steps + Send verification -->
+    <div class="run-action-row">
+      <button
+        type="button"
+        class="run-action-btn run-action-btn--complete"
+        @click="$emit('complete-steps')"
+      >
+        <i class="bi bi-check2-all" aria-hidden="true"></i> Complete all steps
+      </button>
+      <button
+        type="button"
+        class="run-action-btn run-action-btn--verify"
+        @click="$emit('send-verification')"
+      >
+        <i class="bi bi-send" aria-hidden="true"></i> Send verification
+      </button>
+    </div>
+
   </div>
 </template>
 
@@ -255,7 +273,7 @@ const DEFAULT_REC =
 
 export default {
   name: 'AutomatedFixPanel',
-  emits: ['view-code', 'feedback-change'],
+  emits: ['view-code', 'feedback-change', 'complete-steps', 'send-verification'],
   props: {
     showActions: { type: Boolean, default: true },
     isUser: { type: Boolean, default: false },
@@ -925,9 +943,55 @@ export default {
 
 .copy-btn:hover { color: #e2e8f0; }
 
+.run-action-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.run-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.run-action-btn--complete {
+  background: #1b3a5c;
+  color: #fff;
+  border-color: #1b3a5c;
+}
+
+.run-action-btn--complete:hover {
+  background: #163251;
+  border-color: #163251;
+}
+
+.run-action-btn--verify {
+  background: #fff;
+  color: #1b3a5c;
+  border-color: #1b3a5c;
+}
+
+.run-action-btn--verify:hover {
+  background: #f0f5fb;
+}
+
 @media (max-width: 700px) {
   .two-col-grid { grid-template-columns: 1fr; }
   .capability-banner { grid-template-columns: 1fr 1fr; }
   .libs-row-card { grid-template-columns: 1fr; }
+  .run-action-row {
+    flex-direction: column;
+    align-items: flex-end;
+  }
 }
 </style>

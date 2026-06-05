@@ -21,16 +21,33 @@ export default {
   methods: {
     ensureTawkLoaded() {
       const embedPath = `${TAWK_PROPERTY_ID}/${TAWK_WIDGET_ID}`;
+
+      // customStyle must be set before the embed script downloads
+      // eslint-disable-next-line no-undef
+      window.Tawk_API = window.Tawk_API || {};
+      // eslint-disable-next-line no-undef
+      window.Tawk_LoadStart = window.Tawk_LoadStart || new Date();
+      // eslint-disable-next-line no-undef
+      window.Tawk_API.customStyle = {
+        visibility: {
+          desktop: {
+            position: 'bl',
+            xOffset: 20,
+            yOffset: 20,
+          },
+          mobile: {
+            position: 'bl',
+            xOffset: 20,
+            yOffset: 20,
+          },
+        },
+      };
+
       const existing = document.getElementById(TAWK_SCRIPT_ID);
       if (existing) {
         if (existing.src && existing.src.includes(embedPath)) return;
         existing.remove();
       }
-
-      // eslint-disable-next-line no-undef
-      window.Tawk_API = window.Tawk_API || {};
-      // eslint-disable-next-line no-undef
-      window.Tawk_LoadStart = new Date();
 
       const s1 = document.createElement('script');
       s1.id = TAWK_SCRIPT_ID;
@@ -46,6 +63,18 @@ export default {
         document.body.appendChild(s1);
       }
     },
+    moveTawkToLeft() {
+      const applyLeft = (el) => {
+        el.style.setProperty('right', 'auto', 'important');
+        el.style.setProperty('left', '20px', 'important');
+      };
+      document
+        .querySelectorAll('iframe[src*="tawk.to"], iframe[title="chat widget"]')
+        .forEach(applyLeft);
+      document
+        .querySelectorAll('#tawkchat-container, #tawk-bubble-container, [id^="tawk-"]')
+        .forEach(applyLeft);
+    },
     showTawkIfReady() {
       const api = window.Tawk_API;
       if (!api) return;
@@ -54,6 +83,12 @@ export default {
       api.onLoad = () => {
         try {
           api.showWidget?.();
+          // Widget load hone ke baad left pe move karo
+          this.$nextTick(() => {
+            this.moveTawkToLeft();
+            setTimeout(() => this.moveTawkToLeft(), 500);
+            setTimeout(() => this.moveTawkToLeft(), 1500);
+          });
         } catch {
           // no-op
         }
@@ -61,6 +96,8 @@ export default {
 
       try {
         api.showWidget?.();
+        setTimeout(() => this.moveTawkToLeft(), 1000);
+        setTimeout(() => this.moveTawkToLeft(), 2000);
       } catch {
         // no-op
       }

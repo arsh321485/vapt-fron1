@@ -155,9 +155,6 @@
         <div class="right-panel-header">
           <div class="d-flex align-items-center justify-content-between">
             <h1 class="asset-detail-title mb-0">{{ selectedVuln.vul_name }}</h1>
-            <button v-if="isUser" class="rt-btn-support" @click="openVulnSupportModal">
-              Support Request
-            </button>
           </div>
           <div class="detail-tabs">
             <button
@@ -398,7 +395,14 @@
                       <div class="av-asset-label">
                         <span class="av-asset-os-lbl">{{ assetMetaFor(v, asset).os }}</span>
                       </div>
-                      <ManualRemediationStepsPanel :is-user="isUser" />
+                      <ManualRemediationStepsPanel
+                        :is-user="isUser"
+                        :vuln-name="v.vul_name"
+                        :asset-ip="asset"
+                        :severity="v.severity"
+                        @support-request-raised="refreshSupportRequestsForVuln"
+                        @open-support-modal="({ vulnName, step, completedSteps }) => openVulnSupportModal(step, vulnName, completedSteps)"
+                      />
                     </div>
                   </div>
                 </div>
@@ -571,7 +575,7 @@
         </div>
         <div class="modal-body p-4">
           <p class="vc-modal-section-label mb-1">Vulnerability</p>
-          <p class="fw-semibold mb-3" style="font-size:14px;">{{ selectedVuln?.vul_name }}</p>
+          <p class="fw-semibold mb-3" style="font-size:14px;color:#1e293b;">{{ vulnSrDisplayName || selectedVuln?.vul_name }}</p>
           <p v-if="selectedVuln?.assets?.length > 1" class="vc-modal-section-label mb-2">Select Asset <span class="text-danger">*</span></p>
           <select v-if="selectedVuln?.assets?.length > 1" v-model="vulnSrAsset" class="vc-textarea mb-3" style="resize:none;padding:8px 12px;cursor:pointer;">
             <option value="">-- Select Asset --</option>
@@ -579,29 +583,37 @@
           </select>
           <h6 class="vc-modal-section-label mb-3">Choose the step for which you want support</h6>
           <div class="row g-2 mt-1">
-            <div class="col-4" v-for="n in 6" :key="n">
+            <div class="col-4" v-for="n in vulnSrTotalSteps" :key="n">
               <span
                 class="vc-step-pill"
                 :class="[
+                  vulnSrCompletedSteps.includes(n) && !vulnSrRaisedSteps.includes(n) ? 'vc-step-pill-disabled' : '',
                   vulnSrRaisedSteps.includes(n) ? 'vc-step-pill-raised' : '',
-                  vulnSrStep === n && !vulnSrRaisedSteps.includes(n) ? 'vc-step-pill-active' : ''
+                  vulnSrStep === n && !vulnSrRaisedSteps.includes(n) && !vulnSrCompletedSteps.includes(n) ? 'vc-step-pill-active' : ''
                 ]"
-                :style="vulnSrRaisedSteps.includes(n) ? 'cursor:not-allowed;opacity:0.6;' : 'cursor:pointer;'"
-                :title="vulnSrRaisedSteps.includes(n) ? 'Support already raised for this step' : ''"
-                @click="!vulnSrRaisedSteps.includes(n) && (vulnSrStep = n)"
+                :style="(vulnSrCompletedSteps.includes(n) && !vulnSrRaisedSteps.includes(n)) ? 'cursor:not-allowed;opacity:0.6;' : 'cursor:pointer;'"
+                :title="vulnSrCompletedSteps.includes(n) && !vulnSrRaisedSteps.includes(n) ? 'Step already completed' : vulnSrRaisedSteps.includes(n) ? 'Support already raised — click to view' : ''"
+                @click="selectVulnSrStep(n)"
               >Step {{ n }}</span>
             </div>
           </div>
-          <p class="vc-modal-section-label mt-4 mb-2">Description <span class="text-danger">*</span></p>
-          <textarea v-model="vulnSrDescription" class="vc-textarea" rows="4" placeholder="Write your issue here..."></textarea>
-          <div v-if="vulnSrRaised" class="rt-support-raised-note mt-3">
+          <p class="vc-modal-section-label mt-4 mb-2">Description <span v-if="!vulnSrIsViewingRaised" class="text-danger">*</span></p>
+          <textarea
+            v-model="vulnSrDescription"
+            class="vc-textarea"
+            rows="4"
+            placeholder="Write your issue here..."
+            :readonly="vulnSrIsViewingRaised"
+            :disabled="vulnSrIsViewingRaised"
+          ></textarea>
+          <div v-if="vulnSrIsViewingRaised" class="rt-support-raised-note mt-3">
             <i class="bi bi-check-circle-fill me-2" style="color:#0f696e;"></i>
             Support request has been raised successfully.
           </div>
         </div>
         <div class="modal-footer vc-modal-footer">
           <button
-            v-if="!vulnSrRaised"
+            v-if="!vulnSrIsViewingRaised"
             class="vc-btn-primary"
             :disabled="!vulnSrStep || !vulnSrDescription.trim() || vulnSrSubmitting || (selectedVuln?.assets?.length > 1 && !vulnSrAsset)"
             @click="submitVulnSr"
@@ -610,9 +622,8 @@
             <span v-else>Submit</span>
           </button>
           <button
-            v-else
+            v-else-if="hasNextVulnSrStep"
             class="vc-btn-primary"
-            :disabled="!hasNextVulnSrStep"
             @click="prepareAnotherVulnSr"
           >
             Raise Support Request for other Steps
@@ -737,9 +748,13 @@ export default {
       vulnSrAsset: '',
       vulnSrDescription: '',
       vulnSrSubmitting: false,
-      vulnSrRaised: false,
+      vulnSrIsViewingRaised: false,
       vulnSrRaisedSteps: [],
+      vulnSrRequestsByStep: {},
       vulnSrFixVulnId: null,
+      vulnSrDisplayName: '',
+      vulnSrTotalSteps: 6,
+      vulnSrCompletedSteps: [],
       codeCopied: false,
       automationCode: `import paramiko\nimport requests\nimport subprocess\nimport re\nfrom datetime import import datetime\n\nclass TLSConfigurator:\n    def __init__(self, host, username, password):\n        self.host = host\n        self.username = username\n        self.password = password\n        self.ssh_client = paramiko.SSHClient()\n        self.log = []\n\n    def connect(self):\n        """Establish SSH connection to target host"""\n        self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())\n        try:\n            self.ssh_client.connect(self.host, username=self.username, password=self.password)\n            self.log_action("SSH connection established")\n            return True\n        except Exception as e:\n            self.log_action(f"Connection failed: {str(e)}")\n            return False`,
     };
@@ -825,8 +840,8 @@ export default {
       return this.vulnsForStatusCounts.filter(v => matchesVulnStatusFilter(v, ['closed'])).length;
     },
     nextVulnSrStep() {
-      for (let s = 1; s <= 6; s++) {
-        if (!this.vulnSrRaisedSteps.includes(s)) return s;
+      for (let s = 1; s <= this.vulnSrTotalSteps; s++) {
+        if (!this.vulnSrRaisedSteps.includes(s) && !this.vulnSrCompletedSteps.includes(s)) return s;
       }
       return null;
     },
@@ -1151,21 +1166,85 @@ export default {
       this.supportRequestCount = 0;
       this.$nextTick(() => this.scrollToAccordion(item._key));
     },
-    openVulnSupportModal() {
-      this.vulnSrStep = null;
+    async openVulnSupportModal(preStep = null, preVulnName = null, preCompletedSteps = []) {
+      this.vulnSrDisplayName = preVulnName || this.selectedVuln?.vul_name || '';
       this.vulnSrAsset = this.selectedVuln?.assets?.length === 1 ? this.selectedVuln.assets[0] : '';
       this.vulnSrDescription = '';
-      this.vulnSrRaised = false;
+      this.vulnSrIsViewingRaised = false;
+      this.vulnSrStep = null;
       this.vulnSrRaisedSteps = [];
+      this.vulnSrRequestsByStep = {};
       this.vulnSrFixVulnId = null;
-      const modal = new bootstrap.Modal(document.getElementById('vulnSrModal'));
+      this.vulnSrTotalSteps = 6;
+      this.vulnSrCompletedSteps = Array.isArray(preCompletedSteps) ? preCompletedSteps : [];
+
+      await this.loadVulnSrExistingRequests();
+
+      if (preStep) {
+        if (this.vulnSrRaisedSteps.includes(preStep)) {
+          this.selectVulnSrStep(preStep);
+        } else if (!this.vulnSrCompletedSteps.includes(preStep)) {
+          this.vulnSrStep = preStep;
+        } else {
+          const firstAvailable = this.getFirstAvailableVulnSrStep();
+          if (firstAvailable) this.vulnSrStep = firstAvailable;
+        }
+      }
+
+      const el = document.getElementById('vulnSrModal');
+      const modal = bootstrap.Modal.getOrCreateInstance(el);
       modal.show();
+    },
+    async loadVulnSrExistingRequests() {
+      this.vulnSrRequestsByStep = {};
+      this.vulnSrRaisedSteps = [];
+      const vuln = this.selectedVuln;
+      if (!vuln?.assets?.length) return;
+
+      const asset = this.vulnSrAsset || vuln.assets[0];
+      const vulnLower = String(vuln.vul_name || '').trim().toLowerCase();
+      const res = await this.authStore.getUserSupportRequestsByHost(asset);
+      if (!res.status || !Array.isArray(res.data)) return;
+
+      res.data
+        .filter((item) => String(item.vul_name || '').trim().toLowerCase() === vulnLower)
+        .forEach((item) => {
+          const step = Number(item.step_number);
+          if (!Number.isFinite(step)) return;
+          this.vulnSrRequestsByStep[step] = item;
+          if (!this.vulnSrRaisedSteps.includes(step)) {
+            this.vulnSrRaisedSteps.push(step);
+          }
+          if (item.fix_vulnerability_id || item.fix_vuln_id) {
+            this.vulnSrFixVulnId = item.fix_vulnerability_id || item.fix_vuln_id;
+          }
+        });
+    },
+    getFirstAvailableVulnSrStep() {
+      for (let s = 1; s <= this.vulnSrTotalSteps; s++) {
+        if (!this.vulnSrRaisedSteps.includes(s) && !this.vulnSrCompletedSteps.includes(s)) return s;
+      }
+      return null;
+    },
+    selectVulnSrStep(n) {
+      if (this.vulnSrCompletedSteps.includes(n) && !this.vulnSrRaisedSteps.includes(n)) return;
+
+      if (this.vulnSrRaisedSteps.includes(n)) {
+        this.vulnSrStep = n;
+        this.vulnSrIsViewingRaised = true;
+        this.vulnSrDescription = this.vulnSrRequestsByStep[n]?.description || '';
+        return;
+      }
+
+      this.vulnSrStep = n;
+      this.vulnSrIsViewingRaised = false;
+      this.vulnSrDescription = '';
     },
     prepareAnotherVulnSr() {
       const step = this.nextVulnSrStep;
       if (!step) return;
       this.vulnSrStep = step;
-      this.vulnSrRaised = false;
+      this.vulnSrIsViewingRaised = false;
       this.vulnSrDescription = '';
     },
     async submitVulnSr() {
@@ -1203,8 +1282,16 @@ export default {
       });
       this.vulnSrSubmitting = false;
       if (res.status) {
-        this.vulnSrRaisedSteps.push(this.vulnSrStep);
-        this.vulnSrRaised = true;
+        const step = this.vulnSrStep;
+        if (!this.vulnSrRaisedSteps.includes(step)) {
+          this.vulnSrRaisedSteps.push(step);
+        }
+        this.vulnSrRequestsByStep[step] = {
+          step_number: step,
+          description: this.vulnSrDescription,
+          vul_name: this.vulnSrDisplayName || this.selectedVuln?.vul_name,
+        };
+        this.vulnSrIsViewingRaised = true;
         Swal.fire({ icon: 'success', title: 'Support Request Raised', timer: 2000, showConfirmButton: false });
       } else {
         Swal.fire('Error', res.message || 'Failed to raise support request', 'error');
@@ -3164,7 +3251,8 @@ export default {
 .vc-modal-footer   { border-top: 1px solid #f1f5f9; padding: 14px 24px; display: flex; justify-content: flex-end; gap: 10px; }
 .vc-step-pill { display: inline-flex; align-items: center; justify-content: center; padding: 6px 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; color: #475569; background: #f1f5f9; border: 1.5px solid #e2e8f0; cursor: pointer; transition: all 0.15s; width: 100%; text-align: center; }
 .vc-step-pill-active { background: #e0f2f1; color: #0f696e; border-color: #0f696e; }
-.vc-step-pill-raised { background: #fff7ed; color: #c2410c; border-color: #fdba74; }
+.vc-step-pill-raised { background: #dbeafe; color: #1d4ed8; border-color: #93c5fd; }
+.vc-step-pill-disabled { background: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; }
 .vc-textarea { width: 100%; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; font-size: 0.875rem; color: #1e293b; background: #f8f9fc; outline: none; resize: vertical; font-family: inherit; }
 .vc-textarea:focus { box-shadow: 0 0 0 2px rgba(15,105,110,0.2); border-color: #0f696e; }
 .vc-btn-primary { background: #241447; color: white; border: none; border-radius: 8px; padding: 8px 18px; font-size: 0.875rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
