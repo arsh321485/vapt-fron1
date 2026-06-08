@@ -509,6 +509,7 @@
                 :show-verified-alert="showVaptfixVerifiedAlert"
                 @close-python-alert="showPythonInstallAlert = false"
                 @close-verified-alert="showVaptfixVerifiedAlert = false"
+                @vuln-assets-deleted="onVulnAssetsDeleted"
               />
             </div>
 
@@ -797,6 +798,9 @@ class TLSConfigurator:
       if (val === 'vulnerabilities' && oldVal !== 'vulnerabilities') {
         this.openFixPanelAlerts();
       }
+      if (val === 'assets' && oldVal === 'vulnerabilities') {
+        this.syncAssetsAfterVulnTab();
+      }
     },
     assetTypeFilter() {
       this.currentPage = 1;
@@ -923,6 +927,28 @@ class TLSConfigurator:
         this.activeIndex = null;
         if (this.pagedAssets.length) {
           await this.setActive(this.pagedAssets[0]);
+        }
+      }
+    },
+    async syncAssetsAfterVulnTab() {
+      const activeAsset = this.activeIndex;
+      await this.authStore.fetchAssets(true);
+      if (activeAsset && this.authStore.assetRows.some(a => a.asset === activeAsset)) {
+        const requestSeq = ++this.assetFetchSeq;
+        await this.authStore.fetchSingleAssetVulnerabilities(activeAsset);
+        if (requestSeq === this.assetFetchSeq) {
+          this.refreshSupportRequestsForHost(activeAsset, requestSeq);
+        }
+      }
+    },
+    async onVulnAssetsDeleted({ hostNames }) {
+      const hosts = Array.isArray(hostNames) ? hostNames : [];
+      const activeAsset = this.activeIndex;
+      if (activeAsset && hosts.includes(activeAsset)) {
+        const requestSeq = ++this.assetFetchSeq;
+        await this.authStore.fetchSingleAssetVulnerabilities(activeAsset);
+        if (requestSeq === this.assetFetchSeq) {
+          this.refreshSupportRequestsForHost(activeAsset, requestSeq);
         }
       }
     },

@@ -43,40 +43,77 @@
           @click="selectVulnFromList(item)"
         >
           <div class="av-list-item-primary d-flex align-items-start gap-2">
-            <input
-              v-if="showCheckboxes"
-              type="checkbox"
-              v-model="item.selected"
-              class="form-check-input flex-shrink-0 mt-1"
-              @click.stop
-            />
-            <input
-              v-if="showHoldCheckboxes"
-              type="checkbox"
-              v-model="item.selected"
-              class="form-check-input flex-shrink-0 mt-1"
-              @click.stop
-            />
             <span class="asset-ip av-vuln-list-name">{{ item.vul_name }}</span>
           </div>
           <div class="d-flex align-items-center gap-2 flex-wrap av-list-item-badges">
             <span class="sev-badge" :class="'sev-' + (item.severity?.toLowerCase() || '')">{{ item.severity }}</span>
-            <span :class="getStatusBadgeClass(item.status)">
-              <span :class="getStatusDotClass(item.status)"></span>
-              {{ getStatusLabel(item.status) }}
+            <span :class="getStatusBadgeClass(getVulnDisplayStatus(item))">
+              <span :class="getStatusDotClass(getVulnDisplayStatus(item))"></span>
+              {{ getStatusLabel(getVulnDisplayStatus(item)) }}
             </span>
           </div>
           <div class="d-flex gap-2 flex-wrap">
-            <span class="vuln-chip">
-              {{ item.assets.length }} asset{{ item.assets.length === 1 ? '' : 's' }}
-            </span>
+            <button
+              type="button"
+              class="vuln-chip vuln-chip-btn"
+              :class="{ 'vuln-chip-expanded': expandedVulnKey === item._key }"
+              @click.stop="toggleVulnAssets(item)"
+            >
+              <i
+                class="bi vuln-chip-chevron"
+                :class="expandedVulnKey === item._key ? 'bi-chevron-up' : 'bi-chevron-down'"
+                aria-hidden="true"
+              ></i>
+              {{ displayVulnAssetCount(item) }} asset{{ displayVulnAssetCount(item) === 1 ? '' : 's' }}
+            </button>
+          </div>
+
+          <div
+            v-if="expandedVulnKey === item._key"
+            class="av-nested-assets"
+            @click.stop
+          >
+            <div v-if="loadingVulnAssetsKey === item._key" class="av-nested-loading">
+              <span class="spinner-border spinner-border-sm text-primary"></span>
+            </div>
+            <p v-else-if="!getVulnAssets(item).length" class="av-nested-empty">No assets found.</p>
+            <div
+              v-for="asset in getVulnAssets(item)"
+              v-else
+              :key="asset.host_name"
+              class="av-nested-asset-item"
+              :class="{
+                'av-nested-asset-active':
+                  selectedKey === item._key && selectedAssetHost === asset.host_name,
+              }"
+              @click.stop="selectVulnAsset(item, asset)"
+            >
+              <input
+                v-if="showCheckboxes || showHoldCheckboxes"
+                type="checkbox"
+                v-model="asset.selected"
+                class="form-check-input flex-shrink-0"
+                @click.stop
+              />
+              <span class="av-nested-asset-ip">{{ asset.host_name }}</span>
+              <span
+                class="sev-badge av-nested-sev"
+                :class="'sev-' + (asset.severity?.toLowerCase() || '')"
+              >
+                {{ asset.severity }}
+              </span>
+              <span :class="getStatusBadgeClass(asset.status)">
+                <span :class="getStatusDotClass(asset.status)"></span>
+                {{ getStatusLabel(asset.status) }}
+              </span>
+            </div>
           </div>
         </div>
         <p v-if="!filteredVulns.length" class="av-empty-list">No vulnerabilities found.</p>
       </div>
 
-      <!-- Mitigation on Hold (same APIs as All Assets) -->
-      <div v-if="showHeld && heldAssets.length" class="mitigation-hold-section">
+      <!-- Mitigation on Hold -->
+      <div v-if="showHeldMitigationSection" class="mitigation-hold-section">
         <div class="d-flex align-items-center justify-content-between mb-3">
           <h3 class="hold-title">Mitigation on hold</h3>
           <i
@@ -87,7 +124,13 @@
             @click="toggleUnholdMode"
           ></i>
         </div>
-        <div v-for="(held, i) in heldAssets" :key="held.asset || i" class="hold-item">
+        <div
+          v-for="(held, i) in mitigationHoldItems"
+          :key="heldHoldItemKey(held, i)"
+          class="hold-item"
+          :class="{ 'hold-item-active': isHeldVulnItemActive(held) }"
+          @click="!showUnholdCheckboxes && selectHeldVulnItem(held)"
+        >
           <div>
             <div class="d-flex align-items-center gap-2">
               <input
@@ -97,16 +140,16 @@
                 class="form-check-input"
                 @click.stop
               />
-              <p class="hold-ip mb-0">{{ held.asset }}</p>
+              <p class="hold-ip mb-0">{{ held.host_name }}</p>
             </div>
-            <p class="hold-sub">{{ held.member_type || 'Awaiting resolution' }}</p>
+            <p class="hold-sub">{{ held.vul_name }}</p>
           </div>
           <span
-            v-if="getHeldPrioritySeverity(held)"
+            v-if="getHeldItemSeverity(held)"
             class="sev-badge"
-            :class="'sev-' + getHeldPrioritySeverity(held).toLowerCase()"
+            :class="'sev-' + getHeldItemSeverity(held).toLowerCase()"
           >
-            {{ getHeldPrioritySeverity(held) }}
+            {{ getHeldItemSeverity(held) }}
           </span>
         </div>
       </div>
@@ -119,7 +162,9 @@
               <h5 class="modal-title">Confirm Delete</h5>
               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" @click="cancelDelete"></button>
             </div>
-            <div class="modal-body">Are you sure you want to delete the selected assets?</div>
+            <div class="modal-body">
+              Are you sure you want to delete this vulnerability from the selected assets?
+            </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @click="cancelDelete">Cancel</button>
               <button type="button" class="btn btn-danger" data-bs-dismiss="modal" @click="confirmDelete">OK</button>
@@ -154,7 +199,12 @@
         />
         <div class="right-panel-header">
           <div class="d-flex align-items-center justify-content-between">
-            <h1 class="asset-detail-title mb-0">{{ selectedVuln.vul_name }}</h1>
+            <div>
+              <h1 class="asset-detail-title mb-0">{{ selectedVuln.vul_name }}</h1>
+              <p v-if="selectedAssetHost" class="av-selected-asset-sub mb-0">
+                <i class="bi bi-hdd-network me-1" aria-hidden="true"></i>{{ selectedAssetHost }}
+              </p>
+            </div>
           </div>
           <div class="detail-tabs">
             <button
@@ -238,10 +288,10 @@
         <div v-else class="d-flex flex-column gap-3">
           <div
             v-for="(v, i) in panelVulns"
-            :key="v._key"
+            :key="v._panelKey || v._key"
             class="vuln-accordion-item"
             :class="{ 'vuln-accordion-item--expanded': expandedVulnIndex === i }"
-            :ref="'vuln-' + v._key"
+            :ref="'vuln-' + (v._panelKey || v._key)"
           >
             <div class="vuln-accordion-header" role="button" @click="toggleAccordion(i)">
               <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
@@ -645,7 +695,13 @@ import PythonInstallGuideModal from '@/components/assets/PythonInstallGuideModal
 import FixAvailableIndicator from '@/components/assets/FixAvailableIndicator.vue';
 import AutomationNotSafeBanner from '@/components/assets/AutomationNotSafeBanner.vue';
 import FixPanelHeaderAlerts from '@/components/assets/FixPanelHeaderAlerts.vue';
-import { isAutomationNotAvailable, matchesVulnStatusFilter } from '@/utils/assetVulnerabilities';
+import {
+  enrichReportVulnerabilitiesFromRegister,
+  isAutomationNotAvailable,
+  matchesVulnStatusFilter,
+  normalizeReportVulnerabilityList,
+  reportVulnAssetCount,
+} from '@/utils/assetVulnerabilities';
 
 const DESC_LIMIT = 280;
 
@@ -740,6 +796,7 @@ export default {
       showHeld: false,
       supportRequestsForVuln: [],
       supportRequestCount: 0,
+      supportRequestFetchSeq: 0,
       loadingSupportRequests: false,
       selectedSupportRequest: null,
       showCodeModal: false,
@@ -755,61 +812,43 @@ export default {
       vulnSrDisplayName: '',
       vulnSrTotalSteps: 6,
       vulnSrCompletedSteps: [],
+      expandedVulnKey: null,
+      vulnAssetsByKey: {},
+      loadingVulnAssetsKey: null,
+      selectedAssetHost: null,
       codeCopied: false,
       automationCode: `import paramiko\nimport requests\nimport subprocess\nimport re\nfrom datetime import import datetime\n\nclass TLSConfigurator:\n    def __init__(self, host, username, password):\n        self.host = host\n        self.username = username\n        self.password = password\n        self.ssh_client = paramiko.SSHClient()\n        self.log = []\n\n    def connect(self):\n        """Establish SSH connection to target host"""\n        self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())\n        try:\n            self.ssh_client.connect(self.host, username=self.username, password=self.password)\n            self.log_action("SSH connection established")\n            return True\n        except Exception as e:\n            self.log_action(f"Connection failed: {str(e)}")\n            return False`,
     };
   },
   computed: {
-    rawRows() {
-      if (this.isUser) {
-        return this.authStore.cachedUserVulnRegister || [];
-      }
-      return this.authStore.vulnerabilityRows || [];
-    },
     reportId() {
       return this.isUser ? this.authStore.userLatestReportId : this.authStore.latestReportId;
     },
+    heldVulnAssetRows() {
+      return this.isUser
+        ? this.authStore.userHeldVulnerabilityAssets
+        : this.authStore.heldVulnerabilityAssets;
+    },
+    deletedVulnAssetRows() {
+      return this.isUser
+        ? this.authStore.userDeletedVulnerabilityAssets
+        : this.authStore.deletedVulnerabilityAssets;
+    },
+    reportVulnRows() {
+      return this.isUser
+        ? this.authStore.userAllReportVulnerabilities
+        : this.authStore.allReportVulnerabilities;
+    },
     groupedVulns() {
-      const map = new Map();
-      const sevCounters = { critical: 0, high: 0, medium: 0, low: 0 };
-      const sevPrefix = { critical: 'C', high: 'H', medium: 'M', low: 'L' };
-      this.rawRows.forEach((row, index) => {
-        const name = String(row.vul_name || row.plugin_name || row.vulnerability_name || '').trim();
-        const key = name.toLowerCase() || `row-${row.id || index}`;
-        const asset = row.asset || row.host_name || '';
-        const sevKey = String(row.severity || row.risk_factor || 'medium').toLowerCase();
-        const bucket = sevKey === 'critical' || sevKey === 'high' || sevKey === 'medium' || sevKey === 'low' ? sevKey : 'medium';
-        if (!map.has(key)) {
-          sevCounters[bucket] = (sevCounters[bucket] || 0) + 1;
-          const prefix = sevPrefix[bucket] || 'V';
-          map.set(key, {
-            _key: key,
-            displayId: `${prefix}${sevCounters[bucket]}`,
-            id: row.id,
-            vul_name: name || 'Unnamed vulnerability',
-            severity: row.severity || row.risk_factor || 'Medium',
-            status: row.status || 'open',
-            description: row.description || '',
-            cvss_score: row.cvss_score ?? row.cvss ?? null,
-            cve: row.cve || row.cve_id || '',
-            exposure: row.exposure || '',
-            first_observation: row.first_observation,
-            assets: asset ? [asset] : [],
-            rows: [row],
-            selected: false,
-          });
-        } else {
-          const g = map.get(key);
-          if (asset && !g.assets.includes(asset)) g.assets.push(asset);
-          g.rows.push(row);
-          if (!g.description && row.description) g.description = row.description;
-          if (!g.cve && (row.cve || row.cve_id)) g.cve = row.cve || row.cve_id;
-          if ((g.cvss_score == null || g.cvss_score === '') && (row.cvss_score ?? row.cvss)) {
-            g.cvss_score = row.cvss_score ?? row.cvss;
-          }
-        }
-      });
-      return Array.from(map.values());
+      const list = normalizeReportVulnerabilityList(this.reportVulnRows);
+      const registerRows = this.isUser
+        ? this.authStore.cachedUserVulnRegister
+        : this.authStore.vulnerabilityRows;
+      return enrichReportVulnerabilitiesFromRegister(
+        list,
+        registerRows,
+        this.deletedVulnAssetRows,
+      );
     },
     vulnsAfterSearch() {
       let list = [...this.groupedVulns];
@@ -818,6 +857,7 @@ export default {
         list = list.filter(v =>
           v.vul_name.toLowerCase().includes(q) ||
           v.assets.some(a => a.toLowerCase().includes(q)) ||
+          this.getVulnAssets(v).some(a => String(a.host_name || '').toLowerCase().includes(q)) ||
           String(v.cve || '').toLowerCase().includes(q)
         );
       }
@@ -851,6 +891,7 @@ export default {
     filteredVulns() {
       let list = this.vulnsForStatusCounts;
       list = list.filter(v => matchesVulnStatusFilter(v, this.statusFilter));
+      list = list.filter(v => this.displayVulnAssetCount(v) > 0);
       const rank = { critical: 0, high: 1, medium: 2, low: 3 };
       list.sort((a, b) => {
         const ar = rank[String(a.severity).toLowerCase()] ?? 9;
@@ -859,6 +900,12 @@ export default {
       });
       return list;
     },
+    mitigationHoldItems() {
+      return this.heldVulnAssetRows || [];
+    },
+    showHeldMitigationSection() {
+      return this.mitigationHoldItems.length > 0;
+    },
     selectedVuln() {
       if (!this.selectedKey) return null;
       return this.filteredVulns.find(v => v._key === this.selectedKey) || null;
@@ -866,7 +913,25 @@ export default {
     panelVulns() {
       if (!this.selectedKey) return [];
       const vuln = this.filteredVulns.find(v => v._key === this.selectedKey);
-      return vuln ? [vuln] : [];
+      if (!vuln) return [];
+
+      if (this.selectedAssetHost) {
+        const assetRow = this.getVulnAssets(vuln).find(
+          a => a.host_name === this.selectedAssetHost,
+        );
+        if (assetRow) {
+          return [{
+            ...vuln,
+            assets: [assetRow.host_name],
+            severity: assetRow.severity || vuln.severity,
+            status: assetRow.status || vuln.status,
+            cvss_score: assetRow.cvss_score ?? vuln.cvss_score,
+            _panelKey: `${vuln._key}::${assetRow.host_name}`,
+          }];
+        }
+      }
+
+      return [vuln];
     },
     canAutomate() {
       return [
@@ -900,9 +965,45 @@ export default {
     },
   },
   async mounted() {
-    await Promise.all([this.loadVulnerabilities(), this.loadHeldAssets()]);
+    await this.loadVulnerabilities();
   },
   methods: {
+    apiHoldVulnerabilityAssets(pluginName, hostNames) {
+      return this.isUser
+        ? this.authStore.holdUserVulnerabilityAssets(pluginName, hostNames)
+        : this.authStore.holdVulnerabilityAssets(pluginName, hostNames);
+    },
+    apiUnholdVulnerabilityAssets(pluginName, hostNames) {
+      return this.isUser
+        ? this.authStore.unholdUserVulnerabilityAssets(pluginName, hostNames)
+        : this.authStore.unholdVulnerabilityAssets(pluginName, hostNames);
+    },
+    apiDeleteVulnerabilityAssets(pluginName, hostNames) {
+      return this.isUser
+        ? this.authStore.deleteUserVulnerabilityAssets(pluginName, hostNames)
+        : this.authStore.deleteVulnerabilityAssets(pluginName, hostNames);
+    },
+    addHeldVulnAssets(pluginName, hostNames, meta = {}) {
+      if (this.isUser) {
+        this.authStore.addUserHeldVulnerabilityAssets(pluginName, hostNames, meta);
+      } else {
+        this.authStore.addHeldVulnerabilityAssets(pluginName, hostNames, meta);
+      }
+    },
+    addDeletedVulnAssets(pluginName, hostNames) {
+      if (this.isUser) {
+        this.authStore.addUserDeletedVulnerabilityAssets(pluginName, hostNames);
+      } else {
+        this.authStore.addDeletedVulnerabilityAssets(pluginName, hostNames);
+      }
+    },
+    removeHeldVulnAssets(pluginName, hostNames) {
+      if (this.isUser) {
+        this.authStore.removeUserHeldVulnerabilityAssets(pluginName, hostNames);
+      } else {
+        this.authStore.removeHeldVulnerabilityAssets(pluginName, hostNames);
+      }
+    },
     getHeldPrioritySeverity(held) {
       const s = held?.severity_counts || {};
       if ((s.critical ?? 0) > 0) return 'Critical';
@@ -923,8 +1024,238 @@ export default {
       });
       return [...ips];
     },
+    collectSelectedAssetIps() {
+      const ips = new Set();
+      Object.values(this.vulnAssetsByKey).forEach((assets) => {
+        (assets || []).forEach((a) => {
+          if (a.selected && a.host_name) ips.add(String(a.host_name).trim());
+        });
+      });
+      return [...ips];
+    },
+    collectSelectedAssetsByVuln() {
+      const groups = [];
+      for (const vuln of this.groupedVulns) {
+        const assets = this.getVulnAssets(vuln);
+        const hostNames = assets
+          .filter(a => a.selected && a.host_name)
+          .map(a => String(a.host_name).trim())
+          .filter(Boolean);
+        if (hostNames.length) {
+          groups.push({ pluginName: vuln.vul_name, hostNames });
+        }
+      }
+      return groups;
+    },
     clearVulnSelections() {
       this.groupedVulns.forEach(v => { v.selected = false; });
+    },
+    clearAssetSelections() {
+      Object.values(this.vulnAssetsByKey).forEach((assets) => {
+        (assets || []).forEach((a) => { a.selected = false; });
+      });
+    },
+    getVulnAssets(item) {
+      if (!item) return [];
+      let assets = [];
+      if (this.vulnAssetsByKey[item._key]) {
+        assets = this.vulnAssetsByKey[item._key];
+      } else {
+        assets = (item.assets || []).map((ip) => ({
+          host_name: ip,
+          severity: item.severity,
+          status: item.status,
+          cvss_score: item.cvss_score,
+          selected: false,
+        }));
+      }
+
+      assets = assets.filter(a => !this.getHeldHostsForVuln(item).has(a.host_name));
+      assets = assets.filter(a => !this.getDeletedHostsForVuln(item).has(a.host_name));
+
+      return assets;
+    },
+    getDeletedHostsForVuln(item) {
+      if (!item) return new Set();
+      return new Set(
+        (this.deletedVulnAssetRows || [])
+          .filter(d => d._key === item._key || d.plugin_name === item.vul_name)
+          .map(d => d.host_name),
+      );
+    },
+    getHeldHostsForVuln(item) {
+      if (!item) return new Set();
+      return new Set(
+        (this.heldVulnAssetRows || [])
+          .filter(h => h._key === item._key || h.plugin_name === item.vul_name)
+          .map(h => h.host_name),
+      );
+    },
+    applyHoldResultToLocalState(pluginName, processed, severityByHost = {}) {
+      const vuln = this.groupedVulns.find(v => v.vul_name === pluginName);
+      const hosts = (processed || []).map(h => String(h).trim()).filter(Boolean);
+      if (!hosts.length) return;
+
+      this.addHeldVulnAssets(pluginName, hosts, {
+        severity: vuln?.severity,
+      });
+
+      const heldRows = this.heldVulnAssetRows;
+      hosts.forEach((host) => {
+        const severity = severityByHost[host] || vuln?.severity;
+        const idx = heldRows.findIndex(
+          item => item.plugin_name === pluginName && item.host_name === host,
+        );
+        if (idx !== -1 && severity) {
+          heldRows[idx].severity = severity;
+        }
+      });
+
+      if (vuln && this.vulnAssetsByKey[vuln._key]) {
+        this.vulnAssetsByKey = {
+          ...this.vulnAssetsByKey,
+          [vuln._key]: this.vulnAssetsByKey[vuln._key].filter(a => !hosts.includes(a.host_name)),
+        };
+      }
+
+      this.bumpVulnCountsAfterHold(pluginName, hosts.length);
+
+      if (this.selectedAssetHost && hosts.includes(this.selectedAssetHost)) {
+        this.selectedAssetHost = null;
+        this.expandedVulnIndex = null;
+      }
+    },
+    applyUnholdResultToLocalState(pluginName, processed) {
+      const vuln = this.groupedVulns.find(v => v.vul_name === pluginName);
+      const hosts = (processed || []).map(h => String(h).trim()).filter(Boolean);
+      if (!hosts.length) return;
+
+      this.bumpVulnCountsAfterUnhold(pluginName, hosts.length);
+
+      if (
+        this.selectedAssetHost &&
+        hosts.includes(this.selectedAssetHost)
+      ) {
+        this.selectedAssetHost = null;
+        this.expandedVulnIndex = null;
+      }
+
+      if (vuln?._key && this.vulnAssetsByKey[vuln._key]) {
+        delete this.vulnAssetsByKey[vuln._key];
+      }
+    },
+    applyDeleteResultToLocalState(pluginName, processed) {
+      const vuln = this.groupedVulns.find(v => v.vul_name === pluginName);
+      const hosts = (processed || []).map(h => String(h).trim()).filter(Boolean);
+      if (!hosts.length) return;
+
+      if (vuln && this.vulnAssetsByKey[vuln._key]) {
+        this.vulnAssetsByKey = {
+          ...this.vulnAssetsByKey,
+          [vuln._key]: this.vulnAssetsByKey[vuln._key].filter(a => !hosts.includes(a.host_name)),
+        };
+      }
+
+      this.addDeletedVulnAssets(pluginName, hosts);
+      this.removeHeldVulnAssets(pluginName, hosts);
+      if (!this.isUser) {
+        this.authStore.syncAssetSeverityCountsAfterVulnDelete(hosts, vuln?.severity);
+      }
+      this.bumpVulnCountsAfterDelete(pluginName, hosts.length);
+
+      if (this.selectedAssetHost && hosts.includes(this.selectedAssetHost)) {
+        this.selectedAssetHost = null;
+        this.expandedVulnIndex = null;
+      }
+    },
+    collectSelectedHeldVulnsByPlugin() {
+      const map = new Map();
+      (this.heldVulnAssetRows || [])
+        .filter(item => item.selected && item.host_name)
+        .forEach((item) => {
+          const pluginName = item.plugin_name || item.vul_name;
+          if (!pluginName) return;
+          const list = map.get(pluginName) || [];
+          list.push(String(item.host_name).trim());
+          map.set(pluginName, list);
+        });
+      return [...map.entries()].map(([pluginName, hostNames]) => ({ pluginName, hostNames }));
+    },
+    heldHoldItemKey(held, index) {
+      return `${held.plugin_name || held.vul_name}::${held.host_name}` || index;
+    },
+    getHeldItemSeverity(held) {
+      return held.severity || '';
+    },
+    isHeldVulnItemActive(held) {
+      if (this.showUnholdCheckboxes) return false;
+      return (
+        this.selectedKey === held._key &&
+        this.selectedAssetHost === held.host_name
+      );
+    },
+    selectHeldVulnItem(held) {
+      if (!held?.host_name) return;
+      const vuln = this.groupedVulns.find(
+        v => v._key === held._key || v.vul_name === held.vul_name || v.vul_name === held.plugin_name,
+      ) || {
+        _key: held._key || String(held.plugin_name || '').toLowerCase(),
+        vul_name: held.vul_name || held.plugin_name,
+        severity: held.severity,
+        status: 'held',
+        description: '',
+        assets: [held.host_name],
+      };
+      this.selectVulnAsset(vuln, {
+        host_name: held.host_name,
+        severity: held.severity,
+        status: held.status || 'held',
+        cvss_score: held.cvss_score,
+      });
+    },
+    async ensureVulnAssetsExpanded(item) {
+      if (!item) return;
+      this.expandedVulnKey = item._key;
+      await this.loadVulnAssets(item, false);
+    },
+    async toggleVulnAssets(item) {
+      if (this.expandedVulnKey === item._key) {
+        this.expandedVulnKey = null;
+        return;
+      }
+      this.expandedVulnKey = item._key;
+      await this.loadVulnAssets(item, false);
+    },
+    async loadVulnAssets(item, force = false, silent = false) {
+      if (!item) return;
+      if (!force && this.vulnAssetsByKey[item._key]?.length) return;
+
+      if (!silent) this.loadingVulnAssetsKey = item._key;
+      const res = this.isUser
+        ? await this.authStore.fetchUserVulnerabilityAssets(item.vul_name)
+        : await this.authStore.fetchVulnerabilityAssets(item.vul_name);
+      const deletedHosts = this.getDeletedHostsForVuln(item);
+      const heldHosts = this.getHeldHostsForVuln(item);
+      const assets = (res.assets || []).map((a) => ({
+        host_name: a.host_name || a.asset || '',
+        severity: a.severity || item.severity,
+        cvss_score: a.cvss_score ?? item.cvss_score,
+        status: a.status || 'open',
+        selected: false,
+      })).filter((a) => {
+        if (!a.host_name) return false;
+        const status = String(a.status || '').toLowerCase();
+        if (status === 'deleted' || status === 'held') return false;
+        if (deletedHosts.has(a.host_name)) return false;
+        if (heldHosts.has(a.host_name)) return false;
+        return true;
+      });
+
+      this.vulnAssetsByKey = {
+        ...this.vulnAssetsByKey,
+        [item._key]: assets,
+      };
+      if (!silent) this.loadingVulnAssetsKey = null;
     },
     showModal(id) {
       const el = document.getElementById(id);
@@ -937,10 +1268,12 @@ export default {
       this.activeAction = 'delete';
       if (!this.showCheckboxes) {
         this.showCheckboxes = true;
+        if (this.selectedVuln) {
+          this.ensureVulnAssetsExpanded(this.selectedVuln);
+        }
         return;
       }
-      const selected = this.getSelectedVulnItems();
-      if (selected.length > 0) {
+      if (this.collectSelectedAssetIps().length > 0) {
         this.showModal('avDeleteModal');
       } else {
         this.showCheckboxes = false;
@@ -949,25 +1282,32 @@ export default {
     },
     cancelDelete() {
       this.clearVulnSelections();
+      this.clearAssetSelections();
       this.showCheckboxes = false;
       this.resetActions();
     },
     async confirmDelete() {
-      const ips = this.collectAssetIpsFromVulns(this.getSelectedVulnItems());
-      if (!ips.length) {
+      const groups = this.collectSelectedAssetsByVuln();
+      if (!groups.length) {
         this.cancelDelete();
         return;
       }
-      const reportId = this.isUser ? this.authStore.userLatestReportId : this.authStore.latestReportId;
-      for (const ip of ips) {
-        if (this.isUser) {
-          if (!reportId) continue;
-          await this.authStore.deleteUserAsset(ip, reportId);
-        } else {
-          await this.authStore.deleteAsset(ip);
+      const deletedHosts = [];
+      for (const { pluginName, hostNames } of groups) {
+        const res = await this.apiDeleteVulnerabilityAssets(pluginName, hostNames);
+        if (!res?.status) {
+          Swal.fire('Error', res.message || 'Failed to delete vulnerability', 'error');
+          return;
         }
+        const processed = res.processed || hostNames;
+        this.applyDeleteResultToLocalState(
+          res.pluginName || pluginName,
+          processed,
+        );
+        deletedHosts.push(...processed);
       }
-      await this.reloadAfterAssetActions();
+      await this.refreshVulnListsAfterAction();
+      await this.syncAllAssetsAfterVulnDelete(deletedHosts);
       this.showCheckboxes = false;
       this.resetActions();
     },
@@ -975,8 +1315,7 @@ export default {
       if (this.activeAction === 'delete') return;
       this.activeAction = 'hold';
       if (this.showHoldCheckboxes) {
-        const selected = this.getSelectedVulnItems();
-        if (selected.length > 0) {
+        if (this.collectSelectedAssetIps().length > 0) {
           this.showModal('avHoldConfirmModal');
         } else {
           this.showHoldCheckboxes = false;
@@ -985,43 +1324,44 @@ export default {
         return;
       }
       this.showHoldCheckboxes = true;
+      if (this.selectedVuln) {
+        this.ensureVulnAssetsExpanded(this.selectedVuln);
+      }
     },
     cancelHold() {
       this.clearVulnSelections();
+      this.clearAssetSelections();
       this.showHoldCheckboxes = false;
       this.resetActions();
     },
     async confirmHold() {
-      const ips = this.collectAssetIpsFromVulns(this.getSelectedVulnItems());
-      if (!ips.length) {
+      const groups = this.collectSelectedAssetsByVuln();
+      if (!groups.length) {
         this.cancelHold();
         return;
       }
-      for (const ip of ips) {
-        const res = this.isUser
-          ? await this.authStore.holdUserAsset(ip)
-          : await this.authStore.holdAsset(ip);
-        if (!res?.status) continue;
-        if (!this.isUser && res.heldAsset) {
-          const a = res.heldAsset;
-          const exists = this.heldAssets.some(h => h.asset === a.asset);
-          if (!exists) {
-            this.heldAssets.push({
-              asset: a.asset,
-              ip: a.asset,
-              member_type: a.member_type,
-              severity_counts: a.severity_counts,
-              host_information: a.host_information,
-              selected: false,
-            });
+      for (const { pluginName, hostNames } of groups) {
+        const vuln = this.groupedVulns.find(v => v.vul_name === pluginName);
+        const severityByHost = {};
+        (this.vulnAssetsByKey[vuln?._key] || []).forEach((asset) => {
+          if (hostNames.includes(asset.host_name)) {
+            severityByHost[asset.host_name] = asset.severity;
           }
-          const idx = this.authStore.assetRows?.findIndex(x => x.asset === ip);
-          if (idx !== undefined && idx !== -1) {
-            this.authStore.assetRows.splice(idx, 1);
-          }
+        });
+
+        const res = await this.apiHoldVulnerabilityAssets(pluginName, hostNames);
+        if (!res?.status) {
+          Swal.fire('Error', res.message || 'Failed to hold selected assets', 'error');
+          return;
         }
+
+        this.applyHoldResultToLocalState(
+          res.pluginName || pluginName,
+          res.processed || hostNames,
+          severityByHost,
+        );
       }
-      await this.reloadAfterAssetActions();
+      await this.refreshVulnListsAfterAction({ preserveHeld: true });
       this.showHoldCheckboxes = false;
       this.resetActions();
     },
@@ -1032,31 +1372,26 @@ export default {
         this.showUnholdCheckboxes = true;
         return;
       }
-      const selected = this.heldAssets.filter(a => a.selected);
-      if (!selected.length) {
+
+      const groups = this.collectSelectedHeldVulnsByPlugin();
+      if (!groups.length) {
         this.resetActions();
         return;
       }
-      for (const item of selected) {
-        const ip = item.asset || item.ip;
-        const res = this.isUser
-          ? await this.authStore.unholdUserAsset(ip)
-          : await this.authStore.unholdAsset(ip);
-        if (!res?.status) continue;
-        if (!this.isUser && res.restoredAsset) {
-          const a = res.restoredAsset;
-          this.authStore.assetRows?.unshift({
-            asset: a.asset,
-            name: a.host_information?.['DNS Name'] || '',
-            severity_counts: a.severity_counts,
-            host_information: a.host_information,
-            isInternal: true,
-            held: false,
-            selected: false,
-          });
+
+      for (const { pluginName, hostNames } of groups) {
+        const res = await this.apiUnholdVulnerabilityAssets(pluginName, hostNames);
+        if (!res?.status) {
+          Swal.fire('Error', res.message || 'Failed to unhold selected items', 'error');
+          return;
         }
+        this.applyUnholdResultToLocalState(
+          res.pluginName || pluginName,
+          res.processed || hostNames,
+        );
       }
-      await this.reloadAfterAssetActions();
+
+      await this.refreshVulnListsAfterAction({ preserveHeld: true });
       this.resetActions();
     },
     resetActions() {
@@ -1065,12 +1400,12 @@ export default {
       this.showUnholdCheckboxes = false;
       this.activeAction = '';
       this.clearVulnSelections();
+      this.clearAssetSelections();
       this.heldAssets.forEach(a => { a.selected = false; });
+      (this.heldVulnAssetRows || []).forEach(a => { a.selected = false; });
     },
     async loadHeldAssets() {
-      const res = this.isUser
-        ? await this.authStore.fetchUserHeldAssets(true)
-        : await this.authStore.fetchHeldAssets();
+      const res = await this.authStore.fetchUserHeldAssets(true);
       if (res.status && res.assets?.length) {
         this.heldAssets = res.assets.map(a => ({
           asset: a.asset,
@@ -1082,36 +1417,305 @@ export default {
           selected: false,
         }));
         this.showHeld = true;
-        if (!this.isUser && Array.isArray(this.authStore.assetRows)) {
-          this.authStore.assetRows = this.authStore.assetRows.filter(
-            a => !this.heldAssets.some(h => h.asset === a.asset),
-          );
-        }
       } else {
         this.showHeld = false;
         this.heldAssets = [];
       }
     },
-    async reloadAfterAssetActions() {
+    async loadHeldVulnerabilityAssets(force = false) {
+      if (this.isUser) {
+        await this.authStore.fetchUserHeldVulnerabilityAssets(force);
+      } else {
+        await this.authStore.fetchHeldVulnerabilityAssets(force);
+      }
+    },
+    async loadDeletedVulnerabilityAssets(force = false) {
+      if (this.isUser) {
+        await this.authStore.fetchUserDeletedVulnerabilityAssets(force);
+      } else {
+        await this.authStore.fetchDeletedVulnerabilityAssets(force);
+      }
+    },
+    async syncAllAssetsAfterVulnDelete(hostNames = []) {
+      const hosts = [...new Set((hostNames || []).map(h => String(h).trim()).filter(Boolean))];
       if (this.isUser) {
         await this.authStore.fetchUserAssets(true);
       } else {
         await this.authStore.fetchAssets(true);
       }
+      this.$emit('vuln-assets-deleted', { hostNames: hosts });
+    },
+    async refreshVulnListsAfterAction(options = {}) {
+      const expandedKey = this.expandedVulnKey;
+      const selectedKey = this.selectedKey;
+      const selectedHost = this.selectedAssetHost;
+      const heldSnapshot = options.preserveHeld
+        ? (this.heldVulnAssetRows || []).map(row => ({ ...row }))
+        : [];
+
+      if (this.isUser) {
+        await this.authStore.resolveUserReportId();
+        await Promise.all([
+          this.authStore.fetchUserAllReportVulnerabilities(true),
+          this.authStore.fetchUserVulnerabilityRegister(true),
+          this.loadDeletedVulnerabilityAssets(true),
+        ]);
+      } else {
+        await Promise.all([
+          this.authStore.fetchAllReportVulnerabilities(true),
+          this.authStore.fetchVulnerabilityRegister(true),
+          this.loadDeletedVulnerabilityAssets(true),
+        ]);
+      }
+      if (options.preserveHeld && heldSnapshot.length) {
+        const restored = heldSnapshot.map(row => ({ ...row, selected: false }));
+        if (this.isUser) {
+          this.authStore.userHeldVulnerabilityAssets = restored;
+        } else {
+          this.authStore.heldVulnerabilityAssets = restored;
+        }
+      }
+      await this.loadHeldVulnerabilityAssets(true);
+      this.syncVulnCountsWithHeldState();
+      this.syncVulnCountsWithDeletedState();
+      await this.prefetchAllVulnAssets();
+
+      if (expandedKey) {
+        const vuln = this.filteredVulns.find(v => v._key === expandedKey)
+          || this.groupedVulns.find(v => v._key === expandedKey);
+        if (vuln) {
+          this.expandedVulnKey = expandedKey;
+          await this.loadVulnAssets(vuln, true);
+        }
+      }
+
+      if (selectedKey && selectedHost) {
+        const vuln = this.filteredVulns.find(v => v._key === selectedKey)
+          || this.groupedVulns.find(v => v._key === selectedKey);
+        const asset = vuln ? this.getVulnAssets(vuln).find(a => a.host_name === selectedHost) : null;
+        if (vuln && asset) {
+          this.selectVulnAsset(vuln, asset, false);
+        }
+      }
+    },
+    async reloadAfterAssetActions() {
+      const expandedKey = this.expandedVulnKey;
+      const selectedKey = this.selectedKey;
+      const selectedHost = this.selectedAssetHost;
+
+      if (this.isUser) {
+        await this.authStore.fetchUserAssets(true);
+      } else {
+        await this.authStore.fetchAssets(true);
+      }
+
+      this.vulnAssetsByKey = {};
       await this.loadVulnerabilities();
-      await this.loadHeldAssets();
+
+      if (expandedKey && selectedKey) {
+        const vuln = this.filteredVulns.find(v => v._key === selectedKey);
+        if (vuln) {
+          this.expandedVulnKey = expandedKey;
+          await this.loadVulnAssets(vuln, true);
+          if (selectedHost) {
+            const asset = this.getVulnAssets(vuln).find(a => a.host_name === selectedHost);
+            if (asset) {
+              this.selectVulnAsset(vuln, asset, false);
+            }
+          }
+        }
+      }
     },
     async loadVulnerabilities() {
       this.loading = true;
       if (this.isUser) {
-        await this.authStore.fetchUserVulnerabilityRegister(true);
+        const reportId = await this.authStore.resolveUserReportId();
+        if (!reportId) {
+          this.loading = false;
+          Swal.fire('Error', 'Report ID not found. Please reload the page.', 'error');
+          return;
+        }
+        const vulnRes = await this.authStore.fetchUserAllReportVulnerabilities(true);
+        if (!vulnRes?.status) {
+          Swal.fire(
+            'Error',
+            vulnRes?.message || 'Failed to load vulnerabilities',
+            'error',
+          );
+        }
+        await Promise.all([
+          this.authStore.fetchUserVulnerabilityRegister(true),
+          this.loadHeldVulnerabilityAssets(true),
+          this.loadDeletedVulnerabilityAssets(true),
+        ]);
       } else {
-        await this.authStore.fetchVulnerabilityRegister(true);
+        await Promise.all([
+          this.authStore.fetchAllReportVulnerabilities(true),
+          this.authStore.fetchVulnerabilityRegister(true),
+          this.loadHeldVulnerabilityAssets(true),
+          this.loadDeletedVulnerabilityAssets(true),
+        ]);
       }
+      this.syncVulnCountsWithHeldState();
+      this.syncVulnCountsWithDeletedState();
+      await this.prefetchAllVulnAssets();
       this.loading = false;
       if (this.filteredVulns.length) {
-        this.selectVulnFromList(this.filteredVulns[0]);
+        await this.selectVulnFromList(this.filteredVulns[0]);
       }
+    },
+    async prefetchAllVulnAssets() {
+      const vulns = [...this.groupedVulns];
+      await Promise.all(vulns.map((v) => this.loadVulnAssets(v, true, true)));
+    },
+    getLocalHeldCountForVuln(item) {
+      if (!item) return 0;
+      return (this.heldVulnAssetRows || [])
+        .filter(h => h._key === item._key || h.plugin_name === item.vul_name)
+        .length;
+    },
+    getLocalDeletedCountForVuln(item) {
+      if (!item) return 0;
+      return this.getDeletedHostsForVuln(item).size;
+    },
+    displayVulnAssetCount(item) {
+      if (!item) return 0;
+
+      if (this.vulnAssetsByKey[item._key]) {
+        return this.getVulnAssets(item).length;
+      }
+
+      const localHeld = this.getLocalHeldCountForVuln(item);
+      const localDeleted = this.getLocalDeletedCountForVuln(item);
+      const total = Number(item.total_assets);
+      const apiHeld = Number(item.held_count) || 0;
+      const apiDeleted = Number(item.deleted_count) || 0;
+      const held = Math.max(localHeld, apiHeld);
+      const deleted = Math.max(localDeleted, apiDeleted);
+
+      if (Number.isFinite(total) && total > 0) {
+        return Math.max(0, total - held - deleted);
+      }
+
+      if (Array.isArray(item.assets) && item.assets.length) {
+        return Math.max(0, item.assets.length - held - deleted);
+      }
+
+      return reportVulnAssetCount({ ...item, held_count: held, deleted_count: deleted });
+    },
+    getVulnDisplayStatus(item) {
+      if (this.displayVulnAssetCount(item) > 0) return 'open';
+      return item?.status || 'open';
+    },
+    bumpVulnCountsAfterHold(pluginName, heldCount) {
+      this.adjustVulnCounts(pluginName, heldCount);
+    },
+    bumpVulnCountsAfterUnhold(pluginName, unheldCount) {
+      this.adjustVulnCounts(pluginName, -unheldCount);
+    },
+    bumpVulnCountsAfterDelete(pluginName, deletedCount) {
+      const key = String(pluginName || '').trim().toLowerCase();
+      if (!key || !deletedCount) return;
+
+      this.patchReportVulnRows((row) => {
+        const rowKey = String(row.plugin_name || row.vul_name || '').trim().toLowerCase();
+        if (rowKey !== key) return row;
+
+        const total = Number(row.total_assets) || 0;
+        const nextTotal = Math.max(0, total - deletedCount);
+        const nextDeleted = (Number(row.deleted_count) || 0) + deletedCount;
+        const held = Number(row.held_count) || 0;
+
+        return {
+          ...row,
+          total_assets: nextTotal,
+          deleted_count: nextDeleted,
+          open_count: Math.max(0, nextTotal - held),
+        };
+      });
+    },
+    patchReportVulnRows(mapper) {
+      if (this.isUser) {
+        this.authStore.userAllReportVulnerabilities = (this.authStore.userAllReportVulnerabilities || []).map(mapper);
+      } else {
+        this.authStore.allReportVulnerabilities = (this.authStore.allReportVulnerabilities || []).map(mapper);
+      }
+    },
+    adjustVulnCounts(pluginName, deltaHeld) {
+      const key = String(pluginName || '').trim().toLowerCase();
+      if (!key || !deltaHeld) return;
+
+      this.patchReportVulnRows((row) => {
+        const rowKey = String(row.plugin_name || row.vul_name || '').trim().toLowerCase();
+        if (rowKey !== key) return row;
+        const total = Number(row.total_assets) || 0;
+        const nextHeld = Math.max(0, (Number(row.held_count) || 0) + deltaHeld);
+        const nextOpen = total > 0
+          ? Math.max(0, total - nextHeld)
+          : Math.max(0, (Number(row.open_count) || 0) - deltaHeld);
+        return {
+          ...row,
+          held_count: nextHeld,
+          open_count: nextOpen,
+        };
+      });
+    },
+    syncVulnCountsWithHeldState() {
+      const heldByPlugin = new Map();
+      (this.heldVulnAssetRows || []).forEach((held) => {
+        const name = String(held.plugin_name || held.vul_name || '').trim();
+        if (!name) return;
+        heldByPlugin.set(name.toLowerCase(), (heldByPlugin.get(name.toLowerCase()) || 0) + 1);
+      });
+
+      if (!heldByPlugin.size) return;
+
+      this.patchReportVulnRows((row) => {
+        const name = String(row.plugin_name || row.vul_name || '').trim();
+        const localHeld = heldByPlugin.get(name.toLowerCase()) || 0;
+        if (!localHeld) return row;
+
+        const total = Number(row.total_assets) || 0;
+        const deleted = Number(row.deleted_count) || 0;
+        const held = Math.max(Number(row.held_count) || 0, localHeld);
+        const activeTotal = Math.max(0, total - deleted);
+        return {
+          ...row,
+          held_count: held,
+          open_count: activeTotal > 0 ? Math.max(0, activeTotal - held) : row.open_count,
+        };
+      });
+    },
+    syncVulnCountsWithDeletedState() {
+      const deletedByPlugin = new Map();
+      (this.deletedVulnAssetRows || []).forEach((row) => {
+        const name = String(row.plugin_name || row.vul_name || '').trim();
+        if (!name) return;
+        deletedByPlugin.set(name.toLowerCase(), (deletedByPlugin.get(name.toLowerCase()) || 0) + 1);
+      });
+
+      if (!deletedByPlugin.size) return;
+
+      this.patchReportVulnRows((row) => {
+        const name = String(row.plugin_name || row.vul_name || '').trim();
+        const localDeleted = deletedByPlugin.get(name.toLowerCase()) || 0;
+        if (!localDeleted) return row;
+
+        const total = Number(row.total_assets) || 0;
+        const deleted = Math.max(Number(row.deleted_count) || 0, localDeleted);
+        const held = Number(row.held_count) || 0;
+        const nextTotal = Math.max(0, total - localDeleted);
+
+        return {
+          ...row,
+          total_assets: nextTotal,
+          deleted_count: deleted,
+          open_count: Math.max(0, nextTotal - held),
+        };
+      });
+    },
+    reportVulnAssetCount(v) {
+      return reportVulnAssetCount(v);
     },
     canonSeverity(sev) {
       const s = String(sev || '').trim().toLowerCase();
@@ -1154,17 +1758,36 @@ export default {
       const idx = this.filteredVulns.findIndex(x => x._key === v._key);
       return idx >= 0 ? idx % 3 : 0;
     },
-    selectVulnFromList(item) {
+    async selectVulnFromList(item) {
       if (this.showCheckboxes || this.showHoldCheckboxes) return;
       const idx = this.filteredVulns.findIndex(v => v._key === item._key);
       if (idx < 0) return;
       this.selectedKey = item._key;
+      this.selectedAssetHost = null;
       this.expandedVulnIndex = null;
       this.currentVulnTab = 'auto';
       this.activeDetailTab = 'vulnerabilities';
-      this.supportRequestsForVuln = [];
-      this.supportRequestCount = 0;
+      await this.loadVulnAssets(item, false);
+      this.prefetchSupportRequestsForSelectedVuln();
       this.$nextTick(() => this.scrollToAccordion(item._key));
+    },
+    selectVulnAsset(vuln, asset, expandAccordion = true) {
+      if (this.showCheckboxes || this.showHoldCheckboxes) return;
+      if (!vuln || !asset?.host_name) return;
+
+      this.selectedKey = vuln._key;
+      this.selectedAssetHost = asset.host_name;
+      this.expandedVulnKey = vuln._key;
+      this.currentVulnTab = 'auto';
+      this.activeDetailTab = 'vulnerabilities';
+      this.prefetchSupportRequestsForSelectedVuln();
+
+      if (expandAccordion) {
+        this.expandedVulnIndex = 0;
+        const panel = this.panelVulns[0];
+        const refKey = panel?._panelKey || panel?._key || vuln._key;
+        this.$nextTick(() => this.scrollToAccordion(refKey));
+      }
     },
     async openVulnSupportModal(preStep = null, preVulnName = null, preCompletedSteps = []) {
       this.vulnSrDisplayName = preVulnName || this.selectedVuln?.vul_name || '';
@@ -1300,21 +1923,41 @@ export default {
     openSupportRequestModal(req) {
       this.selectedSupportRequest = req;
     },
-    async refreshSupportRequestsForVuln() {
+    prefetchSupportRequestsForSelectedVuln() {
+      const seq = ++this.supportRequestFetchSeq;
+      this.refreshSupportRequestsForVuln(seq);
+    },
+    getSupportRequestHostsForVuln(vuln) {
+      if (!vuln) return [];
+      if (this.selectedAssetHost) {
+        return [this.selectedAssetHost];
+      }
+      const hosts = this.getVulnAssets(vuln)
+        .map(a => a.host_name)
+        .filter(Boolean);
+      if (hosts.length) return hosts;
+      return (vuln.assets || []).filter(Boolean);
+    },
+    async refreshSupportRequestsForVuln(requestSeq = this.supportRequestFetchSeq) {
       const vuln = this.selectedVuln;
-      if (!vuln?.assets?.length) {
-        this.supportRequestsForVuln = [];
-        this.supportRequestCount = 0;
+      const hosts = this.getSupportRequestHostsForVuln(vuln);
+      if (!vuln || !hosts.length) {
+        if (requestSeq === this.supportRequestFetchSeq) {
+          this.supportRequestsForVuln = [];
+          this.supportRequestCount = 0;
+          this.loadingSupportRequests = false;
+        }
         return;
       }
       this.loadingSupportRequests = true;
       const targetName = String(vuln.vul_name || '').trim().toLowerCase();
       const seen = new Set();
       const merged = [];
-      for (const host of vuln.assets) {
+      for (const host of hosts) {
         const res = this.isUser
           ? await this.authStore.getUserSupportRequestsByHost(host)
           : await this.authStore.getSupportRequestsByHost(host);
+        if (requestSeq !== this.supportRequestFetchSeq) return;
         if (!res.status || !Array.isArray(res.data)) continue;
         for (const req of res.data) {
           const id = req._id || req.id || `${host}-${req.vul_name}-${req.requested_at}`;
@@ -1325,6 +1968,7 @@ export default {
           merged.push({ ...req, host_name: req.host_name || host });
         }
       }
+      if (requestSeq !== this.supportRequestFetchSeq) return;
       this.supportRequestsForVuln = merged;
       this.supportRequestCount = merged.length;
       this.loadingSupportRequests = false;
@@ -1341,7 +1985,7 @@ export default {
         this.selectedKey = item._key;
       }
       if (isOpening && item) {
-        this.$nextTick(() => this.scrollToAccordion(item._key));
+        this.$nextTick(() => this.scrollToAccordion(item._panelKey || item._key));
       }
     },
     scrollToAccordion(refKey) {
@@ -1596,6 +2240,12 @@ export default {
   margin-bottom: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   border-left: 3px solid #7a7580;
+  cursor: pointer;
+}
+
+.av-left .hold-item-active {
+  border-left-color: #10b981;
+  background: #f0fdf4;
 }
 
 .av-left .hold-ip {
@@ -3025,6 +3675,88 @@ export default {
   padding: 2px 6px;
   border-radius: 4px;
   font-weight: 500;
+}
+
+.vuln-chip-btn {
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.vuln-chip-btn:hover {
+  background: #e0f2f1;
+  border-color: #0f696e;
+  color: #0f696e;
+}
+
+.vuln-chip-expanded {
+  background: #e0f2f1;
+  border-color: #0f696e;
+  color: #0f696e;
+  font-weight: 600;
+}
+
+.vuln-chip-chevron {
+  font-size: 0.58rem;
+}
+
+.av-nested-assets {
+  margin-top: 8px;
+  padding: 6px 0 2px 10px;
+  border-left: 2px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.av-nested-loading,
+.av-nested-empty {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  padding: 4px 0;
+  margin: 0;
+}
+
+.av-nested-asset-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.av-nested-asset-item:hover {
+  background: #f8fafc;
+}
+
+.av-nested-asset-active {
+  background: #ecfdf5;
+  border: 1px solid #86efac;
+}
+
+.av-nested-asset-ip {
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: ui-monospace, 'Courier New', monospace;
+  color: #241447;
+}
+
+.av-nested-sev {
+  font-size: 0.58rem !important;
+  padding: 2px 6px !important;
+}
+
+.av-selected-asset-sub {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 4px;
+  font-family: ui-monospace, 'Courier New', monospace;
 }
 
 .sev-badge {

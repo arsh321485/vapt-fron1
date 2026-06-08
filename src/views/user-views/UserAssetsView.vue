@@ -666,6 +666,7 @@
                 :show-verified-alert="showVaptfixVerifiedAlert"
                 @close-python-alert="showPythonInstallAlert = false"
                 @close-verified-alert="showVaptfixVerifiedAlert = false"
+                @vuln-assets-deleted="onVulnAssetsDeleted"
               />
             </div>
 
@@ -1430,6 +1431,21 @@ class TLSConfigurator:
       }
       this.syncTotalAssets();
     },
+    async syncAssetsAfterVulnTab() {
+      const activeAsset = this.activeIndex;
+      await this.authStore.fetchUserAssets(true);
+      if (activeAsset && this.assets.some(a => a.asset === activeAsset)) {
+        await this.setActive({ asset: activeAsset });
+      }
+    },
+    async onVulnAssetsDeleted({ hostNames }) {
+      const hosts = Array.isArray(hostNames) ? hostNames : [];
+      const activeAsset = this.activeIndex;
+      if (activeAsset && hosts.includes(activeAsset)) {
+        await this.authStore.fetchUserSingleAssetVulnerabilities(activeAsset);
+        await this.loadSupportRequestsByHost(activeAsset);
+      }
+    },
     async setActive(asset) {
       if (!asset?.asset) return;
       this.activeIndex = asset.asset;
@@ -1779,9 +1795,13 @@ class TLSConfigurator:
     },
   },
   watch: {
-    leftPanelTab(val, oldVal) {
+    async leftPanelTab(val, oldVal) {
       if (val === 'vulnerabilities' && oldVal !== 'vulnerabilities') {
         this.openFixPanelAlerts();
+        await this.authStore.resolveUserReportId();
+      }
+      if (val === 'assets' && oldVal === 'vulnerabilities') {
+        this.syncAssetsAfterVulnTab();
       }
     },
     assetTypeFilter() {

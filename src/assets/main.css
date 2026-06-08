@@ -2003,6 +2003,8 @@ th.sev-low {
 }
 
 .assets-right-panel .right-panel-header {
+  position: relative;
+  z-index: 1;
   padding: 14px 28px 0;
   background: #fff;
   border-bottom: none;
@@ -2013,29 +2015,9 @@ th.sev-low {
   margin-top: 10px;
 }
 
-/* Header alerts — overlay at top of right panel, no layout space */
+/* Header alerts — stacked overlay (layout in FixPanelHeaderAlerts.vue) */
 .assets-right-panel .fix-panel-header-alerts {
-  position: absolute;
-  top: 4px;
-  right: 18px;
-  z-index: 30;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-  max-width: min(300px, calc(100% - 36px));
-  pointer-events: none;
-}
-
-.assets-right-panel .fix-panel-header-alerts .panel-header-alert {
-  pointer-events: auto;
-}
-
-@media (max-width: 900px) {
-  .assets-right-panel .fix-panel-header-alerts {
-    right: 12px;
-    max-width: calc(100% - 24px);
-  }
+  z-index: 60;
 }
 
 .assets-right-panel .right-panel-meta {

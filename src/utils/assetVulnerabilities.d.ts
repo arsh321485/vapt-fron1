@@ -40,14 +40,41 @@ export function assetMatchesRegisterRow(
   row: Record<string, unknown>,
   assetIp: string,
 ): boolean;
+export function filterDeletedVulnsForHost(
+  vulns: unknown,
+  hostName: string,
+  deletedRows?: unknown,
+): NormalizedAssetVulnerability[];
 export function buildVulnsFromRegister(
   registerRows: unknown,
   assetIp: string,
+  deletedRows?: unknown,
 ): NormalizedAssetVulnerability[];
 export function matchesVulnStatusFilter(
   vuln: Record<string, unknown> | null | undefined,
   statusFilter: string[] | null | undefined,
 ): boolean;
+export function normalizeReportVulnerability(
+  v: Record<string, unknown> | null | undefined,
+): Record<string, unknown> | null;
+export function normalizeReportVulnerabilityList(list: unknown): Record<string, unknown>[];
+export function buildDeletedVulnAssetSet(
+  deletedRows: unknown,
+): Set<string>;
+export function enrichReportVulnerabilitiesFromRegister(
+  grouped: Record<string, unknown>[],
+  registerRows: unknown,
+  deletedRows?: unknown,
+): Record<string, unknown>[];
+export function reportVulnAssetCount(v: Record<string, unknown> | null | undefined): number;
+export function normalizeHeldVulnerabilityAsset(
+  row: Record<string, unknown> | null | undefined,
+  pluginName?: string,
+): Record<string, unknown> | null;
+export function normalizeHeldVulnerabilityAssetList(
+  list: unknown,
+  pluginName?: string,
+): Record<string, unknown>[];
 export function mergeAssetThreatVulnerabilities(
   activeVulns: unknown,
   closedFixVulns?: unknown,

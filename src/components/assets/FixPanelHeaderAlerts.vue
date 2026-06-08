@@ -31,3 +31,33 @@ export default {
   emits: ['close-python', 'close-verified', 'open-python-guide'],
 };
 </script>
+
+<style scoped>
+.fix-panel-header-alerts {
+  position: absolute;
+  top: 4px;
+  right: 18px;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: min(300px, calc(100% - 36px));
+  pointer-events: none;
+  overflow: visible;
+}
+
+.fix-panel-header-alerts :deep(.panel-header-alert) {
+  position: relative;
+  flex-shrink: 0;
+  width: 100%;
+  pointer-events: auto;
+}
+
+@media (max-width: 900px) {
+  .fix-panel-header-alerts {
+    right: 12px;
+    max-width: calc(100% - 24px);
+  }
+}
+</style>
