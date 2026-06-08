@@ -160,8 +160,8 @@
       </div>
     </div>
 
-    <!-- Action buttons: Complete all steps + Send verification -->
-    <div class="run-action-row">
+    <!-- Action buttons: user side only (/userassets automation fix) -->
+    <div v-if="isUser" class="run-action-row">
       <button
         type="button"
         class="run-action-btn run-action-btn--complete"

@@ -39,14 +39,29 @@
                 <div class="left-panel-header">
                   <div class="d-flex justify-content-between align-items-center mb-2">
                     <h2 class="assets-title">All Assets </h2>
-                    <span class="assets-count-badge">{{ totalAssets }} Assets</span>
+                    <span class="assets-count-badge">{{ displayAssetCount }} Assets</span>
+                  </div>
+                  <div class="asset-type-filters mb-3">
+                    <button
+                      v-for="filter in assetTypeFilters"
+                      :key="filter.key"
+                      type="button"
+                      class="asset-type-filter-btn"
+                      :class="[
+                        'asset-type-filter-btn-' + filter.key,
+                        { 'asset-type-filter-btn-active': assetTypeFilter === filter.key },
+                      ]"
+                      @click="setAssetTypeFilter(filter.key)"
+                    >
+                      {{ filter.label }}
+                    </button>
                   </div>
                   <div class="d-flex gap-3 mb-3">
                     <i class="bi bi-trash action-icon" data-bs-toggle="tooltip"
-                      :class="{ 'text-muted': activeAction !== '' && activeAction !== 'delete' }"
+                      :class="{ 'text-muted': assetTypeFilter !== 'assets' || (activeAction !== '' && activeAction !== 'delete') }"
                       @click.stop="handleDeleteClick" title="Remove an asset" role="button"></i>
                     <i class="bi bi-eye-slash action-icon" data-bs-toggle="tooltip"
-                      :class="{ 'text-muted': activeAction !== '' && activeAction !== 'hold' }"
+                      :class="{ 'text-muted': assetTypeFilter !== 'assets' || (activeAction !== '' && activeAction !== 'hold') }"
                       @click.stop="toggleHoldMode" title="Hold mitigation" role="button"></i>
                   </div>
                   <div class="position-relative search-wrap">
@@ -71,6 +86,12 @@
                           <input v-if="showCheckboxes" type="checkbox" v-model="asset.selected" class="form-check-input" />
                           <input v-if="showHoldCheckboxes" type="checkbox" v-model="asset.selected" class="form-check-input" />
                           <span class="asset-ip">{{ asset.asset }}</span>
+                          <span
+                            v-if="getAssetTypeBadge(asset)"
+                            class="asset-type-badge asset-type-badge-sm"
+                            :class="'asset-type-badge-' + asset.member_type"
+                            :title="getAssetTypeBadge(asset).label"
+                          >{{ getAssetTypeBadge(asset).code }}</span>
                         </div>
                         <span v-if="getTopSeverity(asset.severity_counts)" class="sev-badge"
                           :class="'sev-' + getTopSeverity(asset.severity_counts).toLowerCase()">
@@ -78,8 +99,15 @@
                         </span>
                       </div>
                       <p class="asset-sub">
-                        <i class="bi bi-link-45deg me-1"></i>
-                        {{ asset.isInternal ? 'Internal' : 'External' }}
+                        <span
+                          v-if="getAssetTypeBadge(asset)"
+                          class="asset-type-label"
+                          :class="'asset-type-label-' + asset.member_type"
+                        >{{ getAssetSubLabel(asset) }}</span>
+                        <template v-else>
+                          <i class="bi bi-link-45deg me-1"></i>
+                          {{ getAssetSubLabel(asset) }}
+                        </template>
                       </p>
                       <div class="d-flex gap-2 flex-wrap">
                         <span class="vuln-chip">
@@ -173,10 +201,40 @@
                 <!-- Detail Header -->
                 <div class="right-panel-header">
                   <div class="d-flex align-items-center justify-content-between">
-                    <h1 class="asset-detail-title mb-0">{{ selectedAsset?.asset }}</h1>
+                    <h1 class="asset-detail-title mb-0">
+                      <span class="asset-detail-title-text">{{ selectedAsset?.asset }}</span>
+                      <span
+                        v-if="selectedAssetTypeBadge"
+                        class="asset-type-badge"
+                        :class="'asset-type-badge-' + assetTypeFilter"
+                        :title="selectedAssetTypeBadge.label"
+                      >{{ selectedAssetTypeBadge.code }}</span>
+                    </h1>
                   </div>
                   <div
-                    v-if="selectedAsset?.host_information?.['Netbios Name'] || selectedAsset?.host_information?.['DNS Name'] || selectedAsset?.assigned_teams?.length"
+                    v-if="assetTypeFilter !== 'assets' && selectedAssetMetaValue"
+                    class="right-panel-meta right-panel-meta-column"
+                  >
+                    <p class="meta-inline meta-inline-resolved">
+                      <span class="meta-label">{{ selectedAssetMetaLabel }}</span>
+                      <span class="meta-separator">-</span>
+                      <span class="meta-value">{{ selectedAssetMetaValue }}</span>
+                    </p>
+                    <div v-if="selectedAssetDescription" class="asset-description-block">
+                      <p class="asset-description-heading">Description</p>
+                      <p class="asset-description-text">{{ displayAssetDescription }}</p>
+                      <button
+                        v-if="selectedAssetDescription.length > assetDescriptionPreviewLimit"
+                        type="button"
+                        class="asset-read-more-btn"
+                        @click="assetDescriptionExpanded = !assetDescriptionExpanded"
+                      >
+                        {{ assetDescriptionExpanded ? 'Read less' : 'Read more' }}
+                      </button>
+                    </div>
+                  </div>
+                  <div
+                    v-else-if="selectedAsset?.host_information?.['Netbios Name'] || selectedAsset?.host_information?.['DNS Name'] || selectedAsset?.assigned_teams?.length"
                     class="right-panel-meta"
                   >
                     <div v-if="selectedAsset?.host_information?.['Netbios Name']">
@@ -742,6 +800,7 @@ import {
   isAutomationNotAvailable,
 } from "@/utils/assetVulnerabilities";
 import { useAuthStore } from "@/stores/authStore";
+import { ASSET_TYPE_FILTERS, getDummyAssetsByType } from "@/utils/assetDummyData";
 
 export default {
   name: "UserAssetsView",
@@ -761,6 +820,11 @@ export default {
       showPythonInstallAlert: false,
       showVaptfixVerifiedAlert: false,
       leftPanelTab: "assets",
+      assetTypeFilter: "assets",
+      assetTypeFilters: ASSET_TYPE_FILTERS,
+      dummySelectedAsset: null,
+      assetDescriptionExpanded: false,
+      assetDescriptionPreviewLimit: 140,
       authStore: useAuthStore(),
       selectedSeverity: "",
       activeFilters: ['All'],
@@ -886,10 +950,25 @@ class TLSConfigurator:
       vulns = vulns.filter(v => matchesVulnStatusFilter(v, this.statusFilter));
       return vulns;
     },
+    sourceAssetRows() {
+      if (this.assetTypeFilter === "assets") {
+        return this.assets || [];
+      }
+      return getDummyAssetsByType(this.assetTypeFilter);
+    },
+    displayAssetCount() {
+      if (this.assetTypeFilter === "assets") {
+        return this.totalAssets;
+      }
+      return this.filteredAssets.length;
+    },
     filteredAssets() {
-      if (!this.searchQuery) return this.assets;
-      const q = this.searchQuery.toLowerCase();
-      return this.assets.filter(a => a.asset?.toLowerCase().includes(q));
+      let list = [...(this.sourceAssetRows || [])];
+      if (this.searchQuery) {
+        const q = this.searchQuery.toLowerCase();
+        list = list.filter(a => String(a.asset || "").toLowerCase().includes(q));
+      }
+      return list;
     },
     pagedAssets() {
       const start = (this.currentPage - 1) * this.pageSize;
@@ -914,7 +993,33 @@ class TLSConfigurator:
     },
     selectedAsset() {
       if (!this.activeIndex) return null;
+      if (this.assetTypeFilter !== "assets") {
+        return this.dummySelectedAsset;
+      }
       return this.assets.find(a => a.asset === this.activeIndex) || null;
+    },
+    selectedAssetTypeBadge() {
+      if (this.assetTypeFilter === "assets") return null;
+      return this.getAssetTypeBadgeCode(this.assetTypeFilter);
+    },
+    selectedAssetMetaLabel() {
+      return "Resolved IP";
+    },
+    selectedAssetMetaValue() {
+      if (this.assetTypeFilter === "assets") return "";
+      return this.dummySelectedAsset?.resolved_ip || "";
+    },
+    selectedAssetDescription() {
+      if (this.assetTypeFilter === "assets") return "";
+      return this.dummySelectedAsset?.description || "";
+    },
+    displayAssetDescription() {
+      const text = this.selectedAssetDescription;
+      if (!text) return "";
+      if (this.assetDescriptionExpanded || text.length <= this.assetDescriptionPreviewLimit) {
+        return text;
+      }
+      return `${text.slice(0, this.assetDescriptionPreviewLimit).trimEnd()}...`;
     },
     selectedAssetIp() {
       return this.selectedAsset?.asset || this.activeIndex || '';
@@ -1177,6 +1282,26 @@ class TLSConfigurator:
       // Keep header count aligned with dashboard: only active (non-held) assets.
       this.totalAssets = this.assets.length;
     },
+    setAssetTypeFilter(type) {
+      if (this.assetTypeFilter === type) return;
+      this.assetTypeFilter = type;
+    },
+    getAssetTypeBadgeCode(type) {
+      if (type === "webapp") return { code: "WA", label: "Web App" };
+      if (type === "firewall") return { code: "FR", label: "Firewall" };
+      if (type === "server") return { code: "SR", label: "Server" };
+      return null;
+    },
+    getAssetTypeBadge(asset) {
+      if (this.assetTypeFilter === "assets") return null;
+      return this.getAssetTypeBadgeCode(asset?.member_type || this.assetTypeFilter);
+    },
+    getAssetSubLabel(asset) {
+      if (asset?.member_type === "webapp") return "Web App";
+      if (asset?.member_type === "firewall") return "Firewall";
+      if (asset?.member_type === "server") return "Server";
+      return asset?.isInternal ? "Internal" : "External";
+    },
     async onSupportRequestsTabClick() {
       this.activeTab = "exceptions";
       await this.loadSupportRequestsByHost(this.activeIndex);
@@ -1308,8 +1433,26 @@ class TLSConfigurator:
     async setActive(asset) {
       if (!asset?.asset) return;
       this.activeIndex = asset.asset;
-      this.loadingAssetVulns = true;
       this.expandedVulnIndex = null;
+      this.assetDescriptionExpanded = false;
+
+      if (this.assetTypeFilter !== "assets" || asset._isDummy) {
+        this.loadingAssetVulns = false;
+        this.closedFixVulnerabilities = [];
+        this.supportRequests = [];
+        this.supportRequestCount = 0;
+        this.dummySelectedAsset = {
+          asset: asset.asset,
+          resolved_ip: asset.resolved_ip || "192.168.1.100",
+          description: asset.description || "",
+          severity_counts: asset.severity_counts,
+          member_type: asset.member_type,
+        };
+        this.authStore.selectedAssetVulnerabilities = asset.dummyVulns || [];
+        return;
+      }
+
+      this.loadingAssetVulns = true;
       await this.authStore.fetchUserSingleAssetVulnerabilities(asset.asset);
       this.loadingAssetVulns = false;
       await this.loadSupportRequestsByHost(asset.asset);
@@ -1380,6 +1523,7 @@ class TLSConfigurator:
       }
     },
     handleDeleteClick() {
+      if (this.assetTypeFilter !== "assets") return;
       if (this.activeAction === "hold") return;
       this.activeAction = "delete";
       if (!this.showCheckboxes) {
@@ -1415,6 +1559,7 @@ class TLSConfigurator:
       this.resetActions();
     },
     toggleHoldMode() {
+      if (this.assetTypeFilter !== "assets") return;
       if (this.activeAction === "delete") return;
       this.activeAction = "hold";
       if (this.showHoldCheckboxes) {
@@ -1639,6 +1784,18 @@ class TLSConfigurator:
         this.openFixPanelAlerts();
       }
     },
+    assetTypeFilter() {
+      this.currentPage = 1;
+      this.searchQuery = "";
+      this.activeIndex = null;
+      this.dummySelectedAsset = null;
+      this.resetActions();
+      this.$nextTick(() => {
+        if (this.pagedAssets.length) {
+          this.setActive(this.pagedAssets[0]);
+        }
+      });
+    },
     searchQuery() {
       this.currentPage = 1;
     },
@@ -1780,6 +1937,51 @@ class TLSConfigurator:
   border-radius: 20px;
   padding: 3px 12px;
   color: #64748b;
+}
+
+.asset-type-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.asset-type-filter-btn {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.asset-type-filter-btn:hover {
+  color: #1e293b;
+  border-color: #cbd5e1;
+}
+
+.asset-type-filter-btn-active.asset-type-filter-btn-assets,
+.asset-type-filter-btn-active.asset-type-filter-btn-webapp {
+  background: #0f696e;
+  border-color: #0f696e;
+  color: #fff;
+  font-weight: 700;
+}
+
+.asset-type-filter-btn-active.asset-type-filter-btn-firewall {
+  background: #fff8f0;
+  border-color: #e65100;
+  color: #c45c00;
+  font-weight: 700;
+}
+
+.asset-type-filter-btn-active.asset-type-filter-btn-server {
+  background: #ede7f6;
+  border-color: #9575cd;
+  color: #5e35b1;
+  font-weight: 700;
 }
 
 .action-icon {
@@ -2002,11 +2204,134 @@ class TLSConfigurator:
 /* right-panel-header / scroll — shared rules in main.css (.assets-right-panel) */
 
 .asset-detail-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
   font-size: 1.1rem;
   font-weight: 600;
   color: #0f172a;
   line-height: 1.3;
   margin: 0;
+}
+
+.asset-detail-title-text {
+  word-break: break-all;
+}
+
+.asset-type-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.asset-type-badge-sm {
+  width: 22px;
+  height: 22px;
+  font-size: 0.5rem;
+}
+
+.asset-type-badge-webapp,
+.asset-type-label-webapp {
+  background: #0f696e;
+  color: #fff;
+  border: 1px solid #0f696e;
+}
+
+.asset-type-badge-firewall,
+.asset-type-label-firewall {
+  background: #fff8f0;
+  color: #c45c00;
+  border: 1px solid #e65100;
+}
+
+.asset-type-badge-server,
+.asset-type-label-server {
+  background: #ede7f6;
+  color: #5e35b1;
+  border: 1px solid #9575cd;
+}
+
+.asset-type-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.right-panel-meta.right-panel-meta-column {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.meta-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.meta-inline-resolved .meta-label,
+.meta-inline-resolved .meta-value,
+.meta-inline-resolved .meta-separator {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.5;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.meta-separator {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.asset-description-block {
+  margin-top: 0;
+}
+
+.asset-description-heading {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 4px;
+}
+
+.asset-description-text {
+  font-size: 0.75rem;
+  color: #64748b;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.asset-read-more-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-top: 4px;
+  color: #0f696e;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.asset-read-more-btn:hover {
+  text-decoration: underline;
 }
 
 .status-open-badge {

@@ -1928,7 +1928,33 @@ th.sev-low {
 }
 
 .vuln-filter-bar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
   gap: 12px;
+  margin: -18px -28px 16px;
+  padding: 18px 28px 14px;
+  background-color: #f8f9fc;
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.1);
+  isolation: isolate;
+  transform: translateZ(0);
+}
+
+.vuln-filter-bar::before {
+  content: "";
+  position: absolute;
+  inset: 0 -28px;
+  top: -18px;
+  bottom: -1px;
+  background-color: #f8f9fc;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.assets-right-panel .right-panel-scroll .vuln-filter-bar,
+.assets-right-panel .right-panel-scroll .vuln-filter-bar::before {
+  background-color: #f8f9fc;
 }
 
 .vuln-toolbox-btn {

@@ -39,14 +39,29 @@
                 <div class="left-panel-header">
                   <div class="d-flex justify-content-between align-items-center mb-2">
                     <h2 class="assets-title">All Assets</h2>
-                    <span class="assets-count-badge">{{ authStore.assetCount }} Assets</span>
+                    <span class="assets-count-badge">{{ displayAssetCount }} Assets</span>
+                  </div>
+                  <div class="asset-type-filters mb-3">
+                    <button
+                      v-for="filter in assetTypeFilters"
+                      :key="filter.key"
+                      type="button"
+                      class="asset-type-filter-btn"
+                      :class="[
+                        'asset-type-filter-btn-' + filter.key,
+                        { 'asset-type-filter-btn-active': assetTypeFilter === filter.key },
+                      ]"
+                      @click="setAssetTypeFilter(filter.key)"
+                    >
+                      {{ filter.label }}
+                    </button>
                   </div>
                   <div class="d-flex gap-3 mb-3">
                     <i class="bi bi-trash action-icon" data-bs-toggle="tooltip"
-                      :class="{ 'text-muted': activeAction !== '' && activeAction !== 'delete' }"
+                      :class="{ 'text-muted': assetTypeFilter !== 'assets' || (activeAction !== '' && activeAction !== 'delete') }"
                       @click.stop="handleDeleteClick" title="Remove an asset" role="button"></i>
                     <i class="bi bi-eye-slash action-icon" data-bs-toggle="tooltip"
-                      :class="{ 'text-muted': activeAction !== '' && activeAction !== 'hold' }"
+                      :class="{ 'text-muted': assetTypeFilter !== 'assets' || (activeAction !== '' && activeAction !== 'hold') }"
                       @click.stop="toggleHoldMode" title="Hold mitigation" role="button"></i>
                   </div>
                   <div class="position-relative search-wrap">
@@ -67,14 +82,27 @@
                         <input v-if="showCheckboxes" type="checkbox" v-model="asset.selected" class="form-check-input" />
                         <input v-if="showHoldCheckboxes" type="checkbox" v-model="asset.selected" class="form-check-input" />
                         <span class="asset-ip">{{ asset.asset }}</span>
+                        <span
+                          v-if="getAssetTypeBadge(asset)"
+                          class="asset-type-badge asset-type-badge-sm"
+                          :class="'asset-type-badge-' + asset.member_type"
+                          :title="getAssetTypeBadge(asset).label"
+                        >{{ getAssetTypeBadge(asset).code }}</span>
                       </div>
                       <span v-if="getPrioritySeverity(asset)" class="sev-badge" :class="'sev-' + getPrioritySeverity(asset).toLowerCase()">
                         {{ getPrioritySeverity(asset) }}
                       </span>
                     </div>
                     <p class="asset-sub">
-                      <i class="bi bi-link-45deg me-1"></i>
-                      {{ authStore.memberType ? (authStore.memberType.charAt(0).toUpperCase() + authStore.memberType.slice(1)) : '' }}
+                      <span
+                        v-if="getAssetTypeBadge(asset)"
+                        class="asset-type-label"
+                        :class="'asset-type-label-' + asset.member_type"
+                      >{{ getAssetSubLabel(asset) }}</span>
+                      <template v-else>
+                        <i class="bi bi-link-45deg me-1"></i>
+                        {{ getAssetSubLabel(asset) }}
+                      </template>
                     </p>
                     <div class="d-flex gap-2 flex-wrap">
                       <span class="vuln-chip">
@@ -165,11 +193,36 @@
                 />
                 <!-- Detail Header -->
                 <div class="right-panel-header">
-                  <h1 class="asset-detail-title mb-0">{{ authStore.selectedAssetDetail?.asset }}</h1>
-                  <div v-if="authStore.selectedAssetDetail?.owner" class="right-panel-meta">
-                    <div>
-                      <p class="meta-label">Owner</p>
-                      <p class="meta-value">{{ authStore.selectedAssetDetail.owner }}</p>
+                  <h1 class="asset-detail-title mb-0">
+                    <span class="asset-detail-title-text">{{ authStore.selectedAssetDetail?.asset }}</span>
+                    <span
+                      v-if="selectedAssetTypeBadge"
+                      class="asset-type-badge"
+                      :class="'asset-type-badge-' + assetTypeFilter"
+                      :title="selectedAssetTypeBadge.label"
+                    >{{ selectedAssetTypeBadge.code }}</span>
+                  </h1>
+                  <div
+                    v-if="selectedAssetMetaValue"
+                    class="right-panel-meta"
+                    :class="{ 'right-panel-meta-column': assetTypeFilter !== 'assets' }"
+                  >
+                    <p class="meta-inline" :class="{ 'meta-inline-resolved': assetTypeFilter !== 'assets' }">
+                      <span class="meta-label">{{ selectedAssetMetaLabel }}</span>
+                      <span v-if="assetTypeFilter !== 'assets'" class="meta-separator">-</span>
+                      <span class="meta-value">{{ selectedAssetMetaValue }}</span>
+                    </p>
+                    <div v-if="assetTypeFilter !== 'assets' && selectedAssetDescription" class="asset-description-block">
+                      <p class="asset-description-heading">Description</p>
+                      <p class="asset-description-text">{{ displayAssetDescription }}</p>
+                      <button
+                        v-if="selectedAssetDescription.length > assetDescriptionPreviewLimit"
+                        type="button"
+                        class="asset-read-more-btn"
+                        @click="assetDescriptionExpanded = !assetDescriptionExpanded"
+                      >
+                        {{ assetDescriptionExpanded ? 'Read less' : 'Read more' }}
+                      </button>
                     </div>
                   </div>
                   <div class="detail-tabs">
@@ -516,6 +569,7 @@ import {
   isAutomationNotAvailable,
 } from "@/utils/assetVulnerabilities";
 import { useAuthStore } from "@/stores/authStore";
+import { ASSET_TYPE_FILTERS, getDummyAssetsByType } from "@/utils/assetDummyData";
 
 export default {
   name: "AssetsView",
@@ -535,6 +589,8 @@ export default {
       showPythonInstallAlert: false,
       showVaptfixVerifiedAlert: false,
       leftPanelTab: "assets",
+      assetTypeFilter: "assets",
+      assetTypeFilters: ASSET_TYPE_FILTERS,
       authStore: useAuthStore(),
       supportRequestsByHost: [],
       supportRequestCount: 0,
@@ -560,6 +616,8 @@ export default {
       expandedDescriptions: {},
       expandedVulnIndex: null,
       descriptionPreviewLimit: 280,
+      assetDescriptionExpanded: false,
+      assetDescriptionPreviewLimit: 140,
       currentVulnTab: 'auto',
       loadingAssetVulns: false,
       closedFixVulnerabilities: [],
@@ -632,55 +690,26 @@ class TLSConfigurator:
         this.closedFixVulnerabilities,
       );
     },
+    sourceAssetRows() {
+      if (this.assetTypeFilter === "assets") {
+        return this.authStore.assetRows || [];
+      }
+      return getDummyAssetsByType(this.assetTypeFilter);
+    },
+    displayAssetCount() {
+      if (this.assetTypeFilter === "assets") {
+        return this.authStore.assetCount;
+      }
+      return this.getFilteredSortedAssets().length;
+    },
     pagedAssets() {
       const start = (this.currentPage - 1) * this.pageSize;
-
-      // STEP 1: filter by search query
-      let list = this.authStore.assetRows;
-
-      if (this.query && this.query.trim()) {
-        const q = this.query.trim().toLowerCase();
-        list = list.filter(a =>
-          a.asset.toLowerCase().includes(q)
-        );
-      }
-
-      // STEP 1.5: filter by severity
-      if (this.selectedSeverity && this.selectedSeverity !== "all") {
-        list = list.filter(a => {
-          const priority = this.getPrioritySeverity(a);
-          return priority?.toLowerCase() === this.selectedSeverity;
-        });
-      }
-
-      // STEP 2: sort by severity
-      const sorted = [...list].sort((a, b) => {
-        return (
-          this.getSeverityRank(this.getPrioritySeverity(a)) -
-          this.getSeverityRank(this.getPrioritySeverity(b))
-        );
-      });
-
-      // STEP 3: paginate
+      const sorted = this.getFilteredSortedAssets();
       return sorted.slice(start, start + this.pageSize);
     },
     totalPages() {
-      let list = this.authStore.assetRows;
-
-      if (this.query && this.query.trim()) {
-        const q = this.query.trim().toLowerCase();
-        list = list.filter(a =>
-          a.asset.toLowerCase().includes(q)
-        );
-      }
-
-      if (this.selectedSeverity && this.selectedSeverity !== "all") {
-        list = list.filter(a => {
-          const priority = this.getPrioritySeverity(a);
-          return priority?.toLowerCase() === this.selectedSeverity;
-        });
-      }
-      return Math.ceil(list.length / this.pageSize);
+      const list = this.getFilteredSortedAssets();
+      return Math.max(1, Math.ceil(list.length / this.pageSize));
     },
     pageNumbers() {
       const total = this.totalPages;
@@ -729,6 +758,32 @@ class TLSConfigurator:
         this.authStore.selectedAssetDetail?.severity || 'Medium',
       );
     },
+    selectedAssetTypeBadge() {
+      if (this.assetTypeFilter === 'assets') return null;
+      return this.getAssetTypeBadgeCode(this.assetTypeFilter);
+    },
+    selectedAssetMetaLabel() {
+      return this.assetTypeFilter !== 'assets' ? 'Resolved IP' : 'Owner';
+    },
+    selectedAssetMetaValue() {
+      const detail = this.authStore.selectedAssetDetail;
+      if (!detail) return '';
+      if (this.assetTypeFilter !== 'assets') {
+        return detail.resolved_ip || '';
+      }
+      return detail.owner || '';
+    },
+    selectedAssetDescription() {
+      return this.authStore.selectedAssetDetail?.description || '';
+    },
+    displayAssetDescription() {
+      const text = this.selectedAssetDescription;
+      if (!text) return '';
+      if (this.assetDescriptionExpanded || text.length <= this.assetDescriptionPreviewLimit) {
+        return text;
+      }
+      return `${text.slice(0, this.assetDescriptionPreviewLimit).trimEnd()}...`;
+    },
     pagedHeldAssets() {
       return [...this.heldAssets].sort((a, b) => {
         const aSev = this.getHeldPrioritySeverity(a);
@@ -742,6 +797,19 @@ class TLSConfigurator:
       if (val === 'vulnerabilities' && oldVal !== 'vulnerabilities') {
         this.openFixPanelAlerts();
       }
+    },
+    assetTypeFilter() {
+      this.currentPage = 1;
+      this.query = "";
+      this.activeIndex = null;
+      this.resetActions();
+      this.authStore.assetSearchResults = [];
+      this.authStore.assetSearchCount = 0;
+      this.$nextTick(() => {
+        if (this.pagedAssets.length) {
+          this.setActive(this.pagedAssets[0]);
+        }
+      });
     },
     activeIndex() {
       this.expandedVulnIndex = null;
@@ -960,7 +1028,30 @@ class TLSConfigurator:
       let parts = formatted.split(".").slice(0, 4);
       this.ipAddress = parts.join(".");
     },
+    setAssetTypeFilter(type) {
+      if (this.assetTypeFilter === type) return;
+      this.assetTypeFilter = type;
+    },
+    getAssetTypeBadgeCode(type) {
+      if (type === "webapp") return { code: "WA", label: "Web App" };
+      if (type === "firewall") return { code: "FR", label: "Firewall" };
+      if (type === "server") return { code: "SR", label: "Server" };
+      return null;
+    },
+    getAssetTypeBadge(asset) {
+      if (this.assetTypeFilter === "assets") return null;
+      return this.getAssetTypeBadgeCode(asset?.member_type || this.assetTypeFilter);
+    },
+    getAssetSubLabel(asset) {
+      if (asset?.member_type === "webapp") return "Web App";
+      if (asset?.member_type === "firewall") return "Firewall";
+      if (asset?.member_type === "server") return "Server";
+      const memberType = this.authStore.memberType || "";
+      if (!memberType) return "";
+      return memberType.charAt(0).toUpperCase() + memberType.slice(1);
+    },
     handleDeleteClick() {
+      if (this.assetTypeFilter !== "assets") return;
       if (this.activeAction === "hold") {
         return;
       }
@@ -1002,8 +1093,26 @@ class TLSConfigurator:
       if (!asset?.asset) return;
       const requestSeq = ++this.assetFetchSeq;
       this.activeIndex = asset.asset;
-      this.loadingAssetVulns = true;
       this.expandedVulnIndex = null;
+      this.assetDescriptionExpanded = false;
+
+      if (this.assetTypeFilter !== "assets" || asset._isDummy) {
+        this.loadingAssetVulns = false;
+        this.closedFixVulnerabilities = [];
+        this.closedFixCount = 0;
+        this.supportRequestsByHost = [];
+        this.supportRequestCount = 0;
+        this.authStore.selectedAssetDetail = {
+          asset: asset.asset,
+          resolved_ip: asset.resolved_ip || "192.168.1.100",
+          description: asset.description || "",
+          severity: this.getPrioritySeverity(asset),
+        };
+        this.authStore.selectedAssetVulnerabilities = asset.dummyVulns || [];
+        return;
+      }
+
+      this.loadingAssetVulns = true;
 
       // Primary details first, so UI updates quickly for selected asset.
       await this.authStore.fetchSingleAssetVulnerabilities(asset.asset);
@@ -1031,6 +1140,7 @@ class TLSConfigurator:
       URL.revokeObjectURL(url);
     },
     toggleHoldMode() {
+      if (this.assetTypeFilter !== "assets") return;
       if (this.activeAction === "delete") return;
 
       const source = this.authStore.assetRows;
@@ -1199,8 +1309,12 @@ class TLSConfigurator:
       return "";
     },
     onSearchInput() {
+      this.currentPage = 1;
       if (!this.query) {
         this.clearSearch();
+        return;
+      }
+      if (this.assetTypeFilter !== "assets") {
         return;
       }
       this.authStore.searchAssets(this.query.trim());
@@ -1314,11 +1428,11 @@ class TLSConfigurator:
       this.currentVulnTab = tab;
     },
     getFilteredSortedAssets() {
-      let list = this.authStore.assetRows || [];
+      let list = [...(this.sourceAssetRows || [])];
 
       if (this.query && this.query.trim()) {
         const q = this.query.trim().toLowerCase();
-        list = list.filter(a => a.asset.toLowerCase().includes(q));
+        list = list.filter(a => String(a.asset || "").toLowerCase().includes(q));
       }
 
       if (this.selectedSeverity && this.selectedSeverity !== 'all') {
@@ -1328,7 +1442,7 @@ class TLSConfigurator:
         });
       }
 
-      return [...list].sort((a, b) => {
+      return list.sort((a, b) => {
         return (
           this.getSeverityRank(this.getPrioritySeverity(a)) -
           this.getSeverityRank(this.getPrioritySeverity(b))
@@ -1560,6 +1674,51 @@ class TLSConfigurator:
   color: #64748b;
 }
 
+.asset-type-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.asset-type-filter-btn {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.asset-type-filter-btn:hover {
+  color: #1e293b;
+  border-color: #cbd5e1;
+}
+
+.asset-type-filter-btn-active.asset-type-filter-btn-assets,
+.asset-type-filter-btn-active.asset-type-filter-btn-webapp {
+  background: #0f696e;
+  border-color: #0f696e;
+  color: #fff;
+  font-weight: 700;
+}
+
+.asset-type-filter-btn-active.asset-type-filter-btn-firewall {
+  background: #fff8f0;
+  border-color: #e65100;
+  color: #c45c00;
+  font-weight: 700;
+}
+
+.asset-type-filter-btn-active.asset-type-filter-btn-server {
+  background: #ede7f6;
+  border-color: #9575cd;
+  color: #5e35b1;
+  font-weight: 700;
+}
+
 .action-icon {
   font-size: 0.95rem;
   cursor: pointer;
@@ -1781,11 +1940,71 @@ class TLSConfigurator:
 /* right-panel-header / scroll — shared rules in main.css (.assets-right-panel) */
 
 .asset-detail-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
   font-size: 1.1rem;
   font-weight: 600;
   color: #0f172a;
   line-height: 1.3;
   margin: 0;
+}
+
+.asset-detail-title-text {
+  word-break: break-all;
+}
+
+.asset-type-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.asset-type-badge-sm {
+  width: 22px;
+  height: 22px;
+  font-size: 0.5rem;
+}
+
+.asset-type-badge-webapp,
+.asset-type-label-webapp {
+  background: #0f696e;
+  color: #fff;
+  border: 1px solid #0f696e;
+}
+
+.asset-type-badge-firewall,
+.asset-type-label-firewall {
+  background: #fff8f0;
+  color: #c45c00;
+  border: 1px solid #e65100;
+}
+
+.asset-type-badge-server,
+.asset-type-label-server {
+  background: #ede7f6;
+  color: #5e35b1;
+  border: 1px solid #9575cd;
+}
+
+.asset-type-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
 .status-open-badge {
@@ -1829,11 +2048,73 @@ class TLSConfigurator:
   flex-shrink: 0;
 }
 
+.right-panel-meta.right-panel-meta-column {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.meta-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.meta-inline-resolved .meta-label,
+.meta-inline-resolved .meta-value,
+.meta-inline-resolved .meta-separator {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.5;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.meta-separator {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.asset-description-block {
+  margin-top: 0;
+}
+
+.asset-description-heading {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 4px;
+}
+
+.asset-description-text {
+  font-size: 0.75rem;
+  color: #64748b;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.asset-read-more-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-top: 4px;
+  color: #0f696e;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.asset-read-more-btn:hover {
+  text-decoration: underline;
+}
+
 .meta-label {
   font-size: 0.62rem;
   color: #94a3b8;
   font-weight: 700;
-  margin-bottom: 2px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -1841,7 +2122,6 @@ class TLSConfigurator:
   font-size: 0.8rem;
   color: #475569;
   font-weight: 500;
-  margin: 0;
 }
 
 /* Detail tabs */
