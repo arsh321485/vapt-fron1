@@ -41,6 +41,13 @@
           </div>
 
           <div class="ra-body">
+            <!-- Loading spinner while catalog is being fetched from API -->
+            <div v-if="catalogLoading" class="ra-catalog-loading">
+              <span class="spinner-border spinner-border-sm text-secondary me-2"></span>
+              <span>Loading assets & vulnerabilities...</span>
+            </div>
+
+            <template v-else>
             <section class="ra-section">
               <div class="ra-section-head">
                 <div class="ra-section-title-wrap">
@@ -98,6 +105,7 @@
               </div>
               <p v-else class="ra-empty">No vulnerabilities found for this role.</p>
             </section>
+            </template>
           </div>
 
           <div class="ra-footer">
@@ -129,6 +137,7 @@ export default {
     roleOptions: { type: Array, default: () => [] },
     roleAssignments: { type: Object, required: true },
     catalog: { type: Object, required: true },
+    catalogLoading: { type: Boolean, default: false },
   },
   emits: ["update:show", "update:activeRole", "close", "apply"],
   data() {
@@ -471,4 +480,13 @@ export default {
 @keyframes raOut { from { transform: translateX(0); } to { transform: translateX(100%); } }
 @keyframes raFadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes raFadeOut { from { opacity: 1; } to { opacity: 0; } }
+
+.ra-catalog-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  font-size: 0.82rem;
+  color: #64748b;
+}
 </style>

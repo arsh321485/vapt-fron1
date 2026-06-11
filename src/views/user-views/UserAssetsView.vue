@@ -1471,6 +1471,10 @@ class TLSConfigurator:
       this.loadingAssetVulns = true;
       await this.authStore.fetchUserSingleAssetVulnerabilities(asset.asset);
       this.loadingAssetVulns = false;
+
+      // Sync card badge with actual loaded vuln counts (backend severity_counts may be stale)
+      this.syncAssetSeverityCounts(asset.asset);
+
       await this.loadSupportRequestsByHost(asset.asset);
       this.loadingClosedFix = true;
       const res = await this.authStore.getUserClosedVulnerabilities(asset.asset);
@@ -1480,6 +1484,17 @@ class TLSConfigurator:
       } else {
         this.closedFixVulnerabilities = [];
       }
+    },
+    syncAssetSeverityCounts(assetIp) {
+      const assetObj = this.assets.find(a => a.asset === assetIp);
+      if (!assetObj) return;
+      const vulns = this.authStore.selectedAssetVulnerabilities || [];
+      const counts = { critical: 0, high: 0, medium: 0, low: 0 };
+      vulns.forEach(v => {
+        const sev = String(v.severity || '').toLowerCase();
+        if (sev in counts) counts[sev]++;
+      });
+      assetObj.severity_counts = counts;
     },
     openFixPanelAlerts() {
       this.showPythonInstallAlert = true;

@@ -2845,11 +2845,7 @@ export const useAuthStore = defineStore("auth", {
             this.userDeletedVulnerabilityAssets,
           );
         }
-        vulns = filterDeletedVulnsForHost(
-          vulns,
-          assetIp,
-          this.userDeletedVulnerabilityAssets,
-        );
+        vulns = filterDeletedVulnsForHost(vulns, assetIp, this.userDeletedVulnerabilityAssets);
         this.selectedAssetVulnerabilities = vulns;
         this.selectedAssetDetail = {
           asset: res.data.asset || assetIp,
@@ -4196,9 +4192,7 @@ export const useAuthStore = defineStore("auth", {
           };
         }
 
-        const res = await endpoint.get(
-          `/api/admin/adminasset/report/${reportId}/vulnerabilities/`,
-        );
+        const res = await endpoint.get(`/api/admin/adminasset/report/${reportId}/vulnerabilities/`);
 
         const vulns = res.data?.vulnerabilities ?? [];
         this.allReportVulnerabilities = Array.isArray(vulns) ? vulns : [];
@@ -4458,11 +4452,10 @@ export const useAuthStore = defineStore("auth", {
       this.persistDeletedVulnerabilityAssets();
     },
 
-    syncAssetSeverityCountsAfterVulnDelete(
-      hostNames: string[],
-      severity: string = "Medium",
-    ) {
-      const sevKey = String(severity || "medium").trim().toLowerCase();
+    syncAssetSeverityCountsAfterVulnDelete(hostNames: string[], severity: string = "Medium") {
+      const sevKey = String(severity || "medium")
+        .trim()
+        .toLowerCase();
       if (!["critical", "high", "medium", "low"].includes(sevKey)) return;
 
       hostNames.forEach((host) => {
@@ -4516,9 +4509,7 @@ export const useAuthStore = defineStore("auth", {
           .filter((row: any) => row.plugin_name && row.host_name);
 
         const seen = new Set(
-          this.deletedVulnerabilityAssets.map(
-            (row: any) => `${row.plugin_name}::${row.host_name}`,
-          ),
+          this.deletedVulnerabilityAssets.map((row: any) => `${row.plugin_name}::${row.host_name}`),
         );
         restored.forEach((row: any) => {
           const key = `${row.plugin_name}::${row.host_name}`;
@@ -4549,11 +4540,7 @@ export const useAuthStore = defineStore("auth", {
         );
 
         const rows =
-          res.data?.deleted ??
-          res.data?.assets ??
-          res.data?.results ??
-          res.data?.items ??
-          [];
+          res.data?.deleted ?? res.data?.assets ?? res.data?.results ?? res.data?.items ?? [];
         const normalized = (Array.isArray(rows) ? rows : [])
           .map((row: any) => ({
             plugin_name: row.plugin_name || row.vul_name || "",
@@ -4583,6 +4570,23 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    // 🔹 ADMIN — Report assets & vulnerabilities filtered by team role
+    // GET /api/admin/users_details/report-assets-vulns/?role=<role>
+    async fetchReportAssetVulnsByRole(role: string) {
+      try {
+        const res = await endpoint.get(`/api/admin/users_details/report-assets-vulns/`, {
+          params: { role },
+        });
+        return { status: true, data: res.data };
+      } catch (error: any) {
+        return {
+          status: false,
+          data: null,
+          message: error.response?.data?.detail || "Failed to fetch role assets/vulns",
+        };
+      }
+    },
+
     async fetchHeldVulnerabilityAssets(force = false) {
       if (!force && this.heldVulnerabilityAssetsFetched) {
         return { status: true, data: this.heldVulnerabilityAssets };
@@ -4598,25 +4602,34 @@ export const useAuthStore = defineStore("auth", {
           `/api/admin/adminasset/report/${reportId}/vulnerability/hold-list/`,
         );
 
-        const rows =
-          res.data?.held ??
-          res.data?.assets ??
-          res.data?.results ??
-          res.data?.items ??
-          [];
-        const normalized = (Array.isArray(rows) ? rows : [])
-          .map((row: any) => ({
-            plugin_name: row.plugin_name || row.vul_name || "",
-            vul_name: row.plugin_name || row.vul_name || "",
-            host_name: row.host_name || row.asset || "",
-            severity: row.severity || "Medium",
-            status: row.status || "held",
-            _key: String(row.plugin_name || row.vul_name || "")
-              .trim()
-              .toLowerCase(),
-            selected: false,
-          }))
-          .filter((row: any) => row.plugin_name && row.host_name);
+        // API returns: { vulnerabilities: [{ plugin_name, severity, cvss_score, hosts: [{ host_name, held_at, held_by }] }] }
+        const vulnRows: any[] = Array.isArray(res.data?.vulnerabilities)
+          ? res.data.vulnerabilities
+          : [];
+
+        // Flatten: one entry per vuln+host pair
+        const normalized: any[] = [];
+        vulnRows.forEach((vuln: any) => {
+          const pluginName = String(vuln.plugin_name || vuln.vul_name || "").trim();
+          if (!pluginName) return;
+          const hosts: any[] = Array.isArray(vuln.hosts) ? vuln.hosts : [];
+          hosts.forEach((host: any) => {
+            const hostName = String(host.host_name || host.asset || "").trim();
+            if (!hostName) return;
+            normalized.push({
+              plugin_name: pluginName,
+              vul_name: pluginName,
+              host_name: hostName,
+              severity: vuln.severity || "Medium",
+              cvss_score: vuln.cvss_score || "",
+              held_at: host.held_at || "",
+              held_by: host.held_by || "",
+              status: "held",
+              _key: pluginName.toLowerCase(),
+              selected: false,
+            });
+          });
+        });
 
         const merged = new Map<string, any>();
         const mergeRow = (row: any) => {
@@ -4672,9 +4685,7 @@ export const useAuthStore = defineStore("auth", {
           return { status: false, message: "Report ID not found" };
         }
 
-        const res = await endpoint.get(
-          `/api/user/asset/report/${reportId}/vulnerabilities/`,
-        );
+        const res = await endpoint.get(`/api/user/asset/report/${reportId}/vulnerabilities/`);
 
         const vulns = res.data?.vulnerabilities ?? [];
         this.userAllReportVulnerabilities = Array.isArray(vulns) ? vulns : [];
@@ -4996,25 +5007,35 @@ export const useAuthStore = defineStore("auth", {
           `/api/user/asset/report/${reportId}/vulnerability/hold-list/`,
         );
 
-        const rows =
-          res.data?.held ??
-          res.data?.assets ??
-          res.data?.results ??
-          res.data?.items ??
-          [];
-        const normalized = (Array.isArray(rows) ? rows : [])
-          .map((row: any) => ({
-            plugin_name: row.plugin_name || row.vul_name || "",
-            vul_name: row.plugin_name || row.vul_name || "",
-            host_name: row.host_name || row.asset || "",
-            severity: row.severity || "Medium",
-            status: row.status || "held",
-            _key: String(row.plugin_name || row.vul_name || "")
-              .trim()
-              .toLowerCase(),
-            selected: false,
-          }))
-          .filter((row: any) => row.plugin_name && row.host_name);
+        // API returns: { vulnerabilities: [{ plugin_name, severity, hosts: [{ host_name, held_at, held_by }] }] }
+        const vulnRows: any[] = Array.isArray(res.data?.vulnerabilities)
+          ? res.data.vulnerabilities
+          : [];
+
+        // Flatten: one entry per vuln+host pair
+        const normalized: any[] = [];
+        vulnRows.forEach((vuln: any) => {
+          const pluginName = String(vuln.plugin_name || vuln.vul_name || "").trim();
+          if (!pluginName) return;
+          const hosts: any[] = Array.isArray(vuln.hosts) ? vuln.hosts : [];
+          hosts.forEach((host: any) => {
+            const hostName = String(host.host_name || host.asset || "").trim();
+            if (!hostName) return;
+            normalized.push({
+              plugin_name: pluginName,
+              vul_name: pluginName,
+              host_name: hostName,
+              severity: vuln.severity || "Medium",
+              cvss_score: vuln.cvss_score || "",
+              assigned_team: vuln.assigned_team || "",
+              held_at: host.held_at || "",
+              held_by: host.held_by || "",
+              status: "held",
+              _key: pluginName.toLowerCase(),
+              selected: false,
+            });
+          });
+        });
 
         const merged = new Map<string, any>();
         const mergeRow = (row: any) => {
@@ -5057,11 +5078,7 @@ export const useAuthStore = defineStore("auth", {
         );
 
         const rows =
-          res.data?.deleted ??
-          res.data?.assets ??
-          res.data?.results ??
-          res.data?.items ??
-          [];
+          res.data?.deleted ?? res.data?.assets ?? res.data?.results ?? res.data?.items ?? [];
         const normalized = (Array.isArray(rows) ? rows : [])
           .map((row: any) => ({
             plugin_name: row.plugin_name || row.vul_name || "",
@@ -5373,11 +5390,7 @@ export const useAuthStore = defineStore("auth", {
             this.deletedVulnerabilityAssets,
           );
         }
-        vulns = filterDeletedVulnsForHost(
-          vulns,
-          asset,
-          this.deletedVulnerabilityAssets,
-        );
+        vulns = filterDeletedVulnsForHost(vulns, asset, this.deletedVulnerabilityAssets);
 
         // ✅ vulnerabilities list
         this.selectedAssetVulnerabilities = vulns;

@@ -351,6 +351,7 @@
       :role-options="roleOptions"
       :role-assignments="roleAssignments"
       :catalog="roleAssignmentCatalog"
+      :catalog-loading="catalogLoading"
       @update:show="showAssignmentModal = $event"
       @update:active-role="activeAssignmentRole = $event"
       @close="closeAssignmentModal"
@@ -372,7 +373,6 @@ import {
   getTeamTabUnderlineStyle,
 } from '@/utils/teamColors';
 import {
-  ROLE_ASSIGNMENT_CATALOG,
   createEmptyRoleAssignments,
   getAssignmentSummaryText,
   clearRoleAssignments,
@@ -436,7 +436,9 @@ export default {
       showAssignmentModal: false,
       activeAssignmentRole: null,
       roleAssignments: createEmptyRoleAssignments(),
-      roleAssignmentCatalog: ROLE_ASSIGNMENT_CATALOG,
+      roleAssignmentCatalog: { PM: { assets: [], vulnerabilities: [] }, CM: { assets: [], vulnerabilities: [] }, NS: { assets: [], vulnerabilities: [] }, AF: { assets: [], vulnerabilities: [] } },
+      vulnIdToData: {},
+      catalogLoading: false,
     };
   },
   computed: {
@@ -514,10 +516,75 @@ export default {
       this.closeAssignmentModal();
     }
   },
-  openAssignmentModal(roleShort) {
+  async openAssignmentModal(roleShort) {
     if (!roleShort || !this.selectedRoles2.includes(roleShort)) return;
     this.activeAssignmentRole = roleShort;
     this.showAssignmentModal = true;
+
+    // Already loaded → skip
+    if (
+      this.roleAssignmentCatalog[roleShort]?.assets?.length ||
+      this.roleAssignmentCatalog[roleShort]?.vulnerabilities?.length
+    ) return;
+
+    const roleFullMap = {
+      PM: 'Patch Management',
+      CM: 'Configuration Management',
+      NS: 'Network Security',
+      AF: 'Architectural Flaws',
+    };
+
+    this.catalogLoading = true;
+    const res = await this.authStore.fetchReportAssetVulnsByRole(roleFullMap[roleShort]);
+    this.catalogLoading = false;
+
+    if (!res.status || !res.data) return;
+
+    // API response format:
+    // { assets: [{ host_name, os, vuln_count, vulnerabilities: [{plugin_name, severity, cvss_score}] }] }
+    const apiAssets = res.data.assets || [];
+
+    // Helper: highest severity from asset's vuln list
+    const topSeverity = (vulns) => {
+      const order = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+      return vulns.reduce((top, v) => {
+        const s = v.severity || '';
+        return (order[s] ?? 9) < (order[top] ?? 9) ? s : top;
+      }, '');
+    };
+
+    // Build asset catalog items — id = host_name (used directly in payload)
+    const catalogAssets = apiAssets.map(a => ({
+      id: String(a.host_name || '').trim(),
+      name: String(a.host_name || '').trim(),
+      os: a.os || '',
+      severity: topSeverity(a.vulnerabilities || []),
+    })).filter(a => a.id);
+
+    // Flatten nested vulns: each asset.vulnerabilities[] → one entry per plugin+host
+    if (!this.vulnIdToData[roleShort]) this.vulnIdToData[roleShort] = {};
+    let vulnIndex = 0;
+    const catalogVulns = [];
+    apiAssets.forEach(a => {
+      const hostName = String(a.host_name || '').trim();
+      (a.vulnerabilities || []).forEach(v => {
+        const pluginName = String(v.plugin_name || '').trim();
+        if (!pluginName || !hostName) return;
+        const id = `${roleShort}-v-${vulnIndex++}`;
+        this.vulnIdToData[roleShort][id] = { plugin_name: pluginName, host_name: hostName };
+        catalogVulns.push({
+          id,
+          name: pluginName,
+          asset: hostName,
+          severity: v.severity || '',
+        });
+      });
+    });
+
+    this.roleAssignmentCatalog[roleShort] = {
+      assets: catalogAssets,
+      vulnerabilities: catalogVulns,
+    };
   },
   closeAssignmentModal() {
     this.showAssignmentModal = false;
@@ -529,6 +596,10 @@ export default {
     resetAllRoleAssignments(this.roleAssignments);
     this.activeAssignmentRole = null;
     this.closeAssignmentModal();
+    // Reset catalog so fresh data is fetched next time
+    this.roleAssignmentCatalog = { PM: { assets: [], vulnerabilities: [] }, CM: { assets: [], vulnerabilities: [] }, NS: { assets: [], vulnerabilities: [] }, AF: { assets: [], vulnerabilities: [] } };
+    this.vulnIdToData = {};
+    this.catalogLoading = false;
   },
 
   async saveUser() {
@@ -566,6 +637,21 @@ export default {
 
     const platform = this.authStore.detectAdminCommunicationPlatform();
 
+    // Build role_assignments from drawer selections
+    const role_assignments = {};
+    this.selectedRoles2.forEach(roleShort => {
+      const fullName = roleFullMap[roleShort];
+      const ra = this.roleAssignments[roleShort];
+      if (!ra) return;
+      const assets = [...(ra.assets || [])];
+      const vulns = (ra.vulnerabilities || [])
+        .map(id => this.vulnIdToData[roleShort]?.[id])
+        .filter(Boolean);
+      if (assets.length || vulns.length) {
+        role_assignments[fullName] = { assets, vulns };
+      }
+    });
+
     const payload = {
       admin_id: adminId,
       user_type: this.form.user_type,
@@ -573,6 +659,7 @@ export default {
       last_name: this.form.last_name,
       email: this.form.email,
       Member_role: memberRoles,
+      ...(Object.keys(role_assignments).length && { role_assignments }),
     };
 
     const res = await this.authStore.addTeamMemberWithPlatformSync(payload);

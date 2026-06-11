@@ -36,7 +36,7 @@
 
       <div class="av-vuln-list asset-list-scroll" :class="{ 'av-vuln-list--loading': loading }">
         <div
-          v-for="item in filteredVulns"
+          v-for="item in pagedVulns"
           :key="item._key"
           class="asset-item-new"
           :class="{ 'asset-item-active': selectedKey === item._key && !showCheckboxes && !showHoldCheckboxes }"
@@ -110,6 +110,21 @@
           </div>
         </div>
         <p v-if="!filteredVulns.length" class="av-empty-list">No vulnerabilities found.</p>
+
+        <!-- Pagination -->
+        <nav v-if="vulnTotalPages > 1" class="pagination-bottom">
+          <ul class="pagination pagination-sm mb-0 custom-pagination">
+            <li class="page-item" :class="{ disabled: vulnCurrentPage === 1 }">
+              <a class="page-link" href="#" @click.prevent="vulnPrevPage">Prev</a>
+            </li>
+            <li v-for="p in vulnPageNumbers" :key="p" class="page-item" :class="{ active: vulnCurrentPage === p }">
+              <a class="page-link" href="#" @click.prevent="vulnGoToPage(p)">{{ p }}</a>
+            </li>
+            <li class="page-item" :class="{ disabled: vulnCurrentPage === vulnTotalPages }">
+              <a class="page-link" href="#" @click.prevent="vulnNextPage">Next</a>
+            </li>
+          </ul>
+        </nav>
       </div>
 
       <!-- Mitigation on Hold -->
@@ -816,6 +831,8 @@ export default {
       vulnAssetsByKey: {},
       loadingVulnAssetsKey: null,
       selectedAssetHost: null,
+      vulnCurrentPage: 1,
+      vulnPageSize: 5,
       codeCopied: false,
       automationCode: `import paramiko\nimport requests\nimport subprocess\nimport re\nfrom datetime import import datetime\n\nclass TLSConfigurator:\n    def __init__(self, host, username, password):\n        self.host = host\n        self.username = username\n        self.password = password\n        self.ssh_client = paramiko.SSHClient()\n        self.log = []\n\n    def connect(self):\n        """Establish SSH connection to target host"""\n        self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())\n        try:\n            self.ssh_client.connect(self.host, username=self.username, password=self.password)\n            self.log_action("SSH connection established")\n            return True\n        except Exception as e:\n            self.log_action(f"Connection failed: {str(e)}")\n            return False`,
     };
@@ -828,6 +845,15 @@ export default {
       return this.isUser
         ? this.authStore.userHeldVulnerabilityAssets
         : this.authStore.heldVulnerabilityAssets;
+    },
+    // IPs of assets held at the asset level (All Assets > Hold)
+    heldAssetIpSet() {
+      if (!this.isUser) return new Set();
+      return new Set(
+        (this.authStore.cachedUserHeldAssets || [])
+          .map(a => String(a.asset || '').trim())
+          .filter(Boolean),
+      );
     },
     deletedVulnAssetRows() {
       return this.isUser
@@ -900,6 +926,22 @@ export default {
       });
       return list;
     },
+    vulnTotalPages() {
+      return Math.ceil(this.filteredVulns.length / this.vulnPageSize);
+    },
+    vulnPageNumbers() {
+      const total = this.vulnTotalPages;
+      const maxVisible = 5;
+      if (total <= maxVisible) return Array.from({ length: total }, (_, i) => i + 1);
+      let start = Math.max(1, this.vulnCurrentPage - Math.floor(maxVisible / 2));
+      let end = start + maxVisible - 1;
+      if (end > total) { end = total; start = end - maxVisible + 1; }
+      return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+    },
+    pagedVulns() {
+      const start = (this.vulnCurrentPage - 1) * this.vulnPageSize;
+      return this.filteredVulns.slice(start, start + this.vulnPageSize);
+    },
     mitigationHoldItems() {
       return this.heldVulnAssetRows || [];
     },
@@ -953,6 +995,7 @@ export default {
   },
   watch: {
     filteredVulns(list) {
+      this.vulnCurrentPage = 1; // filter change hone pe page 1 pe jaao
       if (!list.length) {
         this.selectedKey = null;
         this.expandedVulnIndex = null;
@@ -962,6 +1005,9 @@ export default {
       if (idx === -1) {
         this.selectVulnFromList(list[0]);
       }
+    },
+    vulnQuery() {
+      this.vulnCurrentPage = 1; // search change pe page 1 pe jaao
     },
   },
   async mounted() {
@@ -1072,6 +1118,7 @@ export default {
 
       assets = assets.filter(a => !this.getHeldHostsForVuln(item).has(a.host_name));
       assets = assets.filter(a => !this.getDeletedHostsForVuln(item).has(a.host_name));
+      assets = assets.filter(a => !this.heldAssetIpSet.has(a.host_name));
 
       return assets;
     },
@@ -1248,6 +1295,7 @@ export default {
         if (status === 'deleted' || status === 'held') return false;
         if (deletedHosts.has(a.host_name)) return false;
         if (heldHosts.has(a.host_name)) return false;
+        if (this.heldAssetIpSet.has(a.host_name)) return false;
         return true;
       });
 
@@ -1547,6 +1595,7 @@ export default {
           this.authStore.fetchUserVulnerabilityRegister(true),
           this.loadHeldVulnerabilityAssets(true),
           this.loadDeletedVulnerabilityAssets(true),
+          this.authStore.fetchUserHeldAssets(true), // load asset-level held list
         ]);
       } else {
         await Promise.all([
@@ -1726,8 +1775,19 @@ export default {
       const raw = String(sev || '').trim();
       return raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
     },
+    vulnGoToPage(page) {
+      if (page < 1 || page > this.vulnTotalPages) return;
+      this.vulnCurrentPage = page;
+    },
+    vulnPrevPage() {
+      if (this.vulnCurrentPage > 1) this.vulnCurrentPage--;
+    },
+    vulnNextPage() {
+      if (this.vulnCurrentPage < this.vulnTotalPages) this.vulnCurrentPage++;
+    },
     setSeverityFilter(type) {
       this.expandedVulnIndex = null;
+      this.vulnCurrentPage = 1;
       if (type === 'All') {
         this.activeFilters = ['All'];
         return;
@@ -2146,6 +2206,36 @@ export default {
 </script>
 
 <style scoped>
+/* Pagination — same style as All Assets tab */
+.pagination-bottom {
+  padding: 10px 16px;
+  display: flex;
+  justify-content: center;
+  background: white;
+  border-top: 1px solid rgba(203, 196, 208, 0.15);
+}
+.custom-pagination .page-link {
+  color: #64748b;
+  background: transparent;
+  border: none;
+  font-weight: 500;
+  font-size: 0.75rem;
+  padding: 5px 9px;
+  border-radius: 50%;
+}
+.custom-pagination .page-item.active .page-link {
+  background: #0f696e;
+  color: white;
+}
+.custom-pagination .page-item.disabled .page-link {
+  color: #cbd5e1;
+  pointer-events: none;
+}
+.custom-pagination .page-link:hover:not(.active) {
+  background: #f1f5f9;
+  color: #0f696e;
+}
+
 .av-mode-root {
   display: flex;
   width: 100%;
