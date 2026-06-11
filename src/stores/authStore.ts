@@ -7,6 +7,11 @@ import {
   normalizeAssetVulnerabilityList,
 } from "@/utils/assetVulnerabilities";
 
+interface RoleAssignmentEntry {
+  assets: string[];
+  vulns: { plugin_name: string; host_name: string }[];
+}
+
 interface CreateUserPayload {
   admin_id: string;
   user_type: string;
@@ -15,6 +20,7 @@ interface CreateUserPayload {
   last_name?: string;
   Member_role: string | string[];
   slack_bot_token?: string;
+  role_assignments?: Record<string, RoleAssignmentEntry>;
 }
 
 interface RiskCriteriaPayload {
