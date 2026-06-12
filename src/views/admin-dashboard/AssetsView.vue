@@ -29,6 +29,14 @@
                 >
                   All Vulnerabilities
                 </button>
+                <button
+                  type="button"
+                  class="assets-mode-tab"
+                  :class="{ 'assets-mode-tab-active': leftPanelTab === 'fix' }"
+                  @click="leftPanelTab = 'fix'"
+                >
+                  Fix
+                </button>
               </div>
 
             <div v-if="leftPanelTab === 'assets'" class="assets-split-panel">
@@ -502,8 +510,9 @@
               </div>
             </div>
 
-            <div v-else class="assets-vuln-mode-wrap">
+            <div v-else-if="leftPanelTab === 'vulnerabilities'" class="assets-vuln-mode-wrap">
               <AssetsVulnerabilitiesMode
+                ref="vulnMode"
                 :is-user="false"
                 :show-python-alert="showPythonInstallAlert"
                 :show-verified-alert="showVaptfixVerifiedAlert"
@@ -511,6 +520,10 @@
                 @close-verified-alert="showVaptfixVerifiedAlert = false"
                 @vuln-assets-deleted="onVulnAssetsDeleted"
               />
+            </div>
+
+            <div v-else-if="leftPanelTab === 'fix'" class="assets-vuln-mode-wrap">
+              <AssetsFixMode :is-user="false" />
             </div>
 
             </div>
@@ -556,6 +569,7 @@
 import DashboardMenu from "@/components/admin-component/DashboardMenu.vue";
 import DashboardHeader from "@/components/admin-component/DashboardHeader.vue";
 import AssetsVulnerabilitiesMode from "@/components/assets/AssetsVulnerabilitiesMode.vue";
+import AssetsFixMode from "@/components/assets/AssetsFixMode.vue";
 import ManualRemediationStepsPanel from "@/components/assets/ManualRemediationStepsPanel.vue";
 import AutomatedFixPanel from "@/components/assets/AutomatedFixPanel.vue";
 import PythonInstallGuideModal from "@/components/assets/PythonInstallGuideModal.vue";
@@ -578,6 +592,7 @@ export default {
     DashboardMenu,
     DashboardHeader,
     AssetsVulnerabilitiesMode,
+    AssetsFixMode,
     ManualRemediationStepsPanel,
     AutomatedFixPanel,
     PythonInstallGuideModal,
@@ -795,10 +810,10 @@ class TLSConfigurator:
   },
   watch: {
     leftPanelTab(val, oldVal) {
-      if (val === 'vulnerabilities' && oldVal !== 'vulnerabilities') {
-        this.openFixPanelAlerts();
+      if ((val === 'vulnerabilities' || val === 'fix') && oldVal !== val) {
+        if (val === 'vulnerabilities') this.openFixPanelAlerts();
       }
-      if (val === 'assets' && oldVal === 'vulnerabilities') {
+      if (val === 'assets' && (oldVal === 'vulnerabilities' || oldVal === 'fix')) {
         this.syncAssetsAfterVulnTab();
       }
     },
@@ -834,9 +849,11 @@ class TLSConfigurator:
       deep: true,
       handler(newQuery, oldQuery) {
         if (this.$route.name !== 'assets') return;
-        const asset = newQuery?.asset;
+        const asset = newQuery?.asset || newQuery?.host_name;
         const plugin = newQuery?.plugin_name || newQuery?.vul_name;
-        if (!asset && !plugin) return;
+        const allVulMode = newQuery?.mode === 'vulnerabilities' || newQuery?.leftPanel === 'vulnerabilities';
+        if (!asset && !plugin && !allVulMode) return;
+        if (allVulMode && !plugin) return;
         if (JSON.stringify(newQuery) === JSON.stringify(oldQuery)) return;
         this.applyRouteQueryContext();
       },
@@ -1506,13 +1523,31 @@ class TLSConfigurator:
         }
       });
     },
+    async focusAllVulFromQuery(pluginName, assetHost) {
+      for (let i = 0; i < 15; i++) {
+        const mode = this.$refs.vulnMode;
+        if (mode?.focusVulnerabilityFromQuery) {
+          await mode.focusVulnerabilityFromQuery({ pluginName, assetHost });
+          return;
+        }
+        await new Promise(r => setTimeout(r, 100));
+      }
+    },
     async applyRouteQueryContext() {
       const q = this.$route.query || {};
-      const assetIp = q.asset || q.assetIp;
+      const assetIp = q.asset || q.assetIp || q.host_name;
       const pluginName = q.plugin_name || q.vul_name;
       const vulnId = q.id;
+      const allVulMode = q.mode === 'vulnerabilities' || q.leftPanel === 'vulnerabilities';
 
       if (!assetIp && !pluginName) return;
+
+      if (allVulMode && pluginName) {
+        this.leftPanelTab = 'vulnerabilities';
+        await this.$nextTick();
+        await this.focusAllVulFromQuery(pluginName, assetIp);
+        return;
+      }
 
       this.leftPanelTab = 'assets';
       this.activeTab = q.tab === 'exceptions' ? 'exceptions' : 'vulnerabilities';
@@ -1648,7 +1683,8 @@ class TLSConfigurator:
   overflow: hidden;
 }
 
-.assets-vuln-mode-wrap :deep(.av-mode-root) {
+.assets-vuln-mode-wrap :deep(.av-mode-root),
+.assets-vuln-mode-wrap :deep(.af-mode-root) {
   flex: 1;
   min-height: 0;
   height: 100%;
@@ -2209,9 +2245,9 @@ class TLSConfigurator:
 }
 .sev-pill:hover { background: #f2f3f6; }
 .sev-pill-active {
-  background: #e0f2f1 !important;
-  color: #0f696e !important;
-  border-color: #0f696e !important;
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+  border-color: #2563eb !important;
   font-weight: 700;
 }
 .sev-pill-critical { color: #b42318 !important; background: #f8dede !important; }

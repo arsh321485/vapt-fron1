@@ -590,6 +590,47 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    // ✅ Update User Profile (Admin)
+    async updateUserProfile(payload: Record<string, string>) {
+      try {
+        const res = await endpoint.patch("/api/admin/users/profile/", payload);
+        const userObj = res.data?.user ?? res.data?.data?.user ?? null;
+        if (userObj) {
+          this.user = userObj;
+          sessionStorage.setItem("user", JSON.stringify(userObj));
+          localStorage.setItem("user", JSON.stringify(userObj));
+        }
+        return { status: true, data: res.data };
+      } catch (error: any) {
+        return {
+          status: false,
+          message: error.response?.data?.message || error.message || "Failed to update profile",
+          details: error.response?.data || null,
+        };
+      }
+    },
+
+    // ✅ Update Member Profile (User portal)
+    async updateMemberProfile(payload: { first_name?: string; last_name?: string }) {
+      try {
+        const res = await endpoint.patch("/api/admin/users_details/member-profile/", payload);
+        const userObj = res.data?.user ?? res.data?.data?.user ?? res.data ?? null;
+        if (userObj && typeof userObj === "object") {
+          const merged = { ...(this.user || {}), ...userObj };
+          this.user = merged;
+          sessionStorage.setItem("user", JSON.stringify(merged));
+          localStorage.setItem("user", JSON.stringify(merged));
+        }
+        return { status: true, data: res.data };
+      } catch (error: any) {
+        return {
+          status: false,
+          message: error.response?.data?.message || error.message || "Failed to update profile",
+          details: error.response?.data || null,
+        };
+      }
+    },
+
     // ✅ Change Password
     async changePassword(payload: {
       old_password: string;

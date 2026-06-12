@@ -18,6 +18,7 @@ function isUserAppRoute(path: string) {
   if (!path) return false;
   const prefixes = [
     "/userdashboard",
+    "/user-manage-account",
     "/userassets",
     "/userexception",
     "/userVulnerabilityregister",

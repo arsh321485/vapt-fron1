@@ -397,11 +397,11 @@ export default {
 
 /* Active states */
 .st-tab-active {
-  background: #e0f2f1 !important;
-  color: #0f696e !important;
-  border-color: #0f696e !important;
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+  border-color: #2563eb !important;
 }
-.st-tab-active .st-tab-count { background: #0f696e; color: white; }
+.st-tab-active .st-tab-count { background: #2563eb; color: white; }
 
 .st-tab-active-open {
   background: #fdeaea !important;

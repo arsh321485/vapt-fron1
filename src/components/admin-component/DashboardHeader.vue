@@ -39,8 +39,17 @@
   Add User
 </router-link> -->
 <router-link
+  :to="{ path: '/manage-account', query: { returnTo: $route.fullPath } }"
+  class="btn btn-sm btn-outline-secondary w-100 mb-2"
+  @click="showDropdown = false"
+>
+  Manage Account
+</router-link>
+
+<router-link
   :to="{ path: '/riskcriteria', query: { returnTo: $route.fullPath } }"
   class="btn btn-sm btn-outline-primary w-100 mb-2"
+  @click="showDropdown = false"
 >
  Update Risk Criteria
 </router-link>

@@ -1468,7 +1468,15 @@ html.legal-doc-sticky-context body {
   background: var(--sev-low-bg) !important;
 }
 
-/* Severity filter pills — active state keeps each severity palette (not generic teal) */
+/* Severity filter pills — "All" uses blue (distinct from Low green) */
+.sev-pill.sev-pill-active:not(.sev-pill-critical):not(.sev-pill-high):not(.sev-pill-medium):not(.sev-pill-low) {
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+  border-color: #2563eb !important;
+  font-weight: 700;
+}
+
+/* Severity filter pills — active state keeps each severity palette */
 .sev-pill.sev-pill-critical.sev-pill-active {
   color: var(--sev-critical-text) !important;
   background: var(--sev-critical-bg) !important;
@@ -1895,13 +1903,13 @@ th.sev-low {
 }
 
 .vr-tab-active {
-  background: #e0f2f1 !important;
-  color: #0f696e !important;
-  border-color: #0f696e !important;
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+  border-color: #2563eb !important;
 }
 
 .vr-tab-active .vr-tab-count {
-  background: #0f696e;
+  background: #2563eb;
   color: #ffffff;
 }
 
@@ -1924,6 +1932,18 @@ th.sev-low {
 
 .vr-tab-active-closed .vr-tab-count {
   background: #16a34a;
+  color: #ffffff;
+}
+
+/* Support request status tabs — "All" uses blue */
+.st-tab-active {
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+  border-color: #2563eb !important;
+}
+
+.st-tab-active .st-tab-count {
+  background: #2563eb;
   color: #ffffff;
 }
 
