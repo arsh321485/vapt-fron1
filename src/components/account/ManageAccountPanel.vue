@@ -70,6 +70,14 @@
           <p class="ma-section-desc">Keep your account details up to date.</p>
 
           <div class="row g-3">
+            <div class="col-md-6">
+              <label class="ma-label">First Name</label>
+              <input v-model="firstName" type="text" class="form-control ma-input" placeholder="First name" />
+            </div>
+            <div class="col-md-6">
+              <label class="ma-label">Last Name</label>
+              <input v-model="lastName" type="text" class="form-control ma-input" placeholder="Last name" />
+            </div>
             <div class="col-12">
               <label class="ma-label">Email</label>
               <input :value="userEmail" type="email" class="form-control ma-input" disabled />
@@ -92,7 +100,7 @@
             </div>
           </div>
 
-          <div v-if="mode === 'admin'" class="ma-actions">
+          <div class="ma-actions">
             <button type="button" class="btn ma-btn-primary" :disabled="profileSaving" @click="saveProfile">
               <span v-if="profileSaving" class="spinner-border spinner-border-sm me-1"></span>
               Save Profile
@@ -356,10 +364,20 @@ export default {
     async saveProfile() {
       this.profileSaving = true;
       try {
-        const response = await this.authStore.updateUserProfile({
-          organisation_name: this.orgName,
-          organisation_url: this.orgUrl,
-        });
+        let response;
+        if (this.mode === 'user' && this.isMember) {
+          response = await this.authStore.updateMemberProfile({
+            first_name: this.firstName,
+            last_name: this.lastName,
+          });
+        } else {
+          response = await this.authStore.updateUserProfile({
+            firstname: this.firstName,
+            lastname: this.lastName,
+            organisation_name: this.orgName,
+            organisation_url: this.orgUrl,
+          });
+        }
 
         if (response.status) {
           await this.loadProfile();
