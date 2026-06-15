@@ -34,7 +34,7 @@
         </div>
 
         <!-- Upgrade -->
-        <router-link to="/pricingplan" class="btn btn-sm btn-outline-dark w-100 mb-2">
+        <router-link to="/pricingplan" class="btn btn-sm btn-outline-dark w-100 mb-2" @click="showDropdown = false">
           Upgrade Plan
         </router-link>
 

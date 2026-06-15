@@ -35,6 +35,10 @@ import SupportCenterView from "../views/admin-views/SupportCenterView.vue";
 import RiskCriteriaView from "../views/admin-views/RiskCriteriaView.vue";
 import HowitWork from "../components/admin-component/HowitWork.vue";
 import Profile from "../components/admin-component/Profile.vue";
+import AdminManageAccountView from "../views/admin-dashboard/AdminManageAccountView.vue";
+import AdminSettingsView from "../views/admin-dashboard/AdminSettingsView.vue";
+import UserManageAccountView from "../views/user-views/UserManageAccountView.vue";
+import UserSettingsView from "../views/user-views/UserSettingsView.vue";
 import ResetPasswordView from "../views/admin-views/ResetPasswordView.vue";
 import NotificationPanel from "../components/admin-component/NotificationPanel.vue";
 
@@ -372,6 +376,18 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
+      path: "/manage-account",
+      name: "manage-account",
+      component: AdminManageAccountView,
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: "/settings",
+      name: "settings",
+      component: AdminSettingsView,
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
       path: "/set-password/:uidb64/:token",
       name: "set-password",
       component: ResetPasswordView,
@@ -418,6 +434,18 @@ const router = createRouter({
       path: "/userdashboard",
       name: "userdashboard1",
       component: UserDashboard1View,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/user-manage-account",
+      name: "user-manage-account",
+      component: UserManageAccountView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/user-settings",
+      name: "user-settings",
+      component: UserSettingsView,
       meta: { requiresAuth: true },
     },
     {

@@ -1818,6 +1818,68 @@ export default {
       const idx = this.filteredVulns.findIndex(x => x._key === v._key);
       return idx >= 0 ? idx % 3 : 0;
     },
+    findVulnByPluginName(pluginName) {
+      const query = String(pluginName || '').trim().toLowerCase();
+      if (!query) return null;
+      const pools = [this.filteredVulns, this.groupedVulns];
+      for (const pool of pools) {
+        const match = (pool || []).find(v =>
+          v._key === query ||
+          String(v.vul_name || '').toLowerCase() === query ||
+          String(v.plugin_name || '').toLowerCase() === query,
+        );
+        if (match) return match;
+      }
+      return null;
+    },
+    async waitForVulnListReady() {
+      if (this.loading) {
+        await new Promise((resolve) => {
+          const unwatch = this.$watch('loading', (val) => {
+            if (!val) {
+              unwatch();
+              resolve();
+            }
+          });
+        });
+      } else if (!this.groupedVulns.length) {
+        await this.loadVulnerabilities();
+      }
+    },
+    async focusVulnerabilityFromQuery({ pluginName, assetHost } = {}) {
+      const name = String(pluginName || '').trim();
+      if (!name) return false;
+
+      await this.waitForVulnListReady();
+
+      const vuln = this.findVulnByPluginName(name);
+      if (!vuln) return false;
+
+      const idx = this.filteredVulns.findIndex(v => v._key === vuln._key);
+      if (idx >= 0) {
+        this.vulnCurrentPage = Math.floor(idx / this.vulnPageSize) + 1;
+      }
+
+      await this.selectVulnFromList(vuln);
+
+      const host = String(assetHost || '').trim();
+      if (host) {
+        await this.loadVulnAssets(vuln, false);
+        const assetRow = this.getVulnAssets(vuln).find(
+          a => String(a.host_name || '').trim() === host,
+        );
+        if (assetRow) {
+          this.selectVulnAsset(vuln, assetRow, true);
+          return true;
+        }
+      }
+
+      this.expandedVulnIndex = 0;
+      await this.$nextTick();
+      const panel = this.panelVulns[0];
+      this.scrollToAccordion(panel?._panelKey || vuln._key);
+      return true;
+    },
     async selectVulnFromList(item) {
       if (this.showCheckboxes || this.showHoldCheckboxes) return;
       const idx = this.filteredVulns.findIndex(v => v._key === item._key);
@@ -3889,9 +3951,9 @@ export default {
 }
 
 .sev-pill-active {
-  background: #e0f2f1 !important;
-  color: #0f696e !important;
-  border-color: #0f696e !important;
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+  border-color: #2563eb !important;
   font-weight: 700;
 }
 

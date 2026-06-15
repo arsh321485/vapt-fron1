@@ -68,6 +68,15 @@
           <p class="menu-heading">Support Request</p></button>
         </div>
 
+         <!-- SETTINGS -->
+         <div>
+          <router-link :to="{ path: '/settings', query: { returnTo: route.fullPath } }">
+          <button class="btn border-0" :class="{ activeBtn: isActive('/settings') }">
+          <i class="bi bi-gear nav-menu"></i>
+          <p class="menu-heading">Settings</p></button>
+          </router-link>
+        </div>
+
         <!-- TICKETS - Restricted during testing -->
        <!--  <div>
           <button class="btn border-0" :class="{ activeBtn: isActive('/supportticket') }" @click="navigateToTickets()">

@@ -140,14 +140,15 @@
                 </div> -->
               </div>
 
-              <!-- View Report Button -->
-              <button
-                class="btn fw-semibold px-3 py-2 bg-white mt-5"
-                style="border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; color: #374151; display:flex; align-items:center; gap:6px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);"
-                @click="$router.push('/viewreport')"
-              >
-                <i class="bi bi-eye"></i>View Report
-              </button>
+              <div class="d-flex align-items-center gap-2 mt-5 flex-wrap">
+                <AdminProjectField />
+                <button
+                  class="btn fw-semibold px-3 py-2 bg-white view-report-dash-btn"
+                  @click="$router.push('/viewreport')"
+                >
+                  <i class="bi bi-eye"></i>View Report
+                </button>
+              </div>
             </div>
 
             <!-- ===== 6-CARD ANALYTICS GRID ===== -->
@@ -351,7 +352,7 @@
                   </div>
 
                   <!-- Half-circle gauges — same logic, improved layout -->
-                  <div class="d-flex justify-content-around align-items-end" style="gap:2px; margin-top:54px;">
+                  <div v-else class="d-flex justify-content-around align-items-end" style="gap:2px; margin-top:54px;">
 
                     <!-- Critical -->
                     <div class="d-flex flex-column align-items-center gap-1">
@@ -1252,7 +1253,7 @@
                         <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#334155;" :title="vuln.plugin_name">{{ vuln.plugin_name }}</td>
                         <td><span class="mte-pill" :class="getCvStatusPillClass(getResolvedCvStatus(vuln))">{{ getResolvedCvStatus(vuln) }}</span></td>
                         <td>
-                          <router-link :to="{ name:'remediation-timeline', params:{ reportId: currentReportId, asset: vuln.host_name }, query:{ id: vuln.id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor } }" class="text-decoration-none" @click="closeCommonVulnModal">
+                          <router-link :to="getCvAssetsRoute(vuln)" class="text-decoration-none" @click="closeCommonVulnModal">
                             <button class="cv-view-btn">View Now <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
                           </router-link>
                         </td>
@@ -1296,7 +1297,7 @@
                         <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#334155;" :title="vuln.plugin_name">{{ vuln.plugin_name }}</td>
                         <td><span class="mte-pill" :class="getCvStatusPillClass(getResolvedCvStatus(vuln))">{{ getResolvedCvStatus(vuln) }}</span></td>
                         <td>
-                          <router-link :to="{ name:'remediation-timeline', params:{ reportId: currentReportId, asset: vuln.host_name }, query:{ id: vuln.id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor } }" class="text-decoration-none" @click="closeCommonVulnModal">
+                          <router-link :to="getCvAssetsRoute(vuln)" class="text-decoration-none" @click="closeCommonVulnModal">
                             <button class="cv-view-btn">View Now <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
                           </router-link>
                         </td>
@@ -1340,7 +1341,7 @@
                         <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#334155;" :title="vuln.plugin_name">{{ vuln.plugin_name }}</td>
                         <td><span class="mte-pill" :class="getCvStatusPillClass(getResolvedCvStatus(vuln))">{{ getResolvedCvStatus(vuln) }}</span></td>
                         <td>
-                          <router-link :to="{ name:'remediation-timeline', params:{ reportId: currentReportId, asset: vuln.host_name }, query:{ id: vuln.id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor } }" class="text-decoration-none" @click="closeCommonVulnModal">
+                          <router-link :to="getCvAssetsRoute(vuln)" class="text-decoration-none" @click="closeCommonVulnModal">
                             <button class="cv-view-btn">View Now <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
                           </router-link>
                         </td>
@@ -1384,7 +1385,7 @@
                         <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#334155;" :title="vuln.plugin_name">{{ vuln.plugin_name }}</td>
                         <td><span class="mte-pill" :class="getCvStatusPillClass(getResolvedCvStatus(vuln))">{{ getResolvedCvStatus(vuln) }}</span></td>
                         <td>
-                          <router-link :to="{ name:'remediation-timeline', params:{ reportId: currentReportId, asset: vuln.host_name }, query:{ id: vuln.id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor } }" class="text-decoration-none" @click="closeCommonVulnModal">
+                          <router-link :to="getCvAssetsRoute(vuln)" class="text-decoration-none" @click="closeCommonVulnModal">
                             <button class="cv-view-btn">View Now <i class="bi bi-arrow-right-circle-fill ms-1"></i></button>
                           </router-link>
                         </td>
@@ -1414,6 +1415,7 @@
 <script>
 import DashboardMenu from '@/components/admin-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/admin-component/DashboardHeader.vue';
+import AdminProjectField from '@/components/admin-component/AdminProjectField.vue';
 import { useAuthStore } from "@/stores/authStore";
 import Swal from "sweetalert2";
 import Chart from 'chart.js/auto';
@@ -1423,6 +1425,7 @@ export default {
   components: {
     DashboardMenu,
     DashboardHeader,
+    AdminProjectField,
   },
   data() {
     return {
@@ -2163,6 +2166,14 @@ export default {
     closeCommonVulnModal() {
       this.showCommonVulnModal = false;
     },
+    getCvAssetsRoute(vuln) {
+      const query = {
+        mode: 'vulnerabilities',
+        plugin_name: vuln?.plugin_name,
+      };
+      if (vuln?.host_name) query.asset = vuln.host_name;
+      return { name: 'assets', query };
+    },
     toggleCvModalGroup(sev) {
       this.cvModalOpenSev = this.cvModalOpenSev === sev ? '' : sev;
       if (this.cvModalOpenSev) {
@@ -2238,41 +2249,19 @@ export default {
     getMitigationDays(sev) {
       const timeline = this.authStore.mitigationTimeline || {};
       const sevData = timeline?.[sev];
-
-      if (typeof sevData === "number") return sevData;
-      if (typeof sevData === "string") {
-        const parsed = Number(sevData);
-        return Number.isFinite(parsed) ? parsed : null;
+      if (typeof sevData === 'number') return sevData;
+      if (typeof sevData === 'string') {
+        const p = Number(sevData);
+        return Number.isFinite(p) ? p : null;
       }
-      if (sevData && typeof sevData === "object") {
-        if (typeof sevData.days === "number") return sevData.days;
-        if (typeof sevData.remaining_days === "number") return sevData.remaining_days;
-        if (typeof sevData.value === "number") return sevData.value;
-      }
-
-      const flatKey =
-        timeline?.[`${sev}_days`] ??
-        timeline?.[`${sev}Days`] ??
-        timeline?.remaining?.[sev] ??
-        timeline?.timeline?.[sev]?.days;
-
-      if (typeof flatKey === "number") return flatKey;
-      if (typeof flatKey === "string") {
-        const parsed = Number(flatKey);
-        return Number.isFinite(parsed) ? parsed : null;
+      if (sevData && typeof sevData === 'object') {
+        const r = sevData.remaining_days;
+        return (r !== null && r !== undefined) ? r : (sevData.days ?? null);
       }
       return null;
     },
     getMitigationValue(sev) {
-      const timeline = this.authStore.mitigationTimeline || {};
-      const sevData = timeline?.[sev];
       const days = this.getMitigationDays(sev);
-      if (sevData && typeof sevData === "object") {
-        return {
-          raw: sevData.raw || sevData.label || `${days ?? ""} days`,
-          days,
-        };
-      }
       return { raw: days !== null ? `${days} days` : null, days };
     },
     mitigationPct(sev) {
@@ -2480,19 +2469,14 @@ export default {
       this.showDropdown = false;
     },
     formatTimeline(value) {
-      if (!value || !value.raw) return "--";
-
-      const raw = value.raw.toLowerCase();
-
-      if (raw.includes("week")) {
-        return `${value.days / 7}W`;
+      if (!value || value.days === null || value.days === undefined) return '--';
+      const d = value.days;
+      if (d >= 7) {
+        const weeks = Math.floor(d / 7);
+        const rem = d % 7;
+        return rem === 0 ? `${weeks}W` : `${weeks}W ${rem}D`;
       }
-
-      if (raw.includes("day")) {
-        return `${value.days}D`;
-      }
-
-      return `${value.days}D`;
+      return `${d}D`;
     },
     onLocationInput() {
       this.showDropdown = true;
@@ -2661,47 +2645,18 @@ export default {
       }
     },
     async loadRiskCriteria() {
-      const listResult = await this.authStore.fetchAdminRiskCriteria();
-      if (listResult.status && listResult.data) {
-        const d = listResult.data;
-        this.riskCriteria = {
-          critical: d.critical ?? null,
-          high: d.high ?? null,
-          medium: d.medium ?? null,
-          low: d.low ?? null,
-        };
-        return;
-      }
-      let result = await this.authStore.getRiskCriteriaById();
-      if (!result.status) {
-        result = await this.authStore.getRiskCriteriaByAdmin();
-        if (result.status && result.data) {
-          const d = result.data?.risk_criteria || result.data;
-          if (d._id) {
-            localStorage.setItem("riskId", d._id);
-            localStorage.setItem("riskCriteriaId", d._id);
-          }
+      const res = await this.authStore.fetchAdminRiskCriteria();
+      if (res.status && res.data) {
+        const list = res.data.risk_criteria || (res.data.critical !== undefined ? [res.data] : []);
+        if (list && list.length) {
+          const latest = list[0];
           this.riskCriteria = {
-            critical: d.critical ?? null,
-            high: d.high ?? null,
-            medium: d.medium ?? null,
-            low: d.low ?? null,
+            critical: latest.critical ?? null,
+            high: latest.high ?? null,
+            medium: latest.medium ?? null,
+            low: latest.low ?? null,
           };
         }
-        return;
-      }
-      const d = result.data?.risk_criteria || result.data;
-      if (d) {
-        if (d._id) {
-          localStorage.setItem("riskId", d._id);
-          localStorage.setItem("riskCriteriaId", d._id);
-        }
-        this.riskCriteria = {
-          critical: d.critical ?? null,
-          high: d.high ?? null,
-          medium: d.medium ?? null,
-          low: d.low ?? null,
-        };
       }
     },
     loadDashboardData() {
@@ -2972,6 +2927,17 @@ mounted() {
 </script>
 
 <style scoped>
+.view-report-dash-btn {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
 /* ===== COMMON VULNERABILITIES ===== */
 .cv-team-card {
   background: #ffffff;
@@ -4304,9 +4270,9 @@ mounted() {
 }
 .sev-pill:hover { background: #f2f3f6; }
 .sev-pill-active {
-  background: #e0f2f1 !important;
-  color: #0f696e !important;
-  border-color: #0f696e !important;
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+  border-color: #2563eb !important;
   font-weight: 700;
 }
 .sev-pill-critical { color: #b42318; }
