@@ -114,7 +114,36 @@ const AUTH_ENDPOINTS = [
   "/api/admin/users/user-set-password/",
   "/api/admin/users/forgot-password/",
   "/api/admin/users/reset-password/",
+  "/api/admin/users/token/refresh/", // refresh endpoint itself — infinite loop rokne ke liye
 ];
+
+// Token refresh queue — agar ek saath kai requests 401 paayein toh sab wait karein
+let isRefreshing = false;
+let refreshQueue: ((token: string) => void)[] = [];
+
+function enqueueRefresh(cb: (token: string) => void) {
+  refreshQueue.push(cb);
+}
+function drainRefreshQueue(newToken: string) {
+  refreshQueue.forEach((cb) => cb(newToken));
+  refreshQueue = [];
+}
+function clearRefreshQueue() {
+  refreshQueue = [];
+}
+
+function clearAllSessionTokens() {
+  sessionStorage.removeItem("authorization");
+  sessionStorage.removeItem("user");
+  sessionStorage.removeItem("authenticated");
+  sessionStorage.removeItem("refreshToken");
+  sessionStorage.removeItem("locations");
+  localStorage.removeItem("authorization");
+  localStorage.removeItem("user");
+  localStorage.removeItem("authenticated");
+  localStorage.removeItem("refreshToken");
+  localStorage.removeItem("locations");
+}
 
 endpoint.interceptors.response.use(
   (response) => response,
@@ -128,7 +157,6 @@ endpoint.interceptors.response.use(
       currentPath === "/auth" ||
       currentPath === "/home";
 
-    // Public marketing / partner flows: never kick user to /home on 401 (background calls may be unauthenticated).
     const noRedirect401Paths = new Set([
       "/pricingplan",
       "/partner",
@@ -140,20 +168,55 @@ endpoint.interceptors.response.use(
       isAuthScreen || noRedirect401Paths.has(currentPath) || isUserAppRoute(currentPath);
 
     if (error.response?.status === 401 && !isAuthEndpoint && !skip401Redirect) {
-      // Clear both storages to avoid stale auth state across flows
-      sessionStorage.removeItem("authorization");
-      sessionStorage.removeItem("user");
-      sessionStorage.removeItem("authenticated");
-      sessionStorage.removeItem("refreshToken");
-      sessionStorage.removeItem("locations");
+      // 🔄 Pehle refresh token try karo
+      const storedRefresh =
+        sessionStorage.getItem("refreshToken") || localStorage.getItem("django_refresh_token");
 
-      localStorage.removeItem("authorization");
-      localStorage.removeItem("user");
-      localStorage.removeItem("authenticated");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("locations");
+      if (storedRefresh) {
+        // Agar refresh already chal rahi hai → queue mein wait karo
+        if (isRefreshing) {
+          return new Promise((resolve, reject) => {
+            enqueueRefresh((newToken) => {
+              if (error.config?.headers) {
+                error.config.headers["Authorization"] = `Bearer ${newToken}`;
+              }
+              resolve(endpoint(error.config));
+            });
+          });
+        }
 
-      // Redirect to home page instead of showing modal
+        isRefreshing = true;
+        try {
+          const refreshBase = import.meta.env.DEV ? "" : import.meta.env.VITE_API_BASE_URL || "";
+          const res = await axios.post(`${refreshBase}/api/admin/users/token/refresh/`, {
+            refresh: storedRefresh,
+          });
+          const newAccessToken: string = res.data.access;
+
+          // ✅ Naya token save karo
+          sessionStorage.setItem("authorization", newAccessToken);
+          localStorage.setItem("django_access_token", newAccessToken);
+
+          isRefreshing = false;
+          drainRefreshQueue(newAccessToken);
+
+          // ✅ Original request retry karo naye token ke saath
+          if (error.config?.headers) {
+            error.config.headers["Authorization"] = `Bearer ${newAccessToken}`;
+          }
+          return endpoint(error.config);
+        } catch {
+          // ❌ Refresh bhi fail → logout
+          isRefreshing = false;
+          clearRefreshQueue();
+          clearAllSessionTokens();
+          router.push("/home");
+          return Promise.reject(error);
+        }
+      }
+
+      // Refresh token nahi mila → seedha logout
+      clearAllSessionTokens();
       router.push("/home");
     }
     return Promise.reject(error);
