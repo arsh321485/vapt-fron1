@@ -348,7 +348,9 @@
                   <!-- Half-circle gauges -->
                   <div v-else class="d-flex justify-content-around align-items-end" style="gap:2px; margin-top:54px;">
                     <div class="d-flex flex-column align-items-center gap-1">
-                      <div style="position:relative; width:66px; height:38px; overflow:hidden;">
+                      <div class="gauge-tip-wrap"
+                        :data-gauge-tip="formatTimeline(getMitigationValue('critical'))"
+                        style="position:relative; width:66px; height:38px; overflow:visible; cursor:default;">
                         <svg width="66" height="38" viewBox="0 0 72 42">
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none" stroke="#f1f5f9" stroke-width="8" stroke-linecap="round"/>
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none"
@@ -358,13 +360,15 @@
                             :stroke-dashoffset="94 - (mitigationPct('critical').compliancePct / 100 * 94)"/>
                         </svg>
                         <div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);text-align:center;white-space:nowrap;">
-                          <div style="font-size:11px;font-weight:800;color:#1f2937;line-height:1;">{{ formatTimeline(getMitigationValue('critical')) }}</div>
+                          <div style="font-size:9px;font-weight:800;color:#1f2937;line-height:1;">{{ getMitigationLabel('critical') }}</div>
                         </div>
                       </div>
                       <span class="mitigation-sev-label" style="color:#b42318;">Critical</span>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1">
-                      <div style="position:relative; width:66px; height:38px; overflow:hidden;">
+                      <div class="gauge-tip-wrap"
+                        :data-gauge-tip="formatTimeline(getMitigationValue('high'))"
+                        style="position:relative; width:66px; height:38px; overflow:visible; cursor:default;">
                         <svg width="66" height="38" viewBox="0 0 72 42">
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none" stroke="#f1f5f9" stroke-width="8" stroke-linecap="round"/>
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none"
@@ -374,13 +378,15 @@
                             :stroke-dashoffset="94 - (mitigationPct('high').compliancePct / 100 * 94)"/>
                         </svg>
                         <div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);text-align:center;white-space:nowrap;">
-                          <div style="font-size:11px;font-weight:800;color:#1f2937;line-height:1;">{{ formatTimeline(getMitigationValue('high')) }}</div>
+                          <div style="font-size:9px;font-weight:800;color:#1f2937;line-height:1;">{{ getMitigationLabel('high') }}</div>
                         </div>
                       </div>
                       <span class="mitigation-sev-label" style="color:#dc2626;">High</span>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1">
-                      <div style="position:relative; width:66px; height:38px; overflow:hidden;">
+                      <div class="gauge-tip-wrap"
+                        :data-gauge-tip="formatTimeline(getMitigationValue('medium'))"
+                        style="position:relative; width:66px; height:38px; overflow:visible; cursor:default;">
                         <svg width="66" height="38" viewBox="0 0 72 42">
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none" stroke="#f1f5f9" stroke-width="8" stroke-linecap="round"/>
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none"
@@ -390,13 +396,15 @@
                             :stroke-dashoffset="94 - (mitigationPct('medium').compliancePct / 100 * 94)"/>
                         </svg>
                         <div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);text-align:center;white-space:nowrap;">
-                          <div style="font-size:11px;font-weight:800;color:#1f2937;line-height:1;">{{ formatTimeline(getMitigationValue('medium')) }}</div>
+                          <div style="font-size:9px;font-weight:800;color:#1f2937;line-height:1;">{{ getMitigationLabel('medium') }}</div>
                         </div>
                       </div>
                       <span class="mitigation-sev-label" style="color:#f59e0b;">Medium</span>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1">
-                      <div style="position:relative; width:66px; height:38px; overflow:hidden;">
+                      <div class="gauge-tip-wrap"
+                        :data-gauge-tip="formatTimeline(getMitigationValue('low'))"
+                        style="position:relative; width:66px; height:38px; overflow:visible; cursor:default;">
                         <svg width="66" height="38" viewBox="0 0 72 42">
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none" stroke="#f1f5f9" stroke-width="8" stroke-linecap="round"/>
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none"
@@ -406,7 +414,7 @@
                             :stroke-dashoffset="94 - (mitigationPct('low').compliancePct / 100 * 94)"/>
                         </svg>
                         <div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);text-align:center;white-space:nowrap;">
-                          <div style="font-size:11px;font-weight:800;color:#1f2937;line-height:1;">{{ formatTimeline(getMitigationValue('low')) }}</div>
+                          <div style="font-size:9px;font-weight:800;color:#1f2937;line-height:1;">{{ getMitigationLabel('low') }}</div>
                         </div>
                       </div>
                       <span class="mitigation-sev-label" style="color:#10b981;">Low</span>
@@ -1813,9 +1821,24 @@ export default {
         this.refreshInProcessCount(),
       ]);
     },
-    getMitigationDays(sev) {
+    getMitigationSevData(sev) {
       const timeline = this.authStore.mitigationTimeline || {};
-      const sevData = timeline?.[sev];
+      return timeline[sev]
+        ?? timeline[sev.charAt(0).toUpperCase() + sev.slice(1)]
+        ?? null;
+    },
+    getMitigationLabel(sev) {
+      const sevData = this.getMitigationSevData(sev);
+      if (sevData && typeof sevData === 'object') {
+        if (sevData.remaining_label) return sevData.remaining_label;
+        if (String(sevData.status || '').toLowerCase() === 'overdue') return 'Overdue';
+        if (sevData.remaining_days != null) return this.formatTimeline({ days: sevData.remaining_days });
+        return this.formatTimeline({ days: sevData.days });
+      }
+      return this.formatTimeline(this.getMitigationValue(sev));
+    },
+    getMitigationDays(sev) {
+      const sevData = this.getMitigationSevData(sev);
       if (typeof sevData === 'number') return sevData;
       if (typeof sevData === 'string') {
         const p = Number(sevData);
@@ -2826,6 +2849,45 @@ export default {
   border: 1px solid #d1fae5;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 6px 14px rgba(16,185,129,0.16);
 }
+/* Gauge styled tooltip */
+.gauge-tip-wrap {
+  position: relative;
+}
+.gauge-tip-wrap::after {
+  content: attr(data-gauge-tip);
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e1e2d;
+  color: #fff;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 400;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1060;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.gauge-tip-wrap::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #1e1e2d;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+  z-index: 1060;
+}
+.gauge-tip-wrap:hover::after,
+.gauge-tip-wrap:hover::before { opacity: 1; }
+
 .mitigation-sev-label {
   font-size: 10px;
   font-weight: 700;
