@@ -582,6 +582,7 @@ import {
   matchesVulnStatusFilter,
   severityMatchesFilter,
   isAutomationNotAvailable,
+  isActiveVulnStatus,
 } from "@/utils/assetVulnerabilities";
 import { useAuthStore } from "@/stores/authStore";
 import { ASSET_TYPE_FILTERS, getDummyAssetsByType } from "@/utils/assetDummyData";
@@ -742,12 +743,11 @@ class TLSConfigurator:
       return Array.from({ length: end - start + 1 }, (_, i) => start + i);
     },
     filteredVulnerabilities() {
-      let list = [...this.allAssetThreatVulns];
+      // Active Threats never shows closed/resolved vulnerabilities — those go to Fixed Recently
+      let list = this.allAssetThreatVulns.filter(v => isActiveVulnStatus(v.status));
       if (!this.activeFilters.includes('All')) {
         list = list.filter(v => severityMatchesFilter(v.severity, this.activeFilters));
       }
-      list = list.filter(v => matchesVulnStatusFilter(v, this.statusFilter));
-
       return [...list].sort((a, b) => {
         return (
           this.getSeverityRank(a.severity) -

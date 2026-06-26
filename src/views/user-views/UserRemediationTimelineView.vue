@@ -1119,7 +1119,8 @@ export default {
         {
           status: 'completed',
           comment: this.currentStepComment || `Step ${stepNumber} completed`,
-        }
+        },
+        this.currentVuln.operatingSystem?.toLowerCase().includes('linux') ? 'linux' : 'windows',
       );
 
       this.savingStep = false;
@@ -1141,7 +1142,10 @@ export default {
 
       this.currentStepComment = '';
 
-      const stepsRes = await this.authStore.getUserFixVulnerabilitySteps(this.currentVuln.id);
+      const stepsRes = await this.authStore.getUserFixVulnerabilitySteps(
+        this.currentVuln.id,
+        this.currentVuln.operatingSystem?.toLowerCase().includes('linux') ? 'linux' : 'windows',
+      );
       if (stepsRes.status) {
         this.applyStepsFromApi(stepsRes.data);
       }

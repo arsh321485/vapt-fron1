@@ -465,6 +465,8 @@
                         :vuln-name="v.vul_name"
                         :asset-ip="asset"
                         :severity="v.severity"
+                        :vuln-id="String(v.id || '')"
+                        :asset-os="assetMetaFor(v, asset).os"
                         @support-request-raised="refreshSupportRequestsForVuln"
                         @open-support-modal="({ vulnName, step, completedSteps }) => openVulnSupportModal(step, vulnName, completedSteps)"
                       />

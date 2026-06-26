@@ -196,7 +196,22 @@ export function normalizeHeldVulnerabilityAssetList(list, pluginName = '') {
 
 /** Active vulns plus fixed-recently entries for Open/Closed status filters */
 export function mergeAssetThreatVulnerabilities(activeVulns, closedFixVulns = []) {
-  const list = normalizeAssetVulnerabilityList(activeVulns);
+  // Build set of names that are confirmed closed/fixed
+  const closedNames = new Set();
+  (closedFixVulns || []).forEach(fix => {
+    const key = vulnNameKey(fix);
+    if (key) closedNames.add(key);
+  });
+
+  // If an active vuln is also in closedFixVulns, mark it closed so it
+  // does not appear as open in Active Threats
+  const list = normalizeAssetVulnerabilityList(activeVulns).map(v => {
+    if (closedNames.has(vulnNameKey(v))) {
+      return { ...v, status: 'closed' };
+    }
+    return v;
+  });
+
   const seen = new Set(list.map(vulnNameKey));
   (closedFixVulns || []).forEach(fix => {
     const name = vulnDisplayName(fix);
