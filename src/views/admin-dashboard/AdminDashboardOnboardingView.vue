@@ -1977,20 +1977,16 @@ export default {
       modal.show();
     },
     goToInProcessTimeline(item) {
-      const reportId = item?.report_id || this.currentReportId || localStorage.getItem('reportId');
-      if (!item?.asset || !reportId) return;
+      if (!item?.asset) return;
       const modal = bootstrap.Modal.getInstance(document.getElementById('inProcessModal'));
       if (modal) modal.hide();
       this.$router.push({
-        name: 'remediation-timeline',
-        params: {
-          reportId,
-          asset: item.asset,
-        },
+        name: 'assets',
         query: {
-          fix_vul_id: item.fix_vulnerability_id,
+          asset: item.asset,
           plugin_name: item.vulnerability_name,
-          risk_factor: item.risk_factor,
+          id: item.fix_vulnerability_id,
+          fix_tab: 'manual',
         },
       });
     },

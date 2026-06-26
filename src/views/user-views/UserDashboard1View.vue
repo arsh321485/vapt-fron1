@@ -1726,20 +1726,16 @@ export default {
       modal.show();
     },
     goToUserInProcessTimeline(item) {
-      const reportId = this.inProcessReportId || this.authStore.userLatestReportId;
-      if (!item?.asset || !reportId) return;
+      if (!item?.asset) return;
       const modal = bootstrap.Modal.getInstance(document.getElementById('userInProcessModal'));
       if (modal) modal.hide();
       this.$router.push({
-        name: 'user-remediation-timeline',
-        params: {
-          reportId,
-          asset: item.asset,
-        },
+        name: 'userassets',
         query: {
-          fix_vul_id: item.fix_vulnerability_id,
+          asset: item.asset,
           plugin_name: item.vulnerability_name,
-          risk_factor: item.risk_factor,
+          id: item.fix_vulnerability_id,
+          fix_tab: 'manual',
         },
       });
     },

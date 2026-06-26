@@ -582,6 +582,7 @@ import {
   matchesVulnStatusFilter,
   severityMatchesFilter,
   isAutomationNotAvailable,
+  isActiveVulnStatus,
 } from "@/utils/assetVulnerabilities";
 import { useAuthStore } from "@/stores/authStore";
 import { ASSET_TYPE_FILTERS, getDummyAssetsByType } from "@/utils/assetDummyData";
@@ -746,8 +747,12 @@ class TLSConfigurator:
       if (!this.activeFilters.includes('All')) {
         list = list.filter(v => severityMatchesFilter(v.severity, this.activeFilters));
       }
-      list = list.filter(v => matchesVulnStatusFilter(v, this.statusFilter));
-
+      // Closed vulns go to Fixed Recently; show them here only when explicitly selected
+      if (this.statusFilter.length > 0) {
+        list = list.filter(v => matchesVulnStatusFilter(v, this.statusFilter));
+      } else {
+        list = list.filter(v => isActiveVulnStatus(v.status));
+      }
       return [...list].sort((a, b) => {
         return (
           this.getSeverityRank(a.severity) -
@@ -1442,25 +1447,33 @@ class TLSConfigurator:
       return `${fullText.slice(0, this.descriptionPreviewLimit).trimEnd()}...`;
     },
     viewFixDetail(item) {
-      const reportId = this.authStore.latestReportId;
-      if (!reportId) {
-        console.error("No report ID available");
-        return;
-      }
+      this.statusFilter = ['closed'];
+      this.activeFilters = ['All'];
 
-      this.$router.push({
-        name: 'remediation-timeline',
-        params: {
-          reportId: reportId,
-          asset: item.asset,
-        },
-        query: {
-          id: item.id,
-          plugin_name: item.vulnerability_name,
-          risk_factor: item.severity,
-          status: item.status,
-          description: item.description || '',
-        }
+      this.$nextTick(() => {
+        const targetName = String(item.vulnerability_name || item.vul_name || '').trim().toLowerCase();
+        const targetId = item.id != null ? String(item.id) : '';
+
+        const idx = this.filteredVulnerabilities.findIndex(v => {
+          if (targetId && (v.id != null || v.vulnerability_id != null)) {
+            return String(v.id ?? v.vulnerability_id) === targetId;
+          }
+          const name = String(v.vul_name || v.vulnerability_name || '').trim().toLowerCase();
+          return targetName && name === targetName;
+        });
+
+        if (idx < 0) return;
+
+        this.expandedVulnIndex = idx;
+        this.currentVulnTab = 'manual';
+
+        this.$nextTick(() => {
+          const refKey = 'vuln-' + idx;
+          const element = this.$refs[refKey];
+          if (element && element[0]) {
+            element[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        });
       });
     },
     getVulnAssets(vuln) {
@@ -1565,6 +1578,9 @@ class TLSConfigurator:
           await this.$nextTick();
           if (pluginName || vulnId) {
             this.expandVulnFromQuery(pluginName, vulnId);
+          }
+          if (q.fix_tab === 'manual' || q.fix_tab === 'auto') {
+            this.currentVulnTab = q.fix_tab;
           }
         }
       }

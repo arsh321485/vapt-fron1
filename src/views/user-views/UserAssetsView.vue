@@ -439,13 +439,15 @@
                               <div v-else-if="currentVulnTab === 'manual'" class="av-manual-tab">
                                 <div class="av-asset-section">
                                   <div class="av-asset-label">
-                                    <span class="av-asset-os-lbl">Linux</span>
+                                    <span class="av-asset-os-lbl">{{ assetOsFor(vuln) }}</span>
                                   </div>
                                   <ManualRemediationStepsPanel
                                     :is-user="true"
                                     :vuln-name="vuln.vul_name"
                                     :asset-ip="activeIndex"
                                     :severity="vuln.severity"
+                                    :vuln-id="String(vuln.id || '')"
+                                    :asset-os="assetOsFor(vuln)"
                                     @support-request-raised="loadSupportRequestsByHost(activeIndex)"
                                     @open-support-modal="({ vulnName, step, completedSteps }) => openAssetSupportModal(vulnName, step, completedSteps)"
                                   />
@@ -963,7 +965,10 @@ class TLSConfigurator:
       if (!this.activeFilters.includes('All')) {
         vulns = vulns.filter(v => severityMatchesFilter(v.severity, this.activeFilters));
       }
-      vulns = vulns.filter(v => matchesVulnStatusFilter(v, this.statusFilter));
+      // Closed vulns appear in Fixed Recently; show them in Active Threats only if
+      // the user explicitly selects the Closed filter tab
+      const effectiveFilter = this.statusFilter.length > 0 ? this.statusFilter : ['open'];
+      vulns = vulns.filter(v => matchesVulnStatusFilter(v, effectiveFilter));
       return vulns;
     },
     sourceAssetRows() {
@@ -1294,6 +1299,12 @@ class TLSConfigurator:
     getStatusDotClass(status) {
       return this.getStatusLabel(status) === "Closed" ? "status-dot-closed" : "status-dot-open";
     },
+    assetOsFor(vuln) {
+      const row = (vuln?.rows || []).find(
+        r => (r.asset || r.host_name) === this.activeIndex,
+      ) || {};
+      return row.operating_system || row.os || row.platform || 'Linux';
+    },
     syncTotalAssets() {
       // Keep header count aligned with dashboard: only active (non-held) assets.
       this.totalAssets = this.assets.length;
@@ -1528,17 +1539,33 @@ class TLSConfigurator:
       URL.revokeObjectURL(url);
     },
     viewFixDetail(item) {
-      const reportId = this.authStore.userLatestReportId;
-      if (!reportId) return;
-      this.$router.push({
-        name: 'user-remediation-timeline',
-        params: { reportId, asset: item.host_name || this.activeIndex },
-        query: {
-          id: item.fix_vulnerability_id,
-          plugin_name: item.plugin_name,
-          risk_factor: item.risk_factor,
-          description: item.description || '',
-        }
+      this.statusFilter = ['closed'];
+      this.activeFilters = ['All'];
+
+      this.$nextTick(() => {
+        const targetName = String(item.plugin_name || '').trim().toLowerCase();
+        const targetId = item.fix_vulnerability_id != null ? String(item.fix_vulnerability_id) : '';
+
+        const idx = this.filteredVulnerabilities.findIndex(v => {
+          if (targetId && (v.id != null || v.vulnerability_id != null)) {
+            return String(v.id ?? v.vulnerability_id) === targetId;
+          }
+          const name = String(v.vul_name || v.vulnerability_name || '').trim().toLowerCase();
+          return targetName && name === targetName;
+        });
+
+        if (idx < 0) return;
+
+        this.expandedVulnIndex = idx;
+        this.currentVulnTab = 'manual';
+
+        this.$nextTick(() => {
+          const refKey = 'vuln-' + idx;
+          const element = this.$refs[refKey];
+          if (element && element[0]) {
+            element[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        });
       });
     },
     goToPage(page) {
@@ -1789,8 +1816,14 @@ class TLSConfigurator:
         if (assetRow) {
           await this.setActive(assetRow);
           await this.$nextTick();
+          if (q.status === 'closed') {
+            this.statusFilter = ['closed'];
+          }
           if (pluginName || vulnId) {
             this.expandVulnFromQuery(pluginName, vulnId);
+          }
+          if (q.fix_tab === 'manual' || q.fix_tab === 'auto') {
+            this.currentVulnTab = q.fix_tab;
           }
         }
       }

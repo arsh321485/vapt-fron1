@@ -3513,19 +3513,30 @@ export const useAuthStore = defineStore("auth", {
     // Mark a step as complete (User)
     async completeUserFixVulnerabilityStep(
       fixVulnerabilityId: string,
-      payload: { status: string; comment: string },
+      payload: { status?: string; comment: string; complete_all?: boolean; os?: string },
       os: string = "windows",
     ) {
       try {
+        const osKey = String(payload.os || os || "windows").toLowerCase();
+        const normalizedOs = osKey.includes("linux") ? "linux" : "windows";
+        const rawStatus = String(payload.status || "completed").toLowerCase().trim();
+        const normalizedStatus =
+          rawStatus === "step done" || rawStatus === "done" || rawStatus === "completed"
+            ? "completed"
+            : payload.status || "completed";
+
         const res = await endpoint.post(
-          `/api/user/register/fix-vulnerability/${fixVulnerabilityId}/step-complete/?os=${os}`,
-          payload,
+          `/api/user/register/fix-vulnerability/${fixVulnerabilityId}/step-complete/?os=${normalizedOs}`,
+          { ...payload, status: normalizedStatus, os: normalizedOs },
         );
         return {
           status: true,
           message: res.data.message,
           vulnerability_status: res.data.status,
           completed_steps: res.data.completed_steps,
+          total_steps: res.data.total_steps,
+          next_step: res.data.next_step,
+          next_step_name: res.data.next_step_name,
           step_saved: res.data.step_saved,
         };
       } catch (error) {
@@ -3603,6 +3614,28 @@ export const useAuthStore = defineStore("auth", {
         return {
           status: false,
           message: err.response?.data?.message || "Failed to fetch step completion data",
+          details: err.response?.data || null,
+        };
+      }
+    },
+
+    // Send verification request to superadmin (User)
+    async sendUserFixVerification(fixVulnerabilityId: string) {
+      try {
+        const res = await endpoint.post(
+          `/api/user/register/fix-vulnerability/${fixVulnerabilityId}/send-verification/`,
+        );
+        return {
+          status: true,
+          message: res.data.message,
+          vulnerability_status: res.data.status,
+          verification_sent_at: res.data.verification_sent_at,
+        };
+      } catch (error) {
+        const err = error as AxiosError<any>;
+        return {
+          status: false,
+          message: err.response?.data?.message || "Failed to send verification",
           details: err.response?.data || null,
         };
       }
