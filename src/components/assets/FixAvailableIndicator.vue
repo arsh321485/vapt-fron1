@@ -23,9 +23,14 @@ export default {
     assetIndex: { type: Number, default: null },
     automationLevel: { type: String, default: '' },
     automationPct: { type: [String, Number], default: '' },
+    automationMatched: { type: Boolean, default: null }, // from bulk API: true/false/null
   },
   computed: {
     display() {
+      // Real API data available → use it
+      if (this.automationMatched === true)  return { tier: 'yes',     label: 'Yes',     pct: 100, barWidth: 100, displayPct: '100%' };
+      if (this.automationMatched === false) return { tier: 'no',      label: 'No',      pct: 0,   barWidth: 100, displayPct: '0%'   };
+      // Fallback: demo data
       return resolveAutomationDisplay(
         this.automationLevel,
         this.automationPct,

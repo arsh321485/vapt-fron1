@@ -3519,7 +3519,9 @@ export const useAuthStore = defineStore("auth", {
       try {
         const osKey = String(payload.os || os || "windows").toLowerCase();
         const normalizedOs = osKey.includes("linux") ? "linux" : "windows";
-        const rawStatus = String(payload.status || "completed").toLowerCase().trim();
+        const rawStatus = String(payload.status || "completed")
+          .toLowerCase()
+          .trim();
         const normalizedStatus =
           rawStatus === "step done" || rawStatus === "done" || rawStatus === "completed"
             ? "completed"
@@ -4647,6 +4649,38 @@ export const useAuthStore = defineStore("auth", {
         this.restoreDeletedVulnerabilityAssetsFromStorage();
         this.deletedVulnerabilityAssetsFetched = true;
         return { status: true, data: this.deletedVulnerabilityAssets };
+      }
+    },
+
+    // 🔹 Single automation script match
+    // GET /api/user/automation-scripts/match/{plugin_id}/
+    async fetchAutomationScriptSingle(pluginId: number) {
+      try {
+        const res = await endpoint.get(`/api/user/automation-scripts/match/${pluginId}/`);
+        return { status: true, data: res.data };
+      } catch (error: any) {
+        return {
+          status: false,
+          data: null,
+          message: error.response?.data?.detail || "No automated fix available",
+        };
+      }
+    },
+
+    // 🔹 Bulk automation script match
+    async fetchAutomationScriptsBulk(pluginIds: number[]) {
+      if (!pluginIds.length) return { status: true, results: [] };
+      try {
+        const res = await endpoint.post("/api/user/automation-scripts/match/bulk/", {
+          plugin_ids: pluginIds,
+        });
+        return { status: true, results: res.data?.results || [] };
+      } catch (error: any) {
+        return {
+          status: false,
+          results: [],
+          message: error.response?.data?.detail || "Failed to fetch automation scripts",
+        };
       }
     },
 

@@ -354,15 +354,16 @@
                               :severity="vuln.severity"
                               :asset-ip="selectedAssetIp"
                               :asset-index="selectedAssetDemoIndex"
+                              :automation-matched="getAutomationForVuln(vuln)?.matched"
                             />
                             <button
                               type="button"
                               class="vuln-download-icon-btn"
-                              :class="{ 'vuln-download-icon-btn--disabled': isVulnDownloadDisabled(vuln) }"
-                              :disabled="isVulnDownloadDisabled(vuln)"
-                              :title="isVulnDownloadDisabled(vuln) ? 'Script not available — automation not possible' : 'Download fix'"
-                              :aria-label="isVulnDownloadDisabled(vuln) ? 'Script download not available' : 'Download fix'"
-                              @click.stop="!isVulnDownloadDisabled(vuln) && downloadAutomationScript()"
+                              :class="{ 'vuln-download-icon-btn--disabled': !getAutomationForVuln(vuln)?.matched }"
+                              :disabled="!getAutomationForVuln(vuln)?.matched"
+                              :title="getAutomationForVuln(vuln)?.matched ? 'Download fix script' : 'Script not available'"
+                              :aria-label="getAutomationForVuln(vuln)?.matched ? 'Download fix script' : 'Script not available'"
+                              @click.stop="getAutomationForVuln(vuln)?.matched && downloadAutomationScript(getAutomationForVuln(vuln))"
                             >
                               <i class="bi bi-download"></i>
                             </button>
@@ -867,6 +868,9 @@ export default {
       loadingSupportRequests: false,
       supportRequestCount: 0,
       selectedSupportRequest: null,
+      automationScriptMap: {},      // { plugin_id: { matched, fix_script_path, ... } }
+      singleFetchedIds: new Set(),  // track kar: single API kis plugin_id ke liye call ho chuki
+      loadingAutomation: false,
       expandedDescriptions: {},
       descriptionPreviewLimit: 280,
       expandedVulnIndex: null,
@@ -1111,7 +1115,7 @@ class TLSConfigurator:
         }, 2000);
       });
     },
-    toggleAccordion(index) {
+    async toggleAccordion(index) {
       const isOpening = this.expandedVulnIndex !== index;
       this.expandedVulnIndex = this.expandedVulnIndex === index ? null : index;
 
@@ -1123,6 +1127,17 @@ class TLSConfigurator:
             element[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
           }
         });
+
+        // Single API — vuln expand hone pe call karo (ek baar per asset session)
+        const vuln = this.filteredVulnerabilities[index];
+        const pluginId = Number(vuln?.plugin_id);
+        if (Number.isFinite(pluginId) && pluginId > 0 && !this.singleFetchedIds.has(pluginId)) {
+          this.singleFetchedIds.add(pluginId);
+          const res = await this.authStore.fetchAutomationScriptSingle(pluginId);
+          if (res.status && res.data) {
+            this.automationScriptMap = { ...this.automationScriptMap, [pluginId]: res.data };
+          }
+        }
       }
     },
     async openAssetSupportModal(preVulnName = null, preStep = null, preCompletedSteps = []) {
@@ -1477,6 +1492,8 @@ class TLSConfigurator:
       this.activeIndex = asset.asset;
       this.expandedVulnIndex = null;
       this.assetDescriptionExpanded = false;
+      this.automationScriptMap = {}; // reset on asset change
+      this.singleFetchedIds = new Set();
 
       if (this.assetTypeFilter !== "assets" || asset._isDummy) {
         this.loadingAssetVulns = false;
@@ -1501,6 +1518,9 @@ class TLSConfigurator:
       // Sync card badge with actual loaded vuln counts (backend severity_counts may be stale)
       this.syncAssetSeverityCounts(asset.asset);
 
+      // Bulk automation script match
+      this.loadAutomationScripts();
+
       await this.loadSupportRequestsByHost(asset.asset);
       this.loadingClosedFix = true;
       const res = await this.authStore.getUserClosedVulnerabilities(asset.asset);
@@ -1510,6 +1530,25 @@ class TLSConfigurator:
       } else {
         this.closedFixVulnerabilities = [];
       }
+    },
+    async loadAutomationScripts() {
+      const vulns = this.authStore.selectedAssetVulnerabilities || [];
+      const pluginIds = [...new Set(
+        vulns.map(v => Number(v.plugin_id)).filter(id => Number.isFinite(id) && id > 0)
+      )];
+      if (!pluginIds.length) return;
+      this.loadingAutomation = true;
+      const res = await this.authStore.fetchAutomationScriptsBulk(pluginIds);
+      this.loadingAutomation = false;
+      if (res.status && Array.isArray(res.results)) {
+        const map = {};
+        res.results.forEach(r => { map[r.plugin_id] = r; });
+        this.automationScriptMap = map;
+      }
+    },
+    getAutomationForVuln(vuln) {
+      const id = Number(vuln?.plugin_id);
+      return (Number.isFinite(id) && id > 0) ? (this.automationScriptMap[id] || null) : null;
     },
     syncAssetSeverityCounts(assetIp) {
       const assetObj = this.assets.find(a => a.asset === assetIp);
@@ -1529,7 +1568,16 @@ class TLSConfigurator:
     isVulnDownloadDisabled(vuln) {
       return isAutomationNotAvailable(this.selectedAssetIp, this.selectedAssetDemoIndex, vuln?.severity);
     },
-    downloadAutomationScript() {
+    downloadAutomationScript(scriptData = null) {
+      // Real script from API
+      if (scriptData?.fix_script_path) {
+        const link = document.createElement('a');
+        link.href = `${import.meta.env.VITE_API_BASE_URL || ''}/${scriptData.fix_script_path}`;
+        link.download = scriptData.fix_script_name || 'fix_script.py';
+        link.click();
+        return;
+      }
+      // Fallback: demo script
       const blob = new Blob([this.automationCode], { type: 'text/x-python' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
