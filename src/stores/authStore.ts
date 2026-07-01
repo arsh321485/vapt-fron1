@@ -4652,8 +4652,71 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-    // 🔹 Single automation script match
-    // GET /api/user/automation-scripts/match/{plugin_id}/
+    // 🔹 Automation script download stats (Admin)
+    // GET /api/admin/automation-scripts/stats/
+    async fetchAutomationScriptStatsAdmin() {
+      try {
+        const res = await endpoint.get("/api/admin/automation-scripts/stats/");
+        return { status: true, data: res.data };
+      } catch (error: any) {
+        return {
+          status: false,
+          data: null,
+          message: error.response?.data?.detail || "Failed to fetch stats",
+        };
+      }
+    },
+
+    // 🔹 Automation script download stats (User)
+    // GET /api/user/automation-scripts/stats/
+    async fetchAutomationScriptStats() {
+      try {
+        const res = await endpoint.get("/api/user/automation-scripts/stats/");
+        return { status: true, data: res.data };
+      } catch (error: any) {
+        return {
+          status: false,
+          data: null,
+          message: error.response?.data?.detail || "Failed to fetch stats",
+        };
+      }
+    },
+
+    // 🔹 Download automation script (User)
+    // GET /api/user/automation-scripts/download/{plugin_id}/
+    async downloadAutomationScript(pluginId: number) {
+      try {
+        const res = await endpoint.get(`/api/user/automation-scripts/download/${pluginId}/`, {
+          responseType: "text",
+        });
+        return { status: true, content: res.data, headers: res.headers };
+      } catch (error: any) {
+        return {
+          status: false,
+          content: null,
+          message: error.response?.data?.detail || "Download failed",
+        };
+      }
+    },
+
+    // 🔹 Download automation script (Admin)
+    // GET /api/admin/automation-scripts/download/{plugin_id}/
+    async downloadAutomationScriptAdmin(pluginId: number) {
+      try {
+        const res = await endpoint.get(`/api/admin/automation-scripts/download/${pluginId}/`, {
+          responseType: "text",
+        });
+        return { status: true, content: res.data, headers: res.headers };
+      } catch (error: any) {
+        return {
+          status: false,
+          content: null,
+          message: error.response?.data?.detail || "Download failed",
+        };
+      }
+    },
+
+    // 🔹 Single automation script match (User)
     async fetchAutomationScriptSingle(pluginId: number) {
       try {
         const res = await endpoint.get(`/api/user/automation-scripts/match/${pluginId}/`);
@@ -4667,11 +4730,42 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-    // 🔹 Bulk automation script match
+    // 🔹 Single automation script match (Admin)
+    async fetchAutomationScriptSingleAdmin(pluginId: number) {
+      try {
+        const res = await endpoint.get(`/api/admin/automation-scripts/match/${pluginId}/`);
+        return { status: true, data: res.data };
+      } catch (error: any) {
+        return {
+          status: false,
+          data: null,
+          message: error.response?.data?.detail || "No automated fix available",
+        };
+      }
+    },
+
+    // 🔹 Bulk automation script match (User)
     async fetchAutomationScriptsBulk(pluginIds: number[]) {
       if (!pluginIds.length) return { status: true, results: [] };
       try {
         const res = await endpoint.post("/api/user/automation-scripts/match/bulk/", {
+          plugin_ids: pluginIds,
+        });
+        return { status: true, results: res.data?.results || [] };
+      } catch (error: any) {
+        return {
+          status: false,
+          results: [],
+          message: error.response?.data?.detail || "Failed to fetch automation scripts",
+        };
+      }
+    },
+
+    // 🔹 Bulk automation script match (Admin)
+    async fetchAutomationScriptsBulkAdmin(pluginIds: number[]) {
+      if (!pluginIds.length) return { status: true, results: [] };
+      try {
+        const res = await endpoint.post("/api/admin/automation-scripts/match/bulk/", {
           plugin_ids: pluginIds,
         });
         return { status: true, results: res.data?.results || [] };

@@ -1,5 +1,5 @@
 <template>
-  <div class="auto-tab-content">
+  <div class="auto-tab-content" :class="{ 'auto-tab-content--greyed': !scriptAvailable }">
     <!-- Row 1: Capability banner -->
     <div class="capability-banner" :style="theme.banner">
       <div class="cap-banner-top">
@@ -140,6 +140,12 @@
     <div class="recommended-box">
       <div class="rec-label">Recommended approach</div>
       <div class="rec-text">{{ resolvedRecommended }}</div>
+    </div>
+
+    <!-- Script not available notice -->
+    <div v-if="!scriptAvailable" class="script-unavailable-notice">
+      <i class="bi bi-exclamation-circle-fill me-2"></i>
+      Script file not available for download — review steps manually
     </div>
 
     <!-- Row 8: Command to run script -->
@@ -293,6 +299,8 @@ export default {
     mustManual: { type: Array, default: () => [] },
     recommendedText: { type: String, default: '' },
     runCommand: { type: String, default: '' },
+    // Real API data from automation-scripts/match endpoint
+    automationData: { type: Object, default: null },
   },
   data() {
     return {
@@ -325,9 +333,43 @@ export default {
     this.refreshFeedbackState();
   },
   computed: {
+    // Helper: parse numbered string list "1. A. 2. B." into ["A.", "B."]
+    _apiParsed() {
+      const d = this.automationData;
+      if (!d) return null;
+      const split = str => !str ? [] : str.split(/\d+\.\s+/).map(s => s.trim()).filter(Boolean);
+      const splitComma = str => !str ? [] : str.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+      const autoLevel = (() => {
+        const a = String(d.automation_possible || '').toLowerCase();
+        if (a.startsWith('yes') && !a.includes('partial')) return 'yes';
+        if (a.includes('partial') || a.includes('/')) return 'partial';
+        if (a.startsWith('no')) return 'no';
+        return '';
+      })();
+      return {
+        automationLevel: autoLevel,
+        scriptName: d.fix_script_name || d.script_name || '',
+        scriptDescription: d.script_description || d.description || '',
+        beforeItems: split(d.considerations_before),
+        afterItems: split(d.considerations_after),
+        libraries: splitComma(d.libraries),
+        pipCommand: d.command_download_libraries || '',
+        runCommand: d.command_run_script || '',
+        canAutomate: d.what_can_be_automated ? split(d.what_can_be_automated) : [],
+        mustManual: d.what_must_remain_manual ? split(d.what_must_remain_manual) : [],
+        recommendedText: d.recommended_approach || '',
+        scriptAvailable: !!(d.fix_script_path),
+        fixScriptPath: d.fix_script_path || '',
+      };
+    },
+    scriptAvailable() {
+      if (this._apiParsed) return this._apiParsed.scriptAvailable;
+      return true;
+    },
     autoDisplay() {
+      const level = this._apiParsed?.automationLevel || this.automationLevel;
       return resolveAutomationDisplay(
-        this.automationLevel,
+        level,
         this.automationPct,
         canonSeverity(this.severity),
         this.assetIp,
@@ -344,10 +386,10 @@ export default {
       return THEMES[this.autoDisplay.tier] || THEMES.partial;
     },
     resolvedScriptName() {
-      return this.scriptName || this.sevDefaults.scriptName;
+      return this._apiParsed?.scriptName || this.scriptName || this.sevDefaults.scriptName;
     },
     fullDescription() {
-      return this.scriptDescription || this.sevDefaults.scriptDescription || '';
+      return this._apiParsed?.scriptDescription || this.scriptDescription || this.sevDefaults.scriptDescription || '';
     },
     displayDescription() {
       if (this.descriptionExpanded || this.fullDescription.length <= DESC_PREVIEW_LIMIT) {
@@ -359,28 +401,38 @@ export default {
       return this.fullDescription.length > DESC_PREVIEW_LIMIT;
     },
     resolvedPip() {
-      return this.pipCommand || this.sevDefaults.pipCommand;
+      return this._apiParsed?.pipCommand || this.pipCommand || this.sevDefaults.pipCommand;
     },
     resolvedRun() {
-      return this.runCommand || this.sevDefaults.runCommand;
+      return this._apiParsed?.runCommand || this.runCommand || this.sevDefaults.runCommand;
     },
     resolvedBefore() {
+      const api = this._apiParsed?.beforeItems;
+      if (api?.length) return api;
       return this.beforeItems?.length ? this.beforeItems : DEFAULT_BEFORE;
     },
     resolvedAfter() {
+      const api = this._apiParsed?.afterItems;
+      if (api?.length) return api;
       return this.afterItems?.length ? this.afterItems : DEFAULT_AFTER;
     },
     resolvedLibraries() {
+      const api = this._apiParsed?.libraries;
+      if (api?.length) return api;
       return this.libraries?.length ? this.libraries : this.sevDefaults.libraries;
     },
     resolvedCan() {
+      const api = this._apiParsed?.canAutomate;
+      if (api?.length) return api;
       return this.canAutomate?.length ? this.canAutomate : DEFAULT_CAN;
     },
     resolvedManual() {
+      const api = this._apiParsed?.mustManual;
+      if (api?.length) return api;
       return this.mustManual?.length ? this.mustManual : DEFAULT_MANUAL;
     },
     resolvedRecommended() {
-      return this.recommendedText || DEFAULT_REC;
+      return this._apiParsed?.recommendedText || this.recommendedText || DEFAULT_REC;
     },
     feedbackKey() {
       return buildScriptFeedbackKey({
@@ -886,6 +938,39 @@ export default {
   font-size: 12px;
   color: #1e3a8a;
   line-height: 1.6;
+}
+
+.auto-tab-content--greyed {
+  opacity: 0.45;
+  pointer-events: none;
+  position: relative;
+}
+.auto-tab-content--greyed::after {
+  content: 'Script file not available';
+  position: sticky;
+  bottom: 8px;
+  display: block;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #92400e;
+  background: #fef9ec;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  padding: 6px 12px;
+  margin-top: 8px;
+}
+.script-unavailable-notice {
+  opacity: 1 !important;
+  background: #fef9ec;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #92400e;
+  margin-bottom: 12px;
+  pointer-events: auto;
 }
 
 .run-cmd-card {

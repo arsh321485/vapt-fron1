@@ -433,6 +433,7 @@
                                   :asset-ip="selectedAssetIp"
                                   :asset-index="selectedAssetDemoIndex"
                                   :is-user="true"
+                                  :automation-data="getAutomationForVuln(vuln)"
                                   @view-code="showCodeModal = true"
                                 />
                               </div>
@@ -868,8 +869,8 @@ export default {
       loadingSupportRequests: false,
       supportRequestCount: 0,
       selectedSupportRequest: null,
-      automationScriptMap: {},      // { plugin_id: { matched, fix_script_path, ... } }
-      singleFetchedIds: new Set(),  // track kar: single API kis plugin_id ke liye call ho chuki
+      automationScriptMap: {},   // { plugin_id: { matched, fix_script_path, ... } }
+      singleFetchedIds: [],       // plain array — Vue 2 mein Set reactive nahi hoti
       loadingAutomation: false,
       expandedDescriptions: {},
       descriptionPreviewLimit: 280,
@@ -1128,14 +1129,20 @@ class TLSConfigurator:
           }
         });
 
-        // Single API — vuln expand hone pe call karo (ek baar per asset session)
         const vuln = this.filteredVulnerabilities[index];
-        const pluginId = Number(vuln?.plugin_id);
-        if (Number.isFinite(pluginId) && pluginId > 0 && !this.singleFetchedIds.has(pluginId)) {
-          this.singleFetchedIds.add(pluginId);
-          const res = await this.authStore.fetchAutomationScriptSingle(pluginId);
+        const id = Number(
+          vuln?.plugin_id ||
+          this.authStore.selectedAssetVulnerabilities
+            .find(v => (v.vul_name || v.plugin_name) === (vuln?.vul_name || vuln?.plugin_name))
+            ?.plugin_id ||
+          0
+        );
+        // singleFetchedIds guard — automationScriptMap nahi (bulk se fill ho chuka hoga)
+        if (id > 0 && !this.singleFetchedIds.includes(id)) {
+          this.singleFetchedIds = [...this.singleFetchedIds, id];
+          const res = await this.authStore.fetchAutomationScriptSingle(id);
           if (res.status && res.data) {
-            this.automationScriptMap = { ...this.automationScriptMap, [pluginId]: res.data };
+            this.automationScriptMap = { ...this.automationScriptMap, [id]: res.data };
           }
         }
       }
@@ -1492,8 +1499,8 @@ class TLSConfigurator:
       this.activeIndex = asset.asset;
       this.expandedVulnIndex = null;
       this.assetDescriptionExpanded = false;
-      this.automationScriptMap = {}; // reset on asset change
-      this.singleFetchedIds = new Set();
+      this.automationScriptMap = {};
+      this.singleFetchedIds = [];
 
       if (this.assetTypeFilter !== "assets" || asset._isDummy) {
         this.loadingAssetVulns = false;
@@ -1544,11 +1551,28 @@ class TLSConfigurator:
         const map = {};
         res.results.forEach(r => { map[r.plugin_id] = r; });
         this.automationScriptMap = map;
+        // Single call for each matched plugin_id for full rich data
+        const matchedIds = res.results.filter(r => r.matched).map(r => r.plugin_id);
+        for (const pid of matchedIds) {
+          const single = await this.authStore.fetchAutomationScriptSingle(pid);
+          if (single.status && single.data) {
+            this.automationScriptMap = { ...this.automationScriptMap, [pid]: single.data };
+          }
+        }
       }
     },
     getAutomationForVuln(vuln) {
-      const id = Number(vuln?.plugin_id);
-      return (Number.isFinite(id) && id > 0) ? (this.automationScriptMap[id] || null) : null;
+      // 1. Direct plugin_id
+      let id = Number(vuln?.plugin_id);
+      // 2. Fallback: search automationScriptMap by vuln name
+      if (!(id > 0)) {
+        const name = String(vuln?.vul_name || vuln?.plugin_name || '').toLowerCase().trim();
+        const entry = Object.values(this.automationScriptMap).find(
+          e => String(e.vulnerability || e.vul_name || '').toLowerCase().trim() === name
+        );
+        if (entry) id = Number(entry.plugin_id);
+      }
+      return id > 0 ? (this.automationScriptMap[id] || null) : null;
     },
     syncAssetSeverityCounts(assetIp) {
       const assetObj = this.assets.find(a => a.asset === assetIp);
@@ -1568,14 +1592,22 @@ class TLSConfigurator:
     isVulnDownloadDisabled(vuln) {
       return isAutomationNotAvailable(this.selectedAssetIp, this.selectedAssetDemoIndex, vuln?.severity);
     },
-    downloadAutomationScript(scriptData = null) {
-      // Real script from API
-      if (scriptData?.fix_script_path) {
-        const link = document.createElement('a');
-        link.href = `${import.meta.env.VITE_API_BASE_URL || ''}/${scriptData.fix_script_path}`;
-        link.download = scriptData.fix_script_name || 'fix_script.py';
-        link.click();
-        return;
+    async downloadAutomationScript(scriptData = null) {
+      const pluginId = Number(scriptData?.plugin_id || 0);
+      if (pluginId > 0) {
+        // Download via API
+        const res = await this.authStore.downloadAutomationScript(pluginId);
+        if (res.status && res.content) {
+          const fileName = scriptData?.fix_script_name || `${pluginId}_fix_NS.py`;
+          const blob = new Blob([res.content], { type: 'text/x-python' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = fileName;
+          a.click();
+          URL.revokeObjectURL(url);
+          return;
+        }
       }
       // Fallback: demo script
       const blob = new Blob([this.automationCode], { type: 'text/x-python' });

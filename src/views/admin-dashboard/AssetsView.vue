@@ -333,15 +333,16 @@
                               :severity="v.severity"
                               :asset-ip="selectedAssetIp"
                               :asset-index="selectedAssetDemoIndex"
+                              :automation-matched="getAutomationForVuln(v)?.matched"
                             />
                             <button
                               type="button"
                               class="vuln-download-icon-btn"
                               :class="{ 'vuln-download-icon-btn--disabled': isVulnDownloadDisabled(v) }"
                               :disabled="isVulnDownloadDisabled(v)"
-                              :title="isVulnDownloadDisabled(v) ? 'Script not available — automation not possible' : 'Download fix'"
-                              :aria-label="isVulnDownloadDisabled(v) ? 'Script download not available' : 'Download fix'"
-                              @click.stop="!isVulnDownloadDisabled(v) && downloadAutomationScript()"
+                              :title="isVulnDownloadDisabled(v) ? 'Script not available' : 'Download fix script'"
+                              :aria-label="isVulnDownloadDisabled(v) ? 'Script not available' : 'Download fix script'"
+                              @click.stop="!isVulnDownloadDisabled(v) && downloadAutomationScript(getAutomationForVuln(v))"
                             >
                               <i class="bi bi-download"></i>
                             </button>
@@ -408,6 +409,7 @@
                                   :asset-ip="selectedAssetIp"
                                   :asset-index="selectedAssetDemoIndex"
                                   :is-user="false"
+                                  :automation-data="getAutomationForVuln(v)"
                                   @view-code="showCodeModal = true"
                                 />
                               </div>
@@ -630,6 +632,8 @@ export default {
       selectedAsset: "",
       activeFilters: ['All'],
       statusFilter: [],
+      automationScriptMap: {},
+      singleFetchedIds: [],
       expandedDescriptions: {},
       expandedVulnIndex: null,
       descriptionPreviewLimit: 280,
@@ -927,7 +931,7 @@ class TLSConfigurator:
         }, 2000);
       });
     },
-    toggleAccordion(index) {
+    async toggleAccordion(index) {
       const isOpening = this.expandedVulnIndex !== index;
       this.expandedVulnIndex = this.expandedVulnIndex === index ? null : index;
 
@@ -939,6 +943,20 @@ class TLSConfigurator:
             element[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
           }
         });
+
+        // Single API — accordion expand pe, singleFetchedIds guard (bulk se alag)
+        const vuln = this.filteredVulnerabilities[index];
+        const id = Number(vuln?.plugin_id
+          || this.authStore.selectedAssetVulnerabilities
+              .find(r => (r.vul_name || r.plugin_name) === (vuln?.vul_name || vuln?.plugin_name))
+              ?.plugin_id || 0);
+        if (id > 0 && !this.singleFetchedIds.includes(id)) {
+          this.singleFetchedIds = [...this.singleFetchedIds, id];
+          const res = await this.authStore.fetchAutomationScriptSingleAdmin(id);
+          if (res.status && res.data) {
+            this.automationScriptMap = { ...this.automationScriptMap, [id]: res.data };
+          }
+        }
       }
     },
     async reloadAssetsAndHeld() {
@@ -1143,6 +1161,8 @@ class TLSConfigurator:
       this.activeIndex = asset.asset;
       this.expandedVulnIndex = null;
       this.assetDescriptionExpanded = false;
+      this.automationScriptMap = {};
+      this.singleFetchedIds = [];
 
       if (this.assetTypeFilter !== "assets" || asset._isDummy) {
         this.loadingAssetVulns = false;
@@ -1167,7 +1187,10 @@ class TLSConfigurator:
       if (requestSeq !== this.assetFetchSeq) return;
       this.loadingAssetVulns = false;
 
-      // Secondary data in parallel (do not block main asset details render).
+      // Bulk automation script match
+      this.loadAutomationScripts();
+
+      // Secondary data in parallel.
       this.refreshSupportRequestsForHost(asset.asset, requestSeq);
       this.loadClosedFixForAsset(asset.asset, requestSeq);
     },
@@ -1175,10 +1198,54 @@ class TLSConfigurator:
       this.showPythonInstallAlert = true;
       this.showVaptfixVerifiedAlert = true;
     },
+    async loadAutomationScripts() {
+      const vulns = this.authStore.selectedAssetVulnerabilities || [];
+      const ids = [...new Set(vulns.map(v => Number(v.plugin_id)).filter(id => id > 0))];
+      if (!ids.length) return;
+      // Bulk call
+      const res = await this.authStore.fetchAutomationScriptsBulkAdmin(ids);
+      if (res.status && Array.isArray(res.results)) {
+        const map = {};
+        res.results.forEach(r => { map[r.plugin_id] = r; });
+        this.automationScriptMap = map;
+        // Single call for each matched plugin_id for full rich data
+        const matchedIds = res.results.filter(r => r.matched).map(r => r.plugin_id);
+        for (const pid of matchedIds) {
+          const single = await this.authStore.fetchAutomationScriptSingleAdmin(pid);
+          if (single.status && single.data) {
+            this.automationScriptMap = { ...this.automationScriptMap, [pid]: single.data };
+          }
+        }
+      }
+    },
+    getAutomationForVuln(v) {
+      const id = Number(v?.plugin_id
+        || this.authStore.selectedAssetVulnerabilities
+            .find(r => (r.vul_name || r.plugin_name) === (v?.vul_name || v?.plugin_name))
+            ?.plugin_id || 0);
+      return id > 0 ? (this.automationScriptMap[id] || null) : null;
+    },
     isVulnDownloadDisabled(v) {
+      const auto = this.getAutomationForVuln(v);
+      if (auto !== null) return !auto.matched;
       return isAutomationNotAvailable(this.selectedAssetIp, this.selectedAssetDemoIndex, v?.severity);
     },
-    downloadAutomationScript() {
+    async downloadAutomationScript(scriptData = null) {
+      const pluginId = Number(scriptData && scriptData.plugin_id || 0);
+      if (pluginId > 0) {
+        const res = await this.authStore.downloadAutomationScriptAdmin(pluginId);
+        if (res.status && res.content) {
+          const fileName = (scriptData && scriptData.fix_script_name) || (pluginId + '_fix_NS.py');
+          const blob = new Blob([res.content], { type: 'text/x-python' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = fileName;
+          a.click();
+          URL.revokeObjectURL(url);
+          return;
+        }
+      }
       const blob = new Blob([this.automationCode], { type: 'text/x-python' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
