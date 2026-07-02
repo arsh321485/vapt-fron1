@@ -465,11 +465,12 @@ export default {
       this.reportMetaLoading = true;
       const store = useAuthStore();
       try {
-        const [metaRes, summaryRes, projectRes, registerRes] = await Promise.all([
+        const [metaRes, summaryRes, projectRes, registerRes, latestRes] = await Promise.all([
           store.fetchReportHeaderMetadata(),
           store.fetchDashboardSummary(),
           store.getProjectDetails(),
           store.fetchVulnerabilityRegister(true),
+          store.fetchLatestUploadedReport(),
         ]);
 
         const sources = [];
@@ -480,10 +481,17 @@ export default {
 
         this.applyReportMetaFromSources(...sources);
 
-        const apiFileName = metaRes.fileName || registerRes.fileName;
-        if (apiFileName) this.reportMeta.vulManagementProgram = apiFileName;
-        else if (!this.reportMeta.vulManagementProgram) {
-          this.reportMeta.vulManagementProgram = REPORT_UPLOAD_FILE_NAME;
+        // Latest report API — highest priority for file name
+        if (latestRes.status && latestRes.data && latestRes.data.file_name) {
+          const rawName = latestRes.data.file_name;
+          // Strip .html extension for display
+          this.reportMeta.vulManagementProgram = rawName.replace(/\.html?$/i, '');
+        } else {
+          const apiFileName = metaRes.fileName || registerRes.fileName;
+          if (apiFileName) this.reportMeta.vulManagementProgram = apiFileName;
+          else if (!this.reportMeta.vulManagementProgram) {
+            this.reportMeta.vulManagementProgram = REPORT_UPLOAD_FILE_NAME;
+          }
         }
       } catch (err) {
         console.error('Report metadata fetch failed:', err);

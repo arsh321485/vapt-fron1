@@ -30,10 +30,11 @@
             :class="thumbsUpClass"
             :title="thumbsUpTitle"
             :aria-label="thumbsUpTitle"
-            :disabled="!canVote"
+            :disabled="!canVote || feedbackSubmitting"
             @click="handleFeedback('up')"
           >
-            <i class="bi bi-hand-thumbs-up-fill"></i>
+            <span v-if="feedbackSubmitting && userFeedback !== 'down'" class="spinner-border spinner-border-sm"></span>
+            <i v-else class="bi bi-hand-thumbs-up-fill"></i>
           </button>
           <button
             type="button"
@@ -41,10 +42,11 @@
             :class="thumbsDownClass"
             :title="thumbsDownTitle"
             :aria-label="thumbsDownTitle"
-            :disabled="!canVote"
+            :disabled="!canVote || feedbackSubmitting"
             @click="handleFeedback('down')"
           >
-            <i class="bi bi-hand-thumbs-down-fill"></i>
+            <span v-if="feedbackSubmitting && userFeedback !== 'up'" class="spinner-border spinner-border-sm"></span>
+            <i v-else class="bi bi-hand-thumbs-down-fill"></i>
           </button>
         </div>
       </div>
@@ -329,8 +331,9 @@ export default {
       this.refreshFeedbackState();
     },
   },
-  mounted() {
+  async mounted() {
     this.refreshFeedbackState();
+    await this.loadApiFeedback(); // load real counts + my_feedback from API
   },
   computed: {
     // Helper: parse numbered string list "1. A. 2. B." into ["A.", "B."]
@@ -505,9 +508,44 @@ export default {
         useDemoFallback: !this.isUser,
       });
     },
-    handleFeedback(vote) {
-      if (!this.canVote || !this.feedbackKey) return;
+    async loadApiFeedback() {
+      const pluginId = Number(this.automationData && this.automationData.plugin_id || 0);
+      if (!(pluginId > 0)) return;
+      // User: GET /api/user/automation-scripts/feedback/{id}/ (has my_feedback)
+      // Admin: GET /api/admin/automation-scripts/feedback/{id}/ (counts only)
+      const res = this.isUser
+        ? await this.authStore.getAutomationScriptFeedback(pluginId)
+        : await this.authStore.getAutomationScriptFeedbackAdmin(pluginId);
+      if (!res.status || !res.data) return;
+      const d = res.data;
+      // my_feedback only in user response
+      if (this.isUser) {
+        if (d.my_feedback && d.my_feedback.working !== undefined) {
+          this.userFeedback = d.my_feedback.working ? 'up' : 'down';
+          if (this.feedbackKey) setUserScriptFeedback(this.feedbackKey, this.userFeedback);
+        } else {
+          this.userFeedback = null;
+        }
+      }
+      // counts in both user and admin response
+      this.feedbackAggregate = {
+        up: d.thumb_up_count || 0,
+        down: d.thumb_down_count || 0,
+        total: (d.thumb_up_count || 0) + (d.thumb_down_count || 0),
+      };
+    },
+    async handleFeedback(vote) {
+      if (!this.canVote || !this.feedbackKey || this.feedbackSubmitting) return;
       const nextVote = this.userFeedback === vote ? null : vote;
+      const pluginId = Number(this.automationData && this.automationData.plugin_id || 0);
+      if (this.isUser && pluginId > 0 && nextVote !== null) {
+        this.feedbackSubmitting = true;
+        await this.authStore.submitAutomationScriptFeedback(pluginId, nextVote === 'up');
+        this.feedbackSubmitting = false;
+        // Refresh counts from API after submit
+        await this.loadApiFeedback();
+        return;
+      }
       setUserScriptFeedback(this.feedbackKey, nextVote);
       this.refreshFeedbackState();
       this.$emit('feedback-change', {

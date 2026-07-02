@@ -2671,6 +2671,20 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    // 🔹 Latest uploaded report info
+    // GET /api/admin/upload_report/latest-report/
+    async fetchLatestUploadedReport() {
+      try {
+        const res = await endpoint.get("/api/admin/upload_report/latest-report/");
+        if (res.data?.success) {
+          return { status: true, data: res.data };
+        }
+        return { status: false, data: null };
+      } catch (error: any) {
+        return { status: false, data: null, message: error.response?.data?.detail || "Failed" };
+      }
+    },
+
     extractUploadedFileName(payload: unknown): string | null {
       const FILE_KEYS = [
         "file_name",
@@ -4649,6 +4663,43 @@ export const useAuthStore = defineStore("auth", {
         this.restoreDeletedVulnerabilityAssetsFromStorage();
         this.deletedVulnerabilityAssetsFetched = true;
         return { status: true, data: this.deletedVulnerabilityAssets };
+      }
+    },
+
+    // 🔹 Get feedback + counts (Admin) - no my_feedback
+    async getAutomationScriptFeedbackAdmin(pluginId: number) {
+      try {
+        const res = await endpoint.get(`/api/admin/automation-scripts/feedback/${pluginId}/`);
+        return { status: true, data: res.data };
+      } catch (error: any) {
+        return { status: false, data: null, message: error.response?.data?.detail || "Failed" };
+      }
+    },
+
+    // 🔹 Get feedback + counts (User) - includes my_feedback
+    async getAutomationScriptFeedback(pluginId: number) {
+      try {
+        const res = await endpoint.get(`/api/user/automation-scripts/feedback/${pluginId}/`);
+        return { status: true, data: res.data };
+      } catch (error: any) {
+        return { status: false, data: null, message: error.response?.data?.detail || "Failed" };
+      }
+    },
+
+    // 🔹 Submit feedback (User)
+    async submitAutomationScriptFeedback(pluginId: number, working: boolean) {
+      try {
+        const res = await endpoint.post("/api/user/automation-scripts/feedback/", {
+          plugin_id: pluginId,
+          working,
+        });
+        return { status: true, data: res.data };
+      } catch (error: any) {
+        return {
+          status: false,
+          data: null,
+          message: error.response?.data?.detail || "Feedback failed",
+        };
       }
     },
 
