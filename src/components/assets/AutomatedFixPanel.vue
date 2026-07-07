@@ -1,5 +1,23 @@
 <template>
   <div class="auto-tab-content" :class="{ 'auto-tab-content--greyed': !scriptAvailable }">
+
+    <!-- OS Selector -->
+    <div v-if="availableOs.length > 1" class="os-selector-row">
+      <span class="os-selector-label">OS:</span>
+      <button
+        v-for="os in availableOs"
+        :key="os"
+        type="button"
+        class="os-btn"
+        :class="{ 'os-btn--active': selectedOs === os }"
+        :disabled="osLoading"
+        @click="selectOs(os)"
+      >
+        <span v-if="osLoading && selectedOs === os" class="spinner-border spinner-border-sm me-1"></span>
+        {{ os }}
+      </button>
+    </div>
+
     <!-- Row 1: Capability banner -->
     <div class="capability-banner" :style="theme.banner">
       <div class="cap-banner-top">
@@ -191,6 +209,7 @@
 
 <script>
 import { canonSeverity, resolveAutomationDisplay } from '@/utils/assetVulnerabilities';
+import { useAuthStore } from '@/stores/authStore';
 import {
   buildScriptFeedbackKey,
   getScriptFeedbackAggregate,
@@ -281,7 +300,7 @@ const DEFAULT_REC =
 
 export default {
   name: 'AutomatedFixPanel',
-  emits: ['view-code', 'feedback-change', 'complete-steps', 'send-verification'],
+  emits: ['view-code', 'feedback-change', 'complete-steps', 'send-verification', 'os-data-change'],
   props: {
     showActions: { type: Boolean, default: true },
     isUser: { type: Boolean, default: false },
@@ -307,10 +326,16 @@ export default {
   data() {
     return {
       descriptionExpanded: false,
+      authStore: useAuthStore(),
       copiedKey: null,
       _copyTimer: null,
       userFeedback: null,
+      feedbackSubmitting: false,
       feedbackAggregate: { up: 0, down: 0, total: 0 },
+      selectedOs: null,
+      localData: null,
+      osLoading: false,
+
     };
   },
   watch: {
@@ -330,15 +355,28 @@ export default {
     resolvedScriptName() {
       this.refreshFeedbackState();
     },
+    automationData(newVal) {
+      this.localData = null;
+      this.selectedOs = newVal && newVal.os || null;
+    },
   },
   async mounted() {
     this.refreshFeedbackState();
+    this.selectedOs = this.automationData && this.automationData.os || null;
     await this.loadApiFeedback(); // load real counts + my_feedback from API
   },
   computed: {
+    effectiveData() {
+      return this.localData || this.automationData;
+    },
+    availableOs() {
+      const d = this.effectiveData;
+      if (!d || !Array.isArray(d.available_os) || d.available_os.length <= 1) return [];
+      return d.available_os;
+    },
     // Helper: parse numbered string list "1. A. 2. B." into ["A.", "B."]
     _apiParsed() {
-      const d = this.automationData;
+      const d = this.effectiveData;
       if (!d) return null;
       const split = str => !str ? [] : str.split(/\d+\.\s+/).map(s => s.trim()).filter(Boolean);
       const splitComma = str => !str ? [] : str.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
@@ -507,6 +545,21 @@ export default {
       this.feedbackAggregate = getScriptFeedbackAggregate(this.feedbackKey, {
         useDemoFallback: !this.isUser,
       });
+    },
+    async selectOs(os) {
+      if (this.selectedOs === os || this.osLoading) return;
+      this.selectedOs = os;
+      const pluginId = Number(this.automationData && this.automationData.plugin_id || 0);
+      if (!(pluginId > 0)) return;
+      this.osLoading = true;
+      const res = this.isUser
+        ? await this.authStore.fetchAutomationScriptSingle(pluginId, os)
+        : await this.authStore.fetchAutomationScriptSingleAdmin(pluginId, os);
+      this.osLoading = false;
+      if (res.status && res.data) {
+        this.localData = res.data;
+        this.$emit('os-data-change', res.data);
+      }
     },
     async loadApiFeedback() {
       const pluginId = Number(this.automationData && this.automationData.plugin_id || 0);
@@ -977,6 +1030,35 @@ export default {
   color: #1e3a8a;
   line-height: 1.6;
 }
+
+.os-selector-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.os-selector-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.os-btn {
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.os-btn:hover { background: #f1f5f9; border-color: #0f696e; color: #0f696e; }
+.os-btn--active { background: #0f696e; border-color: #0f696e; color: #fff; }
+.os-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .auto-tab-content--greyed {
   opacity: 0.45;

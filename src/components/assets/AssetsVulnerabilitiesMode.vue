@@ -467,6 +467,7 @@
                         :severity="v.severity"
                         :vuln-id="String(v.id || '')"
                         :asset-os="assetMetaFor(v, asset).os"
+                        :fix-id="isUser ? '' : fixIdForAsset(v, asset)"
                         @support-request-raised="refreshSupportRequestsForVuln"
                         @open-support-modal="({ vulnName, step, completedSteps }) => openVulnSupportModal(step, vulnName, completedSteps)"
                       />
@@ -2236,6 +2237,11 @@ export default {
       const port = row.port || row.service_port || row.protocol_port || '';
       const os = row.operating_system || row.os || row.platform || 'Linux';
       return { port, os };
+    },
+    fixIdForAsset(vuln, asset) {
+      // Each register row is per-asset; look up fix_vulnerability_id for this asset.
+      const row = vuln?.rows?.find(r => (r.asset || r.host_name) === asset);
+      return row?.fix_vulnerability_id || vuln?.fix_vulnerability_id || '';
     },
     sendForVerification(asset) {
       if (asset.stepsCompleted < asset.totalSteps) return;

@@ -3446,7 +3446,8 @@ export const useAuthStore = defineStore("auth", {
 
         return {
           status: true,
-          data: res.data.data,
+          // Backend may return fix_vulnerability_id at top level or inside data{}
+          data: res.data.data || res.data,
           message: res.data.message,
         };
       } catch (error) {
@@ -3689,9 +3690,19 @@ export const useAuthStore = defineStore("auth", {
         };
       } catch (error) {
         const err = error as AxiosError<any>;
+        if (err.response?.status === 404) {
+          return {
+            status: false,
+            notFound: true,
+            message: err.response?.data?.detail || "Fix vulnerability not found",
+          };
+        }
         return {
           status: false,
-          message: err.response?.data?.message || "Failed to fetch step completion data",
+          message:
+            err.response?.data?.detail ||
+            err.response?.data?.message ||
+            "Failed to fetch step completion data",
           details: err.response?.data || null,
         };
       }
@@ -4735,10 +4746,13 @@ export const useAuthStore = defineStore("auth", {
 
     // 🔹 Download automation script (User)
     // GET /api/user/automation-scripts/download/{plugin_id}/
-    async downloadAutomationScript(pluginId: number) {
+    async downloadAutomationScript(pluginId: number, os?: string | null) {
       try {
+        const params: Record<string, string> = {};
+        if (os) params.os = os;
         const res = await endpoint.get(`/api/user/automation-scripts/download/${pluginId}/`, {
           responseType: "text",
+          params,
         });
         return { status: true, content: res.data, headers: res.headers };
       } catch (error: any) {
@@ -4752,10 +4766,13 @@ export const useAuthStore = defineStore("auth", {
 
     // 🔹 Download automation script (Admin)
     // GET /api/admin/automation-scripts/download/{plugin_id}/
-    async downloadAutomationScriptAdmin(pluginId: number) {
+    async downloadAutomationScriptAdmin(pluginId: number, os?: string | null) {
       try {
+        const params: Record<string, string> = {};
+        if (os) params.os = os;
         const res = await endpoint.get(`/api/admin/automation-scripts/download/${pluginId}/`, {
           responseType: "text",
+          params,
         });
         return { status: true, content: res.data, headers: res.headers };
       } catch (error: any) {
@@ -4768,9 +4785,13 @@ export const useAuthStore = defineStore("auth", {
     },
 
     // 🔹 Single automation script match (User)
-    async fetchAutomationScriptSingle(pluginId: number) {
+    async fetchAutomationScriptSingle(pluginId: number, os?: string | null) {
       try {
-        const res = await endpoint.get(`/api/user/automation-scripts/match/${pluginId}/`);
+        const params: Record<string, string> = {};
+        if (os) params.os = os;
+        const res = await endpoint.get(`/api/user/automation-scripts/match/${pluginId}/`, {
+          params,
+        });
         return { status: true, data: res.data };
       } catch (error: any) {
         return {
@@ -4782,9 +4803,13 @@ export const useAuthStore = defineStore("auth", {
     },
 
     // 🔹 Single automation script match (Admin)
-    async fetchAutomationScriptSingleAdmin(pluginId: number) {
+    async fetchAutomationScriptSingleAdmin(pluginId: number, os?: string | null) {
       try {
-        const res = await endpoint.get(`/api/admin/automation-scripts/match/${pluginId}/`);
+        const params: Record<string, string> = {};
+        if (os) params.os = os;
+        const res = await endpoint.get(`/api/admin/automation-scripts/match/${pluginId}/`, {
+          params,
+        });
         return { status: true, data: res.data };
       } catch (error: any) {
         return {
@@ -5640,14 +5665,17 @@ export const useAuthStore = defineStore("auth", {
           `/api/admin/adminasset/report/${reportId}/asset/${asset}/vulnerabilities/`,
         );
 
-        let vulns = normalizeAssetVulnerabilityList(res.data.vulnerabilities || []);
+        // Register rows are the source of truth for fix_vulnerability_id.
+        // Use cached register (already fetched in mounted); fall back to
+        // asset-specific endpoint only when register has no rows for this asset.
+        await this.fetchVulnerabilityRegister(false);
+        let vulns = buildVulnsFromRegister(
+          this.vulnerabilityRows,
+          asset,
+          this.deletedVulnerabilityAssets,
+        );
         if (!vulns.length) {
-          await this.fetchVulnerabilityRegister(true);
-          vulns = buildVulnsFromRegister(
-            this.vulnerabilityRows,
-            asset,
-            this.deletedVulnerabilityAssets,
-          );
+          vulns = normalizeAssetVulnerabilityList(res.data.vulnerabilities || []);
         }
         vulns = filterDeletedVulnsForHost(vulns, asset, this.deletedVulnerabilityAssets);
 

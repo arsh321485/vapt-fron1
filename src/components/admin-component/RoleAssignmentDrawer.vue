@@ -54,7 +54,18 @@
                   <i class="bi bi-hdd-network ra-section-icon"></i>
                   <h3 class="ra-section-title">Assets</h3>
                 </div>
-                <span class="ra-section-count">{{ filteredAssets.length }} items</span>
+                <div class="ra-section-head-right">
+                  <label class="ra-select-all">
+                    <input
+                      type="checkbox"
+                      :checked="allAssetsSelected"
+                      :indeterminate.prop="someAssetsSelected"
+                      @change="toggleAllAssets"
+                    />
+                    <span>All</span>
+                  </label>
+                  <span class="ra-section-count">{{ filteredAssets.length }} items</span>
+                </div>
               </div>
               <div v-if="filteredAssets.length" class="ra-list">
                 <label v-for="asset in filteredAssets" :key="asset.id" class="ra-item">
@@ -85,7 +96,18 @@
                   <i class="bi bi-shield-exclamation ra-section-icon"></i>
                   <h3 class="ra-section-title">Vulnerabilities</h3>
                 </div>
-                <span class="ra-section-count">{{ filteredVulns.length }} items</span>
+                <div class="ra-section-head-right">
+                  <label class="ra-select-all">
+                    <input
+                      type="checkbox"
+                      :checked="allVulnsSelected"
+                      :indeterminate.prop="someVulnsSelected"
+                      @change="toggleAllVulns"
+                    />
+                    <span>All</span>
+                  </label>
+                  <span class="ra-section-count">{{ filteredVulns.length }} items</span>
+                </div>
               </div>
               <div v-if="filteredVulns.length" class="ra-list">
                 <label v-for="vuln in filteredVulns" :key="vuln.id" class="ra-item">
@@ -178,6 +200,26 @@ export default {
       if (!this.activeRole) return 0;
       return this.roleAssignments[this.activeRole]?.vulnerabilities?.length || 0;
     },
+    allAssetsSelected() {
+      if (!this.activeRole || !this.filteredAssets.length) return false;
+      const selected = this.roleAssignments[this.activeRole]?.assets || [];
+      return this.filteredAssets.every(a => selected.includes(a.id));
+    },
+    someAssetsSelected() {
+      if (!this.activeRole) return false;
+      const selected = this.roleAssignments[this.activeRole]?.assets || [];
+      return this.filteredAssets.some(a => selected.includes(a.id)) && !this.allAssetsSelected;
+    },
+    allVulnsSelected() {
+      if (!this.activeRole || !this.filteredVulns.length) return false;
+      const selected = this.roleAssignments[this.activeRole]?.vulnerabilities || [];
+      return this.filteredVulns.every(v => selected.includes(v.id));
+    },
+    someVulnsSelected() {
+      if (!this.activeRole) return false;
+      const selected = this.roleAssignments[this.activeRole]?.vulnerabilities || [];
+      return this.filteredVulns.some(v => selected.includes(v.id)) && !this.allVulnsSelected;
+    },
   },
   watch: {
     show(value) {
@@ -206,6 +248,32 @@ export default {
     handleApply() {
       this.$emit("update:show", false);
       this.$emit("apply");
+    },
+    toggleAllAssets() {
+      if (!this.activeRole) return;
+      const ra = this.roleAssignments[this.activeRole];
+      if (!ra) return;
+      if (this.allAssetsSelected) {
+        const filteredIds = new Set(this.filteredAssets.map(a => a.id));
+        ra.assets = ra.assets.filter(id => !filteredIds.has(id));
+      } else {
+        const existing = new Set(ra.assets);
+        this.filteredAssets.forEach(a => existing.add(a.id));
+        ra.assets = [...existing];
+      }
+    },
+    toggleAllVulns() {
+      if (!this.activeRole) return;
+      const ra = this.roleAssignments[this.activeRole];
+      if (!ra) return;
+      if (this.allVulnsSelected) {
+        const filteredIds = new Set(this.filteredVulns.map(v => v.id));
+        ra.vulnerabilities = ra.vulnerabilities.filter(id => !filteredIds.has(id));
+      } else {
+        const existing = new Set(ra.vulnerabilities);
+        this.filteredVulns.forEach(v => existing.add(v.id));
+        ra.vulnerabilities = [...existing];
+      }
     },
   },
 };
@@ -338,8 +406,29 @@ export default {
 .ra-section {
   border: 1px solid #eef2f7;
   border-radius: 12px;
-  overflow: hidden;
+  overflow: visible;
   background: #fafbfc;
+}
+.ra-section-head-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ra-select-all {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  cursor: pointer;
+  user-select: none;
+}
+.ra-select-all input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: #241447;
+  cursor: pointer;
 }
 .ra-section-head {
   display: flex;
@@ -369,8 +458,10 @@ export default {
 .ra-list {
   display: flex;
   flex-direction: column;
-  max-height: 220px;
+  max-height: 200px;
   overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
 }
 .ra-item {
   display: flex;

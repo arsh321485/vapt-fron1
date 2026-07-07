@@ -243,7 +243,7 @@
               <label class="field-label">Email Address</label>
               <div class="input-row">
                 <i class="bi bi-at field-icon"></i>
-                <input type="text" class="field-input" v-model="adminForm.email" placeholder="name@vaptfix.com" autocomplete="new-password" required />
+                <input type="text" class="field-input" v-model="adminForm.email" placeholder="name@vaptfix.com" autocomplete="new-password" required @blur="syncAdminConnectionState" />
               </div>
               <p class="auth-suggestion">Use the same email you used during admin sign up.</p>
             </div>
@@ -652,16 +652,22 @@ export default {
       return sessionEmail === enteredEmail;
     },
     syncUserMemberSessionState() {
-      if (!this.hasActiveAuthSession()) return;
+      // Check sessionStorage first, then localStorage (persists across sessions)
+      const slackStored =
+        sessionStorage.getItem('member_slack_connected') === 'true' ||
+        localStorage.getItem('member_slack_connected') === 'true';
+      const teamsStored =
+        sessionStorage.getItem('member_teams_connected') === 'true' ||
+        localStorage.getItem('member_teams_connected') === 'true';
 
-      if (sessionStorage.getItem('member_slack_connected') === 'true') {
+      if (slackStored) {
         this.userPlatform = 'slack';
         this.platformChecked = true;
         this.userSlackConnected = true;
         this.userTeamsConnected = false;
         return;
       }
-      if (sessionStorage.getItem('member_teams_connected') === 'true') {
+      if (teamsStored) {
         this.userPlatform = 'microsoft_teams';
         this.platformChecked = true;
         this.userTeamsConnected = true;
@@ -698,10 +704,13 @@ export default {
           slackOk = false;
         }
       }
-      this.adminSlackConnected = slackOk || sessionStorage.getItem('admin_slack_connected') === 'true';
+      this.adminSlackConnected = slackOk ||
+        sessionStorage.getItem('admin_slack_connected') === 'true' ||
+        localStorage.getItem('admin_slack_connected') === 'true';
       this.adminTeamsConnected =
         (hasTeamsToken && !this.adminSlackConnected) ||
-        sessionStorage.getItem('admin_teams_connected') === 'true';
+        sessionStorage.getItem('admin_teams_connected') === 'true' ||
+        localStorage.getItem('admin_teams_connected') === 'true';
       if (this.adminSlackConnected && this.adminTeamsConnected) {
         this.adminTeamsConnected = false;
       }
@@ -798,7 +807,9 @@ export default {
       if (event.data?.type === 'SLACK_MEMBER_LOGGED_IN' && event.data?.success) {
         this.userOAuthLoading = false;
         sessionStorage.setItem('member_slack_connected', 'true');
+        localStorage.setItem('member_slack_connected', 'true');
         sessionStorage.removeItem('member_teams_connected');
+        localStorage.removeItem('member_teams_connected');
         this.userSlackConnected = true;
         this.userTeamsConnected = false;
         this.userPlatform = 'slack';
@@ -809,7 +820,9 @@ export default {
       if (event.data?.type === 'TEAMS_MEMBER_LOGGED_IN' && event.data?.success) {
         this.userOAuthLoading = false;
         sessionStorage.setItem('member_teams_connected', 'true');
+        localStorage.setItem('member_teams_connected', 'true');
         sessionStorage.removeItem('member_slack_connected');
+        localStorage.removeItem('member_slack_connected');
         this.userTeamsConnected = true;
         this.userSlackConnected = false;
         this.userPlatform = 'microsoft_teams';
@@ -909,7 +922,9 @@ export default {
         this.adminSlackConnected = true;
         this.adminTeamsConnected = false;
         sessionStorage.setItem('admin_slack_connected', 'true');
+        localStorage.setItem('admin_slack_connected', 'true');
         sessionStorage.removeItem('admin_teams_connected');
+        localStorage.removeItem('admin_teams_connected');
         this.ensureAdminAuthSessionFromOAuth(event.data);
         await Swal.fire({
           icon: 'success',
@@ -1380,6 +1395,12 @@ export default {
     },
     async checkAndRedirectAdmin() {
       const authStore = useAuthStore();
+      const loggedUser = authStore.user || JSON.parse(localStorage.getItem('user') || 'null') || {};
+      const userType = String(loggedUser && (loggedUser.user_type || loggedUser.type || loggedUser.role) || '').toLowerCase();
+      if (userType === 'user' || userType === 'member' || userType === 'internal' || userType === 'external') {
+        this.$router.replace('/userdashboard');
+        return;
+      }
       try {
         const [res, riskRes] = await Promise.all([
           authStore.getScopingUploadStatus(),

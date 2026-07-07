@@ -212,7 +212,15 @@
                   />
                 </div>
                 <div v-else class="av-manual-tab">
-                  <ManualRemediationStepsPanel />
+                  <ManualRemediationStepsPanel
+                    :is-user="isUser"
+                    :vuln-name="selectedVuln ? selectedVuln.vul_name : ''"
+                    :asset-ip="selectedOsGroups.length ? (selectedOsGroups[0].assets[0] && selectedOsGroups[0].assets[0].host_name) || '' : ''"
+                    :severity="selectedVuln ? selectedVuln.severity || 'Medium' : 'Medium'"
+                    :vuln-id="selectedVuln ? String(selectedVuln.id || selectedVuln._id || '') : ''"
+                    :asset-os="selectedOsGroups.length ? selectedOsGroups[0].osLabel || '' : ''"
+                    :fix-id="manualFixVulnId"
+                  />
                 </div>
               </div>
             </div>
@@ -436,6 +444,19 @@ if __name__ == "__main__":
       return this.selectedOsGroups
         .filter(g => this.selectedOsKeys.includes(g.osKey))
         .reduce((sum, g) => sum + g.assets.length, 0);
+    },
+    manualFixVulnId() {
+      if (!this.selectedVuln || this.isUser) return '';
+      const assetIp = this.selectedOsGroups.length
+        ? String(this.selectedOsGroups[0].assets[0]?.host_name || '').trim()
+        : '';
+      if (!assetIp) return this.selectedVuln.fix_vulnerability_id || '';
+      // rows contains per-asset register rows; find the one matching the first asset
+      const rows = this.selectedVuln.rows || [];
+      const match = rows.find(r =>
+        String(r.asset || r.host_name || '').trim() === assetIp,
+      );
+      return match?.fix_vulnerability_id || this.selectedVuln.fix_vulnerability_id || '';
     },
     isAutomationNotSafe() {
       if (!this.selectedVuln) return false;

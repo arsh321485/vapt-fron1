@@ -7,6 +7,15 @@
       <span>Loading fix details…</span>
     </div>
 
+    <!-- Admin: fix not started for this vulnerability -->
+    <div v-if="!isUser && fixNotStarted && !loadingFixVuln" class="mf-not-started">
+      <i class="bi bi-hourglass-split mf-not-started-icon" aria-hidden="true"></i>
+      <div class="mf-not-started-text">
+        <span class="mf-not-started-title">Fix Not Started</span>
+        <span class="mf-not-started-sub">No remediation has been initiated for this vulnerability yet.</span>
+      </div>
+    </div>
+
     <!-- Fix info from API: solution + assigned team -->
     <div v-if="fixVulnData && !loadingFixVuln" class="mf-fix-info-card">
       <div v-if="fixVulnData.solution" class="mf-fix-info-row">
@@ -26,7 +35,7 @@
       </div>
     </div>
 
-    <div class="mf-subtasks-bar">
+    <div v-if="(!fixNotStarted || isUser) && !loadingFixVuln" class="mf-subtasks-bar">
       <span class="mf-subtasks-title">Remediation Sub-Tasks ({{ displaySubtasks.length }})</span>
       <span class="mf-subtasks-done">{{ completedSubtasksCount }} tasks completed</span>
     </div>
@@ -154,9 +163,18 @@
           <p class="mf-consideration-text">{{ cleanText(task.consideration) }}</p>
         </div>
 
+        <!-- Read-only completed indicator (Admin Only) -->
+        <div v-if="!isUser && task.status === 'completed'" class="mf-complete-btn-wrap">
+          <button type="button" class="mf-complete-btn mf-complete-btn--done" disabled>
+            <i class="bi bi-check-circle-fill me-1"></i>
+            Step {{ task.id }} Completed
+          </button>
+        </div>
+
         <!-- Complete Step + Support Request (User Only) -->
         <div v-if="isUser" class="mf-complete-btn-wrap">
           <button
+            v-if="isUser"
             type="button"
             class="mf-support-btn"
             :class="{ 'mf-support-btn--raised': isStepSupportRaised(task.id) }"
@@ -196,6 +214,7 @@
         <span>Complete all steps</span>
       </button>
       <button
+        v-if="isUser"
         type="button"
         class="mf-action-btn mf-action-btn--outline"
         @click="sendVerificationForSteps"
@@ -242,14 +261,23 @@ export default {
       type: String,
       default: '',
     },
+    fixId: {
+      type: String,
+      default: '',
+    },
   },
   data() {
     return {
       authStore: useAuthStore(),
-      subtasks: MOCK_MANUAL_STEPS.map((s, i) => ({ ...s, isExpanded: i === 0 })),
+      // Admin is read-only and fetches real data; start empty to avoid
+      // mock steps flashing when the component remounts.
+      subtasks: this.isUser
+        ? MOCK_MANUAL_STEPS.map((s, i) => ({ ...s, isExpanded: i === 0 }))
+        : [],
       raisedSupportSteps: [],
       fixVulnerabilityId: null,
       fixVulnData: null,
+      fixNotStarted: false,
       loadingFixVuln: false,
       selectedOs: 'windows',
       apiCompletedSteps: 0,
@@ -269,9 +297,8 @@ export default {
       }));
     },
     completedSubtasksCount() {
-      if (this.fixVulnerabilityId) {
-        return this.apiCompletedSteps;
-      }
+      // Always derive from actual rendered step statuses so admin and user
+      // both show the correct count after merging completion data.
       return this.subtasks.filter(t => t.status === 'completed').length;
     },
     allStepsCompleted() {
@@ -306,6 +333,11 @@ export default {
       if (this.isUser) {
         this.initFixVuln();
       } else {
+        this.initAdminFixVuln();
+      }
+    },
+    fixId() {
+      if (!this.isUser) {
         this.initAdminFixVuln();
       }
     },
@@ -414,6 +446,13 @@ export default {
         completedCount = Math.max(completedCount, effectiveNext - 1);
       }
 
+      // When all steps are done, backend sends next_step: null and completed_steps: N.
+      // resolveEffectiveNextStep returns null for a null seed, so nextStep stays null.
+      // Force nextStep past the total so every step passes the stepNumber < nextStep check.
+      if (nextStep == null && completedCount > 0 && apiSteps.length > 0 && completedCount >= apiSteps.length) {
+        nextStep = apiSteps.length + 1;
+      }
+
       this.apiCompletedSteps = completedCount;
 
       this.subtasks = apiSteps.map(s => {
@@ -445,10 +484,15 @@ export default {
     },
     async refreshStepsFromApi(postOverride = null) {
       if (!this.fixVulnerabilityId) return;
-      const stepsRes = await this.authStore.getUserFixVulnerabilitySteps(
-        this.fixVulnerabilityId,
-        this.selectedOs,
-      );
+      let stepsRes;
+      if (this.isUser) {
+        stepsRes = await this.authStore.getUserFixVulnerabilitySteps(
+          this.fixVulnerabilityId,
+          this.selectedOs,
+        );
+      } else {
+        stepsRes = await this.authStore.getFixVulnerabilitySteps(this.fixVulnerabilityId);
+      }
       if (stepsRes.status && Array.isArray(stepsRes.data?.steps) && stepsRes.data.steps.length) {
         this.applyStepsFromApi(stepsRes.data, postOverride);
       } else if (postOverride) {
@@ -503,39 +547,33 @@ export default {
     async initAdminFixVuln() {
       if (this.isUser || !this.vulnName || !this.assetIp) return;
       this.loadingFixVuln = true;
+      this.fixNotStarted = false;
       this.fixVulnerabilityId = null;
       this.fixVulnData = null;
+
+      // New flow: fix_vulnerability_id comes from the register row directly.
+      // Admin side is read-only — no createFixVulnerability POST needed.
+      const preloadedId = this.fixId;
+      if (!preloadedId) {
+        this.fixNotStarted = true;
+        this.subtasks = [];
+        this.loadingFixVuln = false;
+        return;
+      }
+
+      this.fixVulnerabilityId = preloadedId;
+
       try {
-        let reportId = this.authStore.latestReportId;
-        if (!reportId) {
-          await this.authStore.fetchVulnerabilityRegister();
-          reportId = this.authStore.latestReportId;
-        }
-        if (!reportId) return;
-
-        const payload = {
-          plugin_name: this.vulnName,
-          risk_factor: this.severity || 'Medium',
-        };
-        if (this.vulnId) payload.id = this.vulnId;
-
-        const createRes = await this.authStore.createFixVulnerability(reportId, this.assetIp, payload);
-        let fixId = null;
-        if (createRes.status && createRes.data) {
-          fixId = createRes.data._id || createRes.data.fix_vulnerability_id || null;
-        } else if (createRes.details?.fix_vulnerability_id) {
-          fixId = createRes.details.fix_vulnerability_id;
-        }
-        if (!fixId) return;
-        this.fixVulnerabilityId = fixId;
-
-        const stepsRes = await this.authStore.getFixVulnerabilitySteps(fixId);
+        const stepsRes = await this.authStore.getFixVulnerabilitySteps(preloadedId);
         if (stepsRes.status && Array.isArray(stepsRes.data?.steps) && stepsRes.data.steps.length) {
           this.fixVulnData = {
             assigned_team: stepsRes.data.assigned_team || '',
             assigned_team_members: stepsRes.data.steps[0]?.assigned_team_members || [],
           };
           this.applyStepsFromApi(stepsRes.data);
+        } else if (stepsRes.notFound) {
+          this.fixNotStarted = true;
+          this.subtasks = [];
         }
       } finally {
         this.loadingFixVuln = false;
@@ -652,16 +690,26 @@ export default {
       step.submitting = true;
 
       try {
-        const res = await this.authStore.completeUserFixVulnerabilityStep(
-          this.fixVulnerabilityId,
-          { status: 'completed', comment: '' },
-          this.selectedOs,
-        );
+        let res;
+        if (this.isUser) {
+          res = await this.authStore.completeUserFixVulnerabilityStep(
+            this.fixVulnerabilityId,
+            { status: 'completed', comment: '' },
+            this.selectedOs,
+          );
+        } else {
+          res = await this.authStore.completeFixVulnerabilityStep(
+            this.fixVulnerabilityId,
+            { status: 'completed', comment: '' },
+          );
+        }
 
         if (res.status) {
           step.submitting = false;
-          this.applyStepProgressFromPost(res);
-          await this.refreshStepsFromApi(res);
+          if (this.isUser) {
+            this.applyStepProgressFromPost(res);
+          }
+          await this.refreshStepsFromApi(this.isUser ? res : null);
         } else {
           step.submitting = false;
           Swal.fire({ icon: 'error', title: 'Failed', text: res.message || 'Failed to complete step', timer: 2000, showConfirmButton: false });
@@ -779,6 +827,37 @@ export default {
   padding: 12px 16px;
   font-size: 13px;
   color: #49454f;
+}
+
+.mf-not-started {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 20px;
+  margin-bottom: 8px;
+  background: #f8fafc;
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 10px;
+  color: #64748b;
+}
+.mf-not-started-icon {
+  font-size: 28px;
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+.mf-not-started-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.mf-not-started-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #475569;
+}
+.mf-not-started-sub {
+  font-size: 12.5px;
+  color: #94a3b8;
 }
 
 .mf-fix-info-card {

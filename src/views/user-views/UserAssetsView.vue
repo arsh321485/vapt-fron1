@@ -354,16 +354,16 @@
                               :severity="vuln.severity"
                               :asset-ip="selectedAssetIp"
                               :asset-index="selectedAssetDemoIndex"
-                              :automation-matched="getAutomationForVuln(vuln)?.matched"
+                              :automation-matched="getAutomationForVuln(vuln) && getAutomationForVuln(vuln).matched"
                             />
                             <button
                               type="button"
                               class="vuln-download-icon-btn"
-                              :class="{ 'vuln-download-icon-btn--disabled': !getAutomationForVuln(vuln)?.matched }"
-                              :disabled="!getAutomationForVuln(vuln)?.matched"
-                              :title="getAutomationForVuln(vuln)?.matched ? 'Download fix script' : 'Script not available'"
-                              :aria-label="getAutomationForVuln(vuln)?.matched ? 'Download fix script' : 'Script not available'"
-                              @click.stop="getAutomationForVuln(vuln)?.matched && downloadAutomationScript(getAutomationForVuln(vuln))"
+                              :class="{ 'vuln-download-icon-btn--disabled': isVulnDownloadDisabled(vuln) }"
+                              :disabled="isVulnDownloadDisabled(vuln)"
+                              :title="isVulnDownloadDisabled(vuln) ? 'Script not available' : 'Download fix script'"
+                              :aria-label="isVulnDownloadDisabled(vuln) ? 'Script not available' : 'Download fix script'"
+                              @click.stop="!isVulnDownloadDisabled(vuln) && downloadAutomationScript(getAutomationForVuln(vuln))"
                             >
                               <i class="bi bi-download"></i>
                             </button>
@@ -435,6 +435,7 @@
                                   :is-user="true"
                                   :automation-data="getAutomationForVuln(vuln)"
                                   @view-code="showCodeModal = true"
+                                  @os-data-change="onOsDataChange"
                                 />
                               </div>
 
@@ -869,8 +870,8 @@ export default {
       loadingSupportRequests: false,
       supportRequestCount: 0,
       selectedSupportRequest: null,
-      automationScriptMap: {},   // { plugin_id: { matched, fix_script_path, ... } }
-      singleFetchedIds: [],       // plain array — Vue 2 mein Set reactive nahi hoti
+      automationScriptMap: {},
+      singleFetchedIds: [],
       loadingAutomation: false,
       expandedDescriptions: {},
       descriptionPreviewLimit: 280,
@@ -1130,14 +1131,7 @@ class TLSConfigurator:
         });
 
         const vuln = this.filteredVulnerabilities[index];
-        const id = Number(
-          vuln?.plugin_id ||
-          this.authStore.selectedAssetVulnerabilities
-            .find(v => (v.vul_name || v.plugin_name) === (vuln?.vul_name || vuln?.plugin_name))
-            ?.plugin_id ||
-          0
-        );
-        // singleFetchedIds guard — automationScriptMap nahi (bulk se fill ho chuka hoga)
+        const id = Number(vuln && vuln.plugin_id || 0);
         if (id > 0 && !this.singleFetchedIds.includes(id)) {
           this.singleFetchedIds = [...this.singleFetchedIds, id];
           const res = await this.authStore.fetchAutomationScriptSingle(id);
@@ -1499,8 +1493,6 @@ class TLSConfigurator:
       this.activeIndex = asset.asset;
       this.expandedVulnIndex = null;
       this.assetDescriptionExpanded = false;
-      this.automationScriptMap = {};
-      this.singleFetchedIds = [];
 
       if (this.assetTypeFilter !== "assets" || asset._isDummy) {
         this.loadingAssetVulns = false;
@@ -1522,11 +1514,12 @@ class TLSConfigurator:
       await this.authStore.fetchUserSingleAssetVulnerabilities(asset.asset);
       this.loadingAssetVulns = false;
 
+      this.automationScriptMap = {};
+      this.singleFetchedIds = [];
+      this.loadAutomationScripts();
+
       // Sync card badge with actual loaded vuln counts (backend severity_counts may be stale)
       this.syncAssetSeverityCounts(asset.asset);
-
-      // Bulk automation script match
-      this.loadAutomationScripts();
 
       await this.loadSupportRequestsByHost(asset.asset);
       this.loadingClosedFix = true;
@@ -1540,9 +1533,7 @@ class TLSConfigurator:
     },
     async loadAutomationScripts() {
       const vulns = this.authStore.selectedAssetVulnerabilities || [];
-      const pluginIds = [...new Set(
-        vulns.map(v => Number(v.plugin_id)).filter(id => Number.isFinite(id) && id > 0)
-      )];
+      const pluginIds = [...new Set(vulns.map(v => Number(v.plugin_id)).filter(id => id > 0))];
       if (!pluginIds.length) return;
       this.loadingAutomation = true;
       const res = await this.authStore.fetchAutomationScriptsBulk(pluginIds);
@@ -1551,22 +1542,16 @@ class TLSConfigurator:
         const map = {};
         res.results.forEach(r => { map[r.plugin_id] = r; });
         this.automationScriptMap = map;
-        // Single call for each matched plugin_id for full rich data
-        const matchedIds = res.results.filter(r => r.matched).map(r => r.plugin_id);
-        for (const pid of matchedIds) {
-          const single = await this.authStore.fetchAutomationScriptSingle(pid);
-          if (single.status && single.data) {
-            this.automationScriptMap = { ...this.automationScriptMap, [pid]: single.data };
-          }
-        }
       }
     },
+    onOsDataChange(data) {
+      if (!data || !data.plugin_id) return;
+      this.automationScriptMap = { ...this.automationScriptMap, [data.plugin_id]: data };
+    },
     getAutomationForVuln(vuln) {
-      // 1. Direct plugin_id
-      let id = Number(vuln?.plugin_id);
-      // 2. Fallback: search automationScriptMap by vuln name
+      let id = Number(vuln && vuln.plugin_id || 0);
       if (!(id > 0)) {
-        const name = String(vuln?.vul_name || vuln?.plugin_name || '').toLowerCase().trim();
+        const name = String(vuln && (vuln.vul_name || vuln.plugin_name) || '').toLowerCase().trim();
         const entry = Object.values(this.automationScriptMap).find(
           e => String(e.vulnerability || e.vul_name || '').toLowerCase().trim() === name
         );
@@ -1590,15 +1575,17 @@ class TLSConfigurator:
       this.showVaptfixVerifiedAlert = true;
     },
     isVulnDownloadDisabled(vuln) {
+      const auto = this.getAutomationForVuln(vuln);
+      if (auto !== null) return !auto.matched;
       return isAutomationNotAvailable(this.selectedAssetIp, this.selectedAssetDemoIndex, vuln?.severity);
     },
     async downloadAutomationScript(scriptData = null) {
-      const pluginId = Number(scriptData?.plugin_id || 0);
+      const pluginId = Number(scriptData && scriptData.plugin_id || 0);
+      const selectedOs = scriptData && scriptData.os || null;
       if (pluginId > 0) {
-        // Download via API
-        const res = await this.authStore.downloadAutomationScript(pluginId);
+        const res = await this.authStore.downloadAutomationScript(pluginId, selectedOs);
         if (res.status && res.content) {
-          const fileName = scriptData?.fix_script_name || `${pluginId}_fix_NS.py`;
+          const fileName = (scriptData && scriptData.fix_script_name) || (pluginId + '_fix_NS.py');
           const blob = new Blob([res.content], { type: 'text/x-python' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
@@ -1609,7 +1596,6 @@ class TLSConfigurator:
           return;
         }
       }
-      // Fallback: demo script
       const blob = new Blob([this.automationCode], { type: 'text/x-python' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
