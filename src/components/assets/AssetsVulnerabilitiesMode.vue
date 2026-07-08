@@ -716,6 +716,7 @@ import FixPanelHeaderAlerts from '@/components/assets/FixPanelHeaderAlerts.vue';
 import {
   enrichReportVulnerabilitiesFromRegister,
   isAutomationNotAvailable,
+  lookupFixVulnerabilityId,
   matchesVulnStatusFilter,
   normalizeReportVulnerabilityList,
   reportVulnAssetCount,
@@ -2239,9 +2240,7 @@ export default {
       return { port, os };
     },
     fixIdForAsset(vuln, asset) {
-      // Each register row is per-asset; look up fix_vulnerability_id for this asset.
-      const row = vuln?.rows?.find(r => (r.asset || r.host_name) === asset);
-      return row?.fix_vulnerability_id || vuln?.fix_vulnerability_id || '';
+      return lookupFixVulnerabilityId(this.authStore.vulnerabilityRows, vuln, asset);
     },
     sendForVerification(asset) {
       if (asset.stepsCompleted < asset.totalSteps) return;

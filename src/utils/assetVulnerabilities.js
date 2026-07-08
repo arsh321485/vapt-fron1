@@ -12,7 +12,9 @@ export function canonSeverity(sev) {
 }
 
 export function vulnDisplayName(v) {
-  return String(v?.vul_name || v?.plugin_name || v?.vulnerability_name || '').trim();
+  return String(
+    v?.vul_name || v?.plugin_name || v?.vulnerability_name || v?.vulnerability || '',
+  ).trim();
 }
 
 export function vulnNameKey(v) {
@@ -54,7 +56,14 @@ export function normalizeAssetVulnerabilityList(list) {
 export function assetMatchesRegisterRow(row, assetIp) {
   const ip = String(assetIp || '').trim().toLowerCase();
   if (!ip) return false;
-  const fields = [row.asset, row.host_name, row.ip, row.hostname, row.host];
+  const fields = [
+    row.asset,
+    row.host_name,
+    row.ip,
+    row.hostname,
+    row.host,
+    row.resolved_ip,
+  ];
   return fields.some(f => String(f || '').trim().toLowerCase() === ip);
 }
 
@@ -74,6 +83,56 @@ export function buildVulnsFromRegister(registerRows, assetIp, deletedRows = []) 
     (registerRows || []).filter(r => assetMatchesRegisterRow(r, assetIp)),
   );
   return filterDeletedVulnsForHost(vulns, assetIp, deletedRows);
+}
+
+/** Extract fix session id from a register/vuln row (never use row.id) */
+export function extractFixVulnerabilityId(obj) {
+  if (!obj || typeof obj !== 'object') return '';
+  const candidates = [obj.fix_vulnerability_id, obj.fix_vuln_id, obj.fixVulnerabilityId];
+  for (const value of candidates) {
+    if (value != null && String(value).trim()) return String(value).trim();
+  }
+  return '';
+}
+
+/** Match a vuln to its register row for the given asset IP */
+export function lookupRegisterRow(registerRows, vuln, assetIp) {
+  const key = vulnNameKey(vuln);
+  const ip = String(assetIp || '').trim().toLowerCase();
+  if (!key || !ip) return null;
+
+  const rows = (registerRows || []).filter(r => assetMatchesRegisterRow(r, assetIp));
+  const exact = rows.find(r => vulnNameKey(r) === key);
+  if (exact) return exact;
+
+  // Fallback: partial name match for the same asset (handles minor label differences)
+  return rows.find(r => {
+    const rowKey = vulnNameKey(r);
+    return rowKey && (rowKey.includes(key) || key.includes(rowKey));
+  }) || null;
+}
+
+/** Resolve fix_vulnerability_id from register (never use row.id for step-complete API) */
+export function lookupFixVulnerabilityId(registerRows, vuln, assetIp) {
+  const fromVuln = extractFixVulnerabilityId(vuln);
+  if (fromVuln) return fromVuln;
+
+  const row = lookupRegisterRow(registerRows, vuln, assetIp);
+  return extractFixVulnerabilityId(row);
+}
+
+/** Merge register-only fields onto asset vulnerability rows */
+export function enrichVulnsFromRegister(vulns, registerRows, assetIp) {
+  return (Array.isArray(vulns) ? vulns : []).map(v => {
+    const row = lookupRegisterRow(registerRows, v, assetIp);
+    if (!row) return v;
+    const fixId = extractFixVulnerabilityId(row) || extractFixVulnerabilityId(v);
+    return {
+      ...v,
+      fix_vulnerability_id: fixId || null,
+      operating_system: row.operating_system || row.os || v.operating_system || '',
+    };
+  });
 }
 
 export function matchesVulnStatusFilter(vuln, statusFilter) {

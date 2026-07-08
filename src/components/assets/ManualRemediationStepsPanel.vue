@@ -290,10 +290,19 @@ export default {
       const members = this.fixVulnData.assigned_team_members?.length
         ? this.fixVulnData.assigned_team_members
         : null;
+      // User side: keep original team/member merge (unchanged behavior).
+      if (this.isUser) {
+        return this.subtasks.map(step => ({
+          ...step,
+          ...(team && { assignedTeam: team }),
+          ...(members && { members }),
+        }));
+      }
+      // Admin side: prefer per-step assignees from API when present.
       return this.subtasks.map(step => ({
         ...step,
-        ...(team && { assignedTeam: team }),
-        ...(members && { members }),
+        assignedTeam: step.assignedTeam || team || '',
+        members: (step.members && step.members.length) ? step.members : (members || []),
       }));
     },
     completedSubtasksCount() {
@@ -546,26 +555,55 @@ export default {
     },
     async initAdminFixVuln() {
       if (this.isUser || !this.vulnName || !this.assetIp) return;
+
+      const knownFixId = this.fixId || this.fixVulnerabilityId;
       this.loadingFixVuln = true;
       this.fixNotStarted = false;
-      this.fixVulnerabilityId = null;
-      this.fixVulnData = null;
-
-      // New flow: fix_vulnerability_id comes from the register row directly.
-      // Admin side is read-only — no createFixVulnerability POST needed.
-      const preloadedId = this.fixId;
-      if (!preloadedId) {
-        this.fixNotStarted = true;
+      if (!knownFixId) {
+        this.fixVulnerabilityId = null;
+        this.fixVulnData = null;
         this.subtasks = [];
-        this.loadingFixVuln = false;
-        return;
       }
 
-      this.fixVulnerabilityId = preloadedId;
-
       try {
+        let preloadedId = this.fixId || '';
+        if (!preloadedId) {
+          preloadedId = await this.authStore.resolveAdminFixVulnerabilityId(
+            this.assetIp,
+            this.vulnName,
+            {
+              severity: this.severity,
+              vulnId: this.vulnId || undefined,
+              allowCreate: false,
+            },
+          );
+        }
+        if (!preloadedId) {
+          preloadedId = await this.authStore.resolveAdminFixVulnerabilityId(
+            this.assetIp,
+            this.vulnName,
+            {
+              severity: this.severity,
+              vulnId: this.vulnId || undefined,
+              allowCreate: true,
+            },
+          );
+        }
+
+        if (!preloadedId) {
+          this.fixNotStarted = true;
+          return;
+        }
+
+        if (this.fixVulnerabilityId === preloadedId && this.subtasks.length) {
+          return;
+        }
+
+        this.fixVulnerabilityId = preloadedId;
+
         const stepsRes = await this.authStore.getFixVulnerabilitySteps(preloadedId);
         if (stepsRes.status && Array.isArray(stepsRes.data?.steps) && stepsRes.data.steps.length) {
+          this.fixNotStarted = false;
           this.fixVulnData = {
             assigned_team: stepsRes.data.assigned_team || '',
             assigned_team_members: stepsRes.data.steps[0]?.assigned_team_members || [],
@@ -587,15 +625,40 @@ export default {
           return g.label ? `# ${g.label}\n${cmds}` : cmds;
         })
         .join('\n\n');
+      let filePath = '';
+      if (this.isUser) {
+        filePath = (os.system_file_path
+          && os.system_file_path !== 'N/A — checking registry'
+          && os.system_file_path !== 'N/A — checking network connections'
+          && os.system_file_path !== 'N/A — checking services'
+          && os.system_file_path !== 'N/A — updating services')
+          ? os.system_file_path
+          : '';
+      } else {
+        const rawFilePath = os.system_file_path || '';
+        const skippedFilePaths = new Set([
+          'N/A — checking registry',
+          'N/A — checking network connections',
+          'N/A — checking services',
+          'N/A — updating services',
+        ]);
+        if (rawFilePath === 'N/A') {
+          filePath = 'N/A — command line action';
+        } else if (rawFilePath && !skippedFilePaths.has(rawFilePath)) {
+          filePath = rawFilePath;
+        }
+      }
       return {
         id: step.step_number,
         name: os.task_name || step.step_name || `Step ${step.step_number}`,
         category: (os.artifacts_tools_used || [])[0] || '',
-        assignedTeam: step.assigned_team || '',
+        assignedTeam: this.isUser
+          ? (step.assigned_team || '')
+          : (step.assigned_team || os.assigned_to || ''),
         members: step.assigned_team_members || [],
         status: this.normalizeStepStatus(step.status),
         action: os.action || '',
-        filePath: (os.system_file_path && os.system_file_path !== 'N/A — checking registry' && os.system_file_path !== 'N/A — checking network connections' && os.system_file_path !== 'N/A — checking services' && os.system_file_path !== 'N/A — updating services') ? os.system_file_path : '',
+        filePath,
         command: commands,
         expectedOutput: os.expected_output || '',
         verificationCheck: os.verification_check || os.verification_steps || '',

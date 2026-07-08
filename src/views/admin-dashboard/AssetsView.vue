@@ -398,7 +398,7 @@
 
                             <!-- Tab Content -->
                             <div class="av-detail-tab-content">
-                              <div v-if="currentVulnTab === 'auto'" class="av-auto-tab">
+                              <div v-show="currentVulnTab === 'auto'" class="av-auto-tab">
                                 <AutomationNotSafeBanner v-if="isSelectedAssetAutomationNo" />
                                 <AutomatedFixPanel
                                   v-else
@@ -412,19 +412,20 @@
                                 />
                               </div>
 
-                              <div v-else-if="currentVulnTab === 'manual'" class="av-manual-tab">
-                                <div class="av-asset-section">
+                              <div v-show="currentVulnTab === 'manual'" class="av-manual-tab">
+                                <div v-if="manualPanelMountedIndex === i" class="av-asset-section">
                                   <div v-if="v.operating_system" class="av-asset-label">
                                     <span class="av-asset-os-lbl">{{ v.operating_system }}</span>
                                   </div>
                                   <ManualRemediationStepsPanel
+                                    :key="'mf-' + fixIdForVuln(v) + '-' + selectedAssetIp + '-' + i"
                                     :is-user="false"
                                     :vuln-name="v.vul_name"
                                     :asset-ip="selectedAssetIp"
                                     :severity="v.severity"
                                     :vuln-id="String(v.id || '')"
                                     :asset-os="v.operating_system || 'windows'"
-                                    :fix-id="v.fix_vulnerability_id || ''"
+                                    :fix-id="fixIdForVuln(v)"
                                   />
                                 </div>
                               </div>
@@ -591,6 +592,7 @@ import {
   severityMatchesFilter,
   isAutomationNotAvailable,
   isActiveVulnStatus,
+  lookupFixVulnerabilityId,
 } from "@/utils/assetVulnerabilities";
 import { useAuthStore } from "@/stores/authStore";
 import { ASSET_TYPE_FILTERS, getDummyAssetsByType } from "@/utils/assetDummyData";
@@ -644,6 +646,7 @@ export default {
       assetDescriptionExpanded: false,
       assetDescriptionPreviewLimit: 140,
       currentVulnTab: 'auto',
+      manualPanelMountedIndex: null,
       loadingAssetVulns: false,
       closedFixVulnerabilities: [],
       closedFixCount: 0,
@@ -936,8 +939,14 @@ class TLSConfigurator:
       });
     },
     toggleAccordion(index) {
-      const isOpening = this.expandedVulnIndex !== index;
-      this.expandedVulnIndex = this.expandedVulnIndex === index ? null : index;
+      const prevIndex = this.expandedVulnIndex;
+      const isOpening = prevIndex !== index;
+      this.expandedVulnIndex = prevIndex === index ? null : index;
+
+      if (!isOpening || prevIndex !== index) {
+        this.manualPanelMountedIndex = null;
+        this.currentVulnTab = 'auto';
+      }
 
       if (isOpening) {
         this.$nextTick(() => {
@@ -1477,7 +1486,7 @@ class TLSConfigurator:
         if (idx < 0) return;
 
         this.expandedVulnIndex = idx;
-        this.currentVulnTab = 'manual';
+        this.setVulnDetailTab('manual');
 
         this.$nextTick(() => {
           const refKey = 'vuln-' + idx;
@@ -1492,8 +1501,18 @@ class TLSConfigurator:
       if (!this.authStore.selectedAssetDetail?.asset) return [];
       return [this.authStore.selectedAssetDetail.asset];
     },
+    fixIdForVuln(v) {
+      return lookupFixVulnerabilityId(
+        this.authStore.vulnerabilityRows,
+        v,
+        this.selectedAssetIp,
+      );
+    },
     setVulnDetailTab(tab) {
       this.currentVulnTab = tab;
+      if (tab === 'manual' && this.expandedVulnIndex != null) {
+        this.manualPanelMountedIndex = this.expandedVulnIndex;
+      }
     },
     getFilteredSortedAssets() {
       let list = [...(this.sourceAssetRows || [])];
@@ -1592,7 +1611,11 @@ class TLSConfigurator:
             this.expandVulnFromQuery(pluginName, vulnId);
           }
           if (q.fix_tab === 'manual' || q.fix_tab === 'auto') {
-            this.currentVulnTab = q.fix_tab;
+            if (q.fix_tab === 'manual') {
+              this.setVulnDetailTab('manual');
+            } else {
+              this.currentVulnTab = q.fix_tab;
+            }
           }
         }
       }
@@ -1636,20 +1659,16 @@ class TLSConfigurator:
       await this.authStore.getReportStatus();
     }
 
-    // Always refresh on page entry so navigation also triggers APIs.
-    await Promise.all([
-      this.reloadAssetsAndHeld(),
-      this.authStore.fetchVulnerabilityRegister(true),
-    ]);
+    // Always refresh register first so fix_vulnerability_id is available before asset vulns load.
+    await this.authStore.fetchVulnerabilityRegister(true);
+    await this.reloadAssetsAndHeld();
 
     await this.applyRouteQueryContext();
   },
   async activated() {
     this.openFixPanelAlerts();
-    await Promise.all([
-      this.reloadAssetsAndHeld(),
-      this.authStore.fetchVulnerabilityRegister(true),
-    ]);
+    await this.authStore.fetchVulnerabilityRegister(true);
+    await this.reloadAssetsAndHeld();
     await this.applyRouteQueryContext();
   },
 };
@@ -2731,6 +2750,17 @@ class TLSConfigurator:
 .av-dtab.active {
   color: #000000;
   border-bottom-color: #000000;
+}
+
+.av-dtab--disabled,
+.av-dtab:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.av-dtab--disabled:hover,
+.av-dtab:disabled:hover {
+  color: #64748b;
 }
 
 .av-detail-tab-content {

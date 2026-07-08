@@ -299,6 +299,7 @@ import AutomationNotSafeBanner from '@/components/assets/AutomationNotSafeBanner
 import {
   enrichReportVulnerabilitiesFromRegister,
   isAutomationNotAvailable,
+  lookupFixVulnerabilityId,
   normalizeReportVulnerabilityList,
 } from '@/utils/assetVulnerabilities';
 
@@ -450,13 +451,11 @@ if __name__ == "__main__":
       const assetIp = this.selectedOsGroups.length
         ? String(this.selectedOsGroups[0].assets[0]?.host_name || '').trim()
         : '';
-      if (!assetIp) return this.selectedVuln.fix_vulnerability_id || '';
-      // rows contains per-asset register rows; find the one matching the first asset
-      const rows = this.selectedVuln.rows || [];
-      const match = rows.find(r =>
-        String(r.asset || r.host_name || '').trim() === assetIp,
+      return lookupFixVulnerabilityId(
+        this.authStore.vulnerabilityRows,
+        this.selectedVuln,
+        assetIp,
       );
-      return match?.fix_vulnerability_id || this.selectedVuln.fix_vulnerability_id || '';
     },
     isAutomationNotSafe() {
       if (!this.selectedVuln) return false;

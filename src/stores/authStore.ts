@@ -3,7 +3,10 @@ import endpoint from "../services/apiServices";
 import type { AxiosError } from "axios";
 import {
   buildVulnsFromRegister,
+  enrichVulnsFromRegister,
+  extractFixVulnerabilityId,
   filterDeletedVulnsForHost,
+  lookupFixVulnerabilityId,
   normalizeAssetVulnerabilityList,
 } from "@/utils/assetVulnerabilities";
 
@@ -3401,7 +3404,13 @@ export const useAuthStore = defineStore("auth", {
         const rows = res.data?.rows ?? [];
         const count = res.data?.count ?? rows.length;
 
-        this.vulnerabilityRows = Array.isArray(rows) ? rows : [];
+        this.vulnerabilityRows = Array.isArray(rows)
+          ? rows.map((row) => ({
+              ...row,
+              fix_vulnerability_id:
+                row.fix_vulnerability_id || row.fix_vuln_id || row.fixVulnerabilityId || null,
+            }))
+          : [];
         this.vulnerabilityCount = count;
 
         // 👇 ADD HERE
@@ -3706,6 +3715,53 @@ export const useAuthStore = defineStore("auth", {
           details: err.response?.data || null,
         };
       }
+    },
+
+    /** Resolve fix_vulnerability_id for admin read-only manual fix (register first, then existing-fix lookup) */
+    async resolveAdminFixVulnerabilityId(
+      asset: string,
+      vulnName: string,
+      options: {
+        severity?: string;
+        vulnId?: string;
+        vuln?: Record<string, unknown>;
+        allowCreate?: boolean;
+      } = {},
+    ): Promise<string> {
+      await this.fetchVulnerabilityRegister(false);
+
+      const vulnObj =
+        options.vuln ||
+        ({
+          vul_name: vulnName,
+          plugin_name: vulnName,
+          vulnerability_name: vulnName,
+        } as Record<string, unknown>);
+
+      const fromRegister = lookupFixVulnerabilityId(this.vulnerabilityRows, vulnObj, asset);
+      if (fromRegister) return fromRegister;
+
+      if (!options.allowCreate) return "";
+
+      const reportId = await this.resolveReportId();
+      if (!reportId || !asset || !vulnName) return "";
+
+      const payload: Record<string, any> = {
+        plugin_name: vulnName,
+        risk_factor: options.severity || "Medium",
+      };
+      if (options.vulnId) payload.id = options.vulnId;
+
+      const res = await this.createFixVulnerability(reportId, asset, payload);
+      if (res.status && res.data) {
+        return extractFixVulnerabilityId(res.data as Record<string, unknown>);
+      }
+
+      const details = (res.details || {}) as Record<string, unknown>;
+      return (
+        extractFixVulnerabilityId(details) ||
+        String(details.fix_vulnerability_id || "").trim()
+      );
     },
 
     // CREATE/UPDATE Final Fix Feedback (User)
@@ -5666,8 +5722,6 @@ export const useAuthStore = defineStore("auth", {
         );
 
         // Register rows are the source of truth for fix_vulnerability_id.
-        // Use cached register (already fetched in mounted); fall back to
-        // asset-specific endpoint only when register has no rows for this asset.
         await this.fetchVulnerabilityRegister(false);
         let vulns = buildVulnsFromRegister(
           this.vulnerabilityRows,
@@ -5677,6 +5731,7 @@ export const useAuthStore = defineStore("auth", {
         if (!vulns.length) {
           vulns = normalizeAssetVulnerabilityList(res.data.vulnerabilities || []);
         }
+        vulns = enrichVulnsFromRegister(vulns, this.vulnerabilityRows, asset);
         vulns = filterDeletedVulnsForHost(vulns, asset, this.deletedVulnerabilityAssets);
 
         // ✅ vulnerabilities list

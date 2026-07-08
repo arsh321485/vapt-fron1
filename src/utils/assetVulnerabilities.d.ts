@@ -50,6 +50,24 @@ export function buildVulnsFromRegister(
   assetIp: string,
   deletedRows?: unknown,
 ): NormalizedAssetVulnerability[];
+export function lookupRegisterRow(
+  registerRows: unknown,
+  vuln: Record<string, unknown> | null | undefined,
+  assetIp: string,
+): Record<string, unknown> | null;
+export function extractFixVulnerabilityId(
+  obj: Record<string, unknown> | null | undefined,
+): string;
+export function lookupFixVulnerabilityId(
+  registerRows: unknown,
+  vuln: Record<string, unknown> | null | undefined,
+  assetIp: string,
+): string;
+export function enrichVulnsFromRegister(
+  vulns: unknown,
+  registerRows: unknown,
+  assetIp: string,
+): NormalizedAssetVulnerability[];
 export function matchesVulnStatusFilter(
   vuln: Record<string, unknown> | null | undefined,
   statusFilter: string[] | null | undefined,
