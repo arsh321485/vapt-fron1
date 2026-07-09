@@ -30,6 +30,7 @@ import PartnerThankYouView from "../views/admin-views/PartnerThankYouView.vue";
 import PrivacyPolicyView from "../views/admin-views/PrivacyPolicyView.vue";
 import TermsOfServiceView from "../views/admin-views/TermsOfServiceView.vue";
 import SecurityStatementView from "../views/admin-views/SecurityStatementView.vue";
+import KnowledgeBaseView from "../views/admin-views/KnowledgeBaseView.vue";
 import DataProcessingAgreementView from "../views/admin-views/DataProcessingAgreementView.vue";
 import SupportCenterView from "../views/admin-views/SupportCenterView.vue";
 import RiskCriteriaView from "../views/admin-views/RiskCriteriaView.vue";
@@ -112,6 +113,11 @@ const router = createRouter({
       path: "/security",
       name: "security",
       component: SecurityStatementView,
+    },
+    {
+      path: "/knowledge-base",
+      name: "knowledge-base",
+      component: KnowledgeBaseView,
     },
     {
       path: "/support",
