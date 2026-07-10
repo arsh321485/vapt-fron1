@@ -3859,6 +3859,20 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    // GET Report Download Data (single API for ViewReportPage)
+    async fetchReportDownloadData() {
+      try {
+        const res = await endpoint.get('/api/admin/adminregister/report/download-data/');
+        return { status: true, data: res.data };
+      } catch (error) {
+        const err = error as AxiosError<any>;
+        return {
+          status: false,
+          message: err.response?.data?.message || err.response?.data?.detail || 'Failed to fetch report data',
+        };
+      }
+    },
+
     // create Raise Support Request (UPDATED API)
     async raiseSupportRequest(
       reportId: string,
