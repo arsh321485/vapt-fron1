@@ -3859,6 +3859,22 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    // GET Report HTML file download
+    async downloadReportHtml() {
+      try {
+        const res = await endpoint.get('/api/admin/adminregister/report/download/', {
+          responseType: 'blob',
+        });
+        return { status: true, data: res.data as Blob, headers: res.headers };
+      } catch (error) {
+        const err = error as AxiosError<any>;
+        return {
+          status: false,
+          message: err.response?.data?.message || err.response?.data?.detail || 'HTML download failed',
+        };
+      }
+    },
+
     // GET Report Download Data (single API for ViewReportPage)
     async fetchReportDownloadData() {
       try {
@@ -4272,6 +4288,45 @@ export const useAuthStore = defineStore("auth", {
           status: false,
           message: err.response?.data?.message || "Failed to fetch open tickets",
           details: err.response?.data || null,
+        };
+      }
+    },
+
+    // Admin: POST message on a support request
+    async sendAdminSupportMessage(
+      reportId: string,
+      requestId: string,
+      text: string,
+      visibility: string,
+    ) {
+      try {
+        const res = await endpoint.post(
+          `/api/admin/adminregister/support-requests/report/${reportId}/`,
+          { request_id: requestId, text, visibility },
+        );
+        return { status: true, data: res.data };
+      } catch (error) {
+        const err = error as AxiosError<any>;
+        return {
+          status: false,
+          message: err.response?.data?.detail || err.response?.data?.message || 'Failed to send message',
+        };
+      }
+    },
+
+    // User: POST reply on a support request
+    async sendUserSupportMessage(reportId: string, requestId: string, text: string) {
+      try {
+        const res = await endpoint.post(
+          `/api/user/register/support-requests/report/${reportId}/`,
+          { request_id: requestId, text },
+        );
+        return { status: true, data: res.data };
+      } catch (error) {
+        const err = error as AxiosError<any>;
+        return {
+          status: false,
+          message: err.response?.data?.detail || err.response?.data?.message || 'Failed to send message',
         };
       }
     },

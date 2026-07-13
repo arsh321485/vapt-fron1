@@ -706,82 +706,25 @@ export default {
       return clone;
     },
 
-    downloadReportAsHtml() {
+    async downloadReportAsHtml() {
       this.exportMenuOpen = false;
-      const clone = this.buildReportClone();
-      if (!clone) return;
-
-      clone.querySelectorAll('.report-watermark-layer').forEach((el) => this.applyWatermarkStyles(el));
-
-      let cssText = '';
-      Array.from(document.styleSheets).forEach((sheet) => {
-        try {
-          Array.from(sheet.cssRules || []).forEach((rule) => {
-            if (rule.type === CSSRule.MEDIA_RULE) return;
-            cssText += rule.cssText.replace(/\[data-v-[a-zA-Z0-9]+\]/g, '') + '\n';
-          });
-        } catch (e) { /* cross-origin sheet, skip */ }
-      });
-
-      const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vulnerability Management Report</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
-  <style>
-    *, *::before, *::after { box-sizing: border-box; }
-    body { font-family: 'Inter', sans-serif; background: #f8f9fc; padding: 0; margin: 0; }
-    .report-download-wrapper { width: 100%; max-width: 1400px; margin: 0 auto; padding: 48px 56px; }
-    ${cssText}
-    .table-wrap { max-height: none !important; overflow: visible !important; }
-    .table-footer { position: static !important; }
-    .page-title-block { padding-top: 0 !important; }
-    img { max-height: 240px !important; width: 100% !important; height: auto !important; object-fit: contain !important; }
-    .bento-card { overflow: visible !important; }
-    .section-label { margin-top: 24px !important; }
-    .hero-grid, .chart-grid, .stats-grid, .risk-grid { break-inside: avoid; page-break-inside: avoid; }
-    ${this.getWatermarkCssBlock()}
-  </style>
-</head>
-<body>
-<div class="report-download-wrapper">${clone.outerHTML}</div>
-<script>
-  (function () {
-    function applyFilters() {
-      var team = document.getElementById('dl-team-filter')?.value || 'all';
-      var sev  = document.getElementById('dl-sev-filter')?.value  || 'all';
-      var stat = document.getElementById('dl-status-filter')?.value || 'all';
-      var rows = document.querySelectorAll('.vuln-table tbody tr');
-      var visible = 0;
-      rows.forEach(function (tr) {
-        var matchTeam = team === 'all' || tr.getAttribute('data-team') === team;
-        var matchSev  = sev  === 'all' || tr.getAttribute('data-severity') === sev;
-        var matchStat = stat === 'all' || tr.getAttribute('data-status') === stat;
-        if (matchTeam && matchSev && matchStat) { tr.style.display = ''; visible++; }
-        else { tr.style.display = 'none'; }
-      });
-    }
-    window.addEventListener('DOMContentLoaded', function () {
-      ['dl-team-filter', 'dl-sev-filter', 'dl-status-filter'].forEach(function (id) {
-        var el = document.getElementById(id);
-        if (el) el.addEventListener('change', applyFilters);
-      });
-    });
-  })();
-<\/script>
-</body>
-</html>`;
-
-      const blob = new Blob([html], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'vulnerability-management-report.html';
-      a.click();
-      URL.revokeObjectURL(url);
+      const store = useAuthStore();
+      try {
+        const result = await store.downloadReportHtml();
+        if (!result.status || !result.data) {
+          console.error('HTML report download failed:', result.message);
+          return;
+        }
+        const blob = new Blob([result.data], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'vulnerability-management-report.html';
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error('HTML report download error:', err);
+      }
     },
 
     async exportReportPdf() {

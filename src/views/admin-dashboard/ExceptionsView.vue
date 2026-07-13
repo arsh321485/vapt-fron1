@@ -168,7 +168,10 @@
                   </div>
                   <h2 class="exc-so-title">{{ selectedSupportRequest?.vul_name || '-' }}</h2>
                   <div class="d-flex flex-wrap gap-2 mt-3">
-                    <span class="exc-so-badge exc-so-badge-open"><span class="exc-so-dot bg-success"></span> STATUS: OPEN</span>
+                    <span class="exc-so-badge" :class="getStatusSlideBadgeClass(selectedSupportRequest)">
+                      <span class="exc-so-dot" :class="getStatusDotClass(selectedSupportRequest)"></span>
+                      STATUS: {{ getStatusLabel(selectedSupportRequest) }}
+                    </span>
                     <span class="exc-so-badge" :class="getSeveritySlideBadgeClass(selectedSupportRequest)">
                       <span class="exc-so-dot" :class="getSeverityDotClass(selectedSupportRequest)"></span>
                       CRITICALITY: {{ getSeverityLabel(selectedSupportRequest) }}
@@ -251,6 +254,19 @@
                         </div>
                       </div>
 
+                      <!-- User messages shown to admin — inside timeline for proper dot/line -->
+                      <div v-for="(msg, mi) in localMessages.filter(m => m.sender === 'user')" :key="'msg-'+mi" class="exc-so-tl-item">
+                        <div class="exc-so-tl-dot exc-so-dot-comment"><i class="bi bi-chat-left-text"></i></div>
+                        <div class="exc-so-tl-content exc-so-tl-comment-card">
+                          <div class="d-flex justify-content-between">
+                            <p class="exc-so-tl-title">By User</p>
+                            <span class="exc-so-tl-time">{{ formatMsgTime(msg.sent_at) }}</span>
+                          </div>
+                          <p class="exc-so-tl-desc">&quot;{{ msg.text }}&quot;</p>
+                          <span class="exc-so-tl-author">— {{ msg.sender_email.toUpperCase() }}</span>
+                        </div>
+                      </div>
+
                     </div>
                   </div>
                 </div>
@@ -266,10 +282,13 @@
                   </div>
                   <div class="d-flex justify-content-between align-items-center mt-3">
                     <div class="d-flex gap-3">
-                      <button class="exc-so-note-btn"><span class="exc-so-dot-sm bg-success me-1"></span>Internal Note</button>
-                      <button class="exc-so-visible-btn"><i class="bi bi-globe2 me-1"></i>Customer Visible</button>
+                      <button class="exc-so-note-btn" :class="{ 'exc-so-note-btn--active': messageVisibility === 'internal' }" @click="messageVisibility = 'internal'"><span class="exc-so-dot-sm bg-success me-1"></span>Internal Note</button>
+                      <button class="exc-so-visible-btn" :class="{ 'exc-so-visible-btn--active': messageVisibility === 'customer' }" @click="messageVisibility = 'customer'"><i class="bi bi-globe2 me-1"></i>Customer Visible</button>
                     </div>
-                    <button class="exc-so-send-btn">Send Update <i class="bi bi-send ms-1"></i></button>
+                    <button class="exc-so-send-btn" :disabled="sendingMessage || !slideOverNote.trim()" @click="sendAdminMessage">
+                      <span v-if="sendingMessage" class="spinner-border spinner-border-sm me-1"></span>
+                      Send Update <i v-if="!sendingMessage" class="bi bi-send ms-1"></i>
+                    </button>
                   </div>
                 </div>
 
@@ -300,10 +319,14 @@ export default {
       authStore: useAuthStore(),
       supportRequests: [],
       loadingRequests: false,
+      pollTimer: null,
       selectedSupportRequest: null,
       showSlideOver: false,
       slideOverIndex: 0,
       slideOverNote: '',
+      messageVisibility: 'customer',
+      sendingMessage: false,
+      localMessages: [],
       showChat: false,
       minimized: false,
       messages: [
@@ -407,6 +430,21 @@ export default {
     },
   },
   methods: {
+    getStatusLabel(req) {
+      const s = String(req?.status || '').toLowerCase();
+      if (s === 'closed' || s === 'resolved' || s === 'fixed') return 'CLOSED';
+      return 'OPEN';
+    },
+    getStatusSlideBadgeClass(req) {
+      const s = String(req?.status || '').toLowerCase();
+      if (s === 'closed' || s === 'resolved' || s === 'fixed') return 'exc-so-badge-closed';
+      return 'exc-so-badge-open';
+    },
+    getStatusDotClass(req) {
+      const s = String(req?.status || '').toLowerCase();
+      if (s === 'closed' || s === 'resolved' || s === 'fixed') return 'exc-so-dot-closed';
+      return 'exc-so-dot-open';
+    },
     getSeverityRaw(req) {
       if (!req) return "";
       return String(req.risk_factor || req.severity || req.criticality || "").trim().toLowerCase();
@@ -457,20 +495,18 @@ export default {
       ? words.slice(0, 4).join(" ") + "..."
       : desc;
   },
-  async fetchSupportRequests() {
-    console.log("➡️ fetchSupportRequests called");
-
-    const reportId = localStorage.getItem("reportId");
-
+  async fetchSupportRequests(silent = false) {
+    const reportId = await this.authStore.resolveReportId();
     if (!reportId) {
-      console.error("❌ reportId missing");
+      console.error('❌ reportId missing for support requests');
       return;
     }
 
     try {
-      if (!this.authStore.cachedSupportRequests[reportId]) this.loadingRequests = true;
+      if (!silent && !this.authStore.cachedSupportRequests[reportId]) this.loadingRequests = true;
 
-      const res = await this.authStore.getSupportRequestsByReport(reportId);
+      // Always force=true to get fresh data (no stale cache)
+      const res = await this.authStore.getSupportRequestsByReport(reportId, true);
 
       console.log("⬅️ API response:", res);
 
@@ -499,9 +535,40 @@ export default {
     this.slideOverIndex = index;
     this.showSlideOver = true;
     this.slideOverNote = '';
+    this.messageVisibility = 'customer';
+    this.localMessages = Array.isArray(req?.messages) ? [...req.messages] : [];
   },
   closeSlideOver() {
     this.showSlideOver = false;
+    this.localMessages = [];
+  },
+  formatMsgTime(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return d.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  },
+  async sendAdminMessage() {
+    const text = (this.slideOverNote || '').trim();
+    if (!text || this.sendingMessage) return;
+    const reportId = await this.authStore.resolveReportId();
+    const requestId = this.selectedSupportRequest?._id || this.selectedSupportRequest?.id;
+    if (!reportId || !requestId) return;
+    this.sendingMessage = true;
+    try {
+      const res = await this.authStore.sendAdminSupportMessage(reportId, requestId, text, this.messageVisibility);
+      if (res.status) {
+        const adminEmail = this.authStore.adminEmail || this.authStore.userEmail || '';
+        this.localMessages.push({ sender: 'admin', sender_email: adminEmail, text, visibility: this.messageVisibility, sent_at: new Date().toISOString() });
+        this.slideOverNote = '';
+        // Refresh cache so reopening modal shows latest messages
+        this.authStore.cachedSupportRequests = {};
+        this.fetchSupportRequests(true);
+      } else {
+        alert(res.message || 'Failed to send message');
+      }
+    } finally {
+      this.sendingMessage = false;
+    }
   },
   goToPage(page) {
     this.currentPage = page;
@@ -550,10 +617,17 @@ export default {
   // Fetch support requests
   this.fetchSupportRequests();
 
-  // If any extra store methods added later, safe call pattern
-  if (typeof this.authStore.fetchSupportRequests === 'function') {
-    // future store sync if needed
-  }
+  // Poll every 30s — new user support requests appear without manual refresh
+  this.pollTimer = setInterval(() => {
+    this.fetchSupportRequests(true);
+  }, 30000);
+  },
+
+  beforeUnmount() {
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
+    }
   },
 };
 </script>
@@ -810,7 +884,10 @@ export default {
   padding: 4px 12px; border-radius: 999px;
   font-size: 0.65rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
 }
-.exc-so-badge-open { background: #a1ecf2; color: #002022; }
+.exc-so-badge-open  { background: #a1ecf2; color: #002022; }
+.exc-so-badge-closed { background: #dcfce7; color: #166534; }
+.exc-so-dot-open   { background: #22c55e; }
+.exc-so-dot-closed { background: #0f696e; }
 .exc-so-badge-critical { background: #f8dede; color: #b42318; }
 .exc-so-badge-high { background: #fee2e2; color: #dc2626; }
 .exc-so-badge-medium { background: #fff4cc; color: #a16207; }
@@ -921,4 +998,14 @@ export default {
   transition: opacity 0.15s;
 }
 .exc-so-send-btn:hover { opacity: 0.88; }
+.exc-so-msg-email { font-size:0.72rem; color:#64748b; font-weight:400; }
+.exc-so-msg-tag   { font-size:0.68rem;font-weight:700;border-radius:999px;padding:2px 8px;text-transform:uppercase; }
+.exc-so-tag-admin { background:#dbeafe;color:#1d4ed8; }
+.exc-so-tag-user  { background:#dcfce7;color:#166534; }
+.exc-so-msg-email { font-size:0.72rem;color:#64748b; }
+.exc-so-msg-time  { font-size:0.68rem;color:#94a3b8; }
+.exc-so-msg-internal-badge { font-size:0.65rem;background:#fef9c3;color:#854d0e;border-radius:999px;padding:1px 6px;font-weight:600; }
+.exc-so-msg-text  { margin:0;font-size:0.85rem;color:#1e293b;line-height:1.5; }
+.exc-so-note-btn--active { background:#dcfce7!important;color:#166534!important;border-color:#16a34a!important; }
+.exc-so-visible-btn--active { background:#dbeafe!important;color:#1d4ed8!important;border-color:#3b82f6!important; }
 </style>

@@ -221,9 +221,9 @@
                   </div>
                   <h2 class="st-so-title">{{ selectedSupportRequest?.vul_name || '-' }}</h2>
                   <div class="d-flex flex-wrap gap-2 mt-3">
-                    <span class="st-so-badge st-so-badge-open">
-                      <span class="st-so-dot bg-success"></span>
-                      STATUS: {{ (selectedSupportRequest?.status || 'Open').toUpperCase() }}
+                    <span class="st-so-badge" :class="getStatusSlideBadgeClass(selectedSupportRequest)">
+                      <span class="st-so-dot" :class="getStatusDotClass(selectedSupportRequest)"></span>
+                      STATUS: {{ getStatusLabel(selectedSupportRequest) }}
                     </span>
                     <span class="st-so-badge" :class="getSeveritySlideBadgeClass(selectedSupportRequest)">
                       <span class="st-so-dot" :class="getSeverityDotClass(selectedSupportRequest)"></span>
@@ -302,29 +302,36 @@
                           <p class="st-so-tl-desc">Steps: {{ selectedSupportRequest?.step_requested || '-' }}.</p>
                         </div>
                       </div>
+
+                      <!-- Admin messages shown to user — inside timeline for proper dot/line -->
+                      <div v-for="(msg, mi) in localMessages.filter(m => m.sender === 'admin')" :key="'msg-'+mi" class="st-so-tl-item">
+                        <div class="st-so-tl-dot st-so-dot-comment"><i class="bi bi-chat-left-text"></i></div>
+                        <div class="st-so-tl-content st-so-tl-comment-card">
+                          <div class="d-flex justify-content-between">
+                            <p class="st-so-tl-title">By Admin</p>
+                            <span class="st-so-tl-time">{{ formatMsgTime(msg.sent_at) }}</span>
+                          </div>
+                          <p class="st-so-tl-desc">&quot;{{ msg.text }}&quot;</p>
+                          <span class="st-so-tl-author">— {{ msg.sender_email.toUpperCase() }}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 <div class="st-so-footer">
                   <div class="st-so-textarea-wrap">
-                    <textarea
-                      v-model="slideOverNote"
-                      class="st-so-textarea"
-                      placeholder="Type your response or internal note..."
-                      rows="3"
-                    ></textarea>
+                    <textarea v-model="slideOverNote" class="st-so-textarea" placeholder="Type your reply..." rows="3"></textarea>
                     <div class="st-so-textarea-actions">
                       <button class="st-so-icon-btn"><i class="bi bi-paperclip"></i></button>
                       <button class="st-so-icon-btn"><i class="bi bi-at"></i></button>
                     </div>
                   </div>
-                  <div class="d-flex justify-content-between align-items-center mt-3">
-                    <div class="d-flex gap-3">
-                      <button class="st-so-note-btn"><span class="st-so-dot-sm bg-success me-1"></span>Internal Note</button>
-                      <button class="st-so-visible-btn"><i class="bi bi-globe2 me-1"></i>Customer Visible</button>
-                    </div>
-                    <button class="st-so-send-btn">Send Update <i class="bi bi-send ms-1"></i></button>
+                  <div class="d-flex justify-content-end align-items-center mt-3">
+                    <button class="st-so-send-btn" :disabled="sendingMessage || !slideOverNote.trim()" @click="sendUserMessage">
+                      <span v-if="sendingMessage" class="spinner-border spinner-border-sm me-1"></span>
+                      Send Update <i v-if="!sendingMessage" class="bi bi-send ms-1"></i>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -362,6 +369,8 @@ export default {
             showSlideOver: false,
             slideOverIndex: 0,
             slideOverNote: '',
+            sendingMessage: false,
+            localMessages: [],
         };
     },
     computed: {
@@ -434,6 +443,21 @@ export default {
         this.initTooltips();
     },
     methods: {
+        getStatusLabel(req) {
+            const s = String(req?.status || '').toLowerCase();
+            if (s === 'closed' || s === 'resolved' || s === 'fixed') return 'CLOSED';
+            return 'OPEN';
+        },
+        getStatusSlideBadgeClass(req) {
+            const s = String(req?.status || '').toLowerCase();
+            if (s === 'closed' || s === 'resolved' || s === 'fixed') return 'st-so-badge-closed';
+            return 'st-so-badge-open';
+        },
+        getStatusDotClass(req) {
+            const s = String(req?.status || '').toLowerCase();
+            if (s === 'closed' || s === 'resolved' || s === 'fixed') return 'st-so-dot-closed';
+            return 'st-so-dot-open';
+        },
         getSeverityRaw(req) {
             if (!req) return '';
             return String(req.risk_factor || req.severity || req.criticality || '').trim().toLowerCase();
@@ -509,9 +533,40 @@ export default {
             this.slideOverIndex = index;
             this.showSlideOver = true;
             this.slideOverNote = '';
+            this.localMessages = Array.isArray(req?.messages) ? [...req.messages] : [];
         },
         closeSlideOver() {
             this.showSlideOver = false;
+            this.localMessages = [];
+        },
+        formatMsgTime(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            return d.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        },
+        async sendUserMessage() {
+            const text = (this.slideOverNote || '').trim();
+            if (!text || this.sendingMessage) return;
+            await this.authStore.fetchUserVulnerabilityRegister();
+            const reportId = this.authStore.userLatestReportId;
+            const requestId = this.selectedSupportRequest?._id || this.selectedSupportRequest?.id;
+            if (!reportId || !requestId) return;
+            this.sendingMessage = true;
+            try {
+                const res = await this.authStore.sendUserSupportMessage(reportId, requestId, text);
+                if (res.status) {
+                    const userEmail = this.authStore.userEmail || '';
+                    this.localMessages.push({ sender: 'user', sender_email: userEmail, text, visibility: 'customer', sent_at: new Date().toISOString() });
+                    this.slideOverNote = '';
+                    // Refresh cache so reopening modal shows latest messages
+                    this.authStore.cachedUserSupportRequests = {};
+                    this.loadSupportRequests();
+                } else {
+                    alert(res.message || 'Failed to send message');
+                }
+            } finally {
+                this.sendingMessage = false;
+            }
         },
         formatDate(dateStr) {
             if (!dateStr) return '';
@@ -1179,10 +1234,11 @@ export default {
   text-transform: uppercase;
 }
 
-.st-so-badge-open {
-  background: #a1ecf2;
-  color: #002022;
-}
+.st-so-badge-open   { background: #a1ecf2; color: #002022; }
+.st-so-badge-closed { background: #dcfce7; color: #166534; }
+.st-so-dot-open     { background: #22c55e !important; }
+.st-so-dot-closed   { background: #0f696e !important; }
+
 
 .st-so-badge-critical {
   background: #f8dede;
@@ -1465,4 +1521,12 @@ export default {
   align-items: center;
   gap: 6px;
 }
+.st-so-msg-email { font-size:0.72rem; color:#64748b; font-weight:400; }
+.st-so-msg-meta  { display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px; }
+.st-so-msg-tag   { font-size:0.68rem;font-weight:700;border-radius:999px;padding:2px 8px;text-transform:uppercase; }
+.st-so-tag-admin { background:#dbeafe;color:#1d4ed8; }
+.st-so-tag-user  { background:#dcfce7;color:#166534; }
+.st-so-msg-email { font-size:0.72rem;color:#64748b; }
+.st-so-msg-time  { font-size:0.68rem;color:#94a3b8; }
+.st-so-msg-text  { margin:0;font-size:0.85rem;color:#1e293b;line-height:1.5; }
 </style>

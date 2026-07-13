@@ -68,7 +68,7 @@
           <p class="menu-heading">Support Request</p></button>
         </div>
 
-         <!-- SETTINGS -->
+         <!-- SETTINGS — hidden (commented out)
          <div>
           <router-link :to="{ path: '/settings', query: { returnTo: route.fullPath } }">
           <button class="btn border-0" :class="{ activeBtn: isActive('/settings') }">
@@ -76,6 +76,7 @@
           <p class="menu-heading">Settings</p></button>
           </router-link>
         </div>
+        -->
 
         <!-- TICKETS - Restricted during testing -->
        <!--  <div>

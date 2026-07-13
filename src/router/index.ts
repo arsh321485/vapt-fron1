@@ -387,12 +387,13 @@ const router = createRouter({
       component: AdminManageAccountView,
       meta: { requiresAuth: true, requiresAdmin: true },
     },
-    {
-      path: "/settings",
-      name: "settings",
-      component: AdminSettingsView,
-      meta: { requiresAuth: true, requiresAdmin: true },
-    },
+    // Settings route — hidden (commented out)
+    // {
+    //   path: "/settings",
+    //   name: "settings",
+    //   component: AdminSettingsView,
+    //   meta: { requiresAuth: true, requiresAdmin: true },
+    // },
     {
       path: "/set-password/:uidb64/:token",
       name: "set-password",
@@ -448,12 +449,13 @@ const router = createRouter({
       component: UserManageAccountView,
       meta: { requiresAuth: true },
     },
-    {
-      path: "/user-settings",
-      name: "user-settings",
-      component: UserSettingsView,
-      meta: { requiresAuth: true },
-    },
+    // User settings route — hidden (commented out)
+    // {
+    //   path: "/user-settings",
+    //   name: "user-settings",
+    //   component: UserSettingsView,
+    //   meta: { requiresAuth: true },
+    // },
     {
       path: "/userassets",
       name: "userassets",

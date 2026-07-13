@@ -366,6 +366,7 @@
                 </div>
 
                 <div class="av-detail-tabs">
+                  <!-- Affected Assets tab hidden (not in use)
                   <button
                     type="button"
                     class="av-dtab"
@@ -374,6 +375,7 @@
                   >
                     🎯 Affected Assets
                   </button>
+                  -->
                   <button
                     type="button"
                     class="av-dtab"
@@ -395,6 +397,7 @@
                 </div>
 
                 <div class="av-detail-tab-content">
+                  <!-- Affected Assets tab content hidden (not in use)
                   <div v-if="currentVulnTab === 'affected'" class="av-affected-tab">
                     <div class="av-assets-table-card">
                       <table class="av-assets-table">
@@ -437,8 +440,9 @@
                       </div>
                     </div>
                   </div>
+                  -->
 
-                  <div v-else-if="currentVulnTab === 'auto'" class="av-auto-tab">
+                  <div v-if="currentVulnTab === 'auto'" class="av-auto-tab">
                     <AutomationNotSafeBanner v-if="isVulnAutomationNo(v, i)" />
                     <AutomatedFixPanel
                       v-else
