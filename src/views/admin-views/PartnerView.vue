@@ -197,15 +197,17 @@ import Header from "@/components/admin-component/Header.vue";
 import Footer from "@/components/admin-component/Footer.vue";
 import axios from "axios";
 import Swal from "sweetalert2";
-// Public axios instance — no auth headers needed for partner APIs
-const publicApi = axios.create({ baseURL: '/' });
+// Local: use Vite proxy. Production: call backend directly
+const PARTNERS_BASE = import.meta.env.DEV
+  ? ''
+  : 'https://vaptbackend.secureitlab.com';
+const publicApi = axios.create({ baseURL: PARTNERS_BASE });
 
 export default {
   name: "PartnerView",
   components: { Header, Footer },
   data() {
     return {
-      // Dropdown options from API
       countries: [],
       companySizeOptions: [],
       partnerTypeOptions: [],
