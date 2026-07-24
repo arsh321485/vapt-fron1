@@ -1131,7 +1131,7 @@ class TLSConfigurator:
         });
 
         const vuln = this.filteredVulnerabilities[index];
-        const id = Number(vuln && vuln.plugin_id || 0);
+        const id = this.resolveVulnPluginId(vuln);
         if (id > 0 && !this.singleFetchedIds.includes(id)) {
           this.singleFetchedIds = [...this.singleFetchedIds, id];
           const res = await this.authStore.fetchAutomationScriptSingle(id);
@@ -1533,7 +1533,28 @@ class TLSConfigurator:
     },
     async loadAutomationScripts() {
       const vulns = this.authStore.selectedAssetVulnerabilities || [];
-      const pluginIds = [...new Set(vulns.map(v => Number(v.plugin_id)).filter(id => id > 0))];
+      const register = this.authStore.cachedUserVulnRegister || [];
+
+      // Build name -> plugin_id from register for vulns missing plugin_id
+      const nameToId = {};
+      register.forEach(r => {
+        const n = String(r.vul_name || r.plugin_name || '').toLowerCase().trim();
+        const id = Number(r.plugin_id || r.nessus_plugin_id || 0);
+        if (n && id > 0) nameToId[n] = id;
+      });
+
+      // Collect plugin_ids — direct OR via register name lookup
+      const pluginIds = [...new Set(
+        vulns.map(v => {
+          let id = Number(v.plugin_id || 0);
+          if (!(id > 0)) {
+            const n = String(v.vul_name || v.plugin_name || '').toLowerCase().trim();
+            id = nameToId[n] || 0;
+          }
+          return id;
+        }).filter(id => id > 0)
+      )];
+
       if (!pluginIds.length) return;
       this.loadingAutomation = true;
       const res = await this.authStore.fetchAutomationScriptsBulk(pluginIds);
@@ -1552,15 +1573,27 @@ class TLSConfigurator:
       if (!data || !data.plugin_id) return;
       this.automationScriptMap = { ...this.automationScriptMap, [data.plugin_id]: data };
     },
+    resolveVulnPluginId(vuln) {
+      if (!vuln) return 0;
+      // 1. Direct fields
+      let id = Number(vuln.plugin_id || vuln.nessus_plugin_id || vuln.pluginId || 0);
+      if (id > 0) return id;
+      // 2. Register cache by name
+      const name = String(vuln.vul_name || vuln.plugin_name || '').toLowerCase().trim();
+      const register = this.authStore.cachedUserVulnRegister || [];
+      const row = register.find(r =>
+        String(r.vul_name || r.plugin_name || '').toLowerCase().trim() === name
+      );
+      id = Number(row?.plugin_id || row?.nessus_plugin_id || 0);
+      if (id > 0) return id;
+      // 3. Already-fetched automation map by name
+      const entry = Object.values(this.automationScriptMap).find(
+        e => String(e.vulnerability || e.vul_name || e.plugin_name || '').toLowerCase().trim() === name
+      );
+      return Number(entry?.plugin_id || 0);
+    },
     getAutomationForVuln(vuln) {
-      let id = Number(vuln && vuln.plugin_id || 0);
-      if (!(id > 0)) {
-        const name = String(vuln && (vuln.vul_name || vuln.plugin_name) || '').toLowerCase().trim();
-        const entry = Object.values(this.automationScriptMap).find(
-          e => String(e.vulnerability || e.vul_name || '').toLowerCase().trim() === name
-        );
-        if (entry) id = Number(entry.plugin_id);
-      }
+      const id = this.resolveVulnPluginId(vuln);
       return id > 0 ? (this.automationScriptMap[id] || null) : null;
     },
     syncAssetSeverityCounts(assetIp) {

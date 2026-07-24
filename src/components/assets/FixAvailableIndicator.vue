@@ -30,28 +30,35 @@ export default {
       // Real API data available → use it
       if (this.automationMatched === true)  return { tier: 'yes',     label: 'Yes',     pct: 100, barWidth: 100, displayPct: '100%' };
       if (this.automationMatched === false) return { tier: 'no',      label: 'No',      pct: 0,   barWidth: 100, displayPct: '0%'   };
-      // Fallback: demo data
-      return resolveAutomationDisplay(
-        this.automationLevel,
-        this.automationPct,
-        canonSeverity(this.severity),
-        this.assetIp,
-        this.assetIndex,
-      );
+      // automationLevel/pct props se API data available hai
+      if (this.automationLevel || this.automationPct) {
+        return resolveAutomationDisplay(
+          this.automationLevel,
+          this.automationPct,
+          canonSeverity(this.severity),
+          this.assetIp,
+          this.assetIndex,
+        );
+      }
+      // No API data yet — show neutral/checking state instead of fake demo
+      return { tier: 'pending', label: 'Checking', pct: null, barWidth: 0, displayPct: '' };
     },
     iconClass() {
-      if (this.display.tier === 'yes') return 'bi bi-check-lg';
-      if (this.display.tier === 'no') return 'bi bi-x-lg';
+      if (this.display.tier === 'yes')     return 'bi bi-check-lg';
+      if (this.display.tier === 'no')      return 'bi bi-x-lg';
+      if (this.display.tier === 'pending') return 'bi bi-hourglass-split';
       return 'bi bi-exclamation-lg';
     },
     labelText() {
-      if (this.display.tier === 'no') return 'Non automatable';
+      if (this.display.tier === 'no')      return 'Non automatable';
       if (this.display.tier === 'partial') return 'Partial automatable';
+      if (this.display.tier === 'pending') return 'Checking...';
       return 'Automatable';
     },
     tooltip() {
-      if (this.display.tier === 'yes') return 'Automatable — full automation';
-      if (this.display.tier === 'no') return 'Non automatable — manual only';
+      if (this.display.tier === 'yes')     return 'Automatable — full automation';
+      if (this.display.tier === 'no')      return 'Non automatable — manual only';
+      if (this.display.tier === 'pending') return 'Fetching automation status...';
       return 'Partial automatable';
     },
   },
@@ -126,5 +133,15 @@ export default {
   background: #dc2626;
   color: #ffffff;
   box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
+}
+
+.fix-available-btn--pending {
+  border-color: #cbd5e1;
+  color: #94a3b8;
+}
+
+.fix-available-btn--pending .fix-available-icon-ring {
+  background: #e2e8f0;
+  color: #94a3b8;
 }
 </style>
