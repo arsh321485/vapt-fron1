@@ -1540,7 +1540,11 @@ class TLSConfigurator:
       this.loadingAutomation = false;
       if (res.status && Array.isArray(res.results)) {
         const map = {};
-        res.results.forEach(r => { map[r.plugin_id] = r; });
+        // Backend note: match by plugin_id field, NOT array index
+        res.results.forEach(r => {
+          const pid = Number(r.plugin_id || 0);
+          if (pid > 0) map[pid] = r;
+        });
         this.automationScriptMap = map;
       }
     },
