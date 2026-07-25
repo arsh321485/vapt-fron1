@@ -335,8 +335,11 @@
                   :severity="v.severity"
                   :asset-ip="v.assets?.[0]"
                   :asset-index="panelVulnDemoIndex(v)"
+                  :automation-matched="resolveAutomationMatched(v)"
                 />
+                <!-- Download button: user side only -->
                 <button
+                  v-if="isUser"
                   type="button"
                   class="vuln-download-icon-btn"
                   :class="{ 'vuln-download-icon-btn--disabled': isVulnAutomationNo(v, i) }"
@@ -1631,12 +1634,16 @@ export default {
       this.syncVulnCountsWithDeletedState();
       await this.prefetchAllVulnAssets();
       this.loading = false;
-      // Build plugin_id map from stats first, then select + fetch
-      await this.buildVulnNameToPluginIdMap();
+      // 1. Select first vuln immediately
       if (this.filteredVulns.length) {
         await this.selectVulnFromList(this.filteredVulns[0]);
       }
+      // 2. Bulk fetch immediately with already-available plugin_ids (from prefetchAllVulnAssets)
       await this.loadAllVulnAutomationScripts();
+      // 3. Then enhance map from stats and re-fetch any remaining
+      this.buildVulnNameToPluginIdMap().then(() => {
+        this.loadAllVulnAutomationScripts();
+      });
     },
     async prefetchAllVulnAssets() {
       const vulns = [...this.groupedVulns];
@@ -1914,22 +1921,22 @@ export default {
       this.expandedVulnIndex = null;
       this.currentVulnTab = 'auto';
       this.activeDetailTab = 'vulnerabilities';
-      // loadVulnAssets pehle — isse plugin_id bhi capture hoga response se
       await this.loadVulnAssets(item, false);
       this.prefetchSupportRequestsForSelectedVuln();
       this.$nextTick(() => this.scrollToAccordion(item._key));
-      // Ab resolvePluginId — loadVulnAssets ke baad map updated hoga
+      // Try to resolve plugin_id and fetch automation data
+      await this.fetchAutomationForVuln(item);
+    },
+    async fetchAutomationForVuln(item) {
       const pluginId = this.resolvePluginId(item);
-      console.log('[AllVuln] selectVuln:', item.vul_name, '| resolved plugin_id:', pluginId);
       if (pluginId > 0 && !this.singleFetchedIds.includes(pluginId)) {
         this.singleFetchedIds = [...this.singleFetchedIds, pluginId];
-        const res = await this.authStore.fetchAutomationScriptSingle(pluginId);
-        console.log('[AllVuln] match API res for', pluginId, ':', res);
+        const res = this.isUser
+          ? await this.authStore.fetchAutomationScriptSingle(pluginId)
+          : await this.authStore.fetchAutomationScriptSingleAdmin(pluginId);
         if (res.status && res.data) {
           this.automationScriptMap = { ...this.automationScriptMap, [pluginId]: res.data };
         }
-      } else {
-        console.warn('[AllVuln] skipped — pluginId:', pluginId, 'alreadyFetched:', this.singleFetchedIds.includes(pluginId));
       }
     },
     resolvePluginId(vuln) {
@@ -1948,11 +1955,15 @@ export default {
       const name = String(vuln.vul_name || vuln.plugin_name || '').toLowerCase().trim();
       const fromMap = Number(this.vulnNameToPluginId[name] || 0);
       if (fromMap > 0) return fromMap;
-      // 3. Cross-check from userAllReportVulnerabilities raw data
+      // 3. Cross-check from all available stores
       const sources = [
-        ...(this.authStore.userAllReportVulnerabilities || []),
+        ...(this.isUser
+          ? (this.authStore.userAllReportVulnerabilities || [])
+          : (this.authStore.allReportVulnerabilities || [])),
         ...(this.authStore.selectedAssetVulnerabilities || []),
-        ...(this.authStore.cachedUserVulnRegister || []),
+        ...(this.isUser
+          ? (this.authStore.cachedUserVulnRegister || [])
+          : (this.authStore.vulnerabilityRows || [])),
       ];
       const rawMatch = sources.find(r => {
         const rName = String(r.plugin_name || r.vul_name || r.vulnerability || '').toLowerCase().trim();
@@ -1975,15 +1986,28 @@ export default {
     },
     async buildVulnNameToPluginIdMap() {
       const map = {};
-      // 1. From raw userAllReportVulnerabilities (all possible field names)
-      const rawVulns = this.authStore.userAllReportVulnerabilities || [];
+      // 1. From raw vuln data (user or admin)
+      const rawVulns = this.isUser
+        ? (this.authStore.userAllReportVulnerabilities || [])
+        : (this.authStore.allReportVulnerabilities || []);
       rawVulns.forEach(r => {
         const name = String(r.plugin_name || r.vul_name || '').toLowerCase().trim();
         const id = Number(r.plugin_id || r.nessus_plugin_id || r.pluginId || r.plugin || r.nessus_id || 0);
         if (name && id > 0) map[name] = id;
       });
-      // 2. From automation script stats
-      const res = await this.authStore.fetchAutomationScriptStats();
+      // 2. From register cache (user or admin)
+      const register = this.isUser
+        ? (this.authStore.cachedUserVulnRegister || [])
+        : (this.authStore.vulnerabilityRows || []);
+      register.forEach(r => {
+        const name = String(r.plugin_name || r.vul_name || '').toLowerCase().trim();
+        const id = Number(r.plugin_id || r.nessus_plugin_id || 0);
+        if (name && id > 0) map[name] = id;
+      });
+      // 3. From automation script stats (user or admin)
+      const res = this.isUser
+        ? await this.authStore.fetchAutomationScriptStats()
+        : await this.authStore.fetchAutomationScriptStatsAdmin();
       if (res.status && res.data?.stats) {
         res.data.stats.forEach(s => {
           const name = String(s.vulnerability || s.vul_name || s.plugin_name || '').toLowerCase().trim();
@@ -1992,34 +2016,19 @@ export default {
         });
       }
       this.vulnNameToPluginId = map;
-      console.log('[AllVuln] vulnNameToPluginId final map size:', Object.keys(map).length, map);
     },
     async loadAllVulnAutomationScripts() {
-      // Collect plugin_ids: first from vuln itself, fallback from register cache by name
-      const register = this.authStore.cachedUserVulnRegister || [];
-      const nameToPluginId = {};
-      register.forEach(r => {
-        const name = String(r.vul_name || r.plugin_name || '').toLowerCase().trim();
-        const id = Number(r.plugin_id || 0);
-        if (name && id > 0) nameToPluginId[name] = id;
-      });
       const pluginIds = [...new Set(
-        this.groupedVulns.map(v => {
-          let id = Number(v.plugin_id || 0);
-          if (!(id > 0)) {
-            const name = String(v.vul_name || v.plugin_name || '').toLowerCase().trim();
-            id = nameToPluginId[name] || 0;
-          }
-          return id;
-        }).filter(id => id > 0)
+        this.groupedVulns.map(v => this.resolvePluginId(v)).filter(id => id > 0)
       )];
       if (!pluginIds.length) return;
       this.loadingAutomation = true;
-      const res = await this.authStore.fetchAutomationScriptsBulk(pluginIds);
+      const res = this.isUser
+        ? await this.authStore.fetchAutomationScriptsBulk(pluginIds)
+        : await this.authStore.fetchAutomationScriptsBulkAdmin(pluginIds);
       this.loadingAutomation = false;
       if (res.status && Array.isArray(res.results)) {
         const map = {};
-        // Backend note: match by plugin_id field, NOT array index
         res.results.forEach(r => {
           const pid = Number(r.plugin_id || 0);
           if (pid > 0) map[pid] = r;
@@ -2030,12 +2039,23 @@ export default {
     getAutomationForVuln(vuln) {
       const id = this.resolvePluginId(vuln);
       if (id > 0 && this.automationScriptMap[id]) return this.automationScriptMap[id];
-      // Name-based fallback from already-fetched map
+      // Name-based fallback
       const name = String(vuln && (vuln.vul_name || vuln.plugin_name) || '').toLowerCase().trim();
       const entry = Object.values(this.automationScriptMap).find(
         e => String(e.vulnerability || e.vul_name || '').toLowerCase().trim() === name
       );
       return entry || null;
+    },
+    resolveAutomationMatched(vuln) {
+      const data = this.getAutomationForVuln(vuln);
+      if (!data) return null;
+      // From bulk API: matched field directly
+      if (typeof data.matched === 'boolean') return data.matched;
+      // From single match API: automation_possible field
+      const ap = String(data.automation_possible || '').toLowerCase().trim();
+      if (!ap) return null;
+      if (ap.startsWith('no')) return false;
+      return true; // yes or partial — both mean automatable
     },
     selectVulnAsset(vuln, asset, expandAccordion = true) {
       if (this.showCheckboxes || this.showHoldCheckboxes) return;
@@ -2243,7 +2263,7 @@ export default {
       this.activeDetailTab = 'exceptions';
       await this.refreshSupportRequestsForVuln();
     },
-    toggleAccordion(index) {
+    async toggleAccordion(index) {
       const isOpening = this.expandedVulnIndex !== index;
       this.expandedVulnIndex = this.expandedVulnIndex === index ? null : index;
       const item = this.panelVulns[index];
@@ -2252,6 +2272,8 @@ export default {
       }
       if (isOpening && item) {
         this.$nextTick(() => this.scrollToAccordion(item._panelKey || item._key));
+        // Fetch automation data for opened vuln
+        await this.fetchAutomationForVuln(item);
       }
     },
     scrollToAccordion(refKey) {

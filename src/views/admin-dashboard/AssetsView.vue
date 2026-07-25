@@ -333,8 +333,10 @@
                               :severity="v.severity"
                               :asset-ip="selectedAssetIp"
                               :asset-index="selectedAssetDemoIndex"
+                              :automation-matched="resolveAutomationMatched(v)"
                             />
-                            <button
+                            <!-- Download button hidden for admin side -->
+                            <!-- <button
                               type="button"
                               class="vuln-download-icon-btn"
                               :class="{ 'vuln-download-icon-btn--disabled': isVulnDownloadDisabled(v) }"
@@ -344,7 +346,7 @@
                               @click.stop="!isVulnDownloadDisabled(v) && downloadAutomationScript()"
                             >
                               <i class="bi bi-download"></i>
-                            </button>
+                            </button> -->
                             <i class="bi text-muted" :class="expandedVulnIndex === i ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
                           </div>
                         </div>
@@ -408,6 +410,7 @@
                                   :asset-ip="selectedAssetIp"
                                   :asset-index="selectedAssetDemoIndex"
                                   :is-user="false"
+                                  :automation-data="getAutomationForVuln(v)"
                                   @view-code="showCodeModal = true"
                                 />
                               </div>
@@ -652,6 +655,9 @@ export default {
       closedFixCount: 0,
       loadingClosedFix: false,
       assetFetchSeq: 0,
+      automationScriptMap: {},
+      singleFetchedIds: [],
+      loadingAutomation: false,
       showCodeModal: false,
       showPythonModal: false,
       pythonGuideSeverity: '',
@@ -938,7 +944,7 @@ class TLSConfigurator:
         }, 2000);
       });
     },
-    toggleAccordion(index) {
+    async toggleAccordion(index) {
       const prevIndex = this.expandedVulnIndex;
       const isOpening = prevIndex !== index;
       this.expandedVulnIndex = prevIndex === index ? null : index;
@@ -956,6 +962,78 @@ class TLSConfigurator:
             element[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
           }
         });
+        // Fetch individual automation script for opened vuln
+        const vuln = this.filteredVulnerabilities[index];
+        const id = this.resolveVulnPluginId(vuln);
+        if (id > 0 && !this.singleFetchedIds.includes(id)) {
+          this.singleFetchedIds = [...this.singleFetchedIds, id];
+          const res = await this.authStore.fetchAutomationScriptSingleAdmin(id);
+          if (res.status && res.data) {
+            this.automationScriptMap = { ...this.automationScriptMap, [id]: res.data };
+          }
+        }
+      }
+    },
+    resolveVulnPluginId(vuln) {
+      if (!vuln) return 0;
+      let id = Number(vuln.plugin_id || vuln.nessus_plugin_id || vuln.pluginId || 0);
+      if (id > 0) return id;
+      const name = String(vuln.vul_name || vuln.plugin_name || '').toLowerCase().trim();
+      const register = this.authStore.vulnerabilityRows || [];
+      const row = register.find(r =>
+        String(r.vul_name || r.plugin_name || '').toLowerCase().trim() === name
+      );
+      id = Number(row?.plugin_id || row?.nessus_plugin_id || 0);
+      if (id > 0) return id;
+      const entry = Object.values(this.automationScriptMap).find(
+        e => String(e.vulnerability || e.vul_name || e.plugin_name || '').toLowerCase().trim() === name
+      );
+      return Number(entry?.plugin_id || 0);
+    },
+    getAutomationForVuln(vuln) {
+      const id = this.resolveVulnPluginId(vuln);
+      return id > 0 ? (this.automationScriptMap[id] || null) : null;
+    },
+    resolveAutomationMatched(vuln) {
+      const data = this.getAutomationForVuln(vuln);
+      if (!data) return null;
+      if (typeof data.matched === 'boolean') return data.matched;
+      const ap = String(data.automation_possible || '').toLowerCase().trim();
+      if (!ap) return null;
+      if (ap.startsWith('no')) return false;
+      return true;
+    },
+    async loadAutomationScripts() {
+      const vulns = this.authStore.selectedAssetVulnerabilities || [];
+      const register = this.authStore.vulnerabilityRows || [];
+      const nameToId = {};
+      register.forEach(r => {
+        const n = String(r.vul_name || r.plugin_name || '').toLowerCase().trim();
+        const id = Number(r.plugin_id || r.nessus_plugin_id || 0);
+        if (n && id > 0) nameToId[n] = id;
+      });
+      const pluginIds = [...new Set(
+        vulns.map(v => {
+          let id = Number(v.plugin_id || 0);
+          if (!(id > 0)) {
+            const n = String(v.vul_name || v.plugin_name || '').toLowerCase().trim();
+            id = nameToId[n] || 0;
+          }
+          return id;
+        }).filter(id => id > 0)
+      )];
+      if (!pluginIds.length) return;
+      this.loadingAutomation = true;
+      const res = await this.authStore.fetchAutomationScriptsBulkAdmin(pluginIds);
+      this.loadingAutomation = false;
+      if (res.status && Array.isArray(res.results)) {
+        const map = {};
+        // Backend note: match by plugin_id field, NOT array index
+        res.results.forEach(r => {
+          const pid = Number(r.plugin_id || 0);
+          if (pid > 0) map[pid] = r;
+        });
+        this.automationScriptMap = map;
       }
     },
     async reloadAssetsAndHeld() {
@@ -1188,7 +1266,11 @@ class TLSConfigurator:
       if (requestSeq !== this.assetFetchSeq) return;
       this.loadingAssetVulns = false;
 
-      // Secondary data in parallel (do not block main asset details render).
+      // Fetch automation scripts — await so badges show real data immediately
+      this.automationScriptMap = {};
+      this.singleFetchedIds = [];
+      await this.loadAutomationScripts();
+      // Secondary data in parallel (non-blocking)
       this.refreshSupportRequestsForHost(asset.asset, requestSeq);
       this.loadClosedFixForAsset(asset.asset, requestSeq);
     },

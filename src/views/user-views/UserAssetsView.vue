@@ -354,7 +354,7 @@
                               :severity="vuln.severity"
                               :asset-ip="selectedAssetIp"
                               :asset-index="selectedAssetDemoIndex"
-                              :automation-matched="getAutomationForVuln(vuln) && getAutomationForVuln(vuln).matched"
+                              :automation-matched="resolveAutomationMatched(vuln)"
                             />
                             <button
                               type="button"
@@ -1516,7 +1516,7 @@ class TLSConfigurator:
 
       this.automationScriptMap = {};
       this.singleFetchedIds = [];
-      this.loadAutomationScripts();
+      await this.loadAutomationScripts();
 
       // Sync card badge with actual loaded vuln counts (backend severity_counts may be stale)
       this.syncAssetSeverityCounts(asset.asset);
@@ -1595,6 +1595,15 @@ class TLSConfigurator:
     getAutomationForVuln(vuln) {
       const id = this.resolveVulnPluginId(vuln);
       return id > 0 ? (this.automationScriptMap[id] || null) : null;
+    },
+    resolveAutomationMatched(vuln) {
+      const data = this.getAutomationForVuln(vuln);
+      if (!data) return null;
+      if (typeof data.matched === 'boolean') return data.matched;
+      const ap = String(data.automation_possible || '').toLowerCase().trim();
+      if (!ap) return null;
+      if (ap.startsWith('no')) return false;
+      return true;
     },
     syncAssetSeverityCounts(assetIp) {
       const assetObj = this.assets.find(a => a.asset === assetIp);
