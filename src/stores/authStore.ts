@@ -2892,6 +2892,26 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    // 🔹 Fetch asset vuln plugin_ids WITHOUT modifying global state
+    async fetchAssetVulnPluginIds(assetIp: string, isUser = true) {
+      try {
+        const reportId = isUser ? this.userLatestReportId : this.latestReportId;
+        if (!reportId) return {};
+        const url = isUser
+          ? `/api/user/asset/report/${reportId}/asset/${assetIp}/vulnerabilities/`
+          : `/api/admin/asset/report/${reportId}/asset/${assetIp}/vulnerabilities/`;
+        const res = await endpoint.get(url);
+        const vulns: any[] = res.data?.vulnerabilities || [];
+        const map: Record<string, number> = {};
+        vulns.forEach((v: any) => {
+          const name = String(v.plugin_name || v.vul_name || '').toLowerCase().trim();
+          const id = Number(v.plugin_id || v.nessus_plugin_id || 0);
+          if (name && id > 0) map[name] = id;
+        });
+        return map;
+      } catch { return {}; }
+    },
+
     // 🔹 USER ASSET VULNERABILITIES (single asset)
     async fetchUserSingleAssetVulnerabilities(assetIp: string) {
       try {

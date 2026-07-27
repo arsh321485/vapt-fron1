@@ -1632,18 +1632,15 @@ export default {
       }
       this.syncVulnCountsWithHeldState();
       this.syncVulnCountsWithDeletedState();
+      // Fetch assets + plugin_ids + automation data BEFORE showing content
       await this.prefetchAllVulnAssets();
+      await this.buildVulnNameToPluginIdMap();
+      await this.loadAllVulnAutomationScripts();
       this.loading = false;
-      // 1. Select first vuln immediately
+      // Select first vuln after all badges are ready
       if (this.filteredVulns.length) {
         await this.selectVulnFromList(this.filteredVulns[0]);
       }
-      // 2. Bulk fetch immediately with already-available plugin_ids (from prefetchAllVulnAssets)
-      await this.loadAllVulnAutomationScripts();
-      // 3. Then enhance map from stats and re-fetch any remaining
-      this.buildVulnNameToPluginIdMap().then(() => {
-        this.loadAllVulnAutomationScripts();
-      });
     },
     async prefetchAllVulnAssets() {
       const vulns = [...this.groupedVulns];
@@ -1986,16 +1983,16 @@ export default {
     },
     async buildVulnNameToPluginIdMap() {
       const map = {};
-      // 1. From raw vuln data (user or admin)
+      // 1. From raw vuln data
       const rawVulns = this.isUser
         ? (this.authStore.userAllReportVulnerabilities || [])
         : (this.authStore.allReportVulnerabilities || []);
       rawVulns.forEach(r => {
         const name = String(r.plugin_name || r.vul_name || '').toLowerCase().trim();
-        const id = Number(r.plugin_id || r.nessus_plugin_id || r.pluginId || r.plugin || r.nessus_id || 0);
+        const id = Number(r.plugin_id || r.nessus_plugin_id || r.pluginId || 0);
         if (name && id > 0) map[name] = id;
       });
-      // 2. From register cache (user or admin)
+      // 2. From register cache
       const register = this.isUser
         ? (this.authStore.cachedUserVulnRegister || [])
         : (this.authStore.vulnerabilityRows || []);
@@ -2004,18 +2001,29 @@ export default {
         const id = Number(r.plugin_id || r.nessus_plugin_id || 0);
         if (name && id > 0) map[name] = id;
       });
-      // 3. From automation script stats (user or admin)
-      const res = this.isUser
+      // 3. From stats API
+      const statsRes = this.isUser
         ? await this.authStore.fetchAutomationScriptStats()
         : await this.authStore.fetchAutomationScriptStatsAdmin();
-      if (res.status && res.data?.stats) {
-        res.data.stats.forEach(s => {
+      if (statsRes.status && statsRes.data?.stats) {
+        statsRes.data.stats.forEach(s => {
           const name = String(s.vulnerability || s.vul_name || s.plugin_name || '').toLowerCase().trim();
           const id = Number(s.plugin_id || 0);
           if (name && id > 0) map[name] = id;
         });
       }
-      this.vulnNameToPluginId = map;
+      // 4. From each vuln's asset IP — fetch plugin_ids directly (no global state change)
+      const assetFetches = this.groupedVulns.map(async v => {
+        const vName = String(v.vul_name || v.plugin_name || '').toLowerCase().trim();
+        if (map[vName]) return; // already have it
+        const assets = this.vulnAssetsByKey[v._key] || [];
+        const assetIp = assets[0]?.host_name || v.assets?.[0];
+        if (!assetIp) return;
+        const pluginMap = await this.authStore.fetchAssetVulnPluginIds(assetIp, this.isUser);
+        Object.assign(map, pluginMap);
+      });
+      await Promise.all(assetFetches);
+      this.vulnNameToPluginId = { ...this.vulnNameToPluginId, ...map };
     },
     async loadAllVulnAutomationScripts() {
       const pluginIds = [...new Set(
