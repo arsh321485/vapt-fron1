@@ -21,6 +21,11 @@
             <p class="hv-hero-sub">
               Security isn't just about finding flaws—it's about fixing them fast. We close the gaps that reports leave behind, giving you lasting protection.
             </p>
+            <p class="hv-webinar-link-wrap">
+              <router-link to="/webinarform" class="hv-webinar-link">
+                Register for Webinar
+              </router-link>
+            </p>
             <div class="hv-hero-btns">
               <button class="hv-btn-primary" @click="handleFixNow">
                 Get Started
@@ -84,7 +89,14 @@
         </div>
         <div class="hv-problem-top">
           <h2 class="hv-section-title">Why post <span style="color:#0f696e;">VAPT Remediation</span> is broken</h2>
-          <p class="hv-section-desc">Most cybersecurity teams run a VAPT exercise and stop at the report. But what happens after the vulnerabilities are discovered? They sit in spreadsheets, lost in handoffs, or ignored in long development cycles.</p>
+          <div>
+            <p class="hv-section-desc">Most cybersecurity teams run a VAPT exercise and stop at the report. But what happens after the vulnerabilities are discovered? They sit in spreadsheets, lost in handoffs, or ignored in long development cycles.</p>
+            <p class="hv-webinar-link-wrap">
+              <router-link to="/webinarform" class="hv-webinar-link">
+                Register for Webinar
+              </router-link>
+            </p>
+          </div>
         </div>
         <div class="hv-cards-3">
           <div class="hv-card">
@@ -331,6 +343,11 @@
       <div class="hv-container hv-cta-inner">
         <h2 class="hv-cta-title">Fix Bugs Instantly.</h2>
         <p class="hv-cta-desc">Identify, prioritize, and fix security flaws fast. Reduce risk with zero-friction setup and smart automation.</p>
+        <p class="hv-webinar-link-wrap hv-webinar-link-wrap--cta">
+          <router-link to="/webinarform" class="hv-webinar-link hv-webinar-link--on-dark">
+            Register for Webinar
+          </router-link>
+        </p>
         <button class="hv-cta-btn" @click="handleFixNow">
           Get Started
           <i class="bi bi-arrow-right-circle-fill ms-1 fs-5" aria-hidden="true"></i>
@@ -789,6 +806,47 @@ export default {
   transition: background 0.2s;
 }
 .hv-btn-primary:hover { background: #0a4e52; }
+
+.hv-webinar-link-wrap {
+  margin: 14px 0 18px;
+}
+
+.hv-webinar-link-wrap--cta {
+  margin: 8px 0 20px;
+}
+
+.hv-webinar-link {
+  display: inline-flex;
+  align-items: center;
+  color: #0f696e;
+  background: rgba(15, 105, 110, 0.12);
+  border: 1px solid rgba(15, 105, 110, 0.28);
+  border-radius: 999px;
+  padding: 10px 20px;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  transition: background 0.2s, color 0.2s, transform 0.15s;
+}
+
+.hv-webinar-link:hover {
+  color: #ffffff;
+  background: #0f696e;
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+
+.hv-webinar-link--on-dark {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.hv-webinar-link--on-dark:hover {
+  color: #241447;
+  background: #ffffff;
+}
 
 .hv-btn-outline {
   display: inline-flex;

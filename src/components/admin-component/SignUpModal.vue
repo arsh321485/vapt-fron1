@@ -50,7 +50,17 @@
 
           <!-- Tabs -->
           <div class="user-tabs">
-            <button class="user-tab" :class="{ active: userActiveTab === 'setPassword' }" @click="userActiveTab = 'setPassword'" type="button">
+            <button
+              class="user-tab"
+              :class="{
+                active: userActiveTab === 'setPassword',
+                disabled: !isSetPasswordAllowed,
+              }"
+              type="button"
+              :disabled="!isSetPasswordAllowed"
+              :title="isSetPasswordAllowed ? '' : 'Use the email link to set your password, or Sign In if already set'"
+              @click="onSetPasswordTabClick"
+            >
               Set Password
             </button>
             <button class="user-tab" :class="{ active: userActiveTab === 'signIn' }" @click="userActiveTab = 'signIn'" type="button">
@@ -373,6 +383,7 @@ import teamsIcon from '@/assets/images/teams.png';
 import slackIcon from '@/assets/images/slack.png';
 import {
   buildUserSetPasswordHomeQuery,
+  clearStoredSetPasswordDeepLink,
   extractSetPasswordParams,
   isUserSetPasswordDeepLink,
   readStoredSetPasswordDeepLink,
@@ -494,6 +505,16 @@ export default {
       if (!this.platformChecked) return false;
       return this.userPlatform !== 'microsoft_teams';
     },
+    /** Set Password tab only when invite/email deep-link tokens exist. */
+    isSetPasswordAllowed() {
+      if (this.setPasswordUidb64 && this.setPasswordToken) return true;
+      if (this.$route?.path === '/home' && isUserSetPasswordDeepLink(this.$route.query)) {
+        const q = extractSetPasswordParams(this.$route.query);
+        if (q.uidb64 && q.token) return true;
+      }
+      const stored = readStoredSetPasswordDeepLink();
+      return !!(stored?.uidb64 && stored?.token);
+    },
   },
   watch: {
     'userForm.email'() {
@@ -566,6 +587,10 @@ export default {
     this.syncAdminConnectionState();
   },
   methods: {
+    onSetPasswordTabClick() {
+      if (!this.isSetPasswordAllowed) return;
+      this.userActiveTab = 'setPassword';
+    },
     syncModalFromDeepLink() {
       const fromProps =
         !!(this.setPasswordUidb64 && this.setPasswordToken) ||
@@ -580,11 +605,17 @@ export default {
       }
 
       const stored = readStoredSetPasswordDeepLink();
-      const openSetPassword =
-        fromProps ||
+      const hasSetPasswordTokens =
+        !!(this.setPasswordUidb64 && this.setPasswordToken) ||
         fromRoute ||
-        !!stored ||
-        (this.preSelectedType === 'user' && this.userInitialTab === 'setPassword');
+        !!(stored?.uidb64 && stored?.token);
+
+      const openSetPassword =
+        hasSetPasswordTokens &&
+        (fromProps ||
+          fromRoute ||
+          !!stored ||
+          (this.preSelectedType === 'user' && this.userInitialTab === 'setPassword'));
 
       if (openSetPassword) {
         this.formType = 'user';
@@ -598,9 +629,8 @@ export default {
       if (this.preSelectedType) {
         this.formType = this.preSelectedType;
         this.showForm = true;
-        if (this.preSelectedType === 'user' && this.userInitialTab === 'setPassword') {
-          this.userActiveTab = 'setPassword';
-        } else if (this.preSelectedType === 'user') {
+        if (this.preSelectedType === 'user') {
+          // Without invite tokens, only Sign In is available.
           this.userActiveTab = 'signIn';
         }
         if (this.setPasswordEmail) {
@@ -620,6 +650,7 @@ export default {
 
       this.showForm = false;
       this.formType = '';
+      this.userActiveTab = 'signIn';
     },
     hasActiveAuthSession() {
       const authStore = useAuthStore();
@@ -1306,6 +1337,7 @@ export default {
             });
         if (result.status) {
           this.userSetPasswordForm = { newPassword: '', confirmPassword: '' };
+          clearStoredSetPasswordDeepLink();
           if (result.loggedIn) {
             await Swal.fire({
               icon: 'success',
@@ -1711,6 +1743,18 @@ export default {
 }
 .user-tab:hover { color: #374151; }
 .user-tab.active { color: #241447; border-bottom-color: #241447; }
+.user-tab.disabled,
+.user-tab:disabled {
+  opacity: 0.38;
+  color: #9ca3af;
+  cursor: not-allowed;
+  pointer-events: none;
+  border-bottom-color: transparent;
+}
+.user-tab.disabled:hover,
+.user-tab:disabled:hover {
+  color: #9ca3af;
+}
 
 /* Field Group */
 .field-group { margin-bottom: 16px; }

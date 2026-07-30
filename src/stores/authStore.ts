@@ -39,6 +39,20 @@ interface SlackMessageResponse {
   message?: string;
 }
 
+/** Webinar registration payload (CRM / public webinar form) */
+interface WebinarRegisterPayload {
+  full_name: string;
+  work_email: string;
+  job_title: string;
+  company_name: string;
+  company_website: string;
+  company_linkedin?: string;
+  team_size: string;
+  /** Required when team_size is "10+" */
+  team_size_count?: number;
+  phone_number?: string;
+}
+
 // Helper function to clear all auth tokens
 function clearAllAuthTokens() {
   // Clear sessionStorage
@@ -6747,6 +6761,82 @@ export const useAuthStore = defineStore("auth", {
           status: false,
           message:
             error.response?.data?.message || error.message || "Failed to fetch vuln asset count",
+        };
+      }
+    },
+
+    // ─────────────────────────────────────────────────────────
+    // ✅ Webinar Registration (CRM / public form)
+    // GET  /api/webinar/form-options/  → team_size dropdown options
+    // POST /api/webinar/register/      → submit webinar lead
+    // ─────────────────────────────────────────────────────────
+
+    /**
+     * Fetch webinar form dropdown options (team size attending).
+     * Response example:
+     * { team_size_options: ["1", "2-5", "6-10", "10+"] }
+     */
+    async getWebinarFormOptions() {
+      try {
+        const res = await endpoint.get("/api/webinar/form-options/");
+        return {
+          status: true,
+          data: res.data,
+          team_size_options: res.data?.team_size_options || [],
+          message: res.data?.message,
+        };
+      } catch (error: any) {
+        const errorData = error.response?.data;
+        return {
+          status: false,
+          data: null,
+          team_size_options: [] as string[],
+          message:
+            errorData?.message ||
+            errorData?.detail ||
+            error.message ||
+            "Failed to load webinar form options",
+          details: errorData || null,
+        };
+      }
+    },
+
+    /**
+     * Submit webinar registration.
+     * Body example:
+     * {
+     *   full_name, work_email, job_title, company_name,
+     *   company_website, company_linkedin?, team_size,
+     *   team_size_count? (when team_size === "10+"), phone_number?
+     * }
+     * Success response example:
+     * { message: "...", id: "..." }
+     */
+    async registerWebinar(payload: WebinarRegisterPayload) {
+      try {
+        const res = await endpoint.post("/api/webinar/register/", payload);
+        return {
+          status: true,
+          data: res.data,
+          id: res.data?.id,
+          message:
+            res.data?.message ||
+            "Thank you! Your webinar registration has been submitted successfully.",
+        };
+      } catch (error: any) {
+        const errorData = error.response?.data;
+        const errorMessage =
+          errorData?.message ||
+          errorData?.detail ||
+          errorData?.error ||
+          error.message ||
+          "Failed to submit webinar registration";
+        return {
+          status: false,
+          data: null,
+          id: null,
+          message: errorMessage,
+          details: errorData || null,
         };
       }
     },
