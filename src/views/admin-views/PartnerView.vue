@@ -432,6 +432,8 @@ export default {
           full_name: this.form.full_name,
           job_title: this.form.job_title,
           work_email: this.form.work_email,
+          phone_country_code: this.form.phone_country_code || '',
+          phone_number: this.form.phone_number,
           linkedin_profile: this.form.linkedin_profile,
           company_name: this.form.company_name,
           website: this.form.website,
