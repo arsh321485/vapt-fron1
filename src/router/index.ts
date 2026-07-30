@@ -27,6 +27,8 @@ import PartnerView from "../views/admin-views/PartnerView.vue";
 import PartnerLeadPortalView from "../views/admin-views/PartnerLeadPortalView.vue";
 import PartnerLeadThankYouView from "../views/admin-views/PartnerLeadThankYouView.vue";
 import PartnerThankYouView from "../views/admin-views/PartnerThankYouView.vue";
+import WebinarFormView from "../views/admin-views/WebinarFormView.vue";
+import WebinarThankYouView from "../views/admin-views/WebinarThankYouView.vue";
 import PrivacyPolicyView from "../views/admin-views/PrivacyPolicyView.vue";
 import TermsOfServiceView from "../views/admin-views/TermsOfServiceView.vue";
 import SecurityStatementView from "../views/admin-views/SecurityStatementView.vue";
@@ -162,6 +164,16 @@ const router = createRouter({
       path: "/partner-thankyou",
       name: "partner-thankyou",
       component: PartnerThankYouView,
+    },
+    {
+      path: "/webinarform",
+      name: "webinarform",
+      component: WebinarFormView,
+    },
+    {
+      path: "/webinarform-thankyou",
+      name: "webinarform-thankyou",
+      component: WebinarThankYouView,
     },
     {
       path: "/vulnerabilityexplorer",
@@ -551,9 +563,13 @@ const router = createRouter({
     },
   ],
   scrollBehavior(to, from, savedPosition) {
-    // Scroll to top only when navigating to admin dashboard onboarding
-    if (to.path === "/admindashboardonboarding") {
-      return { top: 0 };
+    // Scroll to top for these public confirmation / onboarding pages
+    if (
+      to.path === "/admindashboardonboarding" ||
+      to.path === "/webinarform-thankyou" ||
+      to.path === "/webinarform"
+    ) {
+      return { top: 0, left: 0 };
     }
     // For other routes, preserve default behavior
     return false;

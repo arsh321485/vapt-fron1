@@ -59,6 +59,10 @@ const PUBLIC_URL_PATTERNS = [
   "/api/admin/users/teams/member-login/",
   "/api/admin/users/slack/oauth-url/",
   "/api/admin/users/microsoft-teams/oauth-url/",
+  "/api/webinar/form-options/",
+  "/api/webinar/register/",
+  "/api/partners/form-options/",
+  "/api/partners/apply/",
 ];
 const REALTIME_ENDPOINT_PATTERNS = ["/api/notifications/"];
 
@@ -163,6 +167,8 @@ endpoint.interceptors.response.use(
       "/partner-lead-portal",
       "/partner-lead-thankyou",
       "/partner-thankyou",
+      "/webinarform",
+      "/webinarform-thankyou",
     ]);
     const skip401Redirect =
       isAuthScreen || noRedirect401Paths.has(currentPath) || isUserAppRoute(currentPath);

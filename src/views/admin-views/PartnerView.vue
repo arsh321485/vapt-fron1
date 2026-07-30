@@ -49,19 +49,65 @@
               <h2>Contact Information</h2>
             </div>
             <div class="grid two-col">
-              <label>Full Name
+              <label>
+                <span class="label-text">Full Name<span class="req">*</span></span>
                 <input type="text" placeholder="Enter your name" v-model="form.full_name" />
                 <span v-if="errors.full_name" class="field-error">{{ errors.full_name }}</span>
               </label>
-              <label>Job Title
+              <label>
+                <span class="label-text">Job Title<span class="req">*</span></span>
                 <input type="text" placeholder="e.g. CEO, Director of Sales" v-model="form.job_title" />
                 <span v-if="errors.job_title" class="field-error">{{ errors.job_title }}</span>
               </label>
-              <label>Work Email
+              <label>
+                <span class="label-text">Work Email<span class="req">*</span></span>
                 <input type="email" placeholder="email@company.com" v-model="form.work_email" />
                 <span v-if="errors.work_email" class="field-error">{{ errors.work_email }}</span>
               </label>
-              <label>Phone Number <input type="tel" placeholder="+1 (555) 000-0000" v-model="form.phone_number" /></label>
+              <label>
+                <span class="label-text">Phone Number</span>
+                <div class="phone-row">
+                  <div class="cdd-wrap phone-code-wrap" ref="pcdWrap">
+                    <div
+                      class="cdd-trigger"
+                      :class="{ error: errors.phone_country_code }"
+                      @click="pcdOpen = !pcdOpen; pcdOpen && $nextTick(() => $refs.pcdSearchRef && $refs.pcdSearchRef.focus())"
+                    >
+                      <span class="pcd-label">{{ phoneCodeLabel }}</span>
+                      <i class="bi bi-chevron-down" style="font-size:12px;color:#6b7280;"></i>
+                    </div>
+                    <div v-if="pcdOpen" class="cdd-menu">
+                      <input
+                        v-model="pcdSearch"
+                        class="cdd-search"
+                        placeholder="Search..."
+                        ref="pcdSearchRef"
+                        @click.stop
+                      />
+                      <div class="cdd-list">
+                        <div
+                          v-for="item in pcdFiltered"
+                          :key="item.country + '-' + item.code"
+                          class="cdd-item"
+                          :class="{ active: form.phone_country_code === item.code }"
+                          @click.stop="selectPhoneCode(item)"
+                        >
+                          {{ item.country }} ({{ item.code }})
+                        </div>
+                        <div v-if="!pcdFiltered.length" class="cdd-empty">No results</div>
+                      </div>
+                    </div>
+                  </div>
+                  <input
+                    type="tel"
+                    class="phone-input"
+                    placeholder="9876543210"
+                    v-model="form.phone_number"
+                  />
+                </div>
+                <span v-if="errors.phone_number" class="field-error">{{ errors.phone_number }}</span>
+                <span v-if="errors.phone_country_code" class="field-error">{{ errors.phone_country_code }}</span>
+              </label>
               <label class="full">LinkedIn Profile <input type="url" placeholder="https://linkedin.com/in/username" v-model="form.linkedin_profile" /></label>
             </div>
           </div>
@@ -73,13 +119,18 @@
               <h2>Company Information</h2>
             </div>
             <div class="grid two-col">
-              <label>Company Name
+              <label>
+                <span class="label-text">Company Name<span class="req">*</span></span>
                 <input type="text" v-model="form.company_name" />
                 <span v-if="errors.company_name" class="field-error">{{ errors.company_name }}</span>
               </label>
-              <label>Website <input type="url" placeholder="www.example.com" v-model="form.website" /></label>
+              <label>
+                <span class="label-text">Website<span class="req">*</span></span>
+                <input type="url" placeholder="www.example.com" v-model="form.website" />
+                <span v-if="errors.website" class="field-error">{{ errors.website }}</span>
+              </label>
               <label style="position:relative;">
-                Country
+                <span class="label-text">Country<span class="req">*</span></span>
                 <div class="cdd-wrap" ref="cddWrap">
                   <div class="cdd-trigger" :class="{error: errors.country}" @click="cddOpen=!cddOpen; cddOpen && $nextTick(()=>$refs.cddSearchRef&&$refs.cddSearchRef.focus())">
                     <span :style="form.country ? '' : 'color:#9ca3af'">{{ form.country || 'Select Country' }}</span>
@@ -95,7 +146,11 @@
                 </div>
                 <span v-if="errors.country" class="field-error">{{ errors.country }}</span>
               </label>
-              <label>Industry <input type="text" v-model="form.industry" /></label>
+              <label>
+                <span class="label-text">Industry<span class="req">*</span></span>
+                <input type="text" v-model="form.industry" />
+                <span v-if="errors.industry" class="field-error">{{ errors.industry }}</span>
+              </label>
               <label class="split">
                 <span>Size</span>
                 <select v-model="form.company_size">
@@ -117,7 +172,7 @@
             </div>
             <div class="grid one-col">
               <label>
-                Partner Type
+                <span class="label-text">Partner Type<span class="req">*</span></span>
                 <select v-model="form.partner_type">
                   <option value="">Select Type</option>
                   <option v-for="p in partnerTypeOptions" :key="p" :value="p">{{ p }}</option>
@@ -125,12 +180,16 @@
                 <span v-if="errors.partner_type" class="field-error">{{ errors.partner_type }}</span>
               </label>
               <label>
-                Why partner with us?
+                <span class="label-text">Why partner with us?<span class="req">*</span></span>
                 <textarea rows="5" placeholder="Tell us about your interest in VaptFix ..." v-model="form.why_partner"></textarea>
                 <span v-if="errors.why_partner" class="field-error">{{ errors.why_partner }}</span>
               </label>
               <div class="grid two-col">
-                <label>Markets/Regions <input type="text" placeholder="e.g. North America, EMEA" v-model="form.markets_regions" /></label>
+                <label>
+                  <span class="label-text">Markets/Regions<span class="req">*</span></span>
+                  <input type="text" placeholder="e.g. North America, EMEA" v-model="form.markets_regions" />
+                  <span v-if="errors.markets_regions" class="field-error">{{ errors.markets_regions }}</span>
+                </label>
                 <label>Target customer <input type="text" placeholder="e.g. Mid-market FinTech" v-model="form.target_customer" /></label>
               </div>
               <label>
@@ -147,13 +206,23 @@
               <h2>Qualification</h2>
             </div>
             <div class="grid one-col">
-              <label class="inline">Do you sell similar security Service?
+              <label class="inline">
+                <span class="label-text">Do you sell similar security Service?<span class="req">*</span></span>
                 <span><input type="radio" name="similar" :value="true" v-model="form.sells_similar_service" /> Yes</span>
                 <span><input type="radio" name="similar" :value="false" v-model="form.sells_similar_service" /> No</span>
+                <span v-if="errors.sells_similar_service" class="field-error">{{ errors.sells_similar_service }}</span>
               </label>
               <div class="grid two-col">
-                <label>Estimated referrals / Year <input type="number" v-model.number="form.estimated_referrals_per_year" min="0" /></label>
-                <label>Total no of active clients <input type="number" v-model.number="form.total_active_clients" min="0" /></label>
+                <label>
+                  <span class="label-text">Estimated referrals / Year<span class="req">*</span></span>
+                  <input type="number" v-model.number="form.estimated_referrals_per_year" min="0" />
+                  <span v-if="errors.estimated_referrals_per_year" class="field-error">{{ errors.estimated_referrals_per_year }}</span>
+                </label>
+                <label>
+                  <span class="label-text">Total no of active clients<span class="req">*</span></span>
+                  <input type="number" v-model.number="form.total_active_clients" min="0" />
+                  <span v-if="errors.total_active_clients" class="field-error">{{ errors.total_active_clients }}</span>
+                </label>
               </div>
               <label>Audience description
                 <textarea rows="4" placeholder="Describe your existing client base..." v-model="form.audience_description"></textarea>
@@ -211,12 +280,14 @@ export default {
       countries: [],
       companySizeOptions: [],
       partnerTypeOptions: [],
+      phoneCountryCodes: [],
 
       // Form fields
       form: {
         full_name: '',
         job_title: '',
         work_email: '',
+        phone_country_code: '+91',
         phone_number: '',
         linkedin_profile: '',
         company_name: '',
@@ -230,7 +301,7 @@ export default {
         markets_regions: '',
         target_customer: '',
         promotion_plan: '',
-        sells_similar_service: false,
+        sells_similar_service: null,
         estimated_referrals_per_year: '',
         total_active_clients: '',
         audience_description: '',
@@ -240,6 +311,8 @@ export default {
 
       cddOpen: false,
       cddSearch: '',
+      pcdOpen: false,
+      pcdSearch: '',
       errors: {},
       submitting: false,
       submitError: '',
@@ -252,10 +325,20 @@ export default {
       this.countries = res.data.countries || [];
       this.companySizeOptions = res.data.company_size_options || [];
       this.partnerTypeOptions = res.data.partner_type_options || [];
+      this.phoneCountryCodes = res.data.phone_country_codes || [];
+      if (
+        this.phoneCountryCodes.length &&
+        !this.phoneCountryCodes.some((item) => item.code === this.form.phone_country_code)
+      ) {
+        this.form.phone_country_code = this.phoneCountryCodes[0].code;
+      }
     } catch (e) {
       console.error("Failed to load form options:", e);
     }
-    this._cddClose = (e) => { if (this.$refs.cddWrap && !this.$refs.cddWrap.contains(e.target)) this.cddOpen = false; };
+    this._cddClose = (e) => {
+      if (this.$refs.cddWrap && !this.$refs.cddWrap.contains(e.target)) this.cddOpen = false;
+      if (this.$refs.pcdWrap && !this.$refs.pcdWrap.contains(e.target)) this.pcdOpen = false;
+    };
     document.addEventListener('click', this._cddClose);
   },
   beforeUnmount() {
@@ -267,8 +350,30 @@ export default {
       const q = this.cddSearch.toLowerCase();
       return q ? this.countries.filter(c => c.toLowerCase().includes(q)) : this.countries;
     },
+    phoneCodeLabel() {
+      const selected = this.phoneCountryCodes.find(
+        (item) => item.code === this.form.phone_country_code,
+      );
+      return selected
+        ? `${selected.country} (${selected.code})`
+        : this.form.phone_country_code || 'Code';
+    },
+    pcdFiltered() {
+      const q = this.pcdSearch.toLowerCase().trim();
+      if (!q) return this.phoneCountryCodes;
+      return this.phoneCountryCodes.filter((item) => {
+        const label = `${item.country} ${item.code}`.toLowerCase();
+        return label.includes(q);
+      });
+    },
   },
   methods: {
+    selectPhoneCode(item) {
+      this.form.phone_country_code = item.code;
+      this.pcdOpen = false;
+      this.pcdSearch = '';
+      if (this.errors.phone_country_code) delete this.errors.phone_country_code;
+    },
     async submitApplication() {
       // Clear previous errors
       this.errors = {};
@@ -279,10 +384,37 @@ export default {
       if (!this.form.work_email.trim())    { this.errors.work_email = 'Work Email is required.'; hasError = true; }
       else if (!/^[^@]+@[^@]+\.[^@]+$/.test(this.form.work_email)) { this.errors.work_email = 'Enter a valid email address.'; hasError = true; }
       if (!this.form.company_name.trim())  { this.errors.company_name = 'Company Name is required.'; hasError = true; }
+      if (!this.form.website.trim())       { this.errors.website = 'Website is required.'; hasError = true; }
       if (!this.form.country)              { this.errors.country = 'Please select a Country.'; hasError = true; }
-      if (!this.form.company_size)         { this.errors.company_size = 'Please select a Company Size.'; hasError = true; }
+      if (!this.form.industry.trim())      { this.errors.industry = 'Industry is required.'; hasError = true; }
       if (!this.form.partner_type)         { this.errors.partner_type = 'Please select a Partner Type.'; hasError = true; }
       if (!this.form.why_partner.trim())   { this.errors.why_partner = 'This field is required.'; hasError = true; }
+      if (!this.form.markets_regions.trim()) {
+        this.errors.markets_regions = 'Markets/Regions is required.';
+        hasError = true;
+      }
+      if (this.form.sells_similar_service !== true && this.form.sells_similar_service !== false) {
+        this.errors.sells_similar_service = 'Please select Yes or No.';
+        hasError = true;
+      }
+      if (
+        this.form.estimated_referrals_per_year === '' ||
+        this.form.estimated_referrals_per_year === null ||
+        this.form.estimated_referrals_per_year === undefined ||
+        Number.isNaN(Number(this.form.estimated_referrals_per_year))
+      ) {
+        this.errors.estimated_referrals_per_year = 'Estimated referrals is required.';
+        hasError = true;
+      }
+      if (
+        this.form.total_active_clients === '' ||
+        this.form.total_active_clients === null ||
+        this.form.total_active_clients === undefined ||
+        Number.isNaN(Number(this.form.total_active_clients))
+      ) {
+        this.errors.total_active_clients = 'Total active clients is required.';
+        hasError = true;
+      }
       if (!this.form.agreed_privacy_policy){ this.errors.privacy = 'Please agree to the Privacy Policy.'; hasError = true; }
 
       if (hasError) {
@@ -300,7 +432,6 @@ export default {
           full_name: this.form.full_name,
           job_title: this.form.job_title,
           work_email: this.form.work_email,
-          phone_number: this.form.phone_number,
           linkedin_profile: this.form.linkedin_profile,
           company_name: this.form.company_name,
           website: this.form.website,
@@ -321,6 +452,13 @@ export default {
           consent_communications: this.form.consent_communications,
         };
 
+        // Phone is optional — only send when user entered a number
+        const phone = String(this.form.phone_number || '').trim();
+        if (phone) {
+          payload.phone_country_code = this.form.phone_country_code || '';
+          payload.phone_number = phone;
+        }
+
         const res = await publicApi.post('/api/partners/apply/', payload);
         if (res.data && (res.data.id || res.data.message)) {
           this.$router.push('/partner-thankyou');
@@ -329,11 +467,82 @@ export default {
         }
       } catch (err) {
         const data = err.response?.data;
-        const msg = data?.message || data?.detail || 'Submission failed. Please try again.';
-        Swal.fire({ icon: 'error', title: 'Submission Failed', text: msg, confirmButtonColor: '#0f696e' });
+        const fieldMessages = this.applyApiFieldErrors(data);
+        const msg =
+          fieldMessages.length
+            ? fieldMessages.join('\n')
+            : data?.message || data?.detail || data?.error || 'Submission failed. Please try again.';
+
+        if (fieldMessages.length) {
+          this.$nextTick(() => {
+            const el = document.querySelector('.field-error');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          });
+        }
+
+        Swal.fire({
+          icon: 'error',
+          title: 'Submission Failed',
+          html: fieldMessages.length
+            ? fieldMessages.map((m) => `<div style="margin:4px 0;">${m}</div>`).join('')
+            : msg,
+          confirmButtonColor: '#0f696e',
+        });
       } finally {
         this.submitting = false;
       }
+    },
+    applyApiFieldErrors(data) {
+      if (!data || typeof data !== 'object') return [];
+
+      const fieldKeys = [
+        'full_name',
+        'job_title',
+        'work_email',
+        'phone_country_code',
+        'phone_number',
+        'linkedin_profile',
+        'company_name',
+        'website',
+        'country',
+        'industry',
+        'company_size',
+        'year_founded',
+        'partner_type',
+        'why_partner',
+        'markets_regions',
+        'target_customer',
+        'promotion_plan',
+        'sells_similar_service',
+        'estimated_referrals_per_year',
+        'total_active_clients',
+        'audience_description',
+        'agreed_privacy_policy',
+        'consent_communications',
+      ];
+
+      const messages = [];
+      fieldKeys.forEach((key) => {
+        const val = data[key];
+        if (!val) return;
+        const text = Array.isArray(val) ? val[0] : String(val);
+        if (!text) return;
+        this.errors[key === 'agreed_privacy_policy' ? 'privacy' : key] = text;
+        messages.push(text);
+      });
+
+      // Also collect any other non-field array/string errors from response
+      if (!messages.length) {
+        Object.keys(data).forEach((key) => {
+          if (['message', 'detail', 'error', 'status', 'success'].includes(key)) return;
+          const val = data[key];
+          if (!val) return;
+          const text = Array.isArray(val) ? val[0] : typeof val === 'string' ? val : '';
+          if (text) messages.push(text);
+        });
+      }
+
+      return messages;
     },
   },
 };
@@ -494,6 +703,35 @@ input, select, textarea {
   outline: none;
 }
 
+.phone-row {
+  display: grid;
+  grid-template-columns: minmax(160px, 220px) 1fr;
+  gap: 10px;
+}
+
+.phone-code-wrap,
+.phone-input {
+  width: 100%;
+  min-width: 0;
+}
+
+.phone-code-wrap .cdd-trigger {
+  min-height: 46px;
+}
+
+.pcd-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 6px;
+}
+
+@media (max-width: 576px) {
+  .phone-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .full { grid-column: 1 / -1; }
 
 .split {
@@ -618,6 +856,18 @@ input, select, textarea {
 .cdd-item.active { background: #e0f2f1; color: #0f696e; font-weight: 600; }
 .cdd-empty { padding: 10px 14px; font-size: 13px; color: #94a3b8; }
 .field-error { color: #dc2626; font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none; margin-top: 2px; }
+
+.req {
+  color: #dc2626;
+  font-weight: 800;
+  margin-left: 2px;
+  display: inline;
+  font-size: 1.15em;
+}
+
+.label-text {
+  display: inline-block;
+}
 .cdd-trigger.error { outline: 1.5px solid #dc2626; }
 
 
