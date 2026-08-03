@@ -50,7 +50,17 @@
 
           <!-- Tabs -->
           <div class="user-tabs">
-            <button class="user-tab" :class="{ active: userActiveTab === 'setPassword' }" @click="userActiveTab = 'setPassword'" type="button">
+            <button
+              class="user-tab"
+              :class="{
+                active: userActiveTab === 'setPassword',
+                disabled: !isSetPasswordAllowed,
+              }"
+              type="button"
+              :disabled="!isSetPasswordAllowed"
+              :title="isSetPasswordAllowed ? '' : 'Use the email link to set your password, or Sign In if already set'"
+              @click="onSetPasswordTabClick"
+            >
               Set Password
             </button>
             <button class="user-tab" :class="{ active: userActiveTab === 'signIn' }" @click="userActiveTab = 'signIn'" type="button">
@@ -243,7 +253,7 @@
               <label class="field-label">Email Address</label>
               <div class="input-row">
                 <i class="bi bi-at field-icon"></i>
-                <input type="text" class="field-input" v-model="adminForm.email" placeholder="name@vaptfix.com" autocomplete="new-password" required />
+                <input type="text" class="field-input" v-model="adminForm.email" placeholder="name@vaptfix.com" autocomplete="new-password" required @blur="syncAdminConnectionState" />
               </div>
               <p class="auth-suggestion">Use the same email you used during admin sign up.</p>
             </div>
@@ -373,6 +383,7 @@ import teamsIcon from '@/assets/images/teams.png';
 import slackIcon from '@/assets/images/slack.png';
 import {
   buildUserSetPasswordHomeQuery,
+  clearStoredSetPasswordDeepLink,
   extractSetPasswordParams,
   isUserSetPasswordDeepLink,
   readStoredSetPasswordDeepLink,
@@ -494,6 +505,16 @@ export default {
       if (!this.platformChecked) return false;
       return this.userPlatform !== 'microsoft_teams';
     },
+    /** Set Password tab only when invite/email deep-link tokens exist. */
+    isSetPasswordAllowed() {
+      if (this.setPasswordUidb64 && this.setPasswordToken) return true;
+      if (this.$route?.path === '/home' && isUserSetPasswordDeepLink(this.$route.query)) {
+        const q = extractSetPasswordParams(this.$route.query);
+        if (q.uidb64 && q.token) return true;
+      }
+      const stored = readStoredSetPasswordDeepLink();
+      return !!(stored?.uidb64 && stored?.token);
+    },
   },
   watch: {
     'userForm.email'() {
@@ -566,6 +587,10 @@ export default {
     this.syncAdminConnectionState();
   },
   methods: {
+    onSetPasswordTabClick() {
+      if (!this.isSetPasswordAllowed) return;
+      this.userActiveTab = 'setPassword';
+    },
     syncModalFromDeepLink() {
       const fromProps =
         !!(this.setPasswordUidb64 && this.setPasswordToken) ||
@@ -580,11 +605,17 @@ export default {
       }
 
       const stored = readStoredSetPasswordDeepLink();
-      const openSetPassword =
-        fromProps ||
+      const hasSetPasswordTokens =
+        !!(this.setPasswordUidb64 && this.setPasswordToken) ||
         fromRoute ||
-        !!stored ||
-        (this.preSelectedType === 'user' && this.userInitialTab === 'setPassword');
+        !!(stored?.uidb64 && stored?.token);
+
+      const openSetPassword =
+        hasSetPasswordTokens &&
+        (fromProps ||
+          fromRoute ||
+          !!stored ||
+          (this.preSelectedType === 'user' && this.userInitialTab === 'setPassword'));
 
       if (openSetPassword) {
         this.formType = 'user';
@@ -598,9 +629,8 @@ export default {
       if (this.preSelectedType) {
         this.formType = this.preSelectedType;
         this.showForm = true;
-        if (this.preSelectedType === 'user' && this.userInitialTab === 'setPassword') {
-          this.userActiveTab = 'setPassword';
-        } else if (this.preSelectedType === 'user') {
+        if (this.preSelectedType === 'user') {
+          // Without invite tokens, only Sign In is available.
           this.userActiveTab = 'signIn';
         }
         if (this.setPasswordEmail) {
@@ -620,6 +650,7 @@ export default {
 
       this.showForm = false;
       this.formType = '';
+      this.userActiveTab = 'signIn';
     },
     hasActiveAuthSession() {
       const authStore = useAuthStore();
@@ -652,16 +683,22 @@ export default {
       return sessionEmail === enteredEmail;
     },
     syncUserMemberSessionState() {
-      if (!this.hasActiveAuthSession()) return;
+      // Check sessionStorage first, then localStorage (persists across sessions)
+      const slackStored =
+        sessionStorage.getItem('member_slack_connected') === 'true' ||
+        localStorage.getItem('member_slack_connected') === 'true';
+      const teamsStored =
+        sessionStorage.getItem('member_teams_connected') === 'true' ||
+        localStorage.getItem('member_teams_connected') === 'true';
 
-      if (sessionStorage.getItem('member_slack_connected') === 'true') {
+      if (slackStored) {
         this.userPlatform = 'slack';
         this.platformChecked = true;
         this.userSlackConnected = true;
         this.userTeamsConnected = false;
         return;
       }
-      if (sessionStorage.getItem('member_teams_connected') === 'true') {
+      if (teamsStored) {
         this.userPlatform = 'microsoft_teams';
         this.platformChecked = true;
         this.userTeamsConnected = true;
@@ -698,10 +735,13 @@ export default {
           slackOk = false;
         }
       }
-      this.adminSlackConnected = slackOk || sessionStorage.getItem('admin_slack_connected') === 'true';
+      this.adminSlackConnected = slackOk ||
+        sessionStorage.getItem('admin_slack_connected') === 'true' ||
+        localStorage.getItem('admin_slack_connected') === 'true';
       this.adminTeamsConnected =
         (hasTeamsToken && !this.adminSlackConnected) ||
-        sessionStorage.getItem('admin_teams_connected') === 'true';
+        sessionStorage.getItem('admin_teams_connected') === 'true' ||
+        localStorage.getItem('admin_teams_connected') === 'true';
       if (this.adminSlackConnected && this.adminTeamsConnected) {
         this.adminTeamsConnected = false;
       }
@@ -804,7 +844,9 @@ export default {
       if (event.data?.type === 'SLACK_MEMBER_LOGGED_IN' && event.data?.success) {
         this.userOAuthLoading = false;
         sessionStorage.setItem('member_slack_connected', 'true');
+        localStorage.setItem('member_slack_connected', 'true');
         sessionStorage.removeItem('member_teams_connected');
+        localStorage.removeItem('member_teams_connected');
         this.userSlackConnected = true;
         this.userTeamsConnected = false;
         this.userPlatform = 'slack';
@@ -815,7 +857,9 @@ export default {
       if (event.data?.type === 'TEAMS_MEMBER_LOGGED_IN' && event.data?.success) {
         this.userOAuthLoading = false;
         sessionStorage.setItem('member_teams_connected', 'true');
+        localStorage.setItem('member_teams_connected', 'true');
         sessionStorage.removeItem('member_slack_connected');
+        localStorage.removeItem('member_slack_connected');
         this.userTeamsConnected = true;
         this.userSlackConnected = false;
         this.userPlatform = 'microsoft_teams';
@@ -915,7 +959,9 @@ export default {
         this.adminSlackConnected = true;
         this.adminTeamsConnected = false;
         sessionStorage.setItem('admin_slack_connected', 'true');
+        localStorage.setItem('admin_slack_connected', 'true');
         sessionStorage.removeItem('admin_teams_connected');
+        localStorage.removeItem('admin_teams_connected');
         this.ensureAdminAuthSessionFromOAuth(event.data);
         await Swal.fire({
           icon: 'success',
@@ -1297,6 +1343,7 @@ export default {
             });
         if (result.status) {
           this.userSetPasswordForm = { newPassword: '', confirmPassword: '' };
+          clearStoredSetPasswordDeepLink();
           if (result.loggedIn) {
             await Swal.fire({
               icon: 'success',
@@ -1387,6 +1434,12 @@ export default {
     },
     async checkAndRedirectAdmin() {
       const authStore = useAuthStore();
+      const loggedUser = authStore.user || JSON.parse(localStorage.getItem('user') || 'null') || {};
+      const userType = String(loggedUser && (loggedUser.user_type || loggedUser.type || loggedUser.role) || '').toLowerCase();
+      if (userType === 'user' || userType === 'member' || userType === 'internal' || userType === 'external') {
+        this.$router.replace('/userdashboard');
+        return;
+      }
       try {
         const route = await authStore.getAdminOnboardingRoute();
         this.$router.replace(route);
@@ -1671,6 +1724,18 @@ export default {
 }
 .user-tab:hover { color: #374151; }
 .user-tab.active { color: #241447; border-bottom-color: #241447; }
+.user-tab.disabled,
+.user-tab:disabled {
+  opacity: 0.38;
+  color: #9ca3af;
+  cursor: not-allowed;
+  pointer-events: none;
+  border-bottom-color: transparent;
+}
+.user-tab.disabled:hover,
+.user-tab:disabled:hover {
+  color: #9ca3af;
+}
 
 /* Field Group */
 .field-group { margin-bottom: 16px; }

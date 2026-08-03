@@ -377,13 +377,7 @@ export default {
       if (el && !el.contains(e.target)) this.exportMenuOpen = false;
     };
     document.addEventListener('click', this._onDocClick);
-    await Promise.all([
-      this.fetchVulnerabilities(),
-      this.fetchTeamDistribution(),
-      this.fetchTeamDetail(),
-      this.fetchDetailedVulnerabilities(),
-      this.fetchReportMetadata(),
-    ]);
+    await this.loadReportData();
     this.$nextTick(() => {
       this.initCharts();
     });
@@ -396,17 +390,6 @@ export default {
   },
 
   methods: {
-    pickMetaField(sources, keys) {
-      for (const source of sources) {
-        if (!source || typeof source !== 'object') continue;
-        for (const key of keys) {
-          const val = source[key];
-          if (val !== undefined && val !== null && String(val).trim() !== '') return val;
-        }
-      }
-      return '';
-    },
-
     formatMetaDate(value) {
       if (!value) return '';
       const raw = String(value).trim();
@@ -418,144 +401,92 @@ export default {
       return raw;
     },
 
-    applyReportMetaFromSources(...sources) {
-      const flat = sources.filter(Boolean);
-      const reportGeneratedOn = this.formatMetaDate(
-        this.pickMetaField(flat, [
-          'report_generated_on',
-          'generated_on',
-          'report_generated_at',
-          'generated_at',
-          'created_at',
-          'uploaded_at',
-          'report_date',
-        ]),
-      );
-      const dateOfTesting = this.formatMetaDate(
-        this.pickMetaField(flat, [
-          'date_of_testing',
-          'testing_date',
-          'test_date',
-          'scan_date',
-          'assessment_date',
-          'testing_period',
-          'test_period',
-        ]),
-      );
-      const store = useAuthStore();
-      const uploadedFileName =
-        this.pickMetaField(flat, [
-          'resolved_file_name',
-          'file_name',
-          'filename',
-          'uploaded_file_name',
-          'original_filename',
-          'report_file_name',
-          'uploaded_file',
-          'source_file',
-        ]) || store.extractUploadedFileName(Object.assign({}, ...flat));
-
-      if (reportGeneratedOn) this.reportMeta.reportGeneratedOn = reportGeneratedOn;
-      if (dateOfTesting) this.reportMeta.dateOfTesting = dateOfTesting;
-      // Uploaded file name under Vul management program (API when available, else manual default)
-      this.reportMeta.vulManagementProgram = uploadedFileName || REPORT_UPLOAD_FILE_NAME;
-    },
-
-    async fetchReportMetadata() {
+    async loadReportData() {
+      this.statsLoading = true;
+      this.tableLoading = true;
       this.reportMetaLoading = true;
       const store = useAuthStore();
       try {
-        const [metaRes, summaryRes, projectRes, registerRes] = await Promise.all([
-          store.fetchReportHeaderMetadata(),
-          store.fetchDashboardSummary(),
-          store.getProjectDetails(),
-          store.fetchVulnerabilityRegister(true),
-        ]);
+        const result = await store.fetchReportDownloadData();
+        if (!result.status || !result.data) return;
+        const d = result.data;
 
-        const sources = [];
-        if (metaRes.status && metaRes.data) sources.push(metaRes.data);
-        if (summaryRes.status && summaryRes.data) sources.push(summaryRes.data);
-        if (projectRes.status && projectRes.data) sources.push(projectRes.data);
-        if (registerRes.reportPayload) sources.push(registerRes.reportPayload);
+        // 1. Report metadata
+        if (d.report_generated_on) {
+          this.reportMeta.reportGeneratedOn = this.formatMetaDate(d.report_generated_on);
+        }
+        if (d.vul_management_program) {
+          this.reportMeta.vulManagementProgram = String(d.vul_management_program).replace(/\.html?$/i, '');
+        }
 
-        this.applyReportMetaFromSources(...sources);
+        // 2. Vulnerability severity counts
+        if (d.vulnerabilities) {
+          this.vulnStats = {
+            critical: d.vulnerabilities.critical ?? 0,
+            high: d.vulnerabilities.high ?? 0,
+            medium: d.vulnerabilities.medium ?? 0,
+            low: d.vulnerabilities.low ?? 0,
+          };
+        }
 
-        const apiFileName = metaRes.fileName || registerRes.fileName;
-        if (apiFileName) this.reportMeta.vulManagementProgram = apiFileName;
-        else if (!this.reportMeta.vulManagementProgram) {
-          this.reportMeta.vulManagementProgram = REPORT_UPLOAD_FILE_NAME;
+        // 3. Team distribution (for bar/doughnut charts)
+        if (Array.isArray(d.team_distribution)) {
+          this.teamDistribution = d.team_distribution.map(t => ({
+            team: t.team,
+            count: t.count,
+            percentage: t.percentage,
+          }));
+        }
+
+        // 4. Vulnerability detail list + derive teamDetail for open/closed counts
+        if (Array.isArray(d.vulnerabilities_detail)) {
+          const teamKeyMap = {
+            'Network Security': 'network',
+            'Patch Management': 'patch',
+            'Configuration Management': 'configuration',
+            'Architectural Flaws': 'architectural',
+          };
+          this.tableData = d.vulnerabilities_detail.map((v, i) => ({
+            id: i + 1,
+            name: v.vulnerability_name,
+            asset: v.assets,
+            team: teamKeyMap[v.assigned_team] || 'unassigned',
+            teamLabel: v.assigned_team || 'Unassigned',
+            severity: (v.risk_factor || '').toLowerCase(),
+            found: v.found_date ? v.found_date.split('T')[0] : '—',
+            status: v.status,
+          }));
+
+          // Derive per-team open/closed counts from detail list
+          const teamDetailMap = {};
+          d.vulnerabilities_detail.forEach(v => {
+            const teamName = v.assigned_team || 'Unassigned';
+            if (!teamDetailMap[teamName]) {
+              teamDetailMap[teamName] = { total: 0, open: 0, closed: 0 };
+            }
+            teamDetailMap[teamName].total++;
+            const s = String(v.status || '').toLowerCase();
+            if (s === 'closed' || s === 'fixed' || s === 'resolved' || s === 'remediated') {
+              teamDetailMap[teamName].closed++;
+            } else {
+              teamDetailMap[teamName].open++;
+            }
+          });
+          this.teamDetail = teamDetailMap;
         }
       } catch (err) {
-        console.error('Report metadata fetch failed:', err);
+        console.error('Report data fetch failed:', err);
       } finally {
+        this.statsLoading = false;
+        this.tableLoading = false;
         this.reportMetaLoading = false;
       }
-    },
-
-    async fetchDetailedVulnerabilities() {
-      this.tableLoading = true;
-      const store = useAuthStore();
-      const result = await store.fetchDetailedVulnerabilities();
-      if (result.status && result.data) {
-        this.applyReportMetaFromSources(result.data, result.data.report);
-      }
-      if (result.status && Array.isArray(result.data?.vulnerabilities)) {
-        const teamKeyMap = {
-          'Network Security': 'network',
-          'Patch Management': 'patch',
-          'Configuration Management': 'configuration',
-          'Architectural Flaws': 'architectural',
-        };
-        this.tableData = result.data.vulnerabilities.map((v, i) => ({
-          id: i + 1,
-          name: v.vulnerability_name,
-          asset: v.assets,
-          team: teamKeyMap[v.assigned_team] || 'unassigned',
-          teamLabel: v.assigned_team || 'Unassigned',
-          severity: (v.risk_factor || '').toLowerCase(),
-          found: v.found_date ? v.found_date.split('T')[0] : '—',
-          status: v.status,
-        }));
-      }
-      this.tableLoading = false;
     },
 
     teamClosureRate(teamName) {
       const t = this.teamDetail[teamName];
       if (!t || !t.total) return 0;
       return Math.round((t.closed / t.total) * 100);
-    },
-
-    async fetchTeamDetail() {
-      const store = useAuthStore();
-      const result = await store.fetchDistributionByTeamDetail();
-      if (result.status && result.data?.teams) {
-        this.teamDetail = result.data.teams;
-      }
-    },
-
-    async fetchTeamDistribution() {
-      const store = useAuthStore();
-      const result = await store.fetchDistributionByTeam();
-      if (result.status && Array.isArray(result.data?.distribution)) {
-        this.teamDistribution = result.data.distribution;
-      }
-    },
-
-    async fetchVulnerabilities() {
-      this.statsLoading = true;
-      const store = useAuthStore();
-      const result = await store.fetchDashboardSummary();
-      if (result.status) {
-        const v = result.data?.vulnerabilities || {};
-        this.vulnStats = {
-          critical: v.critical ?? store.vulnerabilities.critical ?? 0,
-          high: v.high ?? store.vulnerabilities.high ?? 0,
-          medium: v.medium ?? store.vulnerabilities.medium ?? 0,
-          low: v.low ?? store.vulnerabilities.low ?? 0,
-        };
-      }
-      this.statsLoading = false;
     },
 
     initCharts() {
@@ -775,82 +706,25 @@ export default {
       return clone;
     },
 
-    downloadReportAsHtml() {
+    async downloadReportAsHtml() {
       this.exportMenuOpen = false;
-      const clone = this.buildReportClone();
-      if (!clone) return;
-
-      clone.querySelectorAll('.report-watermark-layer').forEach((el) => this.applyWatermarkStyles(el));
-
-      let cssText = '';
-      Array.from(document.styleSheets).forEach((sheet) => {
-        try {
-          Array.from(sheet.cssRules || []).forEach((rule) => {
-            if (rule.type === CSSRule.MEDIA_RULE) return;
-            cssText += rule.cssText.replace(/\[data-v-[a-zA-Z0-9]+\]/g, '') + '\n';
-          });
-        } catch (e) { /* cross-origin sheet, skip */ }
-      });
-
-      const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vulnerability Management Report</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
-  <style>
-    *, *::before, *::after { box-sizing: border-box; }
-    body { font-family: 'Inter', sans-serif; background: #f8f9fc; padding: 0; margin: 0; }
-    .report-download-wrapper { width: 100%; max-width: 1400px; margin: 0 auto; padding: 48px 56px; }
-    ${cssText}
-    .table-wrap { max-height: none !important; overflow: visible !important; }
-    .table-footer { position: static !important; }
-    .page-title-block { padding-top: 0 !important; }
-    img { max-height: 240px !important; width: 100% !important; height: auto !important; object-fit: contain !important; }
-    .bento-card { overflow: visible !important; }
-    .section-label { margin-top: 24px !important; }
-    .hero-grid, .chart-grid, .stats-grid, .risk-grid { break-inside: avoid; page-break-inside: avoid; }
-    ${this.getWatermarkCssBlock()}
-  </style>
-</head>
-<body>
-<div class="report-download-wrapper">${clone.outerHTML}</div>
-<script>
-  (function () {
-    function applyFilters() {
-      var team = document.getElementById('dl-team-filter')?.value || 'all';
-      var sev  = document.getElementById('dl-sev-filter')?.value  || 'all';
-      var stat = document.getElementById('dl-status-filter')?.value || 'all';
-      var rows = document.querySelectorAll('.vuln-table tbody tr');
-      var visible = 0;
-      rows.forEach(function (tr) {
-        var matchTeam = team === 'all' || tr.getAttribute('data-team') === team;
-        var matchSev  = sev  === 'all' || tr.getAttribute('data-severity') === sev;
-        var matchStat = stat === 'all' || tr.getAttribute('data-status') === stat;
-        if (matchTeam && matchSev && matchStat) { tr.style.display = ''; visible++; }
-        else { tr.style.display = 'none'; }
-      });
-    }
-    window.addEventListener('DOMContentLoaded', function () {
-      ['dl-team-filter', 'dl-sev-filter', 'dl-status-filter'].forEach(function (id) {
-        var el = document.getElementById(id);
-        if (el) el.addEventListener('change', applyFilters);
-      });
-    });
-  })();
-<\/script>
-</body>
-</html>`;
-
-      const blob = new Blob([html], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'vulnerability-management-report.html';
-      a.click();
-      URL.revokeObjectURL(url);
+      const store = useAuthStore();
+      try {
+        const result = await store.downloadReportHtml();
+        if (!result.status || !result.data) {
+          console.error('HTML report download failed:', result.message);
+          return;
+        }
+        const blob = new Blob([result.data], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'vulnerability-management-report.html';
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error('HTML report download error:', err);
+      }
     },
 
     async exportReportPdf() {

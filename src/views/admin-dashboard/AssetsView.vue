@@ -29,6 +29,14 @@
                 >
                   All Vulnerabilities
                 </button>
+                <button
+                  type="button"
+                  class="assets-mode-tab"
+                  :class="{ 'assets-mode-tab-active': leftPanelTab === 'fix' }"
+                  @click="leftPanelTab = 'fix'"
+                >
+                  Fix
+                </button>
               </div>
 
             <div v-if="leftPanelTab === 'assets'" class="assets-split-panel">
@@ -39,14 +47,29 @@
                 <div class="left-panel-header">
                   <div class="d-flex justify-content-between align-items-center mb-2">
                     <h2 class="assets-title">All Assets</h2>
-                    <span class="assets-count-badge">{{ authStore.assetCount }} Assets</span>
+                    <span class="assets-count-badge">{{ displayAssetCount }} Assets</span>
+                  </div>
+                  <div class="asset-type-filters mb-3">
+                    <button
+                      v-for="filter in assetTypeFilters"
+                      :key="filter.key"
+                      type="button"
+                      class="asset-type-filter-btn"
+                      :class="[
+                        'asset-type-filter-btn-' + filter.key,
+                        { 'asset-type-filter-btn-active': assetTypeFilter === filter.key },
+                      ]"
+                      @click="setAssetTypeFilter(filter.key)"
+                    >
+                      {{ filter.label }}
+                    </button>
                   </div>
                   <div class="d-flex gap-3 mb-3">
                     <i class="bi bi-trash action-icon" data-bs-toggle="tooltip"
-                      :class="{ 'text-muted': activeAction !== '' && activeAction !== 'delete' }"
+                      :class="{ 'text-muted': assetTypeFilter !== 'assets' || (activeAction !== '' && activeAction !== 'delete') }"
                       @click.stop="handleDeleteClick" title="Remove an asset" role="button"></i>
                     <i class="bi bi-eye-slash action-icon" data-bs-toggle="tooltip"
-                      :class="{ 'text-muted': activeAction !== '' && activeAction !== 'hold' }"
+                      :class="{ 'text-muted': assetTypeFilter !== 'assets' || (activeAction !== '' && activeAction !== 'hold') }"
                       @click.stop="toggleHoldMode" title="Hold mitigation" role="button"></i>
                   </div>
                   <div class="position-relative search-wrap">
@@ -67,14 +90,27 @@
                         <input v-if="showCheckboxes" type="checkbox" v-model="asset.selected" class="form-check-input" />
                         <input v-if="showHoldCheckboxes" type="checkbox" v-model="asset.selected" class="form-check-input" />
                         <span class="asset-ip">{{ asset.asset }}</span>
+                        <span
+                          v-if="getAssetTypeBadge(asset)"
+                          class="asset-type-badge asset-type-badge-sm"
+                          :class="'asset-type-badge-' + asset.member_type"
+                          :title="getAssetTypeBadge(asset).label"
+                        >{{ getAssetTypeBadge(asset).code }}</span>
                       </div>
                       <span v-if="getPrioritySeverity(asset)" class="sev-badge" :class="'sev-' + getPrioritySeverity(asset).toLowerCase()">
                         {{ getPrioritySeverity(asset) }}
                       </span>
                     </div>
                     <p class="asset-sub">
-                      <i class="bi bi-link-45deg me-1"></i>
-                      {{ authStore.memberType ? (authStore.memberType.charAt(0).toUpperCase() + authStore.memberType.slice(1)) : '' }}
+                      <span
+                        v-if="getAssetTypeBadge(asset)"
+                        class="asset-type-label"
+                        :class="'asset-type-label-' + asset.member_type"
+                      >{{ getAssetSubLabel(asset) }}</span>
+                      <template v-else>
+                        <i class="bi bi-link-45deg me-1"></i>
+                        {{ getAssetSubLabel(asset) }}
+                      </template>
                     </p>
                     <div class="d-flex gap-2 flex-wrap">
                       <span class="vuln-chip">
@@ -165,11 +201,36 @@
                 />
                 <!-- Detail Header -->
                 <div class="right-panel-header">
-                  <h1 class="asset-detail-title mb-0">{{ authStore.selectedAssetDetail?.asset }}</h1>
-                  <div v-if="authStore.selectedAssetDetail?.owner" class="right-panel-meta">
-                    <div>
-                      <p class="meta-label">Owner</p>
-                      <p class="meta-value">{{ authStore.selectedAssetDetail.owner }}</p>
+                  <h1 class="asset-detail-title mb-0">
+                    <span class="asset-detail-title-text">{{ authStore.selectedAssetDetail?.asset }}</span>
+                    <span
+                      v-if="selectedAssetTypeBadge"
+                      class="asset-type-badge"
+                      :class="'asset-type-badge-' + assetTypeFilter"
+                      :title="selectedAssetTypeBadge.label"
+                    >{{ selectedAssetTypeBadge.code }}</span>
+                  </h1>
+                  <div
+                    v-if="selectedAssetMetaValue"
+                    class="right-panel-meta"
+                    :class="{ 'right-panel-meta-column': assetTypeFilter !== 'assets' }"
+                  >
+                    <p class="meta-inline" :class="{ 'meta-inline-resolved': assetTypeFilter !== 'assets' }">
+                      <span class="meta-label">{{ selectedAssetMetaLabel }}</span>
+                      <span v-if="assetTypeFilter !== 'assets'" class="meta-separator">-</span>
+                      <span class="meta-value">{{ selectedAssetMetaValue }}</span>
+                    </p>
+                    <div v-if="assetTypeFilter !== 'assets' && selectedAssetDescription" class="asset-description-block">
+                      <p class="asset-description-heading">Description</p>
+                      <p class="asset-description-text">{{ displayAssetDescription }}</p>
+                      <button
+                        v-if="selectedAssetDescription.length > assetDescriptionPreviewLimit"
+                        type="button"
+                        class="asset-read-more-btn"
+                        @click="assetDescriptionExpanded = !assetDescriptionExpanded"
+                      >
+                        {{ assetDescriptionExpanded ? 'Read less' : 'Read more' }}
+                      </button>
                     </div>
                   </div>
                   <div class="detail-tabs">
@@ -242,7 +303,7 @@
                     <div v-else class="d-flex flex-column gap-3">
                       <div
                         v-for="(v, i) in filteredVulnerabilities"
-                        :key="v.vul_name + '-' + i"
+                        :key="v.fix_vulnerability_id || (v.vul_name + '-' + (v.id || v.vul_name))"
                         class="vuln-accordion-item"
                         :class="{ 'vuln-accordion-item--expanded': expandedVulnIndex === i }"
                         :ref="'vuln-' + i"
@@ -272,8 +333,10 @@
                               :severity="v.severity"
                               :asset-ip="selectedAssetIp"
                               :asset-index="selectedAssetDemoIndex"
+                              :automation-matched="resolveAutomationMatched(v)"
                             />
-                            <button
+                            <!-- Download button hidden for admin side -->
+                            <!-- <button
                               type="button"
                               class="vuln-download-icon-btn"
                               :class="{ 'vuln-download-icon-btn--disabled': isVulnDownloadDisabled(v) }"
@@ -283,7 +346,7 @@
                               @click.stop="!isVulnDownloadDisabled(v) && downloadAutomationScript()"
                             >
                               <i class="bi bi-download"></i>
-                            </button>
+                            </button> -->
                             <i class="bi text-muted" :class="expandedVulnIndex === i ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
                           </div>
                         </div>
@@ -337,24 +400,36 @@
 
                             <!-- Tab Content -->
                             <div class="av-detail-tab-content">
-                              <div v-if="currentVulnTab === 'auto'" class="av-auto-tab">
+                              <div v-show="currentVulnTab === 'auto'" class="av-auto-tab">
                                 <AutomationNotSafeBanner v-if="isSelectedAssetAutomationNo" />
                                 <AutomatedFixPanel
                                   v-else
                                   :key="v.vul_name + '-' + i"
                                   :severity="v.severity"
+                                  :vuln-name="v.vul_name"
                                   :asset-ip="selectedAssetIp"
                                   :asset-index="selectedAssetDemoIndex"
+                                  :is-user="false"
+                                  :automation-data="getAutomationForVuln(v)"
                                   @view-code="showCodeModal = true"
                                 />
                               </div>
 
-                              <div v-else-if="currentVulnTab === 'manual'" class="av-manual-tab">
-                                <div class="av-asset-section">
-                                  <div class="av-asset-label">
-                                    <span class="av-asset-os-lbl">Linux</span>
+                              <div v-show="currentVulnTab === 'manual'" class="av-manual-tab">
+                                <div v-if="manualPanelMountedIndex === i" class="av-asset-section">
+                                  <div v-if="v.operating_system" class="av-asset-label">
+                                    <span class="av-asset-os-lbl">{{ v.operating_system }}</span>
                                   </div>
-                                  <ManualRemediationStepsPanel />
+                                  <ManualRemediationStepsPanel
+                                    :key="'mf-' + fixIdForVuln(v) + '-' + selectedAssetIp + '-' + i"
+                                    :is-user="false"
+                                    :vuln-name="v.vul_name"
+                                    :asset-ip="selectedAssetIp"
+                                    :severity="v.severity"
+                                    :vuln-id="String(v.id || '')"
+                                    :asset-os="v.operating_system || 'windows'"
+                                    :fix-id="fixIdForVuln(v)"
+                                  />
                                 </div>
                               </div>
                             </div>
@@ -447,14 +522,20 @@
               </div>
             </div>
 
-            <div v-else class="assets-vuln-mode-wrap">
+            <div v-else-if="leftPanelTab === 'vulnerabilities'" class="assets-vuln-mode-wrap">
               <AssetsVulnerabilitiesMode
+                ref="vulnMode"
                 :is-user="false"
                 :show-python-alert="showPythonInstallAlert"
                 :show-verified-alert="showVaptfixVerifiedAlert"
                 @close-python-alert="showPythonInstallAlert = false"
                 @close-verified-alert="showVaptfixVerifiedAlert = false"
+                @vuln-assets-deleted="onVulnAssetsDeleted"
               />
+            </div>
+
+            <div v-else-if="leftPanelTab === 'fix'" class="assets-vuln-mode-wrap">
+              <AssetsFixMode :is-user="false" />
             </div>
 
             </div>
@@ -500,6 +581,7 @@
 import DashboardMenu from "@/components/admin-component/DashboardMenu.vue";
 import DashboardHeader from "@/components/admin-component/DashboardHeader.vue";
 import AssetsVulnerabilitiesMode from "@/components/assets/AssetsVulnerabilitiesMode.vue";
+import AssetsFixMode from "@/components/assets/AssetsFixMode.vue";
 import ManualRemediationStepsPanel from "@/components/assets/ManualRemediationStepsPanel.vue";
 import AutomatedFixPanel from "@/components/assets/AutomatedFixPanel.vue";
 import PythonInstallGuideModal from "@/components/assets/PythonInstallGuideModal.vue";
@@ -512,8 +594,11 @@ import {
   matchesVulnStatusFilter,
   severityMatchesFilter,
   isAutomationNotAvailable,
+  isActiveVulnStatus,
+  lookupFixVulnerabilityId,
 } from "@/utils/assetVulnerabilities";
 import { useAuthStore } from "@/stores/authStore";
+import { ASSET_TYPE_FILTERS, getDummyAssetsByType } from "@/utils/assetDummyData";
 
 export default {
   name: "AssetsView",
@@ -521,6 +606,7 @@ export default {
     DashboardMenu,
     DashboardHeader,
     AssetsVulnerabilitiesMode,
+    AssetsFixMode,
     ManualRemediationStepsPanel,
     AutomatedFixPanel,
     PythonInstallGuideModal,
@@ -533,6 +619,8 @@ export default {
       showPythonInstallAlert: false,
       showVaptfixVerifiedAlert: false,
       leftPanelTab: "assets",
+      assetTypeFilter: "assets",
+      assetTypeFilters: ASSET_TYPE_FILTERS,
       authStore: useAuthStore(),
       supportRequestsByHost: [],
       supportRequestCount: 0,
@@ -558,12 +646,18 @@ export default {
       expandedDescriptions: {},
       expandedVulnIndex: null,
       descriptionPreviewLimit: 280,
+      assetDescriptionExpanded: false,
+      assetDescriptionPreviewLimit: 140,
       currentVulnTab: 'auto',
+      manualPanelMountedIndex: null,
       loadingAssetVulns: false,
       closedFixVulnerabilities: [],
       closedFixCount: 0,
       loadingClosedFix: false,
       assetFetchSeq: 0,
+      automationScriptMap: {},
+      singleFetchedIds: [],
+      loadingAutomation: false,
       showCodeModal: false,
       showPythonModal: false,
       pythonGuideSeverity: '',
@@ -630,55 +724,26 @@ class TLSConfigurator:
         this.closedFixVulnerabilities,
       );
     },
+    sourceAssetRows() {
+      if (this.assetTypeFilter === "assets") {
+        return this.authStore.assetRows || [];
+      }
+      return getDummyAssetsByType(this.assetTypeFilter);
+    },
+    displayAssetCount() {
+      if (this.assetTypeFilter === "assets") {
+        return this.authStore.assetCount;
+      }
+      return this.getFilteredSortedAssets().length;
+    },
     pagedAssets() {
       const start = (this.currentPage - 1) * this.pageSize;
-
-      // STEP 1: filter by search query
-      let list = this.authStore.assetRows;
-
-      if (this.query && this.query.trim()) {
-        const q = this.query.trim().toLowerCase();
-        list = list.filter(a =>
-          a.asset.toLowerCase().includes(q)
-        );
-      }
-
-      // STEP 1.5: filter by severity
-      if (this.selectedSeverity && this.selectedSeverity !== "all") {
-        list = list.filter(a => {
-          const priority = this.getPrioritySeverity(a);
-          return priority?.toLowerCase() === this.selectedSeverity;
-        });
-      }
-
-      // STEP 2: sort by severity
-      const sorted = [...list].sort((a, b) => {
-        return (
-          this.getSeverityRank(this.getPrioritySeverity(a)) -
-          this.getSeverityRank(this.getPrioritySeverity(b))
-        );
-      });
-
-      // STEP 3: paginate
+      const sorted = this.getFilteredSortedAssets();
       return sorted.slice(start, start + this.pageSize);
     },
     totalPages() {
-      let list = this.authStore.assetRows;
-
-      if (this.query && this.query.trim()) {
-        const q = this.query.trim().toLowerCase();
-        list = list.filter(a =>
-          a.asset.toLowerCase().includes(q)
-        );
-      }
-
-      if (this.selectedSeverity && this.selectedSeverity !== "all") {
-        list = list.filter(a => {
-          const priority = this.getPrioritySeverity(a);
-          return priority?.toLowerCase() === this.selectedSeverity;
-        });
-      }
-      return Math.ceil(list.length / this.pageSize);
+      const list = this.getFilteredSortedAssets();
+      return Math.max(1, Math.ceil(list.length / this.pageSize));
     },
     pageNumbers() {
       const total = this.totalPages;
@@ -699,8 +764,12 @@ class TLSConfigurator:
       if (!this.activeFilters.includes('All')) {
         list = list.filter(v => severityMatchesFilter(v.severity, this.activeFilters));
       }
-      list = list.filter(v => matchesVulnStatusFilter(v, this.statusFilter));
-
+      // Closed vulns go to Fixed Recently; show them here only when explicitly selected
+      if (this.statusFilter.length > 0) {
+        list = list.filter(v => matchesVulnStatusFilter(v, this.statusFilter));
+      } else {
+        list = list.filter(v => isActiveVulnStatus(v.status));
+      }
       return [...list].sort((a, b) => {
         return (
           this.getSeverityRank(a.severity) -
@@ -727,6 +796,32 @@ class TLSConfigurator:
         this.authStore.selectedAssetDetail?.severity || 'Medium',
       );
     },
+    selectedAssetTypeBadge() {
+      if (this.assetTypeFilter === 'assets') return null;
+      return this.getAssetTypeBadgeCode(this.assetTypeFilter);
+    },
+    selectedAssetMetaLabel() {
+      return this.assetTypeFilter !== 'assets' ? 'Resolved IP' : 'Owner';
+    },
+    selectedAssetMetaValue() {
+      const detail = this.authStore.selectedAssetDetail;
+      if (!detail) return '';
+      if (this.assetTypeFilter !== 'assets') {
+        return detail.resolved_ip || '';
+      }
+      return detail.owner || '';
+    },
+    selectedAssetDescription() {
+      return this.authStore.selectedAssetDetail?.description || '';
+    },
+    displayAssetDescription() {
+      const text = this.selectedAssetDescription;
+      if (!text) return '';
+      if (this.assetDescriptionExpanded || text.length <= this.assetDescriptionPreviewLimit) {
+        return text;
+      }
+      return `${text.slice(0, this.assetDescriptionPreviewLimit).trimEnd()}...`;
+    },
     pagedHeldAssets() {
       return [...this.heldAssets].sort((a, b) => {
         const aSev = this.getHeldPrioritySeverity(a);
@@ -737,9 +832,25 @@ class TLSConfigurator:
   },
   watch: {
     leftPanelTab(val, oldVal) {
-      if (val === 'vulnerabilities' && oldVal !== 'vulnerabilities') {
-        this.openFixPanelAlerts();
+      if ((val === 'vulnerabilities' || val === 'fix') && oldVal !== val) {
+        if (val === 'vulnerabilities') this.openFixPanelAlerts();
       }
+      if (val === 'assets' && (oldVal === 'vulnerabilities' || oldVal === 'fix')) {
+        this.syncAssetsAfterVulnTab();
+      }
+    },
+    assetTypeFilter() {
+      this.currentPage = 1;
+      this.query = "";
+      this.activeIndex = null;
+      this.resetActions();
+      this.authStore.assetSearchResults = [];
+      this.authStore.assetSearchCount = 0;
+      this.$nextTick(() => {
+        if (this.pagedAssets.length) {
+          this.setActive(this.pagedAssets[0]);
+        }
+      });
     },
     activeIndex() {
       this.expandedVulnIndex = null;
@@ -760,9 +871,11 @@ class TLSConfigurator:
       deep: true,
       handler(newQuery, oldQuery) {
         if (this.$route.name !== 'assets') return;
-        const asset = newQuery?.asset;
+        const asset = newQuery?.asset || newQuery?.host_name;
         const plugin = newQuery?.plugin_name || newQuery?.vul_name;
-        if (!asset && !plugin) return;
+        const allVulMode = newQuery?.mode === 'vulnerabilities' || newQuery?.leftPanel === 'vulnerabilities';
+        if (!asset && !plugin && !allVulMode) return;
+        if (allVulMode && !plugin) return;
         if (JSON.stringify(newQuery) === JSON.stringify(oldQuery)) return;
         this.applyRouteQueryContext();
       },
@@ -831,9 +944,15 @@ class TLSConfigurator:
         }, 2000);
       });
     },
-    toggleAccordion(index) {
-      const isOpening = this.expandedVulnIndex !== index;
-      this.expandedVulnIndex = this.expandedVulnIndex === index ? null : index;
+    async toggleAccordion(index) {
+      const prevIndex = this.expandedVulnIndex;
+      const isOpening = prevIndex !== index;
+      this.expandedVulnIndex = prevIndex === index ? null : index;
+
+      if (!isOpening || prevIndex !== index) {
+        this.manualPanelMountedIndex = null;
+        this.currentVulnTab = 'auto';
+      }
 
       if (isOpening) {
         this.$nextTick(() => {
@@ -843,6 +962,78 @@ class TLSConfigurator:
             element[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
           }
         });
+        // Fetch individual automation script for opened vuln
+        const vuln = this.filteredVulnerabilities[index];
+        const id = this.resolveVulnPluginId(vuln);
+        if (id > 0 && !this.singleFetchedIds.includes(id)) {
+          this.singleFetchedIds = [...this.singleFetchedIds, id];
+          const res = await this.authStore.fetchAutomationScriptSingleAdmin(id);
+          if (res.status && res.data) {
+            this.automationScriptMap = { ...this.automationScriptMap, [id]: res.data };
+          }
+        }
+      }
+    },
+    resolveVulnPluginId(vuln) {
+      if (!vuln) return 0;
+      let id = Number(vuln.plugin_id || vuln.nessus_plugin_id || vuln.pluginId || 0);
+      if (id > 0) return id;
+      const name = String(vuln.vul_name || vuln.plugin_name || '').toLowerCase().trim();
+      const register = this.authStore.vulnerabilityRows || [];
+      const row = register.find(r =>
+        String(r.vul_name || r.plugin_name || '').toLowerCase().trim() === name
+      );
+      id = Number(row?.plugin_id || row?.nessus_plugin_id || 0);
+      if (id > 0) return id;
+      const entry = Object.values(this.automationScriptMap).find(
+        e => String(e.vulnerability || e.vul_name || e.plugin_name || '').toLowerCase().trim() === name
+      );
+      return Number(entry?.plugin_id || 0);
+    },
+    getAutomationForVuln(vuln) {
+      const id = this.resolveVulnPluginId(vuln);
+      return id > 0 ? (this.automationScriptMap[id] || null) : null;
+    },
+    resolveAutomationMatched(vuln) {
+      const data = this.getAutomationForVuln(vuln);
+      if (!data) return null;
+      if (typeof data.matched === 'boolean') return data.matched;
+      const ap = String(data.automation_possible || '').toLowerCase().trim();
+      if (!ap) return null;
+      if (ap.startsWith('no')) return false;
+      return true;
+    },
+    async loadAutomationScripts() {
+      const vulns = this.authStore.selectedAssetVulnerabilities || [];
+      const register = this.authStore.vulnerabilityRows || [];
+      const nameToId = {};
+      register.forEach(r => {
+        const n = String(r.vul_name || r.plugin_name || '').toLowerCase().trim();
+        const id = Number(r.plugin_id || r.nessus_plugin_id || 0);
+        if (n && id > 0) nameToId[n] = id;
+      });
+      const pluginIds = [...new Set(
+        vulns.map(v => {
+          let id = Number(v.plugin_id || 0);
+          if (!(id > 0)) {
+            const n = String(v.vul_name || v.plugin_name || '').toLowerCase().trim();
+            id = nameToId[n] || 0;
+          }
+          return id;
+        }).filter(id => id > 0)
+      )];
+      if (!pluginIds.length) return;
+      this.loadingAutomation = true;
+      const res = await this.authStore.fetchAutomationScriptsBulkAdmin(pluginIds);
+      this.loadingAutomation = false;
+      if (res.status && Array.isArray(res.results)) {
+        const map = {};
+        // Backend note: match by plugin_id field, NOT array index
+        res.results.forEach(r => {
+          const pid = Number(r.plugin_id || 0);
+          if (pid > 0) map[pid] = r;
+        });
+        this.automationScriptMap = map;
       }
     },
     async reloadAssetsAndHeld() {
@@ -853,6 +1044,28 @@ class TLSConfigurator:
         this.activeIndex = null;
         if (this.pagedAssets.length) {
           await this.setActive(this.pagedAssets[0]);
+        }
+      }
+    },
+    async syncAssetsAfterVulnTab() {
+      const activeAsset = this.activeIndex;
+      await this.authStore.fetchAssets(true);
+      if (activeAsset && this.authStore.assetRows.some(a => a.asset === activeAsset)) {
+        const requestSeq = ++this.assetFetchSeq;
+        await this.authStore.fetchSingleAssetVulnerabilities(activeAsset);
+        if (requestSeq === this.assetFetchSeq) {
+          this.refreshSupportRequestsForHost(activeAsset, requestSeq);
+        }
+      }
+    },
+    async onVulnAssetsDeleted({ hostNames }) {
+      const hosts = Array.isArray(hostNames) ? hostNames : [];
+      const activeAsset = this.activeIndex;
+      if (activeAsset && hosts.includes(activeAsset)) {
+        const requestSeq = ++this.assetFetchSeq;
+        await this.authStore.fetchSingleAssetVulnerabilities(activeAsset);
+        if (requestSeq === this.assetFetchSeq) {
+          this.refreshSupportRequestsForHost(activeAsset, requestSeq);
         }
       }
     },
@@ -958,7 +1171,30 @@ class TLSConfigurator:
       let parts = formatted.split(".").slice(0, 4);
       this.ipAddress = parts.join(".");
     },
+    setAssetTypeFilter(type) {
+      if (this.assetTypeFilter === type) return;
+      this.assetTypeFilter = type;
+    },
+    getAssetTypeBadgeCode(type) {
+      if (type === "webapp") return { code: "WA", label: "Web App" };
+      if (type === "firewall") return { code: "FR", label: "Firewall" };
+      if (type === "server") return { code: "SR", label: "Server" };
+      return null;
+    },
+    getAssetTypeBadge(asset) {
+      if (this.assetTypeFilter === "assets") return null;
+      return this.getAssetTypeBadgeCode(asset?.member_type || this.assetTypeFilter);
+    },
+    getAssetSubLabel(asset) {
+      if (asset?.member_type === "webapp") return "Web App";
+      if (asset?.member_type === "firewall") return "Firewall";
+      if (asset?.member_type === "server") return "Server";
+      const memberType = this.authStore.memberType || "";
+      if (!memberType) return "";
+      return memberType.charAt(0).toUpperCase() + memberType.slice(1);
+    },
     handleDeleteClick() {
+      if (this.assetTypeFilter !== "assets") return;
       if (this.activeAction === "hold") {
         return;
       }
@@ -1000,15 +1236,41 @@ class TLSConfigurator:
       if (!asset?.asset) return;
       const requestSeq = ++this.assetFetchSeq;
       this.activeIndex = asset.asset;
-      this.loadingAssetVulns = true;
       this.expandedVulnIndex = null;
+      this.assetDescriptionExpanded = false;
+      // Reset status filter so switching assets always shows open vulns by default,
+      // not a stale 'closed' filter left over from viewFixDetail.
+      this.statusFilter = [];
+      this.activeTab = 'vulnerabilities';
+
+      if (this.assetTypeFilter !== "assets" || asset._isDummy) {
+        this.loadingAssetVulns = false;
+        this.closedFixVulnerabilities = [];
+        this.closedFixCount = 0;
+        this.supportRequestsByHost = [];
+        this.supportRequestCount = 0;
+        this.authStore.selectedAssetDetail = {
+          asset: asset.asset,
+          resolved_ip: asset.resolved_ip || "192.168.1.100",
+          description: asset.description || "",
+          severity: this.getPrioritySeverity(asset),
+        };
+        this.authStore.selectedAssetVulnerabilities = asset.dummyVulns || [];
+        return;
+      }
+
+      this.loadingAssetVulns = true;
 
       // Primary details first, so UI updates quickly for selected asset.
       await this.authStore.fetchSingleAssetVulnerabilities(asset.asset);
       if (requestSeq !== this.assetFetchSeq) return;
       this.loadingAssetVulns = false;
 
-      // Secondary data in parallel (do not block main asset details render).
+      // Fetch automation scripts — await so badges show real data immediately
+      this.automationScriptMap = {};
+      this.singleFetchedIds = [];
+      await this.loadAutomationScripts();
+      // Secondary data in parallel (non-blocking)
       this.refreshSupportRequestsForHost(asset.asset, requestSeq);
       this.loadClosedFixForAsset(asset.asset, requestSeq);
     },
@@ -1029,6 +1291,7 @@ class TLSConfigurator:
       URL.revokeObjectURL(url);
     },
     toggleHoldMode() {
+      if (this.assetTypeFilter !== "assets") return;
       if (this.activeAction === "delete") return;
 
       const source = this.authStore.assetRows;
@@ -1197,8 +1460,12 @@ class TLSConfigurator:
       return "";
     },
     onSearchInput() {
+      this.currentPage = 1;
       if (!this.query) {
         this.clearSearch();
+        return;
+      }
+      if (this.assetTypeFilter !== "assets") {
         return;
       }
       this.authStore.searchAssets(this.query.trim());
@@ -1283,40 +1550,58 @@ class TLSConfigurator:
       return `${fullText.slice(0, this.descriptionPreviewLimit).trimEnd()}...`;
     },
     viewFixDetail(item) {
-      const reportId = this.authStore.latestReportId;
-      if (!reportId) {
-        console.error("No report ID available");
-        return;
-      }
+      this.statusFilter = ['closed'];
+      this.activeFilters = ['All'];
 
-      this.$router.push({
-        name: 'remediation-timeline',
-        params: {
-          reportId: reportId,
-          asset: item.asset,
-        },
-        query: {
-          id: item.id,
-          plugin_name: item.vulnerability_name,
-          risk_factor: item.severity,
-          status: item.status,
-          description: item.description || '',
-        }
+      this.$nextTick(() => {
+        const targetName = String(item.vulnerability_name || item.vul_name || '').trim().toLowerCase();
+        const targetId = item.id != null ? String(item.id) : '';
+
+        const idx = this.filteredVulnerabilities.findIndex(v => {
+          if (targetId && (v.id != null || v.vulnerability_id != null)) {
+            return String(v.id ?? v.vulnerability_id) === targetId;
+          }
+          const name = String(v.vul_name || v.vulnerability_name || '').trim().toLowerCase();
+          return targetName && name === targetName;
+        });
+
+        if (idx < 0) return;
+
+        this.expandedVulnIndex = idx;
+        this.setVulnDetailTab('manual');
+
+        this.$nextTick(() => {
+          const refKey = 'vuln-' + idx;
+          const element = this.$refs[refKey];
+          if (element && element[0]) {
+            element[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        });
       });
     },
     getVulnAssets(vuln) {
       if (!this.authStore.selectedAssetDetail?.asset) return [];
       return [this.authStore.selectedAssetDetail.asset];
     },
+    fixIdForVuln(v) {
+      return lookupFixVulnerabilityId(
+        this.authStore.vulnerabilityRows,
+        v,
+        this.selectedAssetIp,
+      );
+    },
     setVulnDetailTab(tab) {
       this.currentVulnTab = tab;
+      if (tab === 'manual' && this.expandedVulnIndex != null) {
+        this.manualPanelMountedIndex = this.expandedVulnIndex;
+      }
     },
     getFilteredSortedAssets() {
-      let list = this.authStore.assetRows || [];
+      let list = [...(this.sourceAssetRows || [])];
 
       if (this.query && this.query.trim()) {
         const q = this.query.trim().toLowerCase();
-        list = list.filter(a => a.asset.toLowerCase().includes(q));
+        list = list.filter(a => String(a.asset || "").toLowerCase().includes(q));
       }
 
       if (this.selectedSeverity && this.selectedSeverity !== 'all') {
@@ -1326,7 +1611,7 @@ class TLSConfigurator:
         });
       }
 
-      return [...list].sort((a, b) => {
+      return list.sort((a, b) => {
         return (
           this.getSeverityRank(this.getPrioritySeverity(a)) -
           this.getSeverityRank(this.getPrioritySeverity(b))
@@ -1364,13 +1649,31 @@ class TLSConfigurator:
         }
       });
     },
+    async focusAllVulFromQuery(pluginName, assetHost) {
+      for (let i = 0; i < 15; i++) {
+        const mode = this.$refs.vulnMode;
+        if (mode?.focusVulnerabilityFromQuery) {
+          await mode.focusVulnerabilityFromQuery({ pluginName, assetHost });
+          return;
+        }
+        await new Promise(r => setTimeout(r, 100));
+      }
+    },
     async applyRouteQueryContext() {
       const q = this.$route.query || {};
-      const assetIp = q.asset || q.assetIp;
+      const assetIp = q.asset || q.assetIp || q.host_name;
       const pluginName = q.plugin_name || q.vul_name;
       const vulnId = q.id;
+      const allVulMode = q.mode === 'vulnerabilities' || q.leftPanel === 'vulnerabilities';
 
       if (!assetIp && !pluginName) return;
+
+      if (allVulMode && pluginName) {
+        this.leftPanelTab = 'vulnerabilities';
+        await this.$nextTick();
+        await this.focusAllVulFromQuery(pluginName, assetIp);
+        return;
+      }
 
       this.leftPanelTab = 'assets';
       this.activeTab = q.tab === 'exceptions' ? 'exceptions' : 'vulnerabilities';
@@ -1388,6 +1691,13 @@ class TLSConfigurator:
           await this.$nextTick();
           if (pluginName || vulnId) {
             this.expandVulnFromQuery(pluginName, vulnId);
+          }
+          if (q.fix_tab === 'manual' || q.fix_tab === 'auto') {
+            if (q.fix_tab === 'manual') {
+              this.setVulnDetailTab('manual');
+            } else {
+              this.currentVulnTab = q.fix_tab;
+            }
           }
         }
       }
@@ -1431,20 +1741,16 @@ class TLSConfigurator:
       await this.authStore.getReportStatus();
     }
 
-    // Always refresh on page entry so navigation also triggers APIs.
-    await Promise.all([
-      this.reloadAssetsAndHeld(),
-      this.authStore.fetchVulnerabilityRegister(true),
-    ]);
+    // Always refresh register first so fix_vulnerability_id is available before asset vulns load.
+    await this.authStore.fetchVulnerabilityRegister(true);
+    await this.reloadAssetsAndHeld();
 
     await this.applyRouteQueryContext();
   },
   async activated() {
     this.openFixPanelAlerts();
-    await Promise.all([
-      this.reloadAssetsAndHeld(),
-      this.authStore.fetchVulnerabilityRegister(true),
-    ]);
+    await this.authStore.fetchVulnerabilityRegister(true);
+    await this.reloadAssetsAndHeld();
     await this.applyRouteQueryContext();
   },
 };
@@ -1506,7 +1812,8 @@ class TLSConfigurator:
   overflow: hidden;
 }
 
-.assets-vuln-mode-wrap :deep(.av-mode-root) {
+.assets-vuln-mode-wrap :deep(.av-mode-root),
+.assets-vuln-mode-wrap :deep(.af-mode-root) {
   flex: 1;
   min-height: 0;
   height: 100%;
@@ -1556,6 +1863,51 @@ class TLSConfigurator:
   border-radius: 20px;
   padding: 3px 12px;
   color: #64748b;
+}
+
+.asset-type-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.asset-type-filter-btn {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.asset-type-filter-btn:hover {
+  color: #1e293b;
+  border-color: #cbd5e1;
+}
+
+.asset-type-filter-btn-active.asset-type-filter-btn-assets,
+.asset-type-filter-btn-active.asset-type-filter-btn-webapp {
+  background: #0f696e;
+  border-color: #0f696e;
+  color: #fff;
+  font-weight: 700;
+}
+
+.asset-type-filter-btn-active.asset-type-filter-btn-firewall {
+  background: #fff8f0;
+  border-color: #e65100;
+  color: #c45c00;
+  font-weight: 700;
+}
+
+.asset-type-filter-btn-active.asset-type-filter-btn-server {
+  background: #ede7f6;
+  border-color: #9575cd;
+  color: #5e35b1;
+  font-weight: 700;
 }
 
 .action-icon {
@@ -1779,11 +2131,71 @@ class TLSConfigurator:
 /* right-panel-header / scroll — shared rules in main.css (.assets-right-panel) */
 
 .asset-detail-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
   font-size: 1.1rem;
   font-weight: 600;
   color: #0f172a;
   line-height: 1.3;
   margin: 0;
+}
+
+.asset-detail-title-text {
+  word-break: break-all;
+}
+
+.asset-type-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.asset-type-badge-sm {
+  width: 22px;
+  height: 22px;
+  font-size: 0.5rem;
+}
+
+.asset-type-badge-webapp,
+.asset-type-label-webapp {
+  background: #0f696e;
+  color: #fff;
+  border: 1px solid #0f696e;
+}
+
+.asset-type-badge-firewall,
+.asset-type-label-firewall {
+  background: #fff8f0;
+  color: #c45c00;
+  border: 1px solid #e65100;
+}
+
+.asset-type-badge-server,
+.asset-type-label-server {
+  background: #ede7f6;
+  color: #5e35b1;
+  border: 1px solid #9575cd;
+}
+
+.asset-type-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
 .status-open-badge {
@@ -1827,11 +2239,73 @@ class TLSConfigurator:
   flex-shrink: 0;
 }
 
+.right-panel-meta.right-panel-meta-column {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.meta-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.meta-inline-resolved .meta-label,
+.meta-inline-resolved .meta-value,
+.meta-inline-resolved .meta-separator {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.5;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.meta-separator {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.asset-description-block {
+  margin-top: 0;
+}
+
+.asset-description-heading {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 4px;
+}
+
+.asset-description-text {
+  font-size: 0.75rem;
+  color: #64748b;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.asset-read-more-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-top: 4px;
+  color: #0f696e;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.asset-read-more-btn:hover {
+  text-decoration: underline;
+}
+
 .meta-label {
   font-size: 0.62rem;
   color: #94a3b8;
   font-weight: 700;
-  margin-bottom: 2px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -1839,7 +2313,6 @@ class TLSConfigurator:
   font-size: 0.8rem;
   color: #475569;
   font-weight: 500;
-  margin: 0;
 }
 
 /* Detail tabs */
@@ -1901,9 +2374,9 @@ class TLSConfigurator:
 }
 .sev-pill:hover { background: #f2f3f6; }
 .sev-pill-active {
-  background: #e0f2f1 !important;
-  color: #0f696e !important;
-  border-color: #0f696e !important;
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+  border-color: #2563eb !important;
   font-weight: 700;
 }
 .sev-pill-critical { color: #b42318 !important; background: #f8dede !important; }
@@ -2359,6 +2832,17 @@ class TLSConfigurator:
 .av-dtab.active {
   color: #000000;
   border-bottom-color: #000000;
+}
+
+.av-dtab--disabled,
+.av-dtab:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.av-dtab--disabled:hover,
+.av-dtab:disabled:hover {
+  color: #64748b;
 }
 
 .av-detail-tab-content {

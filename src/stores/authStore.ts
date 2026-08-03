@@ -3,8 +3,17 @@ import endpoint from "../services/apiServices";
 import type { AxiosError } from "axios";
 import {
   buildVulnsFromRegister,
+  enrichVulnsFromRegister,
+  extractFixVulnerabilityId,
+  filterDeletedVulnsForHost,
+  lookupFixVulnerabilityId,
   normalizeAssetVulnerabilityList,
 } from "@/utils/assetVulnerabilities";
+
+interface RoleAssignmentEntry {
+  assets: string[];
+  vulns: { plugin_name: string; host_name: string }[];
+}
 
 interface CreateUserPayload {
   admin_id: string;
@@ -14,6 +23,7 @@ interface CreateUserPayload {
   last_name?: string;
   Member_role: string | string[];
   slack_bot_token?: string;
+  role_assignments?: Record<string, RoleAssignmentEntry>;
 }
 
 interface RiskCriteriaPayload {
@@ -27,6 +37,20 @@ interface SlackMessageResponse {
   status: boolean;
   data?: any;
   message?: string;
+}
+
+/** Webinar registration payload (CRM / public webinar form) */
+interface WebinarRegisterPayload {
+  full_name: string;
+  work_email: string;
+  job_title: string;
+  company_name: string;
+  company_website: string;
+  company_linkedin?: string;
+  team_size: string;
+  /** Required when team_size is "10+" */
+  team_size_count?: number;
+  phone_number?: string;
 }
 
 // Helper function to clear all auth tokens
@@ -126,6 +150,20 @@ export const useAuthStore = defineStore("auth", {
     cachedDistributionByTeam: null as any,
     cachedUserVulnRegister: [] as any[],
     userVulnRegisterFetched: false,
+    allReportVulnerabilities: [] as any[],
+    allReportVulnerabilitiesTotal: 0,
+    allReportVulnerabilitiesFetched: false,
+    heldVulnerabilityAssets: [] as any[],
+    heldVulnerabilityAssetsFetched: false,
+    deletedVulnerabilityAssets: [] as any[],
+    deletedVulnerabilityAssetsFetched: false,
+    userAllReportVulnerabilities: [] as any[],
+    userAllReportVulnerabilitiesTotal: 0,
+    userAllReportVulnerabilitiesFetched: false,
+    userHeldVulnerabilityAssets: [] as any[],
+    userHeldVulnerabilityAssetsFetched: false,
+    userDeletedVulnerabilityAssets: [] as any[],
+    userDeletedVulnerabilityAssetsFetched: false,
     cachedUserSupportRequests: {} as Record<string, any>,
     cachedUserOpenTickets: {} as Record<string, any>,
     cachedUserClosedVulns: null as any,
@@ -579,6 +617,47 @@ export const useAuthStore = defineStore("auth", {
       } catch (error) {
         console.error("Profile fetch error:", error);
         return { status: false, message: "Unable to fetch profile" };
+      }
+    },
+
+    // ✅ Update User Profile (Admin)
+    async updateUserProfile(payload: Record<string, string>) {
+      try {
+        const res = await endpoint.patch("/api/admin/users/profile/", payload);
+        const userObj = res.data?.user ?? res.data?.data?.user ?? null;
+        if (userObj) {
+          this.user = userObj;
+          sessionStorage.setItem("user", JSON.stringify(userObj));
+          localStorage.setItem("user", JSON.stringify(userObj));
+        }
+        return { status: true, data: res.data };
+      } catch (error: any) {
+        return {
+          status: false,
+          message: error.response?.data?.message || error.message || "Failed to update profile",
+          details: error.response?.data || null,
+        };
+      }
+    },
+
+    // ✅ Update Member Profile (User portal)
+    async updateMemberProfile(payload: { first_name?: string; last_name?: string }) {
+      try {
+        const res = await endpoint.patch("/api/admin/users_details/member-profile/", payload);
+        const userObj = res.data?.user ?? res.data?.data?.user ?? res.data ?? null;
+        if (userObj && typeof userObj === "object") {
+          const merged = { ...(this.user || {}), ...userObj };
+          this.user = merged;
+          sessionStorage.setItem("user", JSON.stringify(merged));
+          localStorage.setItem("user", JSON.stringify(merged));
+        }
+        return { status: true, data: res.data };
+      } catch (error: any) {
+        return {
+          status: false,
+          message: error.response?.data?.message || error.message || "Failed to update profile",
+          details: error.response?.data || null,
+        };
       }
     },
 
@@ -2622,6 +2701,20 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    // 🔹 Latest uploaded report info
+    // GET /api/admin/upload_report/latest-report/
+    async fetchLatestUploadedReport() {
+      try {
+        const res = await endpoint.get("/api/admin/upload_report/latest-report/");
+        if (res.data?.success) {
+          return { status: true, data: res.data };
+        }
+        return { status: false, data: null };
+      } catch (error: any) {
+        return { status: false, data: null, message: error.response?.data?.detail || "Failed" };
+      }
+    },
+
     extractUploadedFileName(payload: unknown): string | null {
       const FILE_KEYS = [
         "file_name",
@@ -2826,6 +2919,26 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    // 🔹 Fetch asset vuln plugin_ids WITHOUT modifying global state
+    async fetchAssetVulnPluginIds(assetIp: string, isUser = true) {
+      try {
+        const reportId = isUser ? this.userLatestReportId : this.latestReportId;
+        if (!reportId) return {};
+        const url = isUser
+          ? `/api/user/asset/report/${reportId}/asset/${assetIp}/vulnerabilities/`
+          : `/api/admin/asset/report/${reportId}/asset/${assetIp}/vulnerabilities/`;
+        const res = await endpoint.get(url);
+        const vulns: any[] = res.data?.vulnerabilities || [];
+        const map: Record<string, number> = {};
+        vulns.forEach((v: any) => {
+          const name = String(v.plugin_name || v.vul_name || '').toLowerCase().trim();
+          const id = Number(v.plugin_id || v.nessus_plugin_id || 0);
+          if (name && id > 0) map[name] = id;
+        });
+        return map;
+      } catch { return {}; }
+    },
+
     // 🔹 USER ASSET VULNERABILITIES (single asset)
     async fetchUserSingleAssetVulnerabilities(assetIp: string) {
       try {
@@ -2836,9 +2949,14 @@ export const useAuthStore = defineStore("auth", {
         );
         let vulns = normalizeAssetVulnerabilityList(res.data.vulnerabilities || []);
         if (!vulns.length) {
-          await this.fetchUserVulnerabilityRegister(false);
-          vulns = buildVulnsFromRegister(this.cachedUserVulnRegister, assetIp);
+          await this.fetchUserVulnerabilityRegister(true);
+          vulns = buildVulnsFromRegister(
+            this.cachedUserVulnRegister,
+            assetIp,
+            this.userDeletedVulnerabilityAssets,
+          );
         }
+        vulns = filterDeletedVulnsForHost(vulns, assetIp, this.userDeletedVulnerabilityAssets);
         this.selectedAssetVulnerabilities = vulns;
         this.selectedAssetDetail = {
           asset: res.data.asset || assetIp,
@@ -3333,7 +3451,13 @@ export const useAuthStore = defineStore("auth", {
         const rows = res.data?.rows ?? [];
         const count = res.data?.count ?? rows.length;
 
-        this.vulnerabilityRows = Array.isArray(rows) ? rows : [];
+        this.vulnerabilityRows = Array.isArray(rows)
+          ? rows.map((row) => ({
+              ...row,
+              fix_vulnerability_id:
+                row.fix_vulnerability_id || row.fix_vuln_id || row.fixVulnerabilityId || null,
+            }))
+          : [];
         this.vulnerabilityCount = count;
 
         // 👇 ADD HERE
@@ -3378,7 +3502,8 @@ export const useAuthStore = defineStore("auth", {
 
         return {
           status: true,
-          data: res.data.data,
+          // Backend may return fix_vulnerability_id at top level or inside data{}
+          data: res.data.data || res.data,
           message: res.data.message,
         };
       } catch (error) {
@@ -3459,19 +3584,32 @@ export const useAuthStore = defineStore("auth", {
     // Mark a step as complete (User)
     async completeUserFixVulnerabilityStep(
       fixVulnerabilityId: string,
-      payload: { status: string; comment: string },
+      payload: { status?: string; comment: string; complete_all?: boolean; os?: string },
       os: string = "windows",
     ) {
       try {
+        const osKey = String(payload.os || os || "windows").toLowerCase();
+        const normalizedOs = osKey.includes("linux") ? "linux" : "windows";
+        const rawStatus = String(payload.status || "completed")
+          .toLowerCase()
+          .trim();
+        const normalizedStatus =
+          rawStatus === "step done" || rawStatus === "done" || rawStatus === "completed"
+            ? "completed"
+            : payload.status || "completed";
+
         const res = await endpoint.post(
-          `/api/user/register/fix-vulnerability/${fixVulnerabilityId}/step-complete/?os=${os}`,
-          payload,
+          `/api/user/register/fix-vulnerability/${fixVulnerabilityId}/step-complete/?os=${normalizedOs}`,
+          { ...payload, status: normalizedStatus, os: normalizedOs },
         );
         return {
           status: true,
           message: res.data.message,
           vulnerability_status: res.data.status,
           completed_steps: res.data.completed_steps,
+          total_steps: res.data.total_steps,
+          next_step: res.data.next_step,
+          next_step_name: res.data.next_step_name,
           step_saved: res.data.step_saved,
         };
       } catch (error) {
@@ -3554,6 +3692,28 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    // Send verification request to superadmin (User)
+    async sendUserFixVerification(fixVulnerabilityId: string) {
+      try {
+        const res = await endpoint.post(
+          `/api/user/register/fix-vulnerability/${fixVulnerabilityId}/send-verification/`,
+        );
+        return {
+          status: true,
+          message: res.data.message,
+          vulnerability_status: res.data.status,
+          verification_sent_at: res.data.verification_sent_at,
+        };
+      } catch (error) {
+        const err = error as AxiosError<any>;
+        return {
+          status: false,
+          message: err.response?.data?.message || "Failed to send verification",
+          details: err.response?.data || null,
+        };
+      }
+    },
+
     // Get step completion status for fix vulnerability (UPDATED)
     async getFixVulnerabilitySteps(fixVulnerabilityId: string) {
       try {
@@ -3586,12 +3746,69 @@ export const useAuthStore = defineStore("auth", {
         };
       } catch (error) {
         const err = error as AxiosError<any>;
+        if (err.response?.status === 404) {
+          return {
+            status: false,
+            notFound: true,
+            message: err.response?.data?.detail || "Fix vulnerability not found",
+          };
+        }
         return {
           status: false,
-          message: err.response?.data?.message || "Failed to fetch step completion data",
+          message:
+            err.response?.data?.detail ||
+            err.response?.data?.message ||
+            "Failed to fetch step completion data",
           details: err.response?.data || null,
         };
       }
+    },
+
+    /** Resolve fix_vulnerability_id for admin read-only manual fix (register first, then existing-fix lookup) */
+    async resolveAdminFixVulnerabilityId(
+      asset: string,
+      vulnName: string,
+      options: {
+        severity?: string;
+        vulnId?: string;
+        vuln?: Record<string, unknown>;
+        allowCreate?: boolean;
+      } = {},
+    ): Promise<string> {
+      await this.fetchVulnerabilityRegister(false);
+
+      const vulnObj =
+        options.vuln ||
+        ({
+          vul_name: vulnName,
+          plugin_name: vulnName,
+          vulnerability_name: vulnName,
+        } as Record<string, unknown>);
+
+      const fromRegister = lookupFixVulnerabilityId(this.vulnerabilityRows, vulnObj, asset);
+      if (fromRegister) return fromRegister;
+
+      if (!options.allowCreate) return "";
+
+      const reportId = await this.resolveReportId();
+      if (!reportId || !asset || !vulnName) return "";
+
+      const payload: Record<string, any> = {
+        plugin_name: vulnName,
+        risk_factor: options.severity || "Medium",
+      };
+      if (options.vulnId) payload.id = options.vulnId;
+
+      const res = await this.createFixVulnerability(reportId, asset, payload);
+      if (res.status && res.data) {
+        return extractFixVulnerabilityId(res.data as Record<string, unknown>);
+      }
+
+      const details = (res.details || {}) as Record<string, unknown>;
+      return (
+        extractFixVulnerabilityId(details) ||
+        String(details.fix_vulnerability_id || "").trim()
+      );
     },
 
     // CREATE/UPDATE Final Fix Feedback (User)
@@ -3685,6 +3902,36 @@ export const useAuthStore = defineStore("auth", {
           status: false,
           message: err.response?.data?.message || "Failed to fetch final feedback",
           details: err.response?.data || null,
+        };
+      }
+    },
+
+    // GET Report HTML file download
+    async downloadReportHtml() {
+      try {
+        const res = await endpoint.get('/api/admin/adminregister/report/download/', {
+          responseType: 'blob',
+        });
+        return { status: true, data: res.data as Blob, headers: res.headers };
+      } catch (error) {
+        const err = error as AxiosError<any>;
+        return {
+          status: false,
+          message: err.response?.data?.message || err.response?.data?.detail || 'HTML download failed',
+        };
+      }
+    },
+
+    // GET Report Download Data (single API for ViewReportPage)
+    async fetchReportDownloadData() {
+      try {
+        const res = await endpoint.get('/api/admin/adminregister/report/download-data/');
+        return { status: true, data: res.data };
+      } catch (error) {
+        const err = error as AxiosError<any>;
+        return {
+          status: false,
+          message: err.response?.data?.message || err.response?.data?.detail || 'Failed to fetch report data',
         };
       }
     },
@@ -4092,6 +4339,45 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    // Admin: POST message on a support request
+    async sendAdminSupportMessage(
+      reportId: string,
+      requestId: string,
+      text: string,
+      visibility: string,
+    ) {
+      try {
+        const res = await endpoint.post(
+          `/api/admin/adminregister/support-requests/report/${reportId}/`,
+          { request_id: requestId, text, visibility },
+        );
+        return { status: true, data: res.data };
+      } catch (error) {
+        const err = error as AxiosError<any>;
+        return {
+          status: false,
+          message: err.response?.data?.detail || err.response?.data?.message || 'Failed to send message',
+        };
+      }
+    },
+
+    // User: POST reply on a support request
+    async sendUserSupportMessage(reportId: string, requestId: string, text: string) {
+      try {
+        const res = await endpoint.post(
+          `/api/user/register/support-requests/report/${reportId}/`,
+          { request_id: requestId, text },
+        );
+        return { status: true, data: res.data };
+      } catch (error) {
+        const err = error as AxiosError<any>;
+        return {
+          status: false,
+          message: err.response?.data?.detail || err.response?.data?.message || 'Failed to send message',
+        };
+      }
+    },
+
     // Get all support requests by report id
     async getSupportRequestsByReport(reportId: string, force = false) {
       if (!force && this.cachedSupportRequests[reportId]) {
@@ -4159,6 +4445,1122 @@ export const useAuthStore = defineStore("auth", {
           data: [],
           count: 0,
         };
+      }
+    },
+
+    // GET ALL VULNERABILITIES for report (All Vulnerabilities tab)
+    async fetchAllReportVulnerabilities(force = false) {
+      if (
+        !force &&
+        this.allReportVulnerabilitiesFetched &&
+        this.allReportVulnerabilities.length > 0
+      ) {
+        return {
+          status: true,
+          data: this.allReportVulnerabilities,
+          total: this.allReportVulnerabilitiesTotal,
+        };
+      }
+
+      try {
+        const reportId = await this.resolveReportId();
+        if (!reportId) {
+          return {
+            status: false,
+            message: "Report ID not found",
+          };
+        }
+
+        const res = await endpoint.get(`/api/admin/adminasset/report/${reportId}/vulnerabilities/`);
+
+        const vulns = res.data?.vulnerabilities ?? [];
+        this.allReportVulnerabilities = Array.isArray(vulns) ? vulns : [];
+        this.allReportVulnerabilitiesTotal =
+          res.data?.total ?? this.allReportVulnerabilities.length;
+        this.allReportVulnerabilitiesFetched = true;
+
+        if (res.data?.report_id) {
+          this.latestReportId = res.data.report_id;
+        }
+
+        return {
+          status: true,
+          data: this.allReportVulnerabilities,
+          total: this.allReportVulnerabilitiesTotal,
+          reportId: res.data?.report_id || reportId,
+        };
+      } catch (error: any) {
+        console.error(
+          "[authStore] fetchAllReportVulnerabilities error:",
+          error.response?.data || error.message,
+        );
+        this.allReportVulnerabilities = [];
+        this.allReportVulnerabilitiesTotal = 0;
+        this.allReportVulnerabilitiesFetched = false;
+
+        return {
+          status: false,
+          message:
+            error.response?.data?.message ||
+            error.response?.data?.detail ||
+            "Failed to fetch vulnerabilities",
+        };
+      }
+    },
+
+    // GET assets for a specific vulnerability (checkbox list)
+    async fetchVulnerabilityAssets(pluginName: string) {
+      try {
+        const reportId = await this.resolveReportId();
+        if (!reportId) {
+          return { status: false, message: "Report ID not found" };
+        }
+
+        const encodedPlugin = encodeURIComponent(String(pluginName || "").trim());
+        const res = await endpoint.get(
+          `/api/admin/adminasset/report/${reportId}/vulnerability/${encodedPlugin}/assets/`,
+        );
+
+        return {
+          status: true,
+          data: res.data,
+          assets: res.data?.assets ?? [],
+        };
+      } catch (error: any) {
+        console.error(
+          "[authStore] fetchVulnerabilityAssets error:",
+          error.response?.data || error.message,
+        );
+        return {
+          status: false,
+          message:
+            error.response?.data?.message ||
+            error.response?.data?.detail ||
+            "Failed to fetch vulnerability assets",
+          assets: [],
+        };
+      }
+    },
+
+    // HOLD assets for a specific vulnerability (All Vulnerabilities tab)
+    async holdVulnerabilityAssets(pluginName: string, hostNames: string[]) {
+      try {
+        const reportId = await this.resolveReportId();
+        if (!reportId) {
+          return { status: false, message: "Report ID not found" };
+        }
+
+        const encodedPlugin = encodeURIComponent(String(pluginName || "").trim());
+        const res = await endpoint.post(
+          `/api/admin/adminasset/report/${reportId}/vulnerability/${encodedPlugin}/hold/`,
+          { host_names: hostNames },
+        );
+
+        const processed: string[] = res.data?.processed ?? [];
+        this.addHeldVulnerabilityAssets(
+          res.data?.plugin_name || pluginName,
+          processed.length ? processed : hostNames,
+        );
+        this.allReportVulnerabilitiesFetched = false;
+        this.allReportVulnerabilities = [];
+
+        return {
+          status: true,
+          data: res.data,
+          message: res.data?.detail || "Held successfully",
+          processed,
+          skipped: res.data?.skipped ?? [],
+          pluginName: res.data?.plugin_name || pluginName,
+        };
+      } catch (error: any) {
+        console.error(
+          "[authStore] holdVulnerabilityAssets error:",
+          error.response?.data || error.message,
+        );
+        return {
+          status: false,
+          message:
+            error.response?.data?.message ||
+            error.response?.data?.detail ||
+            "Failed to hold vulnerability assets",
+        };
+      }
+    },
+
+    // DELETE vulnerability from specific assets (All Vulnerabilities tab)
+    async deleteVulnerabilityAssets(pluginName: string, hostNames: string[]) {
+      try {
+        const reportId = await this.resolveReportId();
+        if (!reportId) {
+          return { status: false, message: "Report ID not found" };
+        }
+
+        const encodedPlugin = encodeURIComponent(String(pluginName || "").trim());
+        const res = await endpoint.delete(
+          `/api/admin/adminasset/report/${reportId}/vulnerability/${encodedPlugin}/delete/`,
+          { data: { host_names: hostNames } },
+        );
+
+        const processed: string[] = res.data?.processed ?? [];
+        this.addDeletedVulnerabilityAssets(
+          res.data?.plugin_name || pluginName,
+          processed.length ? processed : hostNames,
+        );
+        this.allReportVulnerabilitiesFetched = false;
+        this.allReportVulnerabilities = [];
+        this.vulnerabilityRows = [];
+
+        return {
+          status: true,
+          data: res.data,
+          message: res.data?.detail || "Deleted successfully",
+          processed,
+          pluginName: res.data?.plugin_name || pluginName,
+        };
+      } catch (error: any) {
+        console.error(
+          "[authStore] deleteVulnerabilityAssets error:",
+          error.response?.data || error.message,
+        );
+        return {
+          status: false,
+          message:
+            error.response?.data?.message ||
+            error.response?.data?.detail ||
+            "Failed to delete vulnerability from assets",
+        };
+      }
+    },
+
+    // UNHOLD assets for a specific vulnerability (All Vulnerabilities tab)
+    async unholdVulnerabilityAssets(pluginName: string, hostNames: string[]) {
+      try {
+        const reportId = await this.resolveReportId();
+        if (!reportId) {
+          return { status: false, message: "Report ID not found" };
+        }
+
+        const encodedPlugin = encodeURIComponent(String(pluginName || "").trim());
+        const res = await endpoint.post(
+          `/api/admin/adminasset/report/${reportId}/vulnerability/${encodedPlugin}/unhold/`,
+          { host_names: hostNames },
+        );
+
+        const processed: string[] = res.data?.processed ?? [];
+        this.removeHeldVulnerabilityAssets(pluginName, processed.length ? processed : hostNames);
+        this.allReportVulnerabilitiesFetched = false;
+        this.allReportVulnerabilities = [];
+
+        return {
+          status: true,
+          data: res.data,
+          message: res.data?.detail || "Unheld successfully",
+          processed,
+          pluginName: res.data?.plugin_name || pluginName,
+        };
+      } catch (error: any) {
+        console.error(
+          "[authStore] unholdVulnerabilityAssets error:",
+          error.response?.data || error.message,
+        );
+        return {
+          status: false,
+          message:
+            error.response?.data?.message ||
+            error.response?.data?.detail ||
+            "Failed to unhold vulnerability assets",
+        };
+      }
+    },
+
+    addHeldVulnerabilityAssets(
+      pluginName: string,
+      hostNames: string[],
+      meta: { severity?: string } = {},
+    ) {
+      const name = String(pluginName || "").trim();
+      if (!name) return;
+
+      hostNames.forEach((host) => {
+        const hostName = String(host || "").trim();
+        if (!hostName) return;
+        const exists = this.heldVulnerabilityAssets.some(
+          (item) => item.plugin_name === name && item.host_name === hostName,
+        );
+        if (exists) return;
+        this.heldVulnerabilityAssets.push({
+          plugin_name: name,
+          vul_name: name,
+          host_name: hostName,
+          severity: meta.severity || "Medium",
+          status: "held",
+          _key: name.toLowerCase(),
+          selected: false,
+        });
+      });
+    },
+
+    removeHeldVulnerabilityAssets(pluginName: string, hostNames: string[]) {
+      const name = String(pluginName || "").trim();
+      const hosts = new Set(hostNames.map((h) => String(h || "").trim()).filter(Boolean));
+      if (!name || !hosts.size) return;
+      this.heldVulnerabilityAssets = this.heldVulnerabilityAssets.filter(
+        (item) => !(item.plugin_name === name && hosts.has(item.host_name)),
+      );
+    },
+
+    addDeletedVulnerabilityAssets(pluginName: string, hostNames: string[]) {
+      const name = String(pluginName || "").trim();
+      if (!name) return;
+
+      hostNames.forEach((host) => {
+        const hostName = String(host || "").trim();
+        if (!hostName) return;
+        const exists = this.deletedVulnerabilityAssets.some(
+          (item) => item.plugin_name === name && item.host_name === hostName,
+        );
+        if (exists) return;
+        this.deletedVulnerabilityAssets.push({
+          plugin_name: name,
+          vul_name: name,
+          host_name: hostName,
+          _key: name.toLowerCase(),
+        });
+      });
+
+      this.persistDeletedVulnerabilityAssets();
+    },
+
+    syncAssetSeverityCountsAfterVulnDelete(hostNames: string[], severity: string = "Medium") {
+      const sevKey = String(severity || "medium")
+        .trim()
+        .toLowerCase();
+      if (!["critical", "high", "medium", "low"].includes(sevKey)) return;
+
+      hostNames.forEach((host) => {
+        const hostName = String(host || "").trim();
+        if (!hostName) return;
+        const idx = this.assetRows.findIndex(
+          (row) => row.asset === hostName || row.host_name === hostName,
+        );
+        if (idx < 0) return;
+
+        const counts = { ...(this.assetRows[idx].severity_counts || {}) };
+        if ((Number(counts[sevKey]) || 0) > 0) {
+          counts[sevKey] = Number(counts[sevKey]) - 1;
+        }
+        this.assetRows[idx] = {
+          ...this.assetRows[idx],
+          severity_counts: counts,
+        };
+      });
+    },
+
+    persistDeletedVulnerabilityAssets() {
+      const reportId = this.latestReportId;
+      if (!reportId || typeof localStorage === "undefined") return;
+      try {
+        const all = JSON.parse(localStorage.getItem("vapt_deleted_vuln_assets") || "{}");
+        all[reportId] = this.deletedVulnerabilityAssets;
+        localStorage.setItem("vapt_deleted_vuln_assets", JSON.stringify(all));
+      } catch {
+        // ignore storage errors
+      }
+    },
+
+    restoreDeletedVulnerabilityAssetsFromStorage(reportId?: string | null) {
+      const id = reportId || this.latestReportId;
+      if (!id || typeof localStorage === "undefined") return;
+      try {
+        const all = JSON.parse(localStorage.getItem("vapt_deleted_vuln_assets") || "{}");
+        const rows = Array.isArray(all[id]) ? all[id] : [];
+        if (!rows.length) return;
+
+        const restored = rows
+          .map((row: any) => ({
+            plugin_name: row.plugin_name || row.vul_name || "",
+            vul_name: row.plugin_name || row.vul_name || "",
+            host_name: row.host_name || row.asset || "",
+            _key: String(row.plugin_name || row.vul_name || "")
+              .trim()
+              .toLowerCase(),
+          }))
+          .filter((row: any) => row.plugin_name && row.host_name);
+
+        const seen = new Set(
+          this.deletedVulnerabilityAssets.map((row: any) => `${row.plugin_name}::${row.host_name}`),
+        );
+        restored.forEach((row: any) => {
+          const key = `${row.plugin_name}::${row.host_name}`;
+          if (seen.has(key)) return;
+          seen.add(key);
+          this.deletedVulnerabilityAssets.push(row);
+        });
+      } catch {
+        // ignore storage errors
+      }
+    },
+
+    async fetchDeletedVulnerabilityAssets(force = false) {
+      if (!force && this.deletedVulnerabilityAssetsFetched) {
+        return { status: true, data: this.deletedVulnerabilityAssets };
+      }
+
+      try {
+        const reportId = await this.resolveReportId();
+        if (!reportId) {
+          this.restoreDeletedVulnerabilityAssetsFromStorage();
+          this.deletedVulnerabilityAssetsFetched = true;
+          return { status: true, data: this.deletedVulnerabilityAssets };
+        }
+
+        const res = await endpoint.get(
+          `/api/admin/adminasset/report/${reportId}/vulnerability/delete-list/`,
+        );
+
+        const rows =
+          res.data?.deleted ?? res.data?.assets ?? res.data?.results ?? res.data?.items ?? [];
+        const normalized = (Array.isArray(rows) ? rows : [])
+          .map((row: any) => ({
+            plugin_name: row.plugin_name || row.vul_name || "",
+            vul_name: row.plugin_name || row.vul_name || "",
+            host_name: row.host_name || row.asset || "",
+            _key: String(row.plugin_name || row.vul_name || "")
+              .trim()
+              .toLowerCase(),
+          }))
+          .filter((row: any) => row.plugin_name && row.host_name);
+
+        this.deletedVulnerabilityAssets = normalized;
+        this.deletedVulnerabilityAssetsFetched = true;
+        this.persistDeletedVulnerabilityAssets();
+
+        return { status: true, data: this.deletedVulnerabilityAssets };
+      } catch (error: any) {
+        if (error.response?.status !== 404) {
+          console.warn(
+            "[authStore] fetchDeletedVulnerabilityAssets:",
+            error.response?.data || error.message,
+          );
+        }
+        this.restoreDeletedVulnerabilityAssetsFromStorage();
+        this.deletedVulnerabilityAssetsFetched = true;
+        return { status: true, data: this.deletedVulnerabilityAssets };
+      }
+    },
+
+    // 🔹 Get feedback + counts (Admin) - no my_feedback
+    async getAutomationScriptFeedbackAdmin(pluginId: number) {
+      try {
+        const res = await endpoint.get(`/api/admin/automation-scripts/feedback/${pluginId}/`);
+        return { status: true, data: res.data };
+      } catch (error: any) {
+        return { status: false, data: null, message: error.response?.data?.detail || "Failed" };
+      }
+    },
+
+    // 🔹 Get feedback + counts (User) - includes my_feedback
+    async getAutomationScriptFeedback(pluginId: number) {
+      try {
+        const res = await endpoint.get(`/api/user/automation-scripts/feedback/${pluginId}/`);
+        return { status: true, data: res.data };
+      } catch (error: any) {
+        return { status: false, data: null, message: error.response?.data?.detail || "Failed" };
+      }
+    },
+
+    // 🔹 Submit feedback (User)
+    async submitAutomationScriptFeedback(pluginId: number, working: boolean) {
+      try {
+        const res = await endpoint.post("/api/user/automation-scripts/feedback/", {
+          plugin_id: pluginId,
+          working,
+        });
+        return { status: true, data: res.data };
+      } catch (error: any) {
+        return {
+          status: false,
+          data: null,
+          message: error.response?.data?.detail || "Feedback failed",
+        };
+      }
+    },
+
+    // 🔹 Automation script download stats (Admin)
+    // GET /api/admin/automation-scripts/stats/
+    async fetchAutomationScriptStatsAdmin() {
+      try {
+        const res = await endpoint.get("/api/admin/automation-scripts/stats/");
+        return { status: true, data: res.data };
+      } catch (error: any) {
+        return {
+          status: false,
+          data: null,
+          message: error.response?.data?.detail || "Failed to fetch stats",
+        };
+      }
+    },
+
+    // 🔹 Automation script download stats (User)
+    // GET /api/user/automation-scripts/stats/
+    async fetchAutomationScriptStats() {
+      try {
+        const res = await endpoint.get("/api/user/automation-scripts/stats/");
+        return { status: true, data: res.data };
+      } catch (error: any) {
+        return {
+          status: false,
+          data: null,
+          message: error.response?.data?.detail || "Failed to fetch stats",
+        };
+      }
+    },
+
+    // 🔹 Download automation script (User)
+    // GET /api/user/automation-scripts/download/{plugin_id}/
+    async downloadAutomationScript(pluginId: number, os?: string | null) {
+      try {
+        const params: Record<string, string> = {};
+        if (os) params.os = os;
+        const res = await endpoint.get(`/api/user/automation-scripts/download/${pluginId}/`, {
+          responseType: "text",
+          params,
+        });
+        return { status: true, content: res.data, headers: res.headers };
+      } catch (error: any) {
+        return {
+          status: false,
+          content: null,
+          message: error.response?.data?.detail || "Download failed",
+        };
+      }
+    },
+
+    // 🔹 Download automation script (Admin)
+    // GET /api/admin/automation-scripts/download/{plugin_id}/
+    async downloadAutomationScriptAdmin(pluginId: number, os?: string | null) {
+      try {
+        const params: Record<string, string> = {};
+        if (os) params.os = os;
+        const res = await endpoint.get(`/api/admin/automation-scripts/download/${pluginId}/`, {
+          responseType: "text",
+          params,
+        });
+        return { status: true, content: res.data, headers: res.headers };
+      } catch (error: any) {
+        return {
+          status: false,
+          content: null,
+          message: error.response?.data?.detail || "Download failed",
+        };
+      }
+    },
+
+    // 🔹 Single automation script match (User)
+    async fetchAutomationScriptSingle(pluginId: number, os?: string | null) {
+      try {
+        const params: Record<string, string> = {};
+        if (os) params.os = os;
+        const res = await endpoint.get(`/api/user/automation-scripts/match/${pluginId}/`, {
+          params,
+        });
+        return { status: true, data: res.data };
+      } catch (error: any) {
+        return {
+          status: false,
+          data: null,
+          message: error.response?.data?.detail || "No automated fix available",
+        };
+      }
+    },
+
+    // 🔹 Single automation script match (Admin)
+    async fetchAutomationScriptSingleAdmin(pluginId: number, os?: string | null) {
+      try {
+        const params: Record<string, string> = {};
+        if (os) params.os = os;
+        const res = await endpoint.get(`/api/admin/automation-scripts/match/${pluginId}/`, {
+          params,
+        });
+        return { status: true, data: res.data };
+      } catch (error: any) {
+        return {
+          status: false,
+          data: null,
+          message: error.response?.data?.detail || "No automated fix available",
+        };
+      }
+    },
+
+    // 🔹 Bulk automation script match (User)
+    async fetchAutomationScriptsBulk(pluginIds: number[]) {
+      if (!pluginIds.length) return { status: true, results: [] };
+      try {
+        const res = await endpoint.post("/api/user/automation-scripts/match/bulk/", {
+          plugin_ids: pluginIds,
+        });
+        return { status: true, results: res.data?.results || [] };
+      } catch (error: any) {
+        return {
+          status: false,
+          results: [],
+          message: error.response?.data?.detail || "Failed to fetch automation scripts",
+        };
+      }
+    },
+
+    // 🔹 Bulk automation script match (Admin)
+    async fetchAutomationScriptsBulkAdmin(pluginIds: number[]) {
+      if (!pluginIds.length) return { status: true, results: [] };
+      try {
+        const res = await endpoint.post("/api/admin/automation-scripts/match/bulk/", {
+          plugin_ids: pluginIds,
+        });
+        return { status: true, results: res.data?.results || [] };
+      } catch (error: any) {
+        return {
+          status: false,
+          results: [],
+          message: error.response?.data?.detail || "Failed to fetch automation scripts",
+        };
+      }
+    },
+
+    // 🔹 ADMIN — Report assets & vulnerabilities filtered by team role
+    // GET /api/admin/users_details/report-assets-vulns/?role=<role>
+    async fetchReportAssetVulnsByRole(role: string) {
+      try {
+        const res = await endpoint.get(`/api/admin/users_details/report-assets-vulns/`, {
+          params: { role },
+        });
+        return { status: true, data: res.data };
+      } catch (error: any) {
+        return {
+          status: false,
+          data: null,
+          message: error.response?.data?.detail || "Failed to fetch role assets/vulns",
+        };
+      }
+    },
+
+    async fetchHeldVulnerabilityAssets(force = false) {
+      if (!force && this.heldVulnerabilityAssetsFetched) {
+        return { status: true, data: this.heldVulnerabilityAssets };
+      }
+
+      try {
+        const reportId = await this.resolveReportId();
+        if (!reportId) {
+          return { status: false, data: this.heldVulnerabilityAssets };
+        }
+
+        const res = await endpoint.get(
+          `/api/admin/adminasset/report/${reportId}/vulnerability/hold-list/`,
+        );
+
+        // API returns: { vulnerabilities: [{ plugin_name, severity, cvss_score, hosts: [{ host_name, held_at, held_by }] }] }
+        const vulnRows: any[] = Array.isArray(res.data?.vulnerabilities)
+          ? res.data.vulnerabilities
+          : [];
+
+        // Flatten: one entry per vuln+host pair
+        const normalized: any[] = [];
+        vulnRows.forEach((vuln: any) => {
+          const pluginName = String(vuln.plugin_name || vuln.vul_name || "").trim();
+          if (!pluginName) return;
+          const hosts: any[] = Array.isArray(vuln.hosts) ? vuln.hosts : [];
+          hosts.forEach((host: any) => {
+            const hostName = String(host.host_name || host.asset || "").trim();
+            if (!hostName) return;
+            normalized.push({
+              plugin_name: pluginName,
+              vul_name: pluginName,
+              host_name: hostName,
+              severity: vuln.severity || "Medium",
+              cvss_score: vuln.cvss_score || "",
+              held_at: host.held_at || "",
+              held_by: host.held_by || "",
+              status: "held",
+              _key: pluginName.toLowerCase(),
+              selected: false,
+            });
+          });
+        });
+
+        const merged = new Map<string, any>();
+        const mergeRow = (row: any) => {
+          const key = `${row.plugin_name}::${row.host_name}`;
+          merged.set(key, { ...merged.get(key), ...row, selected: false });
+        };
+        (this.heldVulnerabilityAssets || []).forEach(mergeRow);
+        normalized.forEach(mergeRow);
+        this.heldVulnerabilityAssets = [...merged.values()];
+        this.heldVulnerabilityAssetsFetched = true;
+
+        return { status: true, data: this.heldVulnerabilityAssets };
+      } catch (error: any) {
+        if (error.response?.status !== 404) {
+          console.warn(
+            "[authStore] fetchHeldVulnerabilityAssets:",
+            error.response?.data || error.message,
+          );
+        }
+        this.heldVulnerabilityAssetsFetched = true;
+        return { status: true, data: this.heldVulnerabilityAssets };
+      }
+    },
+
+    async resolveUserReportId(): Promise<string | null> {
+      if (this.userLatestReportId) return this.userLatestReportId;
+
+      await this.fetchUserAssets(false);
+      if (this.userLatestReportId) return this.userLatestReportId;
+
+      await this.fetchUserVulnerabilityRegister(false);
+      if (this.userLatestReportId) return this.userLatestReportId;
+
+      return this.userLatestReportId;
+    },
+
+    async fetchUserAllReportVulnerabilities(force = false) {
+      if (
+        !force &&
+        this.userAllReportVulnerabilitiesFetched &&
+        this.userAllReportVulnerabilities.length > 0
+      ) {
+        return {
+          status: true,
+          data: this.userAllReportVulnerabilities,
+          total: this.userAllReportVulnerabilitiesTotal,
+        };
+      }
+
+      try {
+        const reportId = await this.resolveUserReportId();
+        if (!reportId) {
+          return { status: false, message: "Report ID not found" };
+        }
+
+        const res = await endpoint.get(`/api/user/asset/report/${reportId}/vulnerabilities/`);
+
+        const vulns = res.data?.vulnerabilities ?? [];
+        this.userAllReportVulnerabilities = Array.isArray(vulns) ? vulns : [];
+        this.userAllReportVulnerabilitiesTotal =
+          res.data?.total ?? this.userAllReportVulnerabilities.length;
+        this.userAllReportVulnerabilitiesFetched = true;
+
+        if (res.data?.report_id) {
+          this.userLatestReportId = res.data.report_id;
+        }
+
+        return {
+          status: true,
+          data: this.userAllReportVulnerabilities,
+          total: this.userAllReportVulnerabilitiesTotal,
+          reportId: res.data?.report_id || reportId,
+          teams: res.data?.teams ?? [],
+        };
+      } catch (error: any) {
+        console.error(
+          "[authStore] fetchUserAllReportVulnerabilities error:",
+          error.response?.data || error.message,
+        );
+        this.userAllReportVulnerabilities = [];
+        this.userAllReportVulnerabilitiesTotal = 0;
+        this.userAllReportVulnerabilitiesFetched = false;
+        return {
+          status: false,
+          message:
+            error.response?.data?.message ||
+            error.response?.data?.detail ||
+            "Failed to fetch vulnerabilities",
+        };
+      }
+    },
+
+    async fetchUserVulnerabilityAssets(pluginName: string) {
+      try {
+        const reportId = await this.resolveUserReportId();
+        if (!reportId) {
+          return { status: false, message: "Report ID not found", assets: [] };
+        }
+
+        const encodedPlugin = encodeURIComponent(String(pluginName || "").trim());
+        const res = await endpoint.get(
+          `/api/user/asset/report/${reportId}/vulnerability/${encodedPlugin}/assets/`,
+        );
+
+        return {
+          status: true,
+          data: res.data,
+          assets: res.data?.assets ?? [],
+        };
+      } catch (error: any) {
+        console.error(
+          "[authStore] fetchUserVulnerabilityAssets error:",
+          error.response?.data || error.message,
+        );
+        return {
+          status: false,
+          message:
+            error.response?.data?.message ||
+            error.response?.data?.detail ||
+            "Failed to fetch vulnerability assets",
+          assets: [],
+        };
+      }
+    },
+
+    async holdUserVulnerabilityAssets(pluginName: string, hostNames: string[]) {
+      try {
+        const reportId = await this.resolveUserReportId();
+        if (!reportId) {
+          return { status: false, message: "Report ID not found" };
+        }
+
+        const encodedPlugin = encodeURIComponent(String(pluginName || "").trim());
+        const res = await endpoint.post(
+          `/api/user/asset/report/${reportId}/vulnerability/${encodedPlugin}/hold/`,
+          { host_names: hostNames },
+        );
+
+        const processed: string[] = res.data?.processed ?? [];
+        this.addUserHeldVulnerabilityAssets(
+          res.data?.plugin_name || pluginName,
+          processed.length ? processed : hostNames,
+        );
+        this.userAllReportVulnerabilitiesFetched = false;
+        this.userAllReportVulnerabilities = [];
+
+        return {
+          status: true,
+          data: res.data,
+          message: res.data?.detail || "Held successfully",
+          processed,
+          skipped: res.data?.skipped ?? [],
+          pluginName: res.data?.plugin_name || pluginName,
+        };
+      } catch (error: any) {
+        console.error(
+          "[authStore] holdUserVulnerabilityAssets error:",
+          error.response?.data || error.message,
+        );
+        return {
+          status: false,
+          message:
+            error.response?.data?.message ||
+            error.response?.data?.detail ||
+            "Failed to hold vulnerability assets",
+        };
+      }
+    },
+
+    async unholdUserVulnerabilityAssets(pluginName: string, hostNames: string[]) {
+      try {
+        const reportId = await this.resolveUserReportId();
+        if (!reportId) {
+          return { status: false, message: "Report ID not found" };
+        }
+
+        const encodedPlugin = encodeURIComponent(String(pluginName || "").trim());
+        const res = await endpoint.post(
+          `/api/user/asset/report/${reportId}/vulnerability/${encodedPlugin}/unhold/`,
+          { host_names: hostNames },
+        );
+
+        const processed: string[] = res.data?.processed ?? [];
+        this.removeUserHeldVulnerabilityAssets(
+          pluginName,
+          processed.length ? processed : hostNames,
+        );
+        this.userAllReportVulnerabilitiesFetched = false;
+        this.userAllReportVulnerabilities = [];
+
+        return {
+          status: true,
+          data: res.data,
+          message: res.data?.detail || "Unheld successfully",
+          processed,
+          pluginName: res.data?.plugin_name || pluginName,
+        };
+      } catch (error: any) {
+        console.error(
+          "[authStore] unholdUserVulnerabilityAssets error:",
+          error.response?.data || error.message,
+        );
+        return {
+          status: false,
+          message:
+            error.response?.data?.message ||
+            error.response?.data?.detail ||
+            "Failed to unhold vulnerability assets",
+        };
+      }
+    },
+
+    async deleteUserVulnerabilityAssets(pluginName: string, hostNames: string[]) {
+      try {
+        const reportId = await this.resolveUserReportId();
+        if (!reportId) {
+          return { status: false, message: "Report ID not found" };
+        }
+
+        const encodedPlugin = encodeURIComponent(String(pluginName || "").trim());
+        const res = await endpoint.delete(
+          `/api/user/asset/report/${reportId}/vulnerability/${encodedPlugin}/delete/`,
+          { data: { host_names: hostNames } },
+        );
+
+        const processed: string[] = res.data?.processed ?? [];
+        this.addUserDeletedVulnerabilityAssets(
+          res.data?.plugin_name || pluginName,
+          processed.length ? processed : hostNames,
+        );
+        this.userAllReportVulnerabilitiesFetched = false;
+        this.userAllReportVulnerabilities = [];
+        this.cachedUserVulnRegister = [];
+        this.userVulnRegisterFetched = false;
+
+        return {
+          status: true,
+          data: res.data,
+          message: res.data?.detail || "Deleted successfully",
+          processed,
+          pluginName: res.data?.plugin_name || pluginName,
+        };
+      } catch (error: any) {
+        console.error(
+          "[authStore] deleteUserVulnerabilityAssets error:",
+          error.response?.data || error.message,
+        );
+        return {
+          status: false,
+          message:
+            error.response?.data?.message ||
+            error.response?.data?.detail ||
+            "Failed to delete vulnerability from assets",
+        };
+      }
+    },
+
+    addUserHeldVulnerabilityAssets(
+      pluginName: string,
+      hostNames: string[],
+      meta: { severity?: string } = {},
+    ) {
+      const name = String(pluginName || "").trim();
+      if (!name) return;
+
+      hostNames.forEach((host) => {
+        const hostName = String(host || "").trim();
+        if (!hostName) return;
+        const exists = this.userHeldVulnerabilityAssets.some(
+          (item) => item.plugin_name === name && item.host_name === hostName,
+        );
+        if (exists) return;
+        this.userHeldVulnerabilityAssets.push({
+          plugin_name: name,
+          vul_name: name,
+          host_name: hostName,
+          severity: meta.severity || "Medium",
+          status: "held",
+          _key: name.toLowerCase(),
+          selected: false,
+        });
+      });
+    },
+
+    removeUserHeldVulnerabilityAssets(pluginName: string, hostNames: string[]) {
+      const name = String(pluginName || "").trim();
+      const hosts = new Set(hostNames.map((h) => String(h || "").trim()).filter(Boolean));
+      if (!name || !hosts.size) return;
+      this.userHeldVulnerabilityAssets = this.userHeldVulnerabilityAssets.filter(
+        (item) => !(item.plugin_name === name && hosts.has(item.host_name)),
+      );
+    },
+
+    addUserDeletedVulnerabilityAssets(pluginName: string, hostNames: string[]) {
+      const name = String(pluginName || "").trim();
+      if (!name) return;
+
+      hostNames.forEach((host) => {
+        const hostName = String(host || "").trim();
+        if (!hostName) return;
+        const exists = this.userDeletedVulnerabilityAssets.some(
+          (item) => item.plugin_name === name && item.host_name === hostName,
+        );
+        if (exists) return;
+        this.userDeletedVulnerabilityAssets.push({
+          plugin_name: name,
+          vul_name: name,
+          host_name: hostName,
+          _key: name.toLowerCase(),
+        });
+      });
+
+      this.persistUserDeletedVulnerabilityAssets();
+    },
+
+    persistUserDeletedVulnerabilityAssets() {
+      const reportId = this.userLatestReportId;
+      if (!reportId || typeof localStorage === "undefined") return;
+      try {
+        const all = JSON.parse(localStorage.getItem("vapt_user_deleted_vuln_assets") || "{}");
+        all[reportId] = this.userDeletedVulnerabilityAssets;
+        localStorage.setItem("vapt_user_deleted_vuln_assets", JSON.stringify(all));
+      } catch {
+        // ignore storage errors
+      }
+    },
+
+    restoreUserDeletedVulnerabilityAssetsFromStorage(reportId?: string | null) {
+      const id = reportId || this.userLatestReportId;
+      if (!id || typeof localStorage === "undefined") return;
+      try {
+        const all = JSON.parse(localStorage.getItem("vapt_user_deleted_vuln_assets") || "{}");
+        const rows = Array.isArray(all[id]) ? all[id] : [];
+        if (!rows.length) return;
+
+        const restored = rows
+          .map((row: any) => ({
+            plugin_name: row.plugin_name || row.vul_name || "",
+            vul_name: row.plugin_name || row.vul_name || "",
+            host_name: row.host_name || row.asset || "",
+            _key: String(row.plugin_name || row.vul_name || "")
+              .trim()
+              .toLowerCase(),
+          }))
+          .filter((row: any) => row.plugin_name && row.host_name);
+
+        const seen = new Set(
+          this.userDeletedVulnerabilityAssets.map(
+            (row: any) => `${row.plugin_name}::${row.host_name}`,
+          ),
+        );
+        restored.forEach((row: any) => {
+          const key = `${row.plugin_name}::${row.host_name}`;
+          if (seen.has(key)) return;
+          seen.add(key);
+          this.userDeletedVulnerabilityAssets.push(row);
+        });
+      } catch {
+        // ignore storage errors
+      }
+    },
+
+    async fetchUserHeldVulnerabilityAssets(force = false) {
+      if (!force && this.userHeldVulnerabilityAssetsFetched) {
+        return { status: true, data: this.userHeldVulnerabilityAssets };
+      }
+
+      try {
+        const reportId = await this.resolveUserReportId();
+        if (!reportId) {
+          return { status: false, data: this.userHeldVulnerabilityAssets };
+        }
+
+        const res = await endpoint.get(
+          `/api/user/asset/report/${reportId}/vulnerability/hold-list/`,
+        );
+
+        // API returns: { vulnerabilities: [{ plugin_name, severity, hosts: [{ host_name, held_at, held_by }] }] }
+        const vulnRows: any[] = Array.isArray(res.data?.vulnerabilities)
+          ? res.data.vulnerabilities
+          : [];
+
+        // Flatten: one entry per vuln+host pair
+        const normalized: any[] = [];
+        vulnRows.forEach((vuln: any) => {
+          const pluginName = String(vuln.plugin_name || vuln.vul_name || "").trim();
+          if (!pluginName) return;
+          const hosts: any[] = Array.isArray(vuln.hosts) ? vuln.hosts : [];
+          hosts.forEach((host: any) => {
+            const hostName = String(host.host_name || host.asset || "").trim();
+            if (!hostName) return;
+            normalized.push({
+              plugin_name: pluginName,
+              vul_name: pluginName,
+              host_name: hostName,
+              severity: vuln.severity || "Medium",
+              cvss_score: vuln.cvss_score || "",
+              assigned_team: vuln.assigned_team || "",
+              held_at: host.held_at || "",
+              held_by: host.held_by || "",
+              status: "held",
+              _key: pluginName.toLowerCase(),
+              selected: false,
+            });
+          });
+        });
+
+        const merged = new Map<string, any>();
+        const mergeRow = (row: any) => {
+          const key = `${row.plugin_name}::${row.host_name}`;
+          merged.set(key, { ...merged.get(key), ...row, selected: false });
+        };
+        (this.userHeldVulnerabilityAssets || []).forEach(mergeRow);
+        normalized.forEach(mergeRow);
+        this.userHeldVulnerabilityAssets = [...merged.values()];
+        this.userHeldVulnerabilityAssetsFetched = true;
+
+        return { status: true, data: this.userHeldVulnerabilityAssets };
+      } catch (error: any) {
+        if (error.response?.status !== 404) {
+          console.warn(
+            "[authStore] fetchUserHeldVulnerabilityAssets:",
+            error.response?.data || error.message,
+          );
+        }
+        this.userHeldVulnerabilityAssetsFetched = true;
+        return { status: true, data: this.userHeldVulnerabilityAssets };
+      }
+    },
+
+    async fetchUserDeletedVulnerabilityAssets(force = false) {
+      if (!force && this.userDeletedVulnerabilityAssetsFetched) {
+        return { status: true, data: this.userDeletedVulnerabilityAssets };
+      }
+
+      try {
+        const reportId = await this.resolveUserReportId();
+        if (!reportId) {
+          this.restoreUserDeletedVulnerabilityAssetsFromStorage();
+          this.userDeletedVulnerabilityAssetsFetched = true;
+          return { status: true, data: this.userDeletedVulnerabilityAssets };
+        }
+
+        const res = await endpoint.get(
+          `/api/user/asset/report/${reportId}/vulnerability/delete-list/`,
+        );
+
+        const rows =
+          res.data?.deleted ?? res.data?.assets ?? res.data?.results ?? res.data?.items ?? [];
+        const normalized = (Array.isArray(rows) ? rows : [])
+          .map((row: any) => ({
+            plugin_name: row.plugin_name || row.vul_name || "",
+            vul_name: row.plugin_name || row.vul_name || "",
+            host_name: row.host_name || row.asset || "",
+            _key: String(row.plugin_name || row.vul_name || "")
+              .trim()
+              .toLowerCase(),
+          }))
+          .filter((row: any) => row.plugin_name && row.host_name);
+
+        this.userDeletedVulnerabilityAssets = normalized;
+        this.userDeletedVulnerabilityAssetsFetched = true;
+        this.persistUserDeletedVulnerabilityAssets();
+
+        return { status: true, data: this.userDeletedVulnerabilityAssets };
+      } catch (error: any) {
+        if (error.response?.status !== 404) {
+          console.warn(
+            "[authStore] fetchUserDeletedVulnerabilityAssets:",
+            error.response?.data || error.message,
+          );
+        }
+        this.restoreUserDeletedVulnerabilityAssetsFromStorage();
+        this.userDeletedVulnerabilityAssetsFetched = true;
+        return { status: true, data: this.userDeletedVulnerabilityAssets };
       }
     },
 
@@ -4435,11 +5837,18 @@ export const useAuthStore = defineStore("auth", {
           `/api/admin/adminasset/report/${reportId}/asset/${asset}/vulnerabilities/`,
         );
 
-        let vulns = normalizeAssetVulnerabilityList(res.data.vulnerabilities || []);
+        // Register rows are the source of truth for fix_vulnerability_id.
+        await this.fetchVulnerabilityRegister(false);
+        let vulns = buildVulnsFromRegister(
+          this.vulnerabilityRows,
+          asset,
+          this.deletedVulnerabilityAssets,
+        );
         if (!vulns.length) {
-          await this.fetchVulnerabilityRegister(false);
-          vulns = buildVulnsFromRegister(this.vulnerabilityRows, asset);
+          vulns = normalizeAssetVulnerabilityList(res.data.vulnerabilities || []);
         }
+        vulns = enrichVulnsFromRegister(vulns, this.vulnerabilityRows, asset);
+        vulns = filterDeletedVulnsForHost(vulns, asset, this.deletedVulnerabilityAssets);
 
         // ✅ vulnerabilities list
         this.selectedAssetVulnerabilities = vulns;
@@ -4490,6 +5899,20 @@ export const useAuthStore = defineStore("auth", {
       this.cachedDistributionByTeam = null;
       this.cachedUserVulnRegister = [];
       this.userVulnRegisterFetched = false;
+      this.allReportVulnerabilities = [];
+      this.allReportVulnerabilitiesTotal = 0;
+      this.allReportVulnerabilitiesFetched = false;
+      this.heldVulnerabilityAssets = [];
+      this.heldVulnerabilityAssetsFetched = false;
+      this.deletedVulnerabilityAssets = [];
+      this.deletedVulnerabilityAssetsFetched = false;
+      this.userAllReportVulnerabilities = [];
+      this.userAllReportVulnerabilitiesTotal = 0;
+      this.userAllReportVulnerabilitiesFetched = false;
+      this.userHeldVulnerabilityAssets = [];
+      this.userHeldVulnerabilityAssetsFetched = false;
+      this.userDeletedVulnerabilityAssets = [];
+      this.userDeletedVulnerabilityAssetsFetched = false;
       this.cachedUserSupportRequests = {};
       this.cachedUserOpenTickets = {};
       this.cachedUserClosedVulns = null;
@@ -4507,6 +5930,13 @@ export const useAuthStore = defineStore("auth", {
       this.cachedUserTotalAssets = {};
       this.cachedUserVulnRegister = [];
       this.userVulnRegisterFetched = false;
+      this.userAllReportVulnerabilities = [];
+      this.userAllReportVulnerabilitiesTotal = 0;
+      this.userAllReportVulnerabilitiesFetched = false;
+      this.userHeldVulnerabilityAssets = [];
+      this.userHeldVulnerabilityAssetsFetched = false;
+      this.userDeletedVulnerabilityAssets = [];
+      this.userDeletedVulnerabilityAssetsFetched = false;
       this.cachedUserClosedVulns = null;
       this.cachedUserVulnerabilities = {};
       this.cachedUserVulnerabilitiesFixed = {};
@@ -4542,6 +5972,9 @@ export const useAuthStore = defineStore("auth", {
       this.assetCount = 0;
       this.vulnerabilityRows = [];
       this.vulnerabilityCount = 0;
+      this.allReportVulnerabilities = [];
+      this.allReportVulnerabilitiesTotal = 0;
+      this.allReportVulnerabilitiesFetched = false;
       this.selectedAssetDetail = null;
       this.selectedAssetVulnerabilities = [];
       this.cachedSupportRequests = {};
@@ -5414,6 +6847,82 @@ export const useAuthStore = defineStore("auth", {
           status: false,
           message:
             error.response?.data?.message || error.message || "Failed to fetch vuln asset count",
+        };
+      }
+    },
+
+    // ─────────────────────────────────────────────────────────
+    // ✅ Webinar Registration (CRM / public form)
+    // GET  /api/webinar/form-options/  → team_size dropdown options
+    // POST /api/webinar/register/      → submit webinar lead
+    // ─────────────────────────────────────────────────────────
+
+    /**
+     * Fetch webinar form dropdown options (team size attending).
+     * Response example:
+     * { team_size_options: ["1", "2-5", "6-10", "10+"] }
+     */
+    async getWebinarFormOptions() {
+      try {
+        const res = await endpoint.get("/api/webinar/form-options/");
+        return {
+          status: true,
+          data: res.data,
+          team_size_options: res.data?.team_size_options || [],
+          message: res.data?.message,
+        };
+      } catch (error: any) {
+        const errorData = error.response?.data;
+        return {
+          status: false,
+          data: null,
+          team_size_options: [] as string[],
+          message:
+            errorData?.message ||
+            errorData?.detail ||
+            error.message ||
+            "Failed to load webinar form options",
+          details: errorData || null,
+        };
+      }
+    },
+
+    /**
+     * Submit webinar registration.
+     * Body example:
+     * {
+     *   full_name, work_email, job_title, company_name,
+     *   company_website, company_linkedin?, team_size,
+     *   team_size_count? (when team_size === "10+"), phone_number?
+     * }
+     * Success response example:
+     * { message: "...", id: "..." }
+     */
+    async registerWebinar(payload: WebinarRegisterPayload) {
+      try {
+        const res = await endpoint.post("/api/webinar/register/", payload);
+        return {
+          status: true,
+          data: res.data,
+          id: res.data?.id,
+          message:
+            res.data?.message ||
+            "Thank you! Your webinar registration has been submitted successfully.",
+        };
+      } catch (error: any) {
+        const errorData = error.response?.data;
+        const errorMessage =
+          errorData?.message ||
+          errorData?.detail ||
+          errorData?.error ||
+          error.message ||
+          "Failed to submit webinar registration";
+        return {
+          status: false,
+          data: null,
+          id: null,
+          message: errorMessage,
+          details: errorData || null,
         };
       }
     },

@@ -33,8 +33,16 @@
           {{ userEmail }}
         </div>
 
+        <router-link
+          :to="{ path: '/user-manage-account', query: { returnTo: $route.fullPath } }"
+          class="btn btn-sm btn-outline-secondary w-100 mb-2"
+          @click="showDropdown = false"
+        >
+          Manage Account
+        </router-link>
+
         <!-- Upgrade -->
-        <router-link to="/pricingplan" class="btn btn-sm btn-outline-dark w-100 mb-2">
+        <router-link to="/pricingplan" class="btn btn-sm btn-outline-dark w-100 mb-2" @click="showDropdown = false">
           Upgrade Plan
         </router-link>
 

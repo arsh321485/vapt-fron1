@@ -90,11 +90,24 @@
                 <teleport to="body">
                   <div v-if="isRoleOpen" class="loc-dropdown-list" :style="roleDropdownStyle">
                     <label v-for="role in roleOptions" :key="role.short" class="loc-dropdown-item">
-                      <input type="checkbox" :value="role.short" v-model="selectedRoles" class="me-2" />
+                      <input
+                        type="checkbox"
+                        :value="role.short"
+                        v-model="selectedRoles"
+                        class="me-2"
+                        @change="onRoleToggle(role, $event)"
+                      />
                       {{ role.full }}
                     </label>
                   </div>
                 </teleport>
+                <div v-if="selectedRoles.length" class="loc-assignment-summary">
+                  <button type="button" class="loc-assignment-link" @click="openAssignmentModal(selectedRoles[selectedRoles.length - 1])">
+                    <i class="bi bi-sliders"></i>
+                    <span>Configure assets & vulnerabilities</span>
+                  </button>
+                  <span class="loc-assignment-counts">{{ assignmentSummaryText }}</span>
+                </div>
               </div>
 
               <div class="loc-field-group">
@@ -218,18 +231,41 @@
         </aside>
       </div>
     </div>
+
+    <RoleAssignmentDrawer
+      :show="showAssignmentModal"
+      :active-role="activeAssignmentRole"
+      :selected-roles="selectedRoles"
+      :role-options="roleOptions"
+      :role-assignments="roleAssignments"
+      :catalog="roleAssignmentCatalog"
+      :catalog-loading="catalogLoading"
+      @update:show="showAssignmentModal = $event"
+      @update:active-role="activeAssignmentRole = $event"
+      @close="closeAssignmentModal"
+      @apply="applyAssignmentModal"
+    />
   </main>
 </template>
 
 <script>
 import DashboardHeader from "@/components/admin-component/DashboardHeader.vue";
+import RoleAssignmentDrawer from "@/components/admin-component/RoleAssignmentDrawer.vue";
 import { useAuthStore } from "@/stores/authStore";
 import Swal from "sweetalert2";
+import {
+  createEmptyRoleAssignments,
+  getAssignmentSummaryText,
+  clearRoleAssignments,
+  resetAllRoleAssignments,
+} from "@/utils/roleAssignmentData";
 
 export default {
   name: "LocationView",
   components: {
-    DashboardHeader  },
+    DashboardHeader,
+    RoleAssignmentDrawer,
+  },
   data() {
     return {
       authStore: useAuthStore(),
@@ -251,6 +287,12 @@ export default {
         { short: "NS", full: "Network Security" },
         { short: "AF", full: "Architectural Flaws" }
       ],
+      showAssignmentModal: false,
+      activeAssignmentRole: null,
+      roleAssignments: createEmptyRoleAssignments(),
+      roleAssignmentCatalog: { PM: { assets: [], vulnerabilities: [] }, CM: { assets: [], vulnerabilities: [] }, NS: { assets: [], vulnerabilities: [] }, AF: { assets: [], vulnerabilities: [] } },
+      vulnIdToData: {},
+      catalogLoading: false,
     };
   },
   computed: {
@@ -269,6 +311,9 @@ export default {
       return this.selectedRoles
         .map((r) => this.roleOptions.find((o) => o.short === r)?.full || r)
         .join(", ");
+    },
+    assignmentSummaryText() {
+      return getAssignmentSummaryText(this.selectedRoles, this.roleAssignments);
     },
     // generatedInviteLink() {
     //   const base = "https://vaptbackend.secureitlab.com";
@@ -329,6 +374,89 @@ export default {
           }
         });
       }
+    },
+    onRoleToggle(role, event) {
+      const isChecked = event?.target?.checked;
+      if (isChecked) {
+        this.isRoleOpen = false;
+        this.openAssignmentModal(role.short);
+        return;
+      }
+      clearRoleAssignments(this.roleAssignments, role.short);
+      if (this.activeAssignmentRole === role.short) {
+        this.closeAssignmentModal();
+      }
+    },
+    async openAssignmentModal(roleShort) {
+      if (!roleShort || !this.selectedRoles.includes(roleShort)) return;
+      this.activeAssignmentRole = roleShort;
+      this.showAssignmentModal = true;
+
+      // Already loaded → skip
+      if (
+        this.roleAssignmentCatalog[roleShort]?.assets?.length ||
+        this.roleAssignmentCatalog[roleShort]?.vulnerabilities?.length
+      ) return;
+
+      const roleFullMap = {
+        PM: 'Patch Management',
+        CM: 'Configuration Management',
+        NS: 'Network Security',
+        AF: 'Architectural Flaws',
+      };
+
+      this.catalogLoading = true;
+      const res = await this.authStore.fetchReportAssetVulnsByRole(roleFullMap[roleShort]);
+      this.catalogLoading = false;
+
+      if (!res.status || !res.data) return;
+
+      const apiAssets = res.data.assets || [];
+
+      const topSeverity = (vulns) => {
+        const order = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+        return vulns.reduce((top, v) => {
+          const s = v.severity || '';
+          return (order[s] ?? 9) < (order[top] ?? 9) ? s : top;
+        }, '');
+      };
+
+      const catalogAssets = apiAssets.map(a => ({
+        id: String(a.host_name || '').trim(),
+        name: String(a.host_name || '').trim(),
+        os: a.os || '',
+        severity: topSeverity(a.vulnerabilities || []),
+      })).filter(a => a.id);
+
+      if (!this.vulnIdToData[roleShort]) this.vulnIdToData[roleShort] = {};
+      let vulnIndex = 0;
+      const catalogVulns = [];
+      apiAssets.forEach(a => {
+        const hostName = String(a.host_name || '').trim();
+        (a.vulnerabilities || []).forEach(v => {
+          const pluginName = String(v.plugin_name || '').trim();
+          if (!pluginName || !hostName) return;
+          const id = `${roleShort}-v-${vulnIndex++}`;
+          this.vulnIdToData[roleShort][id] = { plugin_name: pluginName, host_name: hostName };
+          catalogVulns.push({ id, name: pluginName, asset: hostName, severity: v.severity || '' });
+        });
+      });
+
+      this.roleAssignmentCatalog[roleShort] = { assets: catalogAssets, vulnerabilities: catalogVulns };
+    },
+    closeAssignmentModal() {
+      this.showAssignmentModal = false;
+    },
+    applyAssignmentModal() {
+      this.closeAssignmentModal();
+    },
+    resetRoleAssignments() {
+      resetAllRoleAssignments(this.roleAssignments);
+      this.activeAssignmentRole = null;
+      this.closeAssignmentModal();
+      this.roleAssignmentCatalog = { PM: { assets: [], vulnerabilities: [] }, CM: { assets: [], vulnerabilities: [] }, NS: { assets: [], vulnerabilities: [] }, AF: { assets: [], vulnerabilities: [] } };
+      this.vulnIdToData = {};
+      this.catalogLoading = false;
     },
     async importFromPlatformOnly() {
       const email = (this.platformImportEmail || "").trim();
@@ -407,6 +535,22 @@ export default {
 
       const platform = this.authStore.detectAdminCommunicationPlatform();
 
+      const roleFullMap = {
+        PM: 'Patch Management', CM: 'Configuration Management',
+        NS: 'Network Security', AF: 'Architectural Flaws',
+      };
+      const role_assignments = {};
+      this.selectedRoles.forEach(roleShort => {
+        const fullName = roleFullMap[roleShort];
+        const ra = this.roleAssignments[roleShort];
+        if (!ra) return;
+        const assets = [...(ra.assets || [])];
+        const vulns = (ra.vulnerabilities || [])
+          .map(id => this.vulnIdToData[roleShort]?.[id])
+          .filter(Boolean);
+        if (assets.length || vulns.length) role_assignments[fullName] = { assets, vulns };
+      });
+
       const payload = {
         admin_id: adminId,
         first_name: this.form.first_name,
@@ -415,7 +559,8 @@ export default {
         user_type: this.form.user_type,
         Member_role: this.selectedRoles.map(
           r => this.roleOptions.find(o => o.short === r)?.full
-        )
+        ),
+        ...(Object.keys(role_assignments).length && { role_assignments }),
       };
 
       // DB via add-user-detail; Slack/Teams invite runs after (per role channels).
@@ -468,6 +613,7 @@ export default {
         this.form.user_type = "";
         this.selectedRoles = [];
         this.isRoleOpen = false;
+        this.resetRoleAssignments();
 
       } else {
         let errorMessage = "User detail with this email already exists";
@@ -831,6 +977,50 @@ export default {
   user-select: none;
 }
 .loc-field-role-display.is-placeholder { color: #9ca3af; }
+.loc-assignment-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  background: #f8fafc;
+  border: 1px solid #e8ecf2;
+  border-radius: 10px;
+}
+.loc-assignment-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: #0f696e;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.2;
+  text-align: left;
+  flex: 1;
+  min-width: 0;
+}
+.loc-assignment-link span {
+  white-space: nowrap;
+}
+.loc-assignment-link:hover { opacity: 0.8; }
+.loc-assignment-counts {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  color: #475569;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 4px 10px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+}
 .loc-submit-btn {
   width: 100%;
   height: 46px;

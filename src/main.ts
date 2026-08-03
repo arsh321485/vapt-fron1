@@ -1,6 +1,5 @@
 import "./assets/main.css";
 import "./assets/responsive.css";
-import "./assets/tawk-control.css";
 
 // Bootstrap dropdowns/collapse require the JS bundle (includes Popper).
 import "bootstrap/dist/js/bootstrap.bundle.min.js";

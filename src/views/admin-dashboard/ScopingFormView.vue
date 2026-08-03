@@ -71,15 +71,15 @@
                 <div class="row g-3">
                   <div class="col-md-6">
                     <label class="form-label scoping-label">Project Name <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control scoping-input" placeholder="e.g. Q1 2025 VAPT Assessment" />
+                    <input type="text" class="form-control scoping-input" autocomplete="off" placeholder="e.g. Q1 2025 VAPT Assessment" />
                   </div>
                   <div class="col-md-6">
                     <label class="form-label scoping-label">Project Reference Number</label>
-                    <input type="text" class="form-control scoping-input" placeholder="e.g. VAPT-2025-001" />
+                    <input type="text" class="form-control scoping-input" autocomplete="off" placeholder="e.g. VAPT-2025-001" />
                   </div>
                   <div class="col-md-6">
                     <label class="form-label scoping-label">Client / Organization Name <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control scoping-input" placeholder="e.g. Acme Corp Ltd." />
+                    <input type="text" class="form-control scoping-input" autocomplete="off" placeholder="e.g. Acme Corp Ltd." />
                   </div>
                   <div class="col-md-6">
                     <label class="form-label scoping-label">Industry / Sector</label>
@@ -97,15 +97,15 @@
                   </div>
                   <div class="col-md-4">
                     <label class="form-label scoping-label">Assessment Start Date <span class="text-danger">*</span></label>
-                    <input type="date" class="form-control scoping-input" />
+                    <input type="date" class="form-control scoping-input" autocomplete="off" />
                   </div>
                   <div class="col-md-4">
                     <label class="form-label scoping-label">Assessment End Date <span class="text-danger">*</span></label>
-                    <input type="date" class="form-control scoping-input" />
+                    <input type="date" class="form-control scoping-input" autocomplete="off" />
                   </div>
                   <div class="col-md-4">
                     <label class="form-label scoping-label">Reporting Deadline</label>
-                    <input type="date" class="form-control scoping-input" />
+                    <input type="date" class="form-control scoping-input" autocomplete="off" />
                   </div>
                   <div class="col-12">
                     <label class="form-label scoping-label">Project Description / Background</label>
@@ -127,27 +127,27 @@
                 <div class="row g-3">
                   <div class="col-md-4">
                     <label class="form-label scoping-label">Primary Contact Name <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control scoping-input" placeholder="Full name" />
+                    <input type="text" class="form-control scoping-input" autocomplete="off" placeholder="Full name" />
                   </div>
                   <div class="col-md-4">
                     <label class="form-label scoping-label">Email Address <span class="text-danger">*</span></label>
-                    <input type="email" class="form-control scoping-input" placeholder="email@company.com" />
+                    <input type="email" class="form-control scoping-input" autocomplete="off" placeholder="email@company.com" />
                   </div>
                   <div class="col-md-4">
                     <label class="form-label scoping-label">Phone Number</label>
-                    <input type="tel" class="form-control scoping-input" placeholder="+91 XXXXX XXXXX" />
+                    <input type="tel" class="form-control scoping-input" autocomplete="off" placeholder="+91 XXXXX XXXXX" />
                   </div>
                   <div class="col-md-4">
                     <label class="form-label scoping-label">Technical Contact Name</label>
-                    <input type="text" class="form-control scoping-input" placeholder="Full name" />
+                    <input type="text" class="form-control scoping-input" autocomplete="off" placeholder="Full name" />
                   </div>
                   <div class="col-md-4">
                     <label class="form-label scoping-label">Technical Contact Email</label>
-                    <input type="email" class="form-control scoping-input" placeholder="tech@company.com" />
+                    <input type="email" class="form-control scoping-input" autocomplete="off" placeholder="tech@company.com" />
                   </div>
                   <div class="col-md-4">
                     <label class="form-label scoping-label">Emergency Contact Number <span class="text-danger">*</span></label>
-                    <input type="tel" class="form-control scoping-input" placeholder="+91 XXXXX XXXXX" />
+                    <input type="tel" class="form-control scoping-input" autocomplete="off" placeholder="+91 XXXXX XXXXX" />
                   </div>
                 </div>
               </div>
@@ -351,11 +351,11 @@
                     <label class="form-label scoping-label">Permitted Testing Hours <span class="text-danger">*</span></label>
                     <div class="row g-2">
                       <div class="col-6">
-                        <input type="time" class="form-control scoping-input" placeholder="Start time" />
+                        <input type="time" class="form-control scoping-input" autocomplete="off" placeholder="Start time" />
                         <div class="form-text" style="font-size:11px;">Start time</div>
                       </div>
                       <div class="col-6">
-                        <input type="time" class="form-control scoping-input" placeholder="End time" />
+                        <input type="time" class="form-control scoping-input" autocomplete="off" placeholder="End time" />
                         <div class="form-text" style="font-size:11px;">End time</div>
                       </div>
                     </div>
@@ -511,15 +511,15 @@
                   <div class="row g-3 mt-1">
                     <div class="col-md-4">
                       <label class="form-label scoping-label">Authorized By (Full Name) <span class="text-danger">*</span></label>
-                      <input type="text" class="form-control scoping-input" placeholder="Full legal name" />
+                      <input type="text" class="form-control scoping-input" autocomplete="off" placeholder="Full legal name" />
                     </div>
                     <div class="col-md-4">
                       <label class="form-label scoping-label">Job Title / Designation <span class="text-danger">*</span></label>
-                      <input type="text" class="form-control scoping-input" placeholder="e.g. CTO, IT Manager" />
+                      <input type="text" class="form-control scoping-input" autocomplete="off" placeholder="e.g. CTO, IT Manager" />
                     </div>
                     <div class="col-md-4">
                       <label class="form-label scoping-label">Date of Authorization <span class="text-danger">*</span></label>
-                      <input type="date" class="form-control scoping-input" />
+                      <input type="date" class="form-control scoping-input" autocomplete="off" />
                     </div>
                     <div class="col-12">
                       <label class="form-label scoping-label">Digital Signature / Initials <span class="text-danger">*</span></label>

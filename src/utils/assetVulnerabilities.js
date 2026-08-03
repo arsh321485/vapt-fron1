@@ -12,7 +12,9 @@ export function canonSeverity(sev) {
 }
 
 export function vulnDisplayName(v) {
-  return String(v?.vul_name || v?.plugin_name || v?.vulnerability_name || '').trim();
+  return String(
+    v?.vul_name || v?.plugin_name || v?.vulnerability_name || v?.vulnerability || '',
+  ).trim();
 }
 
 export function vulnNameKey(v) {
@@ -54,28 +56,221 @@ export function normalizeAssetVulnerabilityList(list) {
 export function assetMatchesRegisterRow(row, assetIp) {
   const ip = String(assetIp || '').trim().toLowerCase();
   if (!ip) return false;
-  const fields = [row.asset, row.host_name, row.ip, row.hostname, row.host];
+  const fields = [
+    row.asset,
+    row.host_name,
+    row.ip,
+    row.hostname,
+    row.host,
+    row.resolved_ip,
+  ];
   return fields.some(f => String(f || '').trim().toLowerCase() === ip);
 }
 
-export function buildVulnsFromRegister(registerRows, assetIp) {
-  return normalizeAssetVulnerabilityList(
+export function filterDeletedVulnsForHost(vulns, hostName, deletedRows = []) {
+  const host = String(hostName || '').trim();
+  if (!host || !Array.isArray(vulns) || !vulns.length) return vulns || [];
+  const deletedSet = buildDeletedVulnAssetSet(deletedRows);
+  if (!deletedSet.size) return vulns;
+  return vulns.filter((v) => {
+    const plugin = v.vul_name || v.plugin_name || v.vulnerability_name;
+    return !deletedSet.has(deletedVulnAssetKey(plugin, host));
+  });
+}
+
+export function buildVulnsFromRegister(registerRows, assetIp, deletedRows = []) {
+  const vulns = normalizeAssetVulnerabilityList(
     (registerRows || []).filter(r => assetMatchesRegisterRow(r, assetIp)),
   );
+  return filterDeletedVulnsForHost(vulns, assetIp, deletedRows);
+}
+
+/** Extract fix session id from a register/vuln row (never use row.id) */
+export function extractFixVulnerabilityId(obj) {
+  if (!obj || typeof obj !== 'object') return '';
+  const candidates = [obj.fix_vulnerability_id, obj.fix_vuln_id, obj.fixVulnerabilityId];
+  for (const value of candidates) {
+    if (value != null && String(value).trim()) return String(value).trim();
+  }
+  return '';
+}
+
+/** Match a vuln to its register row for the given asset IP */
+export function lookupRegisterRow(registerRows, vuln, assetIp) {
+  const key = vulnNameKey(vuln);
+  const ip = String(assetIp || '').trim().toLowerCase();
+  if (!key || !ip) return null;
+
+  const rows = (registerRows || []).filter(r => assetMatchesRegisterRow(r, assetIp));
+  const exact = rows.find(r => vulnNameKey(r) === key);
+  if (exact) return exact;
+
+  // Fallback: partial name match for the same asset (handles minor label differences)
+  return rows.find(r => {
+    const rowKey = vulnNameKey(r);
+    return rowKey && (rowKey.includes(key) || key.includes(rowKey));
+  }) || null;
+}
+
+/** Resolve fix_vulnerability_id from register (never use row.id for step-complete API) */
+export function lookupFixVulnerabilityId(registerRows, vuln, assetIp) {
+  const fromVuln = extractFixVulnerabilityId(vuln);
+  if (fromVuln) return fromVuln;
+
+  const row = lookupRegisterRow(registerRows, vuln, assetIp);
+  return extractFixVulnerabilityId(row);
+}
+
+/** Merge register-only fields onto asset vulnerability rows */
+export function enrichVulnsFromRegister(vulns, registerRows, assetIp) {
+  return (Array.isArray(vulns) ? vulns : []).map(v => {
+    const row = lookupRegisterRow(registerRows, v, assetIp);
+    if (!row) return v;
+    const fixId = extractFixVulnerabilityId(row) || extractFixVulnerabilityId(v);
+    return {
+      ...v,
+      fix_vulnerability_id: fixId || null,
+      operating_system: row.operating_system || row.os || v.operating_system || '',
+    };
+  });
 }
 
 export function matchesVulnStatusFilter(vuln, statusFilter) {
   if (!statusFilter?.length) return true;
   return statusFilter.some(f => {
-    if (f === 'open') return isActiveVulnStatus(vuln?.status);
-    if (f === 'closed') return !isActiveVulnStatus(vuln?.status);
+    if (f === 'open') {
+      if (vuln?.open_count != null) return Number(vuln.open_count) > 0;
+      return isActiveVulnStatus(vuln?.status);
+    }
+    if (f === 'closed') {
+      if (vuln?.open_count != null) return Number(vuln.open_count) === 0;
+      return !isActiveVulnStatus(vuln?.status);
+    }
     return false;
   });
 }
 
+/** Map GET /report/{id}/vulnerabilities/ rows for All Vulnerabilities tab */
+export function normalizeReportVulnerability(v) {
+  if (!v || typeof v !== 'object') return null;
+  const name = String(v.plugin_name || v.vul_name || '').trim();
+  if (!name) return null;
+  const openCount = Number(v.open_count) || 0;
+  const totalAssets = Number(v.total_assets) || 0;
+  const severity = canonSeverity(v.severity || 'Medium');
+  const status = openCount > 0 ? 'open' : 'closed';
+  return {
+    ...v,
+    _key: name.toLowerCase(),
+    vul_name: name,
+    plugin_name: name,
+    severity,
+    status,
+    cvss_score: v.cvss_score ?? null,
+    vendor_fix_available: v.vendor_fix_available ?? '',
+    assigned_team: v.assigned_team || '',
+    total_assets: totalAssets,
+    open_count: openCount,
+    held_count: Number(v.held_count) || 0,
+    deleted_count: Number(v.deleted_count) || 0,
+    assets: [],
+    rows: [],
+    description: v.description || '',
+    selected: false,
+  };
+}
+
+export function normalizeReportVulnerabilityList(list) {
+  return (Array.isArray(list) ? list : [])
+    .map(normalizeReportVulnerability)
+    .filter(Boolean);
+}
+
+function deletedVulnAssetKey(pluginName, hostName) {
+  return `${String(pluginName || '').trim().toLowerCase()}::${String(hostName || '').trim()}`;
+}
+
+export function buildDeletedVulnAssetSet(deletedRows) {
+  const set = new Set();
+  (Array.isArray(deletedRows) ? deletedRows : []).forEach((row) => {
+    const plugin = row?.plugin_name || row?.vul_name || '';
+    const host = row?.host_name || row?.asset || row?.host || '';
+    if (plugin && host) set.add(deletedVulnAssetKey(plugin, host));
+  });
+  return set;
+}
+
+export function enrichReportVulnerabilitiesFromRegister(grouped, registerRows, deletedRows = []) {
+  const rows = Array.isArray(registerRows) ? registerRows : [];
+  const deletedSet = buildDeletedVulnAssetSet(deletedRows);
+  return grouped.map(g => {
+    const key = g._key || vulnNameKey(g);
+    const pluginName = g.vul_name || g.plugin_name || '';
+    const matching = rows.filter(r => vulnNameKey(r) === key);
+    if (!matching.length) return g;
+    const assets = [...new Set(matching.map(r => r.asset || r.host_name).filter(Boolean))]
+      .filter((host) => !deletedSet.has(deletedVulnAssetKey(pluginName, host)));
+    const description = matching.find(r => r.description)?.description || g.description || '';
+    return {
+      ...g,
+      assets: assets.length ? assets : g.assets,
+      description,
+      rows: matching,
+    };
+  });
+}
+
+export function reportVulnAssetCount(v) {
+  const total = Number(v?.total_assets);
+  const held = Number(v?.held_count) || 0;
+  if (Number.isFinite(total) && total > 0) {
+    return Math.max(0, total - held);
+  }
+  const open = Number(v?.open_count);
+  if (Number.isFinite(open) && open >= 0) return open;
+  return Array.isArray(v?.assets) ? v.assets.length : 0;
+}
+
+export function normalizeHeldVulnerabilityAsset(row, pluginName = '') {
+  if (!row || typeof row !== 'object') return null;
+  const name = String(row.plugin_name || row.vul_name || pluginName || '').trim();
+  const host = String(row.host_name || row.asset || row.host || '').trim();
+  if (!name || !host) return null;
+  return {
+    plugin_name: name,
+    vul_name: name,
+    host_name: host,
+    severity: canonSeverity(row.severity || 'Medium'),
+    status: row.status || 'held',
+    _key: name.toLowerCase(),
+    selected: false,
+  };
+}
+
+export function normalizeHeldVulnerabilityAssetList(list, pluginName = '') {
+  return (Array.isArray(list) ? list : [])
+    .map(row => normalizeHeldVulnerabilityAsset(row, pluginName))
+    .filter(Boolean);
+}
+
 /** Active vulns plus fixed-recently entries for Open/Closed status filters */
 export function mergeAssetThreatVulnerabilities(activeVulns, closedFixVulns = []) {
-  const list = normalizeAssetVulnerabilityList(activeVulns);
+  // Build set of names that are confirmed closed/fixed
+  const closedNames = new Set();
+  (closedFixVulns || []).forEach(fix => {
+    const key = vulnNameKey(fix);
+    if (key) closedNames.add(key);
+  });
+
+  // If an active vuln is also in closedFixVulns, mark it closed so it
+  // does not appear as open in Active Threats
+  const list = normalizeAssetVulnerabilityList(activeVulns).map(v => {
+    if (closedNames.has(vulnNameKey(v))) {
+      return { ...v, status: 'closed' };
+    }
+    return v;
+  });
+
   const seen = new Set(list.map(vulnNameKey));
   (closedFixVulns || []).forEach(fix => {
     const name = vulnDisplayName(fix);

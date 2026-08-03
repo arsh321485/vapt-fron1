@@ -27,14 +27,21 @@ import PartnerView from "../views/admin-views/PartnerView.vue";
 import PartnerLeadPortalView from "../views/admin-views/PartnerLeadPortalView.vue";
 import PartnerLeadThankYouView from "../views/admin-views/PartnerLeadThankYouView.vue";
 import PartnerThankYouView from "../views/admin-views/PartnerThankYouView.vue";
+import WebinarFormView from "../views/admin-views/WebinarFormView.vue";
+import WebinarThankYouView from "../views/admin-views/WebinarThankYouView.vue";
 import PrivacyPolicyView from "../views/admin-views/PrivacyPolicyView.vue";
 import TermsOfServiceView from "../views/admin-views/TermsOfServiceView.vue";
 import SecurityStatementView from "../views/admin-views/SecurityStatementView.vue";
+import KnowledgeBaseView from "../views/admin-views/KnowledgeBaseView.vue";
 import DataProcessingAgreementView from "../views/admin-views/DataProcessingAgreementView.vue";
 import SupportCenterView from "../views/admin-views/SupportCenterView.vue";
 import RiskCriteriaView from "../views/admin-views/RiskCriteriaView.vue";
 import HowitWork from "../components/admin-component/HowitWork.vue";
 import Profile from "../components/admin-component/Profile.vue";
+import AdminManageAccountView from "../views/admin-dashboard/AdminManageAccountView.vue";
+import AdminSettingsView from "../views/admin-dashboard/AdminSettingsView.vue";
+import UserManageAccountView from "../views/user-views/UserManageAccountView.vue";
+import UserSettingsView from "../views/user-views/UserSettingsView.vue";
 import ResetPasswordView from "../views/admin-views/ResetPasswordView.vue";
 import NotificationPanel from "../components/admin-component/NotificationPanel.vue";
 
@@ -109,6 +116,11 @@ const router = createRouter({
       component: SecurityStatementView,
     },
     {
+      path: "/knowledge-base",
+      name: "knowledge-base",
+      component: KnowledgeBaseView,
+    },
+    {
       path: "/support",
       name: "public-support",
       component: SupportCenterView,
@@ -151,6 +163,16 @@ const router = createRouter({
       path: "/partner-thankyou",
       name: "partner-thankyou",
       component: PartnerThankYouView,
+    },
+    {
+      path: "/webinarform",
+      name: "webinarform",
+      component: WebinarFormView,
+    },
+    {
+      path: "/webinarform-thankyou",
+      name: "webinarform-thankyou",
+      component: WebinarThankYouView,
     },
     {
       path: "/vulnerabilityexplorer",
@@ -375,6 +397,19 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
+      path: "/manage-account",
+      name: "manage-account",
+      component: AdminManageAccountView,
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    // Settings route — hidden (commented out)
+    // {
+    //   path: "/settings",
+    //   name: "settings",
+    //   component: AdminSettingsView,
+    //   meta: { requiresAuth: true, requiresAdmin: true },
+    // },
+    {
       path: "/set-password/:uidb64/:token",
       name: "set-password",
       component: ResetPasswordView,
@@ -423,6 +458,19 @@ const router = createRouter({
       component: UserDashboard1View,
       meta: { requiresAuth: true },
     },
+    {
+      path: "/user-manage-account",
+      name: "user-manage-account",
+      component: UserManageAccountView,
+      meta: { requiresAuth: true },
+    },
+    // User settings route — hidden (commented out)
+    // {
+    //   path: "/user-settings",
+    //   name: "user-settings",
+    //   component: UserSettingsView,
+    //   meta: { requiresAuth: true },
+    // },
     {
       path: "/userassets",
       name: "userassets",
@@ -518,9 +566,13 @@ const router = createRouter({
     },
   ],
   scrollBehavior(to, from, savedPosition) {
-    // Scroll to top only when navigating to admin dashboard onboarding
-    if (to.path === "/admindashboardonboarding") {
-      return { top: 0 };
+    // Scroll to top for these public confirmation / onboarding pages
+    if (
+      to.path === "/admindashboardonboarding" ||
+      to.path === "/webinarform-thankyou" ||
+      to.path === "/webinarform"
+    ) {
+      return { top: 0, left: 0 };
     }
     // For other routes, preserve default behavior
     return false;

@@ -50,6 +50,25 @@
           </router-link>
         </div>
 
+        <!-- SETTINGS — hidden (commented out)
+        <div>
+          <router-link :to="{ path: '/user-settings', query: { returnTo: route.fullPath } }">
+          <button class="btn border-0" :class="{ activeBtn: isActive('/user-settings') }">
+          <i class="bi bi-gear nav-menu"></i>
+          <p class="menu-heading">Settings</p></button>
+          </router-link>
+        </div>
+        -->
+
+        <!-- FIXED -->
+        <div>
+          <router-link to="/fixedvulnerabilities">
+          <button class="btn border-0" :class="{ activeBtn: isActive('/fixedvulnerabilities') }">
+          <i class="bi bi-check-circle nav-menu"></i>
+          <p class="menu-heading">Fixed</p></button>
+          </router-link>
+        </div>
+
         <!--
         <div>
           <router-link to="/pendingvulnerabilities">

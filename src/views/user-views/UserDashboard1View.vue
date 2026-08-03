@@ -340,15 +340,17 @@
                     <span class="info-tooltip" data-tooltip="Displays the remaining remediation time for vulnerabilities based on the defined risk criteria."><i class="bi bi-info-circle dash-info-icon"></i></span>
                   </div>
 
-                  <div v-if="!mitigation.critical && !mitigation.high && !mitigation.medium && !mitigation.low" class="d-flex flex-column align-items-center justify-content-center py-2" style="opacity:0.55;">
+                  <div v-if="!authStore.mitigationTimeline" class="d-flex flex-column align-items-center justify-content-center py-2" style="opacity:0.55;">
                     <i class="bi bi-clock-history" style="font-size:2rem;color:#cbd5e1;margin-bottom:8px;"></i>
                     <span style="font-size:11px;color:#94a3b8;font-weight:600;">Awaiting timeline data</span>
                   </div>
 
                   <!-- Half-circle gauges -->
-                  <div class="d-flex justify-content-around align-items-end" style="gap:2px; margin-top:54px;">
+                  <div v-else class="d-flex justify-content-around align-items-end" style="gap:2px; margin-top:54px;">
                     <div class="d-flex flex-column align-items-center gap-1">
-                      <div style="position:relative; width:66px; height:38px; overflow:hidden;">
+                      <div class="gauge-tip-wrap"
+                        :data-gauge-tip="formatTimeline(getMitigationValue('critical'))"
+                        style="position:relative; width:66px; height:38px; overflow:visible; cursor:default;">
                         <svg width="66" height="38" viewBox="0 0 72 42">
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none" stroke="#f1f5f9" stroke-width="8" stroke-linecap="round"/>
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none"
@@ -358,13 +360,15 @@
                             :stroke-dashoffset="94 - (mitigationPct('critical').compliancePct / 100 * 94)"/>
                         </svg>
                         <div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);text-align:center;white-space:nowrap;">
-                          <div style="font-size:11px;font-weight:800;color:#1f2937;line-height:1;">{{ mitigation.critical || '--' }}</div>
+                          <div style="font-size:9px;font-weight:800;color:#1f2937;line-height:1;">{{ getMitigationLabel('critical') }}</div>
                         </div>
                       </div>
                       <span class="mitigation-sev-label" style="color:#b42318;">Critical</span>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1">
-                      <div style="position:relative; width:66px; height:38px; overflow:hidden;">
+                      <div class="gauge-tip-wrap"
+                        :data-gauge-tip="formatTimeline(getMitigationValue('high'))"
+                        style="position:relative; width:66px; height:38px; overflow:visible; cursor:default;">
                         <svg width="66" height="38" viewBox="0 0 72 42">
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none" stroke="#f1f5f9" stroke-width="8" stroke-linecap="round"/>
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none"
@@ -374,13 +378,15 @@
                             :stroke-dashoffset="94 - (mitigationPct('high').compliancePct / 100 * 94)"/>
                         </svg>
                         <div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);text-align:center;white-space:nowrap;">
-                          <div style="font-size:11px;font-weight:800;color:#1f2937;line-height:1;">{{ mitigation.high || '--' }}</div>
+                          <div style="font-size:9px;font-weight:800;color:#1f2937;line-height:1;">{{ getMitigationLabel('high') }}</div>
                         </div>
                       </div>
                       <span class="mitigation-sev-label" style="color:#dc2626;">High</span>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1">
-                      <div style="position:relative; width:66px; height:38px; overflow:hidden;">
+                      <div class="gauge-tip-wrap"
+                        :data-gauge-tip="formatTimeline(getMitigationValue('medium'))"
+                        style="position:relative; width:66px; height:38px; overflow:visible; cursor:default;">
                         <svg width="66" height="38" viewBox="0 0 72 42">
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none" stroke="#f1f5f9" stroke-width="8" stroke-linecap="round"/>
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none"
@@ -390,13 +396,15 @@
                             :stroke-dashoffset="94 - (mitigationPct('medium').compliancePct / 100 * 94)"/>
                         </svg>
                         <div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);text-align:center;white-space:nowrap;">
-                          <div style="font-size:11px;font-weight:800;color:#1f2937;line-height:1;">{{ mitigation.medium || '--' }}</div>
+                          <div style="font-size:9px;font-weight:800;color:#1f2937;line-height:1;">{{ getMitigationLabel('medium') }}</div>
                         </div>
                       </div>
                       <span class="mitigation-sev-label" style="color:#f59e0b;">Medium</span>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1">
-                      <div style="position:relative; width:66px; height:38px; overflow:hidden;">
+                      <div class="gauge-tip-wrap"
+                        :data-gauge-tip="formatTimeline(getMitigationValue('low'))"
+                        style="position:relative; width:66px; height:38px; overflow:visible; cursor:default;">
                         <svg width="66" height="38" viewBox="0 0 72 42">
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none" stroke="#f1f5f9" stroke-width="8" stroke-linecap="round"/>
                           <path d="M6 38 A30 30 0 0 1 66 38" fill="none"
@@ -406,7 +414,7 @@
                             :stroke-dashoffset="94 - (mitigationPct('low').compliancePct / 100 * 94)"/>
                         </svg>
                         <div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);text-align:center;white-space:nowrap;">
-                          <div style="font-size:11px;font-weight:800;color:#1f2937;line-height:1;">{{ mitigation.low || '--' }}</div>
+                          <div style="font-size:9px;font-weight:800;color:#1f2937;line-height:1;">{{ getMitigationLabel('low') }}</div>
                         </div>
                       </div>
                       <span class="mitigation-sev-label" style="color:#10b981;">Low</span>
@@ -993,15 +1001,7 @@
                           </span>
                         </td>
                         <td>
-                          <router-link :to="vuln.fix_vulnerability_id ? {
-                            name: 'user-remediation-timeline',
-                            params: { reportId: msuReportId || authStore.userLatestReportId, asset: vuln.host_name },
-                            query: { fix_vul_id: vuln.fix_vulnerability_id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor }
-                          } : {
-                            name: 'user-remediation-timeline',
-                            params: { reportId: msuReportId || authStore.userLatestReportId, asset: vuln.host_name },
-                            query: { id: vuln.plugin_id || vuln.id || vuln.nessus_plugin_id, plugin_name: vuln.plugin_name, risk_factor: vuln.risk_factor }
-                          }" class="text-decoration-none">
+                          <router-link :to="getCvAssetsRoute(vuln)" class="text-decoration-none" @click="closeMsuModal">
                             <button class="msu-modal-view-btn">
                               {{ getResolvedCvStatus(vuln)?.toLowerCase() === 'open' ? 'Fix Now' : 'View Now' }} <i class="bi bi-arrow-right-circle-fill ms-1"></i>
                             </button>
@@ -1058,7 +1058,6 @@ export default {
       vulns: { critical: null, high: null, medium: null, low: null },
       vulnsFixed: { total: null, critical: null, high: null, medium: null, low: null },
       supportReqs: { total: null, pending: null, closed: null },
-      mitigation: { critical: null, high: null, medium: null, low: null },
       meanTimeRemediate: null,
       mitigationByTeamData: null,
       vulnAssetCountData: null,
@@ -1654,14 +1653,6 @@ export default {
         if (assets.total_assets !== undefined) this.totalAssets = assets.total_assets;
         if (mttr) this.meanTimeRemediate = `${mttr.weeks ?? 0}w ${mttr.days ?? 0}d ${mttr.hours_remaining ?? 0}hrs`;
 
-        if (mitigation.critical !== undefined || mitigation.high !== undefined) {
-          this.mitigation = {
-            critical: this.formatMitigationDays(mitigation.critical),
-            high: this.formatMitigationDays(mitigation.high),
-            medium: this.formatMitigationDays(mitigation.medium),
-            low: this.formatMitigationDays(mitigation.low),
-          };
-        }
         if (support.total !== undefined) {
           this.supportReqs = {
             total: support.total ?? this.supportReqs.total,
@@ -1689,14 +1680,6 @@ export default {
       }
       // On error - do NOT reset to null, preserve existing data
       if (isFirstLoad) this.assetsLoading = false;
-    },
-    formatMitigationDays(entry) {
-      if (!entry) return null;
-      const days = entry.days ?? 0;
-      if (days < 7) return `${days}d`;
-      const w = Math.floor(days / 7);
-      const d = days % 7;
-      return d > 0 ? `${w}w ${d}d` : `${w}w`;
     },
     async fetchMitigationByTeam(force = false) {
       const store = useAuthStore();
@@ -1743,20 +1726,16 @@ export default {
       modal.show();
     },
     goToUserInProcessTimeline(item) {
-      const reportId = this.inProcessReportId || this.authStore.userLatestReportId;
-      if (!item?.asset || !reportId) return;
+      if (!item?.asset) return;
       const modal = bootstrap.Modal.getInstance(document.getElementById('userInProcessModal'));
       if (modal) modal.hide();
       this.$router.push({
-        name: 'user-remediation-timeline',
-        params: {
-          reportId,
-          asset: item.asset,
-        },
+        name: 'userassets',
         query: {
-          fix_vul_id: item.fix_vulnerability_id,
+          asset: item.asset,
           plugin_name: item.vulnerability_name,
-          risk_factor: item.risk_factor,
+          id: item.fix_vulnerability_id,
+          fix_tab: 'manual',
         },
       });
     },
@@ -1810,37 +1789,22 @@ export default {
       }
     },
     async loadRiskCriteria() {
-      // Try user-side list API first
-      const userResult = await this.authStore.fetchUserRiskCriteria();
-      if (userResult.status && userResult.data) {
-        const d = userResult.data;
-        if (d._id) { localStorage.setItem('riskId', d._id); localStorage.setItem('riskCriteriaId', d._id); }
-        this.riskCriteria = { critical: d.critical ?? null, high: d.high ?? null, medium: d.medium ?? null, low: d.low ?? null };
-        return;
-      }
-      // Try user-side get-by-id API
-      const userByIdResult = await this.authStore.getUserRiskCriteriaById();
-      if (userByIdResult.status && userByIdResult.data) {
-        const d = userByIdResult.data?.risk_criteria || userByIdResult.data;
-        if (d._id) { localStorage.setItem('riskId', d._id); localStorage.setItem('riskCriteriaId', d._id); }
-        this.riskCriteria = { critical: d.critical ?? null, high: d.high ?? null, medium: d.medium ?? null, low: d.low ?? null };
-        return;
-      }
-      // Fallback: admin endpoints
-      let result = await this.authStore.getRiskCriteriaById();
-      if (!result.status) {
-        result = await this.authStore.getRiskCriteriaByAdmin();
-        if (result.status && result.data) {
-          const d = result.data?.risk_criteria || result.data;
-          if (d._id) { localStorage.setItem('riskId', d._id); localStorage.setItem('riskCriteriaId', d._id); }
-          this.riskCriteria = { critical: d.critical ?? null, high: d.high ?? null, medium: d.medium ?? null, low: d.low ?? null };
+      const res = await this.authStore.fetchUserRiskCriteria();
+      if (res.status && res.data) {
+        const list = res.data.risk_criteria || (res.data.critical !== undefined ? [res.data] : []);
+        if (list && list.length) {
+          const latest = list[0];
+          if (latest._id) {
+            localStorage.setItem('riskId', latest._id);
+            localStorage.setItem('riskCriteriaId', latest._id);
+          }
+          this.riskCriteria = {
+            critical: latest.critical ?? null,
+            high: latest.high ?? null,
+            medium: latest.medium ?? null,
+            low: latest.low ?? null,
+          };
         }
-        return;
-      }
-      if (result.data?.risk_criteria) {
-        const d = result.data.risk_criteria;
-        if (d._id) { localStorage.setItem('riskId', d._id); localStorage.setItem('riskCriteriaId', d._id); }
-        this.riskCriteria = { critical: d.critical ?? null, high: d.high ?? null, medium: d.medium ?? null, low: d.low ?? null };
       }
     },
     async selectTeam(team) {
@@ -1853,19 +1817,51 @@ export default {
         this.refreshInProcessCount(),
       ]);
     },
-    getMitigationDaysFromStr(sev) {
-      const val = this.mitigation[sev];
-      if (!val) return null;
-      const s = String(val).toLowerCase();
-      let total = 0;
-      const wMatch = s.match(/(\d+)w/);
-      const dMatch = s.match(/(\d+)d/);
-      if (wMatch) total += parseInt(wMatch[1]) * 7;
-      if (dMatch) total += parseInt(dMatch[1]);
-      return total || null;
+    getMitigationSevData(sev) {
+      const timeline = this.authStore.mitigationTimeline || {};
+      return timeline[sev]
+        ?? timeline[sev.charAt(0).toUpperCase() + sev.slice(1)]
+        ?? null;
+    },
+    getMitigationLabel(sev) {
+      const sevData = this.getMitigationSevData(sev);
+      if (sevData && typeof sevData === 'object') {
+        if (sevData.remaining_label) return sevData.remaining_label;
+        if (String(sevData.status || '').toLowerCase() === 'overdue') return 'Overdue';
+        if (sevData.remaining_days != null) return this.formatTimeline({ days: sevData.remaining_days });
+        return this.formatTimeline({ days: sevData.days });
+      }
+      return this.formatTimeline(this.getMitigationValue(sev));
+    },
+    getMitigationDays(sev) {
+      const sevData = this.getMitigationSevData(sev);
+      if (typeof sevData === 'number') return sevData;
+      if (typeof sevData === 'string') {
+        const p = Number(sevData);
+        return Number.isFinite(p) ? p : null;
+      }
+      if (sevData && typeof sevData === 'object') {
+        const r = sevData.remaining_days;
+        return (r !== null && r !== undefined) ? r : (sevData.days ?? null);
+      }
+      return null;
+    },
+    getMitigationValue(sev) {
+      const days = this.getMitigationDays(sev);
+      return { raw: days !== null ? `${days} days` : null, days };
+    },
+    formatTimeline(value) {
+      if (!value || value.days === null || value.days === undefined) return '--';
+      const d = value.days;
+      if (d >= 7) {
+        const weeks = Math.floor(d / 7);
+        const rem = d % 7;
+        return rem === 0 ? `${weeks}W` : `${weeks}W ${rem}D`;
+      }
+      return `${d}D`;
     },
     mitigationPct(sev) {
-      const remaining = this.getMitigationDaysFromStr(sev);
+      const remaining = this.getMitigationDays(sev);
       if (remaining === null || remaining === undefined) return { compliancePct: 0 };
       const criteriaStr = this.riskCriteria?.[sev];
       if (!criteriaStr) return { compliancePct: 50 };
@@ -2074,6 +2070,14 @@ export default {
       const firstGroup = firstSev ? this.getMsuVulnerabilityGroups(firstSev)[0] : null;
       this.msuOpenGroup = firstGroup ? `${firstSev}::${firstGroup.name}` : "";
     },
+    getCvAssetsRoute(vuln) {
+      const query = {
+        mode: 'vulnerabilities',
+        plugin_name: vuln?.plugin_name,
+      };
+      if (vuln?.host_name) query.asset = vuln.host_name;
+      return { name: 'userassets', query };
+    },
     closeMsuModal() {
       this.showMsuModal = false;
       this.msuOpenGroup = "";
@@ -2139,8 +2143,8 @@ export default {
       this.userTeams = [];
     }
 
-    // Default to All Teams on load
-    this.selectedTeam = 'both';
+    const savedTeam = localStorage.getItem('vaptfix_user_preferred_team');
+    this.selectedTeam = savedTeam || 'both';
     void this.runLiveDashboardSync(true);
     this.startLiveDashboardSync();
     document.addEventListener("visibilitychange", this.handleLiveDashboardVisibility);
@@ -2841,6 +2845,45 @@ export default {
   border: 1px solid #d1fae5;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 6px 14px rgba(16,185,129,0.16);
 }
+/* Gauge styled tooltip */
+.gauge-tip-wrap {
+  position: relative;
+}
+.gauge-tip-wrap::after {
+  content: attr(data-gauge-tip);
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e1e2d;
+  color: #fff;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 400;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1060;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.gauge-tip-wrap::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #1e1e2d;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+  z-index: 1060;
+}
+.gauge-tip-wrap:hover::after,
+.gauge-tip-wrap:hover::before { opacity: 1; }
+
 .mitigation-sev-label {
   font-size: 10px;
   font-weight: 700;
