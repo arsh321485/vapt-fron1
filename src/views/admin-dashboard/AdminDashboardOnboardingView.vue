@@ -2354,7 +2354,10 @@ export default {
       }
     },
     initTestingOverlay() {
-      if (this.reportStatusChecking || !this.authStore.reportStatus.hasReport) {
+      const ready =
+        this.authStore.reportStatus.state === "ready" ||
+        this.authStore.reportStatus.hasReport;
+      if (this.reportStatusChecking || !ready) {
         console.log("⏭️ Skipping testing overlay - report status check in progress or no report");
         return;
       }
@@ -2869,43 +2872,24 @@ export default {
     async initReportStatusCheck() {
       console.log("🚀 Initializing report status check...");
 
-      if (this.authStore.reportStatus.checked && this.authStore.reportStatus.hasReport) {
-        console.log("✅ Report already confirmed from store");
-        this.hasReport = true;
-        this.currentReportId = this.authStore.reportStatus.reportId;
-        this.reportStatusChecking = false;
-        this.removeReportStatusOverlay();
-        return;
-      }
-
-      const cachedReportId = localStorage.getItem("reportId");
-      if (cachedReportId) {
-        console.log("✅ Report already confirmed from localStorage:", cachedReportId);
-        this.hasReport = true;
-        this.currentReportId = cachedReportId;
-        this.reportStatusChecking = false;
-        this.removeReportStatusOverlay();
-        return;
-      }
-
-      this.reportStatusChecking = true;
-      this.reportStatusMessage = "Checking report status...";
-      this.createReportStatusOverlay();
-
       const res = await this.authStore.getReportStatus();
+      const state = res.state || (res.hasReport ? "ready" : "no_report");
 
-      if (res.status && res.hasReport) {
-        console.log("✅ Report already exists:", res.reportId);
-        this.hasReport = true;
-        this.currentReportId = res.reportId;
-        this.reportStatusChecking = false;
-        this.removeReportStatusOverlay();
-      } else {
-        console.log("⚠️ Report status API returned no report.");
-        this.hasReport = false;
-        this.reportStatusChecking = false;
-        this.removeReportStatusOverlay();
+      if (state === "no_report") {
+        this.$router.replace("/waiting-for-report");
+        return;
       }
+      if (state === "needs_risk_criteria") {
+        const route = await this.authStore.getAdminOnboardingRoute();
+        this.$router.replace(route);
+        return;
+      }
+
+      // ready — show dashboard
+      this.hasReport = true;
+      this.currentReportId = res.reportId || this.authStore.reportStatus.reportId;
+      this.reportStatusChecking = false;
+      this.removeReportStatusOverlay();
     },
     startLiveDashboardSync() {
       if (this._liveDashboardTimer) return;

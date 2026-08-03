@@ -110,15 +110,16 @@ export default {
   computed: {
     // ✅ Reactive check using store state
     hasReport() {
-      return this.authStore.reportStatus.hasReport;
+      return this.authStore.reportStatus.hasReport || this.authStore.reportStatus.state === "ready";
     }
   },
   methods: {
-    // ✅ Check if dashboard is blocked (no report uploaded)
+    // ✅ Check if dashboard is blocked (onboarding not ready)
     // Uses BOTH store state (reactive) AND localStorage (fallback)
     isDashboardBlocked() {
-      // Primary check: use reactive store state
       if (this.authStore.reportStatus.checked) {
+        const state = this.authStore.reportStatus.state;
+        if (state) return state !== "ready";
         return !this.authStore.reportStatus.hasReport;
       }
       // Fallback: check localStorage (for cases where store hasn't been checked yet)

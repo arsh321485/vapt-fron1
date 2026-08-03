@@ -227,6 +227,9 @@ export default {
     },
     async startSlackLogin() {
       if (this.slackConnected) {
+        try {
+          useAuthStore().setAdminLoginMethod('slack')
+        } catch (_) { /* ignore */ }
         await this.finishOAuthSignIn()
         return
       }
@@ -259,6 +262,9 @@ export default {
     },
     async startTeamsLogin() {
       if (this.teamsConnected) {
+        try {
+          useAuthStore().setAdminLoginMethod('teams')
+        } catch (_) { /* ignore */ }
         await this.finishOAuthSignIn()
         return
       }
@@ -301,6 +307,9 @@ export default {
         this.slackConnected = true
         this.teamsConnected = false
         this.ensureOAuthSession(event.data)
+        try {
+          useAuthStore().setAdminLoginMethod('slack')
+        } catch (_) { /* ignore */ }
         await this.finishOAuthSignIn()
         return
       }
@@ -317,6 +326,9 @@ export default {
         this.teamsConnected = true
         this.slackConnected = false
         this.ensureOAuthSession(event.data)
+        try {
+          useAuthStore().setAdminLoginMethod('teams')
+        } catch (_) { /* ignore */ }
         await this.finishOAuthSignIn()
       }
     },
@@ -325,6 +337,9 @@ export default {
         this.teamsConnected = true
         this.slackConnected = false
         this.ensureOAuthSession()
+        try {
+          useAuthStore().setAdminLoginMethod('teams')
+        } catch (_) { /* ignore */ }
         await this.finishOAuthSignIn()
       }
     },
@@ -346,6 +361,7 @@ export default {
 
         if (result.status) {
           markPostLoginSuccess(result.message)
+          authStore.setAdminLoginMethod('email')
           await this.checkAndRedirect()
         } else {
           Swal.fire('Error', result.message || 'Login failed', 'error')
@@ -370,6 +386,7 @@ export default {
           return
         }
         markPostLoginSuccess(result.message)
+        authStore.setAdminLoginMethod('email')
         await this.checkAndRedirect()
       } catch (error) {
         Swal.fire('Error', 'Something went wrong during Google login', 'error')
@@ -408,47 +425,10 @@ export default {
       const authStore = useAuthStore()
 
       try {
-        // Run onboarding checks in parallel to reduce post-login wait.
-        const [res, riskRes] = await Promise.all([
-          authStore.getScopingUploadStatus(),
-          authStore.fetchAdminRiskCriteria(),
-        ])
-
-        if (!res.file_uploaded) {
-          this.$router.replace('/scoping-form-2')
-          return
-        }
-
-        // File uploaded — clear scoping keys
-        const user = authStore.user || JSON.parse(localStorage.getItem('user') || '{}')
-        const uid = user?.id || user?.email || ''
-        const submittedKey = uid ? `scoping_submitted_${uid}` : 'scoping_submitted'
-        localStorage.removeItem(submittedKey)
-        localStorage.removeItem('scoping_completed')
-
-        // Check risk criteria from backend (source of truth for step 2)
-        const riskCriteriaDone = riskRes.status === true
-
-        if (riskCriteriaDone) {
-          // Risk criteria already set → all onboarding done → sync store and go to dashboard
-          authStore.markStepCompleted(1)
-          authStore.markStepCompleted(2)
-          this.$router.replace('/admindashboardonboarding')
-          return
-        }
-
-        // Risk criteria not set — check communication step via user-scoped localStorage
-        const stepsKey = uid ? `completedSteps_${uid}` : 'completedSteps'
-        const completedSteps = JSON.parse(localStorage.getItem(stepsKey) || '[]')
-        const communicationDone = completedSteps.includes(1)
-
-        if (communicationDone) {
-          this.$router.replace('/riskcriteria')
-        } else {
-          this.$router.replace('/communication')
-        }
+        const route = await authStore.getAdminOnboardingRoute()
+        this.$router.replace(route)
       } catch {
-        this.$router.replace('/scoping-form-2')
+        this.$router.replace('/waiting-for-report')
       }
     }
   },

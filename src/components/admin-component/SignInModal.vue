@@ -423,6 +423,7 @@ export default {
         if (result.status) {
           this.$emit('close');
           markPostLoginSuccess(result.message);
+          authStore.setAdminLoginMethod('email');
           await this.checkAndRedirectAdmin();
         } else {
           const errorMsg = result.message || result.details?.detail || result.details?.non_field_errors?.[0] || 'Invalid credentials';
@@ -454,42 +455,10 @@ export default {
       const authStore = useAuthStore();
 
       try {
-        const [res, riskRes] = await Promise.all([
-          authStore.getScopingUploadStatus(),
-          authStore.fetchAdminRiskCriteria()
-        ]);
-
-        if (!res.file_uploaded) {
-          this.$router.replace('/scoping-form-2');
-          return;
-        }
-
-        const user = authStore.user || JSON.parse(localStorage.getItem('user') || '{}');
-        const uid = user?.id || user?.email || '';
-        const submittedKey = uid ? `scoping_submitted_${uid}` : 'scoping_submitted';
-        localStorage.removeItem(submittedKey);
-        localStorage.removeItem('scoping_completed');
-
-        const riskCriteriaDone = riskRes.status === true;
-
-        if (riskCriteriaDone) {
-          authStore.markStepCompleted(1);
-          authStore.markStepCompleted(2);
-          this.$router.replace('/admindashboardonboarding');
-          return;
-        }
-
-        const stepsKey = uid ? `completedSteps_${uid}` : 'completedSteps';
-        const completedSteps = JSON.parse(localStorage.getItem(stepsKey) || '[]');
-        const communicationDone = completedSteps.includes(1);
-
-        if (communicationDone) {
-          this.$router.replace('/riskcriteria');
-        } else {
-          this.$router.replace('/communication');
-        }
+        const route = await authStore.getAdminOnboardingRoute();
+        this.$router.replace(route);
       } catch {
-        this.$router.replace('/scoping-form-2');
+        this.$router.replace('/waiting-for-report');
       }
     },
     openForgotPassword(type) {

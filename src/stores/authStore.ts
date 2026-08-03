@@ -36,12 +36,14 @@ function clearAllAuthTokens() {
   sessionStorage.removeItem("refreshToken");
   sessionStorage.removeItem("user");
   sessionStorage.removeItem("authenticated");
+  sessionStorage.removeItem("adminLoginMethod");
 
   // Clear localStorage
   localStorage.removeItem("authorization");
   localStorage.removeItem("refreshToken");
   localStorage.removeItem("user");
   localStorage.removeItem("authenticated");
+  localStorage.removeItem("adminLoginMethod");
 }
 
 export const useAuthStore = defineStore("auth", {
@@ -90,7 +92,10 @@ export const useAuthStore = defineStore("auth", {
     projectNames: [] as string[],
     isLoadingProjects: false,
     reportStatus: {
+      state: null as "no_report" | "needs_risk_criteria" | "ready" | null,
       hasReport: false,
+      hasRiskCriteria: false,
+      showDashboard: false,
       reportId: null as string | null,
       message: "",
       checked: false,
@@ -389,6 +394,10 @@ export const useAuthStore = defineStore("auth", {
         // Clear any stale token and cached data so it doesn't get attached to the login request
         clearAllAuthTokens();
         localStorage.removeItem("reportId");
+        this.reportStatus.state = null;
+        this.reportStatus.hasReport = false;
+        this.reportStatus.hasRiskCriteria = false;
+        this.reportStatus.showDashboard = false;
         this.reportStatus.reportId = null;
         this.reportStatus.checked = false;
 
@@ -456,6 +465,10 @@ export const useAuthStore = defineStore("auth", {
         this.setAuth(data.tokens.access, data.user);
         sessionStorage.setItem("refreshToken", data.tokens.refresh);
         localStorage.removeItem("reportId");
+        this.reportStatus.state = null;
+        this.reportStatus.hasReport = false;
+        this.reportStatus.hasRiskCriteria = false;
+        this.reportStatus.showDashboard = false;
         this.reportStatus.reportId = null;
         this.reportStatus.checked = false;
 
@@ -4564,6 +4577,8 @@ export const useAuthStore = defineStore("auth", {
       clearAllAuthTokens();
       sessionStorage.removeItem("google_id_token");
       sessionStorage.removeItem("isNewUser");
+      sessionStorage.removeItem("admin_slack_connected");
+      sessionStorage.removeItem("admin_teams_connected");
       this.user = null;
       this.accessToken = null;
       this.refreshToken = null;
@@ -4656,7 +4671,7 @@ export const useAuthStore = defineStore("auth", {
       return reportId;
     },
 
-    // ✅ GET Report Status (for dashboard - Super Admin upload check)
+    // ✅ GET Report Status (admin onboarding gate: no_report | needs_risk_criteria | ready)
     async getReportStatus() {
       try {
         const res = await endpoint.get("/api/admin/admindashboard/dashboard/report-status/");
@@ -4664,28 +4679,47 @@ export const useAuthStore = defineStore("auth", {
         const data = res.data;
 
         const hasReport = data.has_report ?? false;
+        const hasRiskCriteria = data.has_risk_criteria ?? false;
+        const showDashboard = data.show_dashboard ?? false;
         const reportId = data.report_id || null;
         const message = data.message || "";
 
-        // ✅ Update reactive store state
+        // Prefer explicit state from backend; fall back for older responses
+        let state: "no_report" | "needs_risk_criteria" | "ready" =
+          data.state === "no_report" ||
+          data.state === "needs_risk_criteria" ||
+          data.state === "ready"
+            ? data.state
+            : !hasReport
+              ? "no_report"
+              : !hasRiskCriteria
+                ? "needs_risk_criteria"
+                : "ready";
+
+        if (showDashboard) state = "ready";
+
+        this.reportStatus.state = state;
         this.reportStatus.hasReport = hasReport;
+        this.reportStatus.hasRiskCriteria = hasRiskCriteria;
+        this.reportStatus.showDashboard = showDashboard;
         this.reportStatus.reportId = reportId;
         this.reportStatus.message = message;
         this.reportStatus.checked = true;
 
-        // ✅ Also update localStorage for persistence
         if (hasReport && reportId) {
           localStorage.setItem("reportId", reportId);
         } else {
           localStorage.removeItem("reportId");
         }
 
-        console.log("📊 Report status updated:", { hasReport, reportId, message });
+        console.log("📊 Report status updated:", { state, hasReport, hasRiskCriteria, reportId, message });
 
         return {
           status: true,
+          state,
           hasReport,
-          showDashboard: data.show_dashboard ?? false,
+          hasRiskCriteria,
+          showDashboard,
           reportId,
           message,
           adminId: data.admin_id || null,
@@ -4694,20 +4728,72 @@ export const useAuthStore = defineStore("auth", {
       } catch (error: any) {
         console.error("❌ Report status check failed:", error);
 
-        // ✅ Update store state on error too
         this.reportStatus.checked = true;
+        this.reportStatus.state = "no_report";
         this.reportStatus.hasReport = false;
+        this.reportStatus.hasRiskCriteria = false;
+        this.reportStatus.showDashboard = false;
         this.reportStatus.message =
           error.response?.data?.message || "Failed to check report status";
 
         return {
           status: false,
+          state: "no_report" as const,
           hasReport: false,
+          hasRiskCriteria: false,
           showDashboard: false,
           reportId: null,
           message: error.response?.data?.message || "Failed to check report status",
         };
       }
+    },
+
+    /** Persist how the admin signed in — drives communication-step skip for Slack/Teams */
+    setAdminLoginMethod(method: "email" | "slack" | "teams") {
+      sessionStorage.setItem("adminLoginMethod", method);
+      localStorage.setItem("adminLoginMethod", method);
+    },
+
+    getAdminLoginMethod(): "email" | "slack" | "teams" {
+      const raw =
+        sessionStorage.getItem("adminLoginMethod") ||
+        localStorage.getItem("adminLoginMethod") ||
+        "";
+      if (raw === "slack" || raw === "teams") return raw;
+
+      // OAuth sign-in flags set during Slack/Teams login (not email+integrate later)
+      if (sessionStorage.getItem("admin_slack_connected") === "true") return "slack";
+      if (sessionStorage.getItem("admin_teams_connected") === "true") return "teams";
+
+      return "email";
+    },
+
+    /** Slack/Teams OAuth already provision workspace users — skip /communication */
+    isSlackOrTeamsLogin(): boolean {
+      const method = this.getAdminLoginMethod();
+      return method === "slack" || method === "teams";
+    },
+
+    /** Route after login / onboarding actions based on report-status.state */
+    async getAdminOnboardingRoute(): Promise<string> {
+      const res = await this.getReportStatus();
+      const state = res.state || "no_report";
+
+      if (state === "ready") return "/admindashboardonboarding";
+
+      if (state === "needs_risk_criteria") {
+        // Email login: waiting → communication (add users) → risk criteria
+        // Slack/Teams login: waiting → risk criteria (unchanged)
+        if (!this.isSlackOrTeamsLogin()) {
+          this.initCompletedSteps();
+          if (!this.completedSteps.includes(1)) {
+            return "/communication";
+          }
+        }
+        return "/riskcriteria";
+      }
+
+      return "/waiting-for-report";
     },
 
     // Get all closed vulnerabilities for a report + asset
@@ -5334,7 +5420,10 @@ export const useAuthStore = defineStore("auth", {
 
     // ✅ Reset report status (useful for logout)
     resetReportStatus() {
+      this.reportStatus.state = null;
       this.reportStatus.hasReport = false;
+      this.reportStatus.hasRiskCriteria = false;
+      this.reportStatus.showDashboard = false;
       this.reportStatus.reportId = null;
       this.reportStatus.message = "";
       this.reportStatus.checked = false;

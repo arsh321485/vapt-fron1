@@ -63,8 +63,7 @@ import MicrosoftCallbackView from "../views/admin-views/MicrosoftCallbackView.vu
 import PerformanceMonitoringView from "../views/admin-dashboard/PerformanceMonitoringView.vue";
 import ViewReportPage from "../views/admin-dashboard/ViewReportPage.vue";
 // import ToolboxView from "../views/admin-dashboard/ToolboxView.vue"; // Toolbox commented out
-import ScopingFormView from "../views/admin-dashboard/ScopingFormView.vue";
-import ScopingFormView2 from "../views/admin-dashboard/ScopingFormView2.vue";
+import WaitingForReportView from "../views/admin-dashboard/WaitingForReportView.vue";
 import RemediationTimelineView from "../views/admin-dashboard/RemediationTimelineView.vue";
 import UserRemediationTimelineView from "../views/user-views/UserRemediationTimelineView.vue";
 import CalendarView from "../views/admin-dashboard/CalendarView.vue";
@@ -343,16 +342,20 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
+      path: "/waiting-for-report",
+      name: "waiting-for-report",
+      component: WaitingForReportView,
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
       path: "/scoping-form",
       name: "scoping-form",
-      component: ScopingFormView,
-      meta: { requiresAuth: true, requiresAdmin: true },
+      redirect: "/waiting-for-report",
     },
     {
       path: "/scoping-form-2",
       name: "scoping-form-2",
-      component: ScopingFormView2,
-      meta: { requiresAuth: true, requiresAdmin: true },
+      redirect: "/waiting-for-report",
     },
     {
       path: "/yourteam",

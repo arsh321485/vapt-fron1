@@ -259,7 +259,8 @@ export default {
       // normal locked flow
       if (this.isLocked && !this.isEditMode) {
         auth.markStepCompleted(2);
-        this.$router.push("/admindashboardonboarding");
+        const route = await auth.getAdminOnboardingRoute();
+        this.$router.push(route);
         return;
       }
 
@@ -304,7 +305,9 @@ export default {
             showConfirmButton: false,
           });
 
-          this.$router.push("/admindashboardonboarding");
+          // Re-check onboarding gate — should now be ready
+          const route = await auth.getAdminOnboardingRoute();
+          this.$router.push(route);
         }
 
       } catch (err) {
@@ -367,10 +370,21 @@ export default {
         console.error("Risk criteria fetch error", err);
       }
     },
+    async ensureOnboardingGate() {
+      // Edit mode from dashboard header should still work when already ready
+      if (this.isEditMode) return;
+
+      const auth = useAuthStore();
+      const route = await auth.getAdminOnboardingRoute();
+      if (route !== "/riskcriteria") {
+        this.$router.replace(route);
+      }
+    },
   },
   mounted() {
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
     tooltipTriggerList.forEach(el => new Tooltip(el))
+    this.ensureOnboardingGate();
     this.getRiskCriteria();
   },
 };

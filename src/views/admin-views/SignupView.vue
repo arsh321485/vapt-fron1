@@ -278,7 +278,9 @@ export default {
 
         if (result.status) {
           this.form = { email: '', password: '', confirm_password: '' }
-          this.$router.push('/scoping-form-2')
+          authStore.setAdminLoginMethod('email')
+          const route = await authStore.getAdminOnboardingRoute()
+          this.$router.push(route)
         } else {
           Swal.fire('Error', result.message || 'Invalid OTP. Please try again.', 'error')
           this.resetRecaptcha()

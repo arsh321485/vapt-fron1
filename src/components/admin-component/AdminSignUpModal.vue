@@ -385,7 +385,9 @@ export default {
         if (result.status) {
           this.$emit('close');
           Swal.fire({ icon: 'success', title: 'Signup Successful!', text: 'Your account has been created successfully.', timer: 2000, showConfirmButton: false });
-          this.$router.push('/scoping-form-2');
+          authStore.setAdminLoginMethod('email');
+          const route = await authStore.getAdminOnboardingRoute();
+          this.$router.push(route);
         } else {
           Swal.fire({ icon: 'error', title: 'Invalid OTP', text: result.message || 'Invalid OTP. Please try again.', confirmButtonColor: '#241447' });
         }
@@ -721,10 +723,16 @@ export default {
 
       if (!loggedIn) return;
 
+      if (this.teamsConnected || localStorage.getItem('teams_connected') === 'true') {
+        this.authStore.setAdminLoginMethod('teams');
+      } else {
+        this.authStore.setAdminLoginMethod('slack');
+      }
+
       sessionStorage.setItem('isNewUser', 'true');
       this.resetForm();
       this.$emit('close');
-      this.$router.push('/scoping-form-2');
+      this.$router.push('/waiting-for-report');
     }
   },
   beforeUnmount() {
