@@ -33,6 +33,7 @@ import PrivacyPolicyView from "../views/admin-views/PrivacyPolicyView.vue";
 import TermsOfServiceView from "../views/admin-views/TermsOfServiceView.vue";
 import SecurityStatementView from "../views/admin-views/SecurityStatementView.vue";
 import KnowledgeBaseView from "../views/admin-views/KnowledgeBaseView.vue";
+import HowVaptfixWorksView from "../views/admin-views/HowVaptfixWorksView.vue";
 import DataProcessingAgreementView from "../views/admin-views/DataProcessingAgreementView.vue";
 import SupportCenterView from "../views/admin-views/SupportCenterView.vue";
 import RiskCriteriaView from "../views/admin-views/RiskCriteriaView.vue";
@@ -119,6 +120,11 @@ const router = createRouter({
       path: "/knowledge-base",
       name: "knowledge-base",
       component: KnowledgeBaseView,
+    },
+    {
+      path: "/how-vaptfix-works",
+      name: "how-vaptfix-works",
+      component: HowVaptfixWorksView,
     },
     {
       path: "/support",

@@ -22,11 +22,13 @@
       <main class="ld-content">
         <div class="ld-doc-header">
           <div class="ld-doc-tag">Global Privacy · 20+ Jurisdictions</div>
-          <h1 class="ld-doc-title">Privacy Policy</h1>
+          <h1 class="ld-doc-title">{{ activeSectionLabel }}</h1>
           <p class="ld-doc-meta">
-            <strong>Effective Date:</strong> May 12, 2025 &nbsp;|&nbsp;
-            <strong>Last Updated:</strong> May 12, 2025 &nbsp;|&nbsp;
-            <strong>Version:</strong> 2.0
+            <span><strong>Effective:</strong> May 12, 2025</span>
+            <span style="color:#e2e8f0">|</span>
+            <span><strong>Updated:</strong> May 12, 2025</span>
+            <span style="color:#e2e8f0">|</span>
+            <span><strong>v</strong>2.0</span>
           </p>
         </div>
 
@@ -788,28 +790,73 @@ export default {
   },
   watch: {
     '$route.hash'() {
-      this.$nextTick(() => this.syncTocFromRoute());
+      this.$nextTick(() => {
+        this.syncTocFromRoute();
+        this.lockWindowScroll();
+        this.scrollContentToHash(this.activeTocHash);
+      });
     },
   },
   mounted() {
     document.documentElement.classList.add('legal-doc-sticky-context');
-    this.$nextTick(() => this.syncTocFromRoute());
+    this.lockWindowScroll();
+    this.$nextTick(() => {
+      this.syncTocFromRoute();
+      if (this.$route.hash) this.scrollContentToHash(this.activeTocHash);
+    });
   },
   beforeUnmount() {
     document.documentElement.classList.remove('legal-doc-sticky-context');
+    window.removeEventListener('scroll', this.lockWindowScroll);
+  },
+  computed: {
+    activeSectionLabel() {
+      const active = this.tocItems.find(i => i.type === 'link' && i.href === this.activeTocHash);
+      return active ? active.label : 'Privacy Policy';
+    },
   },
   methods: {
+    lockWindowScroll() {
+      if (window.matchMedia('(min-width: 769px)').matches && window.scrollY !== 0) {
+        window.scrollTo(0, 0);
+      }
+    },
     syncTocFromRoute() {
       const hashes = this.tocItems.filter((i) => i.type === 'link').map((i) => i.href);
       const h = this.$route.hash;
       if (h && hashes.includes(h)) this.activeTocHash = h;
       else this.activeTocHash = hashes[0] || '';
     },
+    scrollContentToHash(href) {
+      if (!href || !href.startsWith('#')) return;
+      const id = href.slice(1);
+      const scroller = this.$el?.querySelector?.('.ld-content');
+      const target = scroller?.querySelector?.(`#${CSS.escape(id)}`);
+      if (!target || !scroller) return;
+      this.lockWindowScroll();
+      if (window.matchMedia('(min-width: 769px)').matches) {
+        const sRect = scroller.getBoundingClientRect();
+        const tRect = target.getBoundingClientRect();
+        const top = scroller.scrollTop + (tRect.top - sRect.top) - 16;
+        scroller.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+      } else {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    },
     onTocNavClick(e) {
       const a = e.target.closest?.('a[href^="#"]');
       if (!a || !e.currentTarget.contains(a)) return;
       const href = a.getAttribute('href');
-      if (href) this.activeTocHash = href;
+      if (!href) return;
+      e.preventDefault();
+      e.stopPropagation();
+      this.activeTocHash = href;
+      if (typeof history !== 'undefined' && history.replaceState) {
+        const url = `${window.location.pathname}${window.location.search}${href}`;
+        history.replaceState(null, '', url);
+      }
+      this.lockWindowScroll();
+      this.$nextTick(() => this.scrollContentToHash(href));
     },
   },
 };
@@ -820,65 +867,64 @@ export default {
 .legal-page-root {
   min-height: 100vh;
   padding-top: 72px;
-  padding-bottom: 24px;
-  padding-left: clamp(10px, 3vw, 24px);
-  padding-right: clamp(10px, 3vw, 24px);
-  background: #e8ecf1;
-  box-sizing: border-box;
-}
-
-/* Single centered column for all legal content */
-.legal-page-frame {
-  width: 100%;
-  max-width: 1080px;
-  margin-left: auto;
-  margin-right: auto;
-  padding-left: clamp(20px, 4vw, 40px);
-  padding-right: clamp(20px, 4vw, 40px);
-  padding-bottom: 2rem;
-  box-sizing: border-box;
   background-color: #ffffff;
   background-image: radial-gradient(#ebe6f3 1px, #ffffff 1px);
   background-size: 20px 20px;
-  border-radius: 12px;
-  border: 1px solid rgba(36, 20, 71, 0.06);
-  box-shadow: 0 4px 24px rgba(36, 20, 71, 0.06);
-  min-height: calc(100vh - 72px - 24px);
-  overflow: visible;
+  box-sizing: border-box;
+}
+
+.legal-page-frame {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 .ld-page {
   display: flex;
   width: 100%;
   margin: 0;
-  padding: 3.25rem 0 0;
-  gap: 3rem;
+  padding: 0;
+  gap: 0;
+  align-items: stretch;
 }
 
 .ld-sidebar {
-  width: 220px;
+  width: 248px;
   flex-shrink: 0;
-  align-self: flex-start;
-  position: sticky;
-  top: 72px;
+  align-self: stretch;
+  position: relative;
   z-index: 1015;
-  max-height: calc(100vh - 88px);
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-bottom: 0.5rem;
+  margin: 0;
+  padding: 1.25rem 0 1rem;
+  border-right: 1px solid rgba(15, 105, 110, 0.1);
   background-color: #ffffff;
   background-image: radial-gradient(#ebe6f3 1px, #ffffff 1px);
   background-size: 20px 20px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.ld-sidebar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 .ld-sidebar-label {
   font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #0f696e;
   text-transform: uppercase;
-  margin-bottom: 0.75rem;
+  margin: 0 0 0.75rem;
+  padding: 0 0 10px 8px;
+  border-bottom: 2px solid rgba(15,105,110,0.15);
 }
 
 .ld-sidebar-group {
@@ -900,28 +946,57 @@ export default {
 .ld-sidebar nav {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .ld-sidebar nav a {
   font-family: 'Inter', sans-serif;
-  font-size: 15px;
+  font-size: 13.5px;
   font-weight: 400;
   color: #64748b;
-  padding: 6px 10px;
-  border-radius: 6px;
-  border-left: 2px solid transparent;
-  transition: all 0.2s;
-  line-height: 1.4;
+  padding: 8px 12px 8px 8px;
+  border-radius: 0;
+  border-left: 3px solid transparent;
+  transition: all 0.18s ease;
+  line-height: 1.45;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.ld-sidebar nav a::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  flex-shrink: 0;
+  transition: background 0.18s;
+}
+
+.ld-sidebar nav a:hover {
+  color: #0f696e;
+  background: rgba(15, 105, 110, 0.06);
+  border-left-color: rgba(15, 105, 110, 0.3);
   text-decoration: none;
 }
 
-.ld-sidebar nav a:hover,
+.ld-sidebar nav a:hover::before { background: #0f696e; }
+
 .ld-sidebar nav a.is-active {
   color: #0f696e;
-  background: rgba(15, 105, 110, 0.08);
+  background: linear-gradient(90deg, rgba(15,105,110,0.12), rgba(15,105,110,0.04));
   border-left-color: #0f696e;
+  font-weight: 700;
   text-decoration: none;
+}
+
+.ld-sidebar nav a.is-active::before {
+  background: #0f696e;
+  width: 6px;
+  height: 6px;
+  box-shadow: 0 0 0 3px rgba(15, 105, 110, 0.25);
 }
 
 .ld-content {
@@ -929,21 +1004,39 @@ export default {
   min-width: 0;
   position: relative;
   z-index: 0;
+  padding: 1.25rem clamp(1.5rem, 4vw, 3rem) 2.5rem clamp(1.75rem, 3.5vw, 2.75rem);
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.ld-content::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 .ld-doc-header {
   position: sticky;
   top: 72px;
   z-index: 1020;
-  margin-bottom: 2.5rem;
-  padding-top: 0.5rem;
-  padding-bottom: 2rem;
-  border-bottom: 1px solid rgba(15, 105, 110, 0.15);
+  margin-bottom: 2rem;
+  padding-top: 1.75rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(15, 105, 110, 0.12);
   background-color: #ffffff;
   background-image: radial-gradient(#ebe6f3 1px, #ffffff 1px);
   background-size: 20px 20px;
-  box-shadow: 0 8px 16px -8px rgba(36, 20, 71, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
 }
+
+
 
 .ld-content > .ld-callout,
 .ld-content > section,
@@ -957,15 +1050,15 @@ export default {
   align-items: center;
   gap: 6px;
   font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
   color: #0f696e;
-  background: rgba(15, 105, 110, 0.1);
-  border: 1px solid rgba(15, 105, 110, 0.2);
-  padding: 4px 10px;
-  border-radius: 20px;
-  margin-bottom: 1rem;
+  background: rgba(15, 105, 110, 0.06);
+  border: 1px solid rgba(15, 105, 110, 0.18);
+  padding: 5px 14px;
+  border-radius: 99px;
+  margin-bottom: 0;
   text-transform: uppercase;
 }
 
@@ -976,28 +1069,37 @@ export default {
 
 .ld-doc-title {
   font-family: 'Inter', sans-serif;
-  font-size: clamp(2rem, 4vw, 3.4rem);
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
   font-weight: 800;
   color: #241447;
-  line-height: 1.15;
-  margin-bottom: 0.75rem;
+  line-height: 1.2;
+  margin-bottom: 0;
+  letter-spacing: -0.01em;
+  padding-bottom: 6px;
+  border-bottom: 3px solid #0f696e;
+  display: inline-block;
 }
 
 .ld-doc-meta {
   font-family: 'Inter', sans-serif;
-  font-size: 15px;
+  font-size: 12px;
   font-weight: 400;
-  color: #49454f;
-  line-height: 1.6;
+  color: #94a3b8;
+  line-height: 1.5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .ld-doc-meta strong {
-  color: #241447;
+  color: #64748b;
   font-weight: 600;
 }
 
 section {
-  margin-bottom: 3rem;
+  margin-bottom: 4rem;
+  padding-top: 0.5rem;
 }
 
 .ld-section-number {
@@ -1012,13 +1114,14 @@ section {
 
 .ld-content h2 {
   font-family: 'Inter', sans-serif;
-  font-size: clamp(1.5rem, 3.5vw, 2.25rem);
-  font-weight: 800;
-  line-height: 1.25;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.35;
   color: #241447;
-  margin-bottom: 1rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid rgba(15, 105, 110, 0.15);
+  border-bottom: 1px solid rgba(15, 105, 110, 0.08);
 }
 
 .ld-content h3 {
@@ -1033,9 +1136,9 @@ section {
 .ld-content p {
   font-family: 'Inter', sans-serif;
   color: #49454f;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
   font-weight: 400;
-  line-height: 1.65;
+  line-height: 1.75;
   font-size: 15px;
 }
 
@@ -1070,14 +1173,16 @@ section {
 .ld-callout {
   background: #f6f4fa;
   border: 1px solid rgba(36, 20, 71, 0.08);
-  border-left: 3px solid #0f696e;
-  border-radius: 8px;
-  padding: 1rem 1.25rem;
-  margin: 1.5rem 0;
+  background: linear-gradient(135deg, rgba(15,105,110,0.04), rgba(15,105,110,0.01));
+  border: 1px solid rgba(15, 105, 110, 0.14);
+  border-left: 4px solid #0f696e;
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin: 2rem 0;
   font-family: 'Inter', sans-serif;
   font-size: 15px;
   font-weight: 400;
-  line-height: 1.65;
+  line-height: 1.75;
 }
 
 .ld-callout p {
@@ -1248,7 +1353,6 @@ section {
   color: #94a3b8;
 }
 
-/* Desktop: main column scrolls inside the card; sidebar does not move with that scroll */
 @media (min-width: 769px) {
   .legal-page-root {
     height: 100vh;
@@ -1260,7 +1364,6 @@ section {
   .legal-page-frame {
     flex: 1 1 auto;
     min-height: 0;
-    max-height: none;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -1269,26 +1372,48 @@ section {
   .ld-page {
     flex: 1 1 auto;
     min-height: 0;
+    height: 100%;
     overflow: hidden;
   }
 
   .ld-sidebar {
-    position: static;
-    align-self: stretch;
-    max-height: none;
+    height: 100%;
+    max-height: 100%;
     overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .ld-sidebar::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
   }
 
   .ld-content {
     flex: 1 1 auto;
     min-height: 0;
+    height: 100%;
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .ld-content::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
   }
 
   .ld-doc-header {
     top: 0;
+  }
+
+  .ld-content > section {
+    scroll-margin-top: 1rem;
   }
 }
 
@@ -1303,6 +1428,7 @@ section {
     flex: none;
     overflow: visible;
     display: block;
+    padding: 0 1rem 2.5rem;
   }
 
   .ld-page {
@@ -1310,17 +1436,26 @@ section {
     flex: none;
     overflow: visible;
     min-height: 0;
-    padding: 1.75rem 0 2.5rem;
+    height: auto;
+    padding: 1.25rem 0 2rem;
   }
 
   .ld-content {
     overflow: visible;
+    height: auto;
+    padding: 0;
   }
 
   .ld-sidebar {
     width: 100%;
     position: static;
+    height: auto;
     max-height: none;
+    overflow: visible;
+    border-right: none;
+    border-bottom: 1px solid rgba(15, 105, 110, 0.12);
+    padding: 0 0 1rem;
+    margin-bottom: 1.25rem;
   }
 
   .ld-jurisdiction-grid {

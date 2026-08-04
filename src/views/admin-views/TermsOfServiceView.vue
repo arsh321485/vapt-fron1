@@ -376,28 +376,67 @@ export default {
   },
   watch: {
     '$route.hash'() {
-      this.$nextTick(() => this.syncTocFromRoute());
+      this.$nextTick(() => {
+        this.syncTocFromRoute();
+        this.lockWindowScroll();
+        this.scrollContentToHash(this.activeTocHash);
+      });
     },
   },
   mounted() {
     document.documentElement.classList.add('legal-doc-sticky-context');
-    this.$nextTick(() => this.syncTocFromRoute());
+    this.lockWindowScroll();
+    this.$nextTick(() => {
+      this.syncTocFromRoute();
+      if (this.$route.hash) this.scrollContentToHash(this.activeTocHash);
+    });
   },
   beforeUnmount() {
     document.documentElement.classList.remove('legal-doc-sticky-context');
+    window.removeEventListener('scroll', this.lockWindowScroll);
   },
   methods: {
+    lockWindowScroll() {
+      if (window.matchMedia('(min-width: 769px)').matches && window.scrollY !== 0) {
+        window.scrollTo(0, 0);
+      }
+    },
     syncTocFromRoute() {
       const hashes = this.tocItems.map((i) => i.href);
       const h = this.$route.hash;
       if (h && hashes.includes(h)) this.activeTocHash = h;
       else this.activeTocHash = hashes[0] || '';
     },
+    scrollContentToHash(href) {
+      if (!href || !href.startsWith('#')) return;
+      const id = href.slice(1);
+      const scroller = this.$el?.querySelector?.('.ld-content');
+      const target = scroller?.querySelector?.(`#${CSS.escape(id)}`);
+      if (!target || !scroller) return;
+      this.lockWindowScroll();
+      if (window.matchMedia('(min-width: 769px)').matches) {
+        const sRect = scroller.getBoundingClientRect();
+        const tRect = target.getBoundingClientRect();
+        const top = scroller.scrollTop + (tRect.top - sRect.top) - 16;
+        scroller.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+      } else {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    },
     onTocNavClick(e) {
       const a = e.target.closest?.('a[href^="#"]');
       if (!a || !e.currentTarget.contains(a)) return;
       const href = a.getAttribute('href');
-      if (href) this.activeTocHash = href;
+      if (!href) return;
+      e.preventDefault();
+      e.stopPropagation();
+      this.activeTocHash = href;
+      if (typeof history !== 'undefined' && history.replaceState) {
+        const url = `${window.location.pathname}${window.location.search}${href}`;
+        history.replaceState(null, '', url);
+      }
+      this.lockWindowScroll();
+      this.$nextTick(() => this.scrollContentToHash(href));
     },
   },
 };
@@ -408,64 +447,65 @@ export default {
 .legal-page-root {
   min-height: 100vh;
   padding-top: 72px;
-  padding-bottom: 24px;
-  padding-left: clamp(10px, 3vw, 24px);
-  padding-right: clamp(10px, 3vw, 24px);
-  background: #e8ecf1;
+  background-color: #ffffff;
+  background-image: radial-gradient(#ebe6f3 1px, #ffffff 1px);
+  background-size: 20px 20px;
   box-sizing: border-box;
 }
 
 .legal-page-frame {
   width: 100%;
-  max-width: 1080px;
-  margin-left: auto;
-  margin-right: auto;
-  padding-left: clamp(20px, 4vw, 40px);
-  padding-right: clamp(20px, 4vw, 40px);
-  padding-bottom: 2rem;
+  max-width: none;
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
-  background-color: #ffffff;
-  background-image: radial-gradient(#ebe6f3 1px, #ffffff 1px);
-  background-size: 20px 20px;
-  border-radius: 12px;
-  border: 1px solid rgba(36, 20, 71, 0.06);
-  box-shadow: 0 4px 24px rgba(36, 20, 71, 0.06);
-  min-height: calc(100vh - 72px - 24px);
-  overflow: visible;
 }
 
 .ld-page {
   display: flex;
   width: 100%;
   margin: 0;
-  padding: 3.25rem 0 0;
-  gap: 3rem;
+  padding: 0;
+  gap: 0;
+  align-items: stretch;
 }
 
 .ld-sidebar {
-  width: 220px;
+  width: 248px;
   flex-shrink: 0;
-  align-self: flex-start;
-  position: sticky;
-  top: 72px;
+  align-self: stretch;
+  position: relative;
   z-index: 1015;
-  max-height: calc(100vh - 88px);
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-bottom: 0.5rem;
+  margin: 0;
+  padding: 1.25rem 0 1rem;
+  border-right: 1px solid rgba(15, 105, 110, 0.1);
   background-color: #ffffff;
   background-image: radial-gradient(#ebe6f3 1px, #ffffff 1px);
   background-size: 20px 20px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.ld-sidebar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 .ld-sidebar-label {
   font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #0f696e;
   text-transform: uppercase;
-  margin-bottom: 0.75rem;
+  margin: 0 0 0.75rem;
+  padding: 0 0 10px 8px;
+  border-bottom: 2px solid rgba(15, 105, 110, 0.15);
+  text-align: left;
 }
 
 .ld-sidebar nav {
@@ -476,12 +516,12 @@ export default {
 
 .ld-sidebar nav a {
   font-family: 'Inter', sans-serif;
-  font-size: 15px;
+  font-size: 13.5px;
   font-weight: 400;
   color: #64748b;
-  padding: 6px 10px;
-  border-radius: 6px;
-  border-left: 2px solid transparent;
+  padding: 6px 10px 6px 10px;
+  border-radius: 0 6px 6px 0;
+  border-left: 3px solid transparent;
   transition: all 0.2s;
   line-height: 1.4;
   text-decoration: none;
@@ -495,11 +535,36 @@ export default {
   text-decoration: none;
 }
 
+.ld-sidebar nav a.is-active {
+  background: linear-gradient(90deg, rgba(15,105,110,0.12), rgba(15,105,110,0.04));
+  font-weight: 700;
+}
+
+.ld-sidebar nav a.is-active::before {
+  background: #0f696e;
+  width: 6px;
+  height: 6px;
+  box-shadow: 0 0 0 3px rgba(15, 105, 110, 0.25);
+}
+
 .ld-content {
   flex: 1;
   min-width: 0;
   position: relative;
   z-index: 0;
+  padding: 1.25rem clamp(1.5rem, 4vw, 3rem) 2.5rem clamp(1.75rem, 3.5vw, 2.75rem);
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.ld-content::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 .ld-doc-header {
@@ -507,13 +572,16 @@ export default {
   top: 72px;
   z-index: 1020;
   margin-bottom: 2.5rem;
-  padding-top: 0.5rem;
-  padding-bottom: 2rem;
-  border-bottom: 1px solid rgba(15, 105, 110, 0.15);
+  padding-top: 1.75rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(15, 105, 110, 0.12);
   background-color: #ffffff;
   background-image: radial-gradient(#ebe6f3 1px, #ffffff 1px);
   background-size: 20px 20px;
-  box-shadow: 0 8px 16px -8px rgba(36, 20, 71, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
 }
 
 .ld-content > .ld-callout,
@@ -529,14 +597,14 @@ export default {
   gap: 6px;
   font-family: 'Inter', sans-serif;
   font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
+  font-weight: 600;
+  letter-spacing: 1px;
   color: #0f696e;
-  background: rgba(15, 105, 110, 0.1);
+  background: rgba(15, 105, 110, 0.08);
   border: 1px solid rgba(15, 105, 110, 0.2);
-  padding: 4px 10px;
-  border-radius: 20px;
-  margin-bottom: 1rem;
+  padding: 5px 14px;
+  border-radius: 99px;
+  margin-bottom: 0;
   text-transform: uppercase;
 }
 
@@ -547,66 +615,84 @@ export default {
 
 .ld-doc-title {
   font-family: 'Inter', sans-serif;
-  font-size: clamp(2rem, 4vw, 3.4rem);
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
   font-weight: 800;
   color: #241447;
   line-height: 1.15;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0;
+  letter-spacing: -0.02em;
+  padding-bottom: 6px;
+  border-bottom: 3px solid #0f696e;
+  display: inline-block;
 }
 
 .ld-doc-meta {
   font-family: 'Inter', sans-serif;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 400;
-  color: #49454f;
-  line-height: 1.6;
+  color: #94a3b8;
+  line-height: 1.5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .ld-doc-meta strong {
-  color: #241447;
+  color: #64748b;
   font-weight: 600;
 }
 
 section {
-  margin-bottom: 3rem;
+  margin-bottom: 4rem;
+  padding-top: 0.5rem;
 }
 
 .ld-section-number {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-family: 'Inter', sans-serif;
   font-size: 13px;
   font-weight: 600;
   color: #0f696e;
-  letter-spacing: 0.06em;
+  background: rgba(15,105,110,0.08);
+  border: 1px solid rgba(15,105,110,0.15);
+  border-radius: 99px;
+  letter-spacing: 1px;
   text-transform: uppercase;
-  margin-bottom: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 5px 12px;
 }
 
 .ld-content h2 {
   font-family: 'Inter', sans-serif;
-  font-size: clamp(1.5rem, 3.5vw, 2.25rem);
-  font-weight: 800;
-  line-height: 1.25;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.35;
   color: #241447;
-  margin-bottom: 1rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid rgba(15, 105, 110, 0.15);
+  border-bottom: 1px solid rgba(15, 105, 110, 0.08);
 }
 
 .ld-content h3 {
   font-family: 'Inter', sans-serif;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   color: #241447;
-  margin: 1.25rem 0 0.5rem;
-  letter-spacing: normal;
+  margin: 1.5rem 0 0.5rem;
+  padding-left: 10px;
+  border-left: 3px solid #0f696e;
 }
 
 .ld-content p {
   font-family: 'Inter', sans-serif;
   color: #49454f;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
   font-weight: 400;
-  line-height: 1.65;
+  line-height: 1.75;
   font-size: 15px;
 }
 
@@ -619,9 +705,9 @@ section {
   font-family: 'Inter', sans-serif;
   font-size: 15px;
   color: #49454f;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.5rem;
   font-weight: 400;
-  line-height: 1.65;
+  line-height: 1.7;
 }
 
 .ld-content li::marker {
@@ -631,7 +717,7 @@ section {
 .ld-content a {
   color: #0f696e;
   text-decoration: none;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .ld-content a:hover {
@@ -639,16 +725,16 @@ section {
 }
 
 .ld-callout {
-  background: #f6f4fa;
-  border: 1px solid rgba(36, 20, 71, 0.08);
-  border-left: 3px solid #0f696e;
-  border-radius: 8px;
-  padding: 1rem 1.25rem;
-  margin: 1.5rem 0;
+  background: rgba(15,105,110,0.04);
+  border: 1px solid rgba(15, 105, 110, 0.12);
+  border-left: 4px solid #0f696e;
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  margin: 1.75rem 0;
   font-family: 'Inter', sans-serif;
   font-size: 15px;
   font-weight: 400;
-  line-height: 1.65;
+  line-height: 1.7;
 }
 
 .ld-callout p {
@@ -686,7 +772,6 @@ section {
   .legal-page-frame {
     flex: 1 1 auto;
     min-height: 0;
-    max-height: none;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -695,26 +780,48 @@ section {
   .ld-page {
     flex: 1 1 auto;
     min-height: 0;
+    height: 100%;
     overflow: hidden;
   }
 
   .ld-sidebar {
-    position: static;
-    align-self: stretch;
-    max-height: none;
+    height: 100%;
+    max-height: 100%;
     overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .ld-sidebar::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
   }
 
   .ld-content {
     flex: 1 1 auto;
     min-height: 0;
+    height: 100%;
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .ld-content::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
   }
 
   .ld-doc-header {
     top: 0;
+  }
+
+  .ld-content > section {
+    scroll-margin-top: 1rem;
   }
 }
 
@@ -729,6 +836,7 @@ section {
     flex: none;
     overflow: visible;
     display: block;
+    padding: 0 1rem 2.5rem;
   }
 
   .ld-page {
@@ -736,17 +844,58 @@ section {
     flex: none;
     overflow: visible;
     min-height: 0;
-    padding: 1.75rem 0 2.5rem;
+    height: auto;
+    padding: 1.25rem 0 2rem;
   }
 
   .ld-content {
     overflow: visible;
+    height: auto;
+    padding: 0;
   }
 
   .ld-sidebar {
     width: 100%;
     position: static;
+    height: auto;
     max-height: none;
+    overflow: visible;
+    border-right: none;
+    border-bottom: 1px solid rgba(15, 105, 110, 0.12);
+    padding: 0 0 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .ld-sidebar-label {
+    padding-left: 0;
+  }
+
+  .ld-sidebar nav a {
+    padding-left: 8px;
+    border-radius: 6px;
+  }
+}
+</style>
+
+<!-- Unscoped: Windows Chrome needs this to hide classic scrollbars -->
+<style>
+.legal-page-root .ld-sidebar,
+.legal-page-root .ld-content {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+.legal-page-root .ld-sidebar::-webkit-scrollbar,
+.legal-page-root .ld-content::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+@media (max-width: 768px) {
+  .legal-page-root .ld-sidebar,
+  .legal-page-root .ld-content {
+    overflow: visible !important;
   }
 }
 </style>

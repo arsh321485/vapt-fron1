@@ -34,6 +34,11 @@
                 Knowledge Base
               </router-link>
             </li>
+            <li class="nav-item">
+              <router-link to="/how-vaptfix-works" style="font-size: 1rem;" class="nav-link text-white text-decoration-none">
+                How VaptFix Works
+              </router-link>
+            </li>
             <li class="nav-item dropdown">
               <a
                 class="nav-link dropdown-toggle text-white text-decoration-none"
