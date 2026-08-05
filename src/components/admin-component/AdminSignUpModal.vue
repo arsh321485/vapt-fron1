@@ -386,8 +386,7 @@ export default {
           this.$emit('close');
           Swal.fire({ icon: 'success', title: 'Signup Successful!', text: 'Your account has been created successfully.', timer: 2000, showConfirmButton: false });
           authStore.setAdminLoginMethod('email');
-          const route = await authStore.getAdminOnboardingRoute();
-          this.$router.push(route);
+          this.$router.push('/admin-upload-report');
         } else {
           Swal.fire({ icon: 'error', title: 'Invalid OTP', text: result.message || 'Invalid OTP. Please try again.', confirmButtonColor: '#241447' });
         }
@@ -732,7 +731,7 @@ export default {
       sessionStorage.setItem('isNewUser', 'true');
       this.resetForm();
       this.$emit('close');
-      this.$router.push('/waiting-for-report');
+      this.$router.push('/admin-upload-report');
     }
   },
   beforeUnmount() {

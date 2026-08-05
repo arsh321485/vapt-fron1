@@ -304,14 +304,15 @@
                 </div>
 
                 <div class="av-detail-tabs">
-                  <button
+                  <!-- Affected Assets tab hidden -->
+                  <!-- <button
                     type="button"
                     class="av-dtab"
                     :class="{ active: currentVulnTab === 'affected' }"
                     @click="setVulnDetailTab('affected')"
                   >
                     🎯 Affected Assets
-                  </button>
+                  </button> -->
                   <button
                     type="button"
                     class="av-dtab"
@@ -333,50 +334,9 @@
                 </div>
 
                 <div class="av-detail-tab-content">
-                  <div v-if="currentVulnTab === 'affected'" class="av-affected-tab">
-                    <div class="av-assets-table-card">
-                      <table class="av-assets-table">
-                        <thead>
-                          <tr>
-                            <th>IP</th>
-                            <th>Steps complete</th>
-                            <th>Send for verification</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr v-if="!affectedAssetsTableRowsFor(v).length">
-                            <td colspan="3" class="av-assets-empty">No affected assets for this vulnerability.</td>
-                          </tr>
-                          <tr v-for="asset in affectedAssetsTableRowsFor(v)" :key="asset.ip">
-                            <td class="av-assets-ip">{{ asset.ip }}</td>
-                            <td>
-                              <div class="av-assets-steps-cell">
-                                <div class="av-assets-progress-track">
-                                  <div class="av-assets-progress-fill" :style="{ width: (asset.progress || 0) + '%' }"></div>
-                                </div>
-                                <span class="av-assets-steps-text">{{ asset.stepsCompleted }}/{{ asset.totalSteps }}</span>
-                              </div>
-                            </td>
-                            <td>
-                              <button
-                                type="button"
-                                class="av-assets-verify-btn"
-                                :disabled="asset.stepsCompleted < asset.totalSteps"
-                                @click="sendForVerification(asset)"
-                              >
-                                <i class="bi bi-send" aria-hidden="true"></i> Send for verification
-                              </button>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                      <div v-if="affectedAssetsTableRowsFor(v).length" class="av-assets-table-footer">
-                        Showing {{ affectedAssetsTableRowsFor(v).length }} asset{{ affectedAssetsTableRowsFor(v).length === 1 ? '' : 's' }}
-                      </div>
-                    </div>
-                  </div>
+                  <!-- Affected Assets content hidden -->
 
-                  <div v-else-if="currentVulnTab === 'auto'" class="av-auto-tab">
+                  <div v-if="currentVulnTab === 'auto'" class="av-auto-tab">
                     <AutomationNotSafeBanner v-if="isVulnAutomationNo(v, i)" />
                     <AutomatedFixPanel
                       v-else
@@ -396,7 +356,17 @@
                       <div class="av-asset-label">
                         <span class="av-asset-os-lbl">{{ assetMetaFor(v, asset).os }}</span>
                       </div>
-                      <ManualRemediationStepsPanel :is-user="isUser" />
+                      <ManualRemediationStepsPanel
+                        :is-user="isUser"
+                        :key="v.vul_name + '-' + asset"
+                        :vuln-name="v.vul_name"
+                        :asset-ip="asset"
+                        :severity="v.severity"
+                        :vuln-id="String(v.fix_vulnerability_id || v.id || '')"
+                        :fix-id="String(v.fix_vulnerability_id || '')"
+                        :asset-os="assetMetaFor(v, asset).os || ''"
+                        @open-support-modal="$emit('open-support-modal', $event)"
+                      />
                     </div>
                   </div>
                 </div>
@@ -1280,16 +1250,30 @@ export default {
       // 1st priority: use real assigned_team from API data
       const t = String(assignedTeam || '').trim();
       if (t) return t;
-      // 2nd priority: keyword fallback from vulnerability name
-      const n = String(vulnName || '').toLowerCase();
+      // 2nd priority: lookup from register cache (has correct team from backend)
+      const register = this.isUser
+        ? (this.authStore.cachedUserVulnRegister || [])
+        : (this.authStore.vulnerabilityRows || []);
+      const name = String(vulnName || '').toLowerCase().trim();
+      const regRow = register.find(r =>
+        String(r.vul_name || r.plugin_name || '').toLowerCase().trim() === name
+      );
+      if (regRow?.assigned_team) return regRow.assigned_team;
+      // 3rd priority: automation map (bulk API has team data)
+      const autoEntry = Object.values(this.automationScriptMap || {}).find(
+        e => String(e.vulnerability || e.vul_name || '').toLowerCase().trim() === name
+      );
+      if (autoEntry?.assigned_team) return autoEntry.assigned_team;
+      // 4th priority: keyword fallback
+      const n = name;
       if (/inject|xss|csrf|cross.site|sql|rce|buffer.overflow|deseri|privilege|ldap|xxe|ssrf|code.execut|authentication|session.hijack/.test(n))
         return 'Architectural Flaws';
       if (/deprecat|outdated|end.of.life|eol|obsolete|unsupported/.test(n))
         return 'Patch Management';
-      if (/missing|hsts|header|cors|cookie|misconfigur|config|default.password|weak.password|policy|setting/.test(n))
-        return 'Configuration Management';
       if (/tls|ssl|protocol|cipher|encrypt|certif|port|network|dns|smtp|ftp|firewall|vpn/.test(n))
         return 'Network Security';
+      if (/missing|hsts|header|cors|cookie|misconfigur|config|default.password|weak.password|policy|setting/.test(n))
+        return 'Configuration Management';
       return 'Patch Management';
     },
     getVulnTeamChipClass(assignedTeam, vulnName) {

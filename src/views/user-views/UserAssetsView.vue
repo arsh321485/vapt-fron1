@@ -373,10 +373,17 @@
 
                               <div v-else-if="currentVulnTab === 'manual'" class="av-manual-tab">
                                 <div class="av-asset-section">
-                                  <div class="av-asset-label">
-                                    <span class="av-asset-os-lbl">Linux</span>
-                                  </div>
-                                  <ManualRemediationStepsPanel :is-user="true" />
+                                  <ManualRemediationStepsPanel
+                                    :is-user="true"
+                                    :key="vuln.vul_name + '-' + selectedAssetIp"
+                                    :vuln-name="vuln.vul_name"
+                                    :asset-ip="selectedAssetIp"
+                                    :severity="vuln.severity"
+                                    :vuln-id="String(vuln.fix_vulnerability_id || vuln.id || '')"
+                                    :fix-id="String(vuln.fix_vulnerability_id || '')"
+                                    :asset-os="selectedAsset && selectedAsset.os ? selectedAsset.os : ''"
+                                    @open-support-modal="onManualFixSupportModal"
+                                  />
                                 </div>
                               </div>
                             </div>
@@ -985,6 +992,19 @@ class TLSConfigurator:
       this.assetSrFixVulnId = null;
       const modal = new bootstrap.Modal(document.getElementById('assetSrModal'));
       modal.show();
+    },
+    onManualFixSupportModal({ vulnName, step, completedSteps } = {}) {
+      this.assetSrVulnName = vulnName || '';
+      this.assetSrStep = step || null;
+      this.assetSrDescription = '';
+      this.assetSrRaised = false;
+      this.assetSrRaisedSteps = Array.isArray(completedSteps) ? completedSteps : [];
+      this.assetSrFixVulnId = null;
+      const el = document.getElementById('assetSrModal');
+      if (el) {
+        const modal = bootstrap.Modal.getOrCreateInstance(el);
+        modal.show();
+      }
     },
     prepareAnotherAssetSr() {
       const step = this.nextAssetSrStep;

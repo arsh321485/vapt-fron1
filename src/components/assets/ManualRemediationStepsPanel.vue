@@ -35,7 +35,7 @@
       </div>
     </div>
 
-    <div v-if="(!fixNotStarted || isUser) && !loadingFixVuln" class="mf-subtasks-bar">
+    <div v-if="!loadingFixVuln" class="mf-subtasks-bar">
       <span class="mf-subtasks-title">Remediation Sub-Tasks ({{ displaySubtasks.length }})</span>
       <span class="mf-subtasks-done">{{ completedSubtasksCount }} tasks completed</span>
     </div>
@@ -190,9 +190,8 @@
             class="mf-complete-btn"
             :class="{
               'mf-complete-btn--done': task.status === 'completed',
-              'mf-complete-btn--locked': !task.isCurrent && task.status !== 'completed',
             }"
-            :disabled="task.status === 'completed' || !task.isCurrent || task.submitting"
+            :disabled="task.status === 'completed' || task.submitting"
             @click="toggleStepComplete(task)"
           >
             <span v-if="task.submitting" class="spinner-border spinner-border-sm me-1"></span>
@@ -271,9 +270,7 @@ export default {
       authStore: useAuthStore(),
       // Admin is read-only and fetches real data; start empty to avoid
       // mock steps flashing when the component remounts.
-      subtasks: this.isUser
-        ? MOCK_MANUAL_STEPS.map((s, i) => ({ ...s, isExpanded: i === 0 }))
-        : [],
+      subtasks: [],
       raisedSupportSteps: [],
       fixVulnerabilityId: null,
       fixVulnData: null,
@@ -318,7 +315,7 @@ export default {
       return this.subtasks.every(t => t.status === 'completed');
     },
     canRaiseSupport() {
-      return Boolean(this.vulnName && this.assetIp);
+      return true;
     },
   },
   watch: {
@@ -468,9 +465,7 @@ export default {
         const task = this.mapApiStepToPanel(s, osKey);
         const completed = this.isStepCompleted(s.step_number, nextStep, s.status);
         task.status = completed ? 'completed' : 'pending';
-        task.isLocked = nextStep != null
-          ? s.step_number > nextStep
-          : !completed && this.apiCompletedSteps >= apiSteps.length;
+        task.isLocked = false; // Allow all steps to be interactable
 
         if (nextStep != null) {
           task.isCurrent = s.step_number === nextStep && !completed;
@@ -523,20 +518,48 @@ export default {
         if (this.vulnId) payload.id = this.vulnId;
         const createRes = await this.authStore.createUserFixVulnerability(reportId, this.assetIp, payload);
 
+        // Robust fixId extraction from multiple possible response shapes
+        console.log('[ManualFix] createRes:', JSON.stringify(createRes));
         let fixId = null;
         if (createRes.status && createRes.data) {
-          fixId = createRes.data._id || createRes.data.fix_vulnerability_id || null;
-          this.fixVulnData = createRes.data;
-        } else if (createRes.details?.fix_vulnerability_id) {
-          fixId = createRes.details.fix_vulnerability_id;
+          const d = createRes.data;
+          fixId = d._id || d.fix_vulnerability_id || d.id || d.data?._id || d.data?.fix_vulnerability_id || null;
+          if (!fixId && typeof d === 'string') fixId = d;
+          this.fixVulnData = d;
+          // Check if create response itself has steps
+          if (d.steps?.length) {
+            console.log('[ManualFix] Steps found in createRes:', d.steps.length);
+            this.applyStepsFromApi(d);
+          }
         }
-        if (!fixId) return;
+        if (!fixId && createRes.details) {
+          const det = createRes.details;
+          fixId = det.fix_vulnerability_id || det._id || det.id || null;
+        }
+        if (!fixId) {
+          console.warn('[ManualFix] Could not resolve fixId. Full createRes:', createRes);
+          return;
+        }
+        console.log('[ManualFix] fixId resolved:', fixId);
         this.fixVulnerabilityId = fixId;
 
-        const osKey = this.resolveOsKey(this.assetOs);
-        this.selectedOs = osKey;
+        // Try both OS keys — use whichever returns steps
+        const primaryOs = this.resolveOsKey(this.assetOs);
+        const fallbackOs = primaryOs === 'linux' ? 'windows' : 'linux';
+        this.selectedOs = primaryOs;
 
-        const stepsRes = await this.authStore.getUserFixVulnerabilitySteps(fixId, osKey);
+        let stepsRes = await this.authStore.getUserFixVulnerabilitySteps(fixId, primaryOs);
+        console.log('[ManualFix] stepsRes primaryOs:', primaryOs, JSON.stringify(stepsRes?.data?.steps?.length));
+        if (!stepsRes.status || !stepsRes.data?.steps?.length) {
+          // Try fallback OS
+          const fallbackRes = await this.authStore.getUserFixVulnerabilitySteps(fixId, fallbackOs);
+          console.log('[ManualFix] stepsRes fallbackOs:', fallbackOs, JSON.stringify(fallbackRes?.data?.steps?.length));
+          if (fallbackRes.status && fallbackRes.data?.steps?.length) {
+            stepsRes = fallbackRes;
+            this.selectedOs = fallbackOs;
+          }
+        }
+
         if (stepsRes.status && Array.isArray(stepsRes.data?.steps) && stepsRes.data.steps.length) {
           this.fixVulnData = {
             ...this.fixVulnData,
@@ -548,6 +571,8 @@ export default {
             solution: this.fixVulnData?.solution || '',
           };
           this.applyStepsFromApi(stepsRes.data);
+        } else {
+          console.warn('[ManualFix] No steps returned for fixId:', fixId, 'os:', primaryOs);
         }
       } finally {
         this.loadingFixVuln = false;
@@ -744,7 +769,12 @@ export default {
       setTimeout(() => toast.remove(), 2000);
     },
     async toggleStepComplete(task) {
-      if (task.status === 'completed' || !task.isCurrent || !this.fixVulnerabilityId) return;
+      if (task.status === 'completed' || !this.fixVulnerabilityId) {
+        if (!this.fixVulnerabilityId) {
+          Swal.fire({ icon: 'warning', title: 'Loading...', text: 'Fix session is loading. Please wait a moment and try again.', timer: 2000, showConfirmButton: false });
+        }
+        return;
+      }
 
       const taskIdx = this.subtasks.findIndex(s => s.id === task.id);
       if (taskIdx < 0) return;

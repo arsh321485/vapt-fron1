@@ -437,6 +437,9 @@ export default {
                 this.currentPage = 1;
             }
         },
+        '$route'() {
+            this.loadSupportRequests();
+        },
     },
     async mounted() {
         await this.loadSupportRequests();

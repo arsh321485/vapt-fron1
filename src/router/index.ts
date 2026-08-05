@@ -72,6 +72,7 @@ import PerformanceMonitoringView from "../views/admin-dashboard/PerformanceMonit
 import ViewReportPage from "../views/admin-dashboard/ViewReportPage.vue";
 // import ToolboxView from "../views/admin-dashboard/ToolboxView.vue"; // Toolbox commented out
 import WaitingForReportView from "../views/admin-dashboard/WaitingForReportView.vue";
+import AdminUploadReportView from "../views/admin-dashboard/AdminUploadReportView.vue";
 import RemediationTimelineView from "../views/admin-dashboard/RemediationTimelineView.vue";
 import UserRemediationTimelineView from "../views/user-views/UserRemediationTimelineView.vue";
 import CalendarView from "../views/admin-dashboard/CalendarView.vue";
@@ -373,6 +374,12 @@ const router = createRouter({
       path: "/waiting-for-report",
       name: "waiting-for-report",
       component: WaitingForReportView,
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: "/admin-upload-report",
+      name: "admin-upload-report",
+      component: AdminUploadReportView,
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
