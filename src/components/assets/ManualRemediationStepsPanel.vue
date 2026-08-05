@@ -7,8 +7,8 @@
       <span>Loading fix details…</span>
     </div>
 
-    <!-- Admin: fix not started for this vulnerability -->
-    <div v-if="!isUser && fixNotStarted && !loadingFixVuln" class="mf-not-started">
+    <!-- Admin: fix not started — only show in All Assets tab, not All Vulns tab -->
+    <div v-if="!isUser && fixNotStarted && !loadingFixVuln && assetIp" class="mf-not-started">
       <i class="bi bi-hourglass-split mf-not-started-icon" aria-hidden="true"></i>
       <div class="mf-not-started-text">
         <span class="mf-not-started-title">Fix Not Started</span>
@@ -234,7 +234,7 @@ import { useAuthStore } from '@/stores/authStore';
 
 export default {
   name: 'ManualRemediationStepsPanel',
-  emits: ['support-request-raised', 'open-support-modal'],
+  emits: ['support-request-raised', 'open-support-modal', 'team-resolved'],
   props: {
     isUser: {
       type: Boolean,
@@ -428,6 +428,12 @@ export default {
     applyStepsFromApi(data, postOverride = null) {
       const osKey = this.resolveOsKey(data.operating_system || this.assetOs || this.selectedOs);
       this.selectedOs = osKey;
+      // Emit resolved team to parent so outer badge matches
+      const resolvedTeam = data.assigned_team ||
+        (data.steps && data.steps[0]?.assigned_team) || '';
+      if (resolvedTeam) {
+        this.$emit('team-resolved', { vulnName: this.vulnName, team: resolvedTeam });
+      }
 
       const apiSteps = data.steps || [];
       const reportedNext = postOverride?.next_step ?? data.next_step ?? null;

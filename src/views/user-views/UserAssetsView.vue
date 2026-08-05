@@ -281,9 +281,10 @@
                               <span :class="getStatusBadgeClass(vuln.status)">
                                 <span :class="getStatusDotClass(vuln.status)"></span>{{ getStatusLabel(vuln.status) }}
                               </span>
-                              <span :class="getVulnTeamChipClass(vuln)" style="font-size:0.68rem; padding:2px 8px;">
+                              <!-- Team badge hidden — shown inside Manual Fix -->
+                              <!-- <span :class="getVulnTeamChipClass(vuln)" style="font-size:0.68rem; padding:2px 8px;">
                                 {{ getVulnTeamLabel(vuln) }}
-                              </span>
+                              </span> -->
                             </div>
                           </div>
                           <div class="d-flex align-items-center gap-3 flex-shrink-0 vuln-accordion-actions">
@@ -383,6 +384,7 @@
                                     :fix-id="String(vuln.fix_vulnerability_id || '')"
                                     :asset-os="selectedAsset && selectedAsset.os ? selectedAsset.os : ''"
                                     @open-support-modal="onManualFixSupportModal"
+                                    @team-resolved="onVulnTeamResolved"
                                   />
                                 </div>
                               </div>
@@ -992,6 +994,16 @@ class TLSConfigurator:
       this.assetSrFixVulnId = null;
       const modal = new bootstrap.Modal(document.getElementById('assetSrModal'));
       modal.show();
+    },
+    onVulnTeamResolved({ vulnName, team }) {
+      if (!vulnName || !team) return;
+      const name = String(vulnName).toLowerCase().trim();
+      const vulns = this.authStore.selectedAssetVulnerabilities || [];
+      vulns.forEach(v => {
+        if (String(v.vul_name || v.plugin_name || '').toLowerCase().trim() === name) {
+          v.assigned_team = team;
+        }
+      });
     },
     onManualFixSupportModal({ vulnName, step, completedSteps } = {}) {
       this.assetSrVulnName = vulnName || '';

@@ -29,14 +29,15 @@
                 >
                   All Vulnerabilities
                 </button>
-                <button
+                <!-- Fix tab hidden -->
+                <!-- <button
                   type="button"
                   class="assets-mode-tab"
                   :class="{ 'assets-mode-tab-active': leftPanelTab === 'fix' }"
                   @click="leftPanelTab = 'fix'"
                 >
                   Fix
-                </button>
+                </button> -->
               </div>
 
             <div v-if="leftPanelTab === 'assets'" class="assets-split-panel">
@@ -323,9 +324,10 @@
                               <span :class="getStatusBadgeClass(v.status)">
                                 <span :class="getStatusDotClass(v.status)"></span>{{ getStatusLabel(v.status) }}
                               </span>
-                              <span :class="getVulnTeamChipClass(v.assigned_team, v.vul_name)" style="font-size:0.68rem; padding:2px 8px;">
+                              <!-- Team badge hidden — shown inside Manual Fix -->
+                              <!-- <span :class="getVulnTeamChipClass(v.assigned_team, v.vul_name)" style="font-size:0.68rem; padding:2px 8px;">
                                 {{ getVulnTeamLabel(v.assigned_team, v.vul_name) }}
-                              </span>
+                              </span> -->
                             </div>
                           </div>
                           <div class="d-flex align-items-center gap-3 flex-shrink-0 vuln-accordion-actions">
@@ -429,6 +431,7 @@
                                     :vuln-id="String(v.id || '')"
                                     :asset-os="v.operating_system || 'windows'"
                                     :fix-id="fixIdForVuln(v)"
+                                    @team-resolved="onVulnTeamResolved"
                                   />
                                 </div>
                               </div>
@@ -534,9 +537,10 @@
               />
             </div>
 
-            <div v-else-if="leftPanelTab === 'fix'" class="assets-vuln-mode-wrap">
+            <!-- Fix tab content hidden -->
+            <!-- <div v-else-if="leftPanelTab === 'fix'" class="assets-vuln-mode-wrap">
               <AssetsFixMode :is-user="false" />
-            </div>
+            </div> -->
 
             </div>
           </div>
@@ -696,6 +700,26 @@ class TLSConfigurator:
     };
   },
   computed: {
+    // Reactive map: vuln name → correct assigned_team from all sources
+    vulnTeamMap() {
+      const map = {};
+      // From vulnerabilityRows (admin register)
+      (this.authStore.vulnerabilityRows || []).forEach(r => {
+        const name = String(r.vul_name || r.plugin_name || '').toLowerCase().trim();
+        if (name && r.assigned_team) map[name] = r.assigned_team;
+      });
+      // From automationScriptMap (bulk API — overwrites if more specific)
+      Object.values(this.automationScriptMap || {}).forEach(e => {
+        const name = String(e.vulnerability || e.vul_name || '').toLowerCase().trim();
+        if (name && e.assigned_team) map[name] = e.assigned_team;
+      });
+      // From selectedAssetVulnerabilities (fix API — highest priority)
+      (this.authStore.selectedAssetVulnerabilities || []).forEach(v => {
+        const name = String(v.vul_name || v.plugin_name || '').toLowerCase().trim();
+        if (name && v.assigned_team) map[name] = v.assigned_team;
+      });
+      return map;
+    },
     allAssetThreatVulns() {
       return mergeAssetThreatVulnerabilities(
         this.authStore.selectedAssetVulnerabilities,
@@ -913,19 +937,22 @@ class TLSConfigurator:
       return this.getStatusLabel(status) === "Closed" ? "status-dot-closed" : "status-dot-open";
     },
     getVulnTeamLabel(assignedTeam, vulnName) {
-      // 1st priority: use real assigned_team from API data
+      // 1st: direct assigned_team from vuln data
       const t = String(assignedTeam || '').trim();
       if (t) return t;
-      // 2nd priority: keyword fallback from vulnerability name
-      const n = String(vulnName || '').toLowerCase();
+      // 2nd: reactive computed map (register + automation + fix API)
+      const name = String(vulnName || '').toLowerCase().trim();
+      if (this.vulnTeamMap[name]) return this.vulnTeamMap[name];
+      // 3rd: keyword fallback (last resort)
+      const n = name;
       if (/inject|xss|csrf|cross.site|sql|rce|buffer.overflow|deseri|privilege|ldap|xxe|ssrf|code.execut|authentication|session.hijack/.test(n))
         return 'Architectural Flaws';
       if (/deprecat|outdated|end.of.life|eol|obsolete|unsupported/.test(n))
         return 'Patch Management';
-      if (/missing|hsts|header|cors|cookie|misconfigur|config|default.password|weak.password|policy|setting/.test(n))
-        return 'Configuration Management';
       if (/tls|ssl|protocol|cipher|encrypt|certif|port|network|dns|smtp|ftp|firewall|vpn/.test(n))
         return 'Network Security';
+      if (/missing|hsts|header|cors|cookie|misconfigur|config|default.password|weak.password|policy|setting/.test(n))
+        return 'Configuration Management';
       return 'Patch Management';
     },
     getVulnTeamChipClass(assignedTeam, vulnName) {
@@ -994,6 +1021,17 @@ class TLSConfigurator:
       const id = this.resolveVulnPluginId(vuln);
       return id > 0 ? (this.automationScriptMap[id] || null) : null;
     },
+    onVulnTeamResolved({ vulnName, team }) {
+      if (!vulnName || !team) return;
+      const name = String(vulnName).toLowerCase().trim();
+      // Update in selectedAssetVulnerabilities for reactivity
+      const vulns = this.authStore.selectedAssetVulnerabilities || [];
+      vulns.forEach(v => {
+        if (String(v.vul_name || v.plugin_name || '').toLowerCase().trim() === name) {
+          v.assigned_team = team;
+        }
+      });
+    },
     resolveAutomationMatched(vuln) {
       const data = this.getAutomationForVuln(vuln);
       if (!data) return null;
@@ -1028,12 +1066,22 @@ class TLSConfigurator:
       this.loadingAutomation = false;
       if (res.status && Array.isArray(res.results)) {
         const map = {};
-        // Backend note: match by plugin_id field, NOT array index
         res.results.forEach(r => {
           const pid = Number(r.plugin_id || 0);
           if (pid > 0) map[pid] = r;
+          // Directly patch assigned_team on vuln objects so outer badge is correct
+          if (r.assigned_team) {
+            const rName = String(r.vulnerability || r.vul_name || '').toLowerCase().trim();
+            const vulns = this.authStore.selectedAssetVulnerabilities || [];
+            vulns.forEach(v => {
+              if (!v.assigned_team &&
+                String(v.vul_name || v.plugin_name || '').toLowerCase().trim() === rName) {
+                v.assigned_team = r.assigned_team;
+              }
+            });
+          }
         });
-        this.automationScriptMap = map;
+        this.automationScriptMap = { ...map };
       }
     },
     async reloadAssetsAndHeld() {

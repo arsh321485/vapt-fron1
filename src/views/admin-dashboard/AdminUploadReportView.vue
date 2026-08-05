@@ -44,26 +44,8 @@
             </div>
             <h1 class="aur-title">Upload Your Scan Report</h1>
             <p class="aur-subtitle">
-              Upload your vulnerability assessment file (.xml, .nessus, .csv, .html) to begin. Your Super Admin will be notified automatically.
+              Upload your vulnerability assessment file (.xml, .nessus, .csv, .html, AWS Inspector, Custom) to begin.
             </p>
-          </div>
-
-          <!-- Report Type Selector -->
-          <div class="aur-type-section">
-            <p class="aur-type-label">Select Report Type</p>
-            <div class="aur-type-grid">
-              <button
-                v-for="t in reportTypes"
-                :key="t.id"
-                class="aur-type-btn"
-                :class="{ 'aur-type-btn-active': selectedType === t.id }"
-                @click="selectedType = t.id"
-              >
-                <span class="aur-type-icon">{{ t.icon }}</span>
-                <span class="aur-type-name">{{ t.label }}</span>
-                <span class="aur-type-desc">{{ t.desc }}</span>
-              </button>
-            </div>
           </div>
 
           <!-- Drop zone -->
@@ -87,7 +69,7 @@
               <i class="bi bi-file-earmark-arrow-up aur-drop-icon"></i>
               <p class="aur-drop-text">Drag &amp; drop your report here</p>
               <p class="aur-drop-sub">or <span class="aur-browse">browse files</span></p>
-              <p class="aur-drop-types">.xml · .nessus · .csv · .xlsx · .html</p>
+              <p class="aur-drop-types">.xml · .nessus · .csv · .xlsx · .html · AWS · Custom</p>
             </div>
 
             <div v-else class="aur-file-info">

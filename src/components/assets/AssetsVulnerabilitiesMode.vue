@@ -66,10 +66,23 @@
               {{ getStatusLabel(item.status) }}
             </span>
           </div>
-          <div class="d-flex gap-2 flex-wrap">
-            <span class="vuln-chip">
-              {{ item.assets.length }} asset{{ item.assets.length === 1 ? '' : 's' }}
-            </span>
+          <!-- Expandable asset list -->
+          <div class="av-assets-toggle" @click.stop="toggleVulnAssetExpand(item._key)">
+            <i class="bi" :class="expandedVulnAssets === item._key ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+            <span>{{ item.assets.length }} asset{{ item.assets.length === 1 ? '' : 's' }}</span>
+          </div>
+          <!-- Nested asset IPs -->
+          <div v-if="expandedVulnAssets === item._key" class="av-nested-assets" @click.stop>
+            <div
+              v-for="assetIp in item.assets"
+              :key="assetIp"
+              class="av-nested-asset-row"
+              :class="{ 'av-nested-asset-active': selectedKey === item._key && selectedPanelAsset === assetIp }"
+              @click.stop="onNestedAssetClick(item, assetIp)"
+            >
+              <i class="bi bi-hdd-network av-nested-ip-icon"></i>
+              <span class="av-nested-ip">{{ assetIp }}</span>
+            </div>
           </div>
         </div>
         <p v-if="!filteredVulns.length" class="av-empty-list">No vulnerabilities found.</p>
@@ -263,9 +276,10 @@
                   <span :class="getStatusBadgeClass(v.status)">
                     <span :class="getStatusDotClass(v.status)"></span>{{ getStatusLabel(v.status) }}
                   </span>
-                  <span :class="getVulnTeamChipClass(v.assigned_team, v.vul_name)" style="font-size:0.68rem; padding:2px 8px;">
+                  <!-- Team badge hidden — shown inside Manual Fix -->
+                  <!-- <span :class="getVulnTeamChipClass(v.assigned_team, v.vul_name)" style="font-size:0.68rem; padding:2px 8px;">
                     {{ getVulnTeamLabel(v.assigned_team, v.vul_name) }}
-                  </span>
+                  </span> -->
                 </div>
               </div>
               <div class="d-flex align-items-center gap-3 flex-shrink-0 vuln-accordion-actions">
@@ -340,9 +354,9 @@
                     <AutomationNotSafeBanner v-if="isVulnAutomationNo(v, i)" />
                     <AutomatedFixPanel
                       v-else
-                      :key="v._key + '-' + i"
+                      :key="v._key + '-' + i + '-' + panelAssetKey"
                       :severity="v.severity"
-                      :asset-ip="v.assets?.[0]"
+                      :asset-ip="selectedPanelAsset || v.assets?.[0]"
                       :asset-index="panelVulnDemoIndex(v)"
                       :can-automate="canAutomate"
                       :must-manual="mustManual"
@@ -352,13 +366,13 @@
                   </div>
 
                   <div v-else-if="currentVulnTab === 'manual'" class="av-manual-tab">
-                    <div v-for="asset in v.assets" :key="asset" class="av-asset-section">
+                    <div v-for="asset in (selectedPanelAsset ? [selectedPanelAsset] : v.assets)" :key="asset" class="av-asset-section">
                       <div class="av-asset-label">
                         <span class="av-asset-os-lbl">{{ assetMetaFor(v, asset).os }}</span>
                       </div>
                       <ManualRemediationStepsPanel
                         :is-user="isUser"
-                        :key="v.vul_name + '-' + asset"
+                        :key="v.vul_name + '-' + asset + '-' + panelAssetKey"
                         :vuln-name="v.vul_name"
                         :asset-ip="asset"
                         :severity="v.severity"
@@ -366,6 +380,7 @@
                         :fix-id="String(v.fix_vulnerability_id || '')"
                         :asset-os="assetMetaFor(v, asset).os || ''"
                         @open-support-modal="$emit('open-support-modal', $event)"
+                        @team-resolved="onPanelTeamResolved"
                       />
                     </div>
                   </div>
@@ -640,6 +655,9 @@ export default {
       statusFilter: [],
       selectedKey: null,
       expandedVulnIndex: null,
+      expandedVulnAssets: null,
+      selectedPanelAsset: null,
+      panelAssetKey: 0,
       currentVulnTab: 'auto',
       expandedDescriptions: {},
       descriptionPreviewLimit: DESC_LIMIT,
@@ -1107,12 +1125,13 @@ export default {
       const idx = this.filteredVulns.findIndex(x => x._key === v._key);
       return idx >= 0 ? idx % 3 : 0;
     },
-    selectVulnFromList(item) {
+    selectVulnFromList(item, assetIp = null) {
       if (this.showCheckboxes || this.showHoldCheckboxes) return;
       const idx = this.filteredVulns.findIndex(v => v._key === item._key);
       if (idx < 0) return;
       this.selectedKey = item._key;
-      this.expandedVulnIndex = null;
+      this.selectedPanelAsset = assetIp; // set directly — null means show all
+      this.expandedVulnIndex = assetIp ? 0 : null;
       this.currentVulnTab = 'auto';
       this.activeDetailTab = 'vulnerabilities';
       this.supportRequestsForVuln = [];
@@ -1245,6 +1264,29 @@ export default {
     },
     getStatusDotClass(status) {
       return this.getStatusLabel(status) === 'Closed' ? 'status-dot-closed' : 'status-dot-open';
+    },
+    toggleVulnAssetExpand(key) {
+      this.expandedVulnAssets = this.expandedVulnAssets === key ? null : key;
+    },
+    onNestedAssetClick(item, assetIp) {
+      this.panelAssetKey++; // force remount always
+      if (this.selectedKey === item._key) {
+        this.selectedPanelAsset = assetIp;
+        this.expandedVulnIndex = 0;
+        this.currentVulnTab = 'auto';
+      } else {
+        this.selectVulnFromList(item, assetIp);
+      }
+    },
+    onPanelTeamResolved({ vulnName, team }) {
+      if (!vulnName || !team) return;
+      const name = String(vulnName).toLowerCase().trim();
+      // Update assigned_team on groupedVulns so outer badge reflects API team
+      this.groupedVulns.forEach(v => {
+        if (String(v.vul_name || v.plugin_name || '').toLowerCase().trim() === name) {
+          v.assigned_team = team;
+        }
+      });
     },
     getVulnTeamLabel(assignedTeam, vulnName) {
       // 1st priority: use real assigned_team from API data
@@ -2912,6 +2954,57 @@ export default {
   font-weight: 600;
   color: #0f172a;
 }
+
+.av-assets-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #0f696e;
+  cursor: pointer;
+  padding: 3px 8px;
+  border-radius: 99px;
+  background: rgba(15,105,110,0.07);
+  border: 1px solid rgba(15,105,110,0.15);
+  transition: background 0.15s;
+  margin-top: 4px;
+}
+
+.av-assets-toggle:hover { background: rgba(15,105,110,0.12); }
+
+.av-nested-assets {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+  padding-left: 4px;
+  border-left: 2px solid rgba(15,105,110,0.15);
+}
+
+.av-nested-asset-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: #374151;
+  transition: background 0.12s;
+  flex-wrap: wrap;
+}
+
+.av-nested-asset-row:hover { background: rgba(15,105,110,0.06); }
+
+.av-nested-asset-active {
+  background: rgba(15,105,110,0.1);
+  font-weight: 600;
+  color: #0f696e;
+}
+
+.av-nested-ip-icon { font-size: 0.7rem; color: #94a3b8; flex-shrink: 0; }
+.av-nested-ip { font-size: 0.78rem; font-weight: 500; }
 
 .vuln-chip {
   font-size: 0.62rem;

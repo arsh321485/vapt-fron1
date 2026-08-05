@@ -131,6 +131,8 @@ export function enrichVulnsFromRegister(vulns, registerRows, assetIp) {
       ...v,
       fix_vulnerability_id: fixId || null,
       operating_system: row.operating_system || row.os || v.operating_system || '',
+      // Enrich assigned_team from register (most reliable source)
+      assigned_team: v.assigned_team || row.assigned_team || '',
     };
   });
 }
