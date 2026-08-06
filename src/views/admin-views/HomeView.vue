@@ -364,6 +364,27 @@
       @open-signin="handleOpenSignInFromAdminSignUp"
     />
 
+  <!-- Webinar Popup -->
+  <transition name="wp-fade">
+    <div v-if="showWebinarPopup" class="wp-overlay" @click.self="showWebinarPopup = false">
+      <div class="wp-modal">
+        <button class="wp-close" @click="showWebinarPopup = false">
+          <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M1 1l16 16M17 1L1 17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+        <div class="wp-tag">🎙 Live Webinar</div>
+        <h2 class="wp-title">Join the VaptFix Webinar</h2>
+        <p class="wp-desc">Learn how VAPTFIX closes the gap between vulnerability discovery and remediation. Live demo · Q&amp;A · Expert insights.</p>
+        <div class="wp-meta">
+          <span class="wp-meta-item">📅 Upcoming</span>
+          <span class="wp-meta-item">⏰ 60 min</span>
+          <span class="wp-meta-item">🆓 Free</span>
+        </div>
+        <button class="wp-btn-primary" @click="$router.push('/webinarform'); showWebinarPopup = false">Register for Webinar →</button>
+        <button class="wp-btn-skip" @click="showWebinarPopup = false">Maybe later</button>
+      </div>
+    </div>
+  </transition>
+
   </div>
 </template>
 
@@ -384,6 +405,7 @@ export default {
   data() {
     return {
       showAdminSignUpModal: false,
+      showWebinarPopup: false,
       highlightSliderPaused: false,
       highlightWindowWidth: 1200,
       reviewSlideIndex: 0,
@@ -524,6 +546,8 @@ export default {
     this.highlightWindowWidth = window.innerWidth;
     window.addEventListener('resize', this.onHighlightResize);
     this.startReviewSlider();
+    // Show webinar popup after 1.5s on homepage
+    setTimeout(() => { this.showWebinarPopup = true; }, 1500);
   },
   beforeUnmount() {
     window.removeEventListener('resize', this.onHighlightResize);
@@ -1470,4 +1494,133 @@ export default {
   .hv-human-grid { gap: 32px; }
   .hv-cta { padding: 56px 0; }
 }
+
+/* ===== WEBINAR POPUP ===== */
+.wp-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  pointer-events: none;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 100px;
+}
+
+.wp-overlay .wp-modal {
+  pointer-events: all;
+}
+
+.wp-modal {
+  background: #fff;
+  border-radius: 20px;
+  padding: 40px 44px 32px;
+  width: 450px;
+  max-width: calc(100vw - 40px);
+  position: relative;
+  box-shadow: 0 20px 60px rgba(15, 10, 38, 0.18);
+  border: 1px solid rgba(36,20,71,0.07);
+  font-family: 'Inter', sans-serif;
+  pointer-events: all;
+  text-align: center;
+}
+
+.wp-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8;
+  padding: 4px;
+  transition: color 0.15s;
+}
+.wp-close:hover { color: #241447; }
+
+.wp-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #0f696e;
+  background: rgba(15,105,110,0.08);
+  border: 1px solid rgba(15,105,110,0.2);
+  border-radius: 99px;
+  padding: 5px 14px;
+  margin-bottom: 16px;
+}
+
+.wp-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #241447;
+  margin-bottom: 8px;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.wp-desc {
+  font-size: 14px;
+  color: #64748b;
+  line-height: 1.65;
+  margin-bottom: 20px;
+}
+
+.wp-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+
+.wp-meta-item {
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.wp-btn-primary {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #241447, #0f696e);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.18s;
+  margin-bottom: 12px;
+}
+.wp-btn-primary:hover { opacity: 0.9; }
+
+.wp-btn-skip {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: color 0.15s;
+  display: block;
+  width: 100%;
+  text-align: center;
+}
+.wp-btn-skip:hover { color: #475569; }
+
+.wp-fade-enter-active, .wp-fade-leave-active { transition: opacity 0.3s ease; }
+.wp-fade-enter-from, .wp-fade-leave-to { opacity: 0; }
 </style>
