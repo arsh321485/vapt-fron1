@@ -2,6 +2,13 @@
   <main class="webinar-page">
     <Header />
 
+    <!-- Close button -->
+    <button class="webinar-close-btn" @click="$router.push('/home')" title="Close">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <path d="M1 1l16 16M17 1L1 17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
+
     <section class="webinar-hero">
       <div class="container">
         <div class="hero-content">
@@ -447,6 +454,31 @@ export default {
 </script>
 
 <style scoped>
+.webinar-close-btn {
+  position: fixed;
+  top: 88px;
+  right: 24px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #64748b;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: all 0.15s;
+}
+
+.webinar-close-btn:hover {
+  background: #f8fafc;
+  color: #241447;
+  border-color: #cbd5e1;
+}
+
 .webinar-page {
   min-height: 100vh;
   background: #f8f9fc;

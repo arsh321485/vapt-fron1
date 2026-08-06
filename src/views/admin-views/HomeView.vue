@@ -21,11 +21,7 @@
             <p class="hv-hero-sub">
               Security isn't just about finding flaws—it's about fixing them fast. We close the gaps that reports leave behind, giving you lasting protection.
             </p>
-            <p class="hv-webinar-link-wrap">
-              <router-link to="/webinarform" class="hv-webinar-link">
-                Register for Webinar
-              </router-link>
-            </p>
+            <!-- Register for Webinar button hidden -->
             <div class="hv-hero-btns">
               <button class="hv-btn-primary" @click="handleFixNow">
                 Get Started
