@@ -87,11 +87,7 @@
           <h2 class="hv-section-title">Why post <span style="color:#0f696e;">VAPT Remediation</span> is broken</h2>
           <div>
             <p class="hv-section-desc">Most cybersecurity teams run a VAPT exercise and stop at the report. But what happens after the vulnerabilities are discovered? They sit in spreadsheets, lost in handoffs, or ignored in long development cycles.</p>
-            <p class="hv-webinar-link-wrap">
-              <router-link to="/webinarform" class="hv-webinar-link">
-                Register for Webinar
-              </router-link>
-            </p>
+            <!-- Register for Webinar hidden -->
           </div>
         </div>
         <div class="hv-cards-3">
@@ -339,11 +335,7 @@
       <div class="hv-container hv-cta-inner">
         <h2 class="hv-cta-title">Fix Bugs Instantly.</h2>
         <p class="hv-cta-desc">Identify, prioritize, and fix security flaws fast. Reduce risk with zero-friction setup and smart automation.</p>
-        <p class="hv-webinar-link-wrap hv-webinar-link-wrap--cta">
-          <router-link to="/webinarform" class="hv-webinar-link hv-webinar-link--on-dark">
-            Register for Webinar
-          </router-link>
-        </p>
+        <!-- Register for Webinar hidden -->
         <button class="hv-cta-btn" @click="handleFixNow">
           Get Started
           <i class="bi bi-arrow-right-circle-fill ms-1 fs-5" aria-hidden="true"></i>
