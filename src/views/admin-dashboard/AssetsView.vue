@@ -428,7 +428,7 @@
                                     :vuln-name="v.vul_name"
                                     :asset-ip="selectedAssetIp"
                                     :severity="v.severity"
-                                    :vuln-id="String(v.id || '')"
+                                    :vuln-id="String(v.plugin_id || v.nessus_plugin_id || v.id || '')"
                                     :asset-os="v.operating_system || 'windows'"
                                     :fix-id="fixIdForVuln(v)"
                                     @team-resolved="onVulnTeamResolved"

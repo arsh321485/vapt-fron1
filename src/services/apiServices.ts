@@ -74,6 +74,19 @@ endpoint.interceptors.request.use(
     const isRealtime = REALTIME_ENDPOINT_PATTERNS.some((p) => requestUrl.includes(p));
     const method = String(config.method || "get").toLowerCase();
 
+    // FormData must use multipart with browser-set boundary.
+    // Instance default Content-Type (application/json) would empty request.FILES.
+    if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+      const headers = config.headers as any;
+      if (headers?.delete) {
+        headers.delete("Content-Type");
+        headers.delete("content-type");
+      } else if (headers) {
+        delete headers["Content-Type"];
+        delete headers["content-type"];
+      }
+    }
+
     // Don't attach token to public endpoints (login, signup, password reset, etc)
     if (token && token !== "null" && token !== "undefined" && !isPublic) {
       config.headers["Authorization"] = `Bearer ${token}`;

@@ -85,7 +85,7 @@ export function buildVulnsFromRegister(registerRows, assetIp, deletedRows = []) 
   return filterDeletedVulnsForHost(vulns, assetIp, deletedRows);
 }
 
-/** Extract fix session id from a register/vuln row (never use row.id) */
+/** Extract fix session id from a register/vuln row (never use row.id / plugin id) */
 export function extractFixVulnerabilityId(obj) {
   if (!obj || typeof obj !== 'object') return '';
   const candidates = [obj.fix_vulnerability_id, obj.fix_vuln_id, obj.fixVulnerabilityId];
@@ -93,6 +93,22 @@ export function extractFixVulnerabilityId(obj) {
     if (value != null && String(value).trim()) return String(value).trim();
   }
   return '';
+}
+
+/**
+ * Extract fix session id from create/card API payloads.
+ * Unlike register rows, create responses often expose Mongo `_id`.
+ */
+export function extractCreatedFixVulnerabilityId(obj) {
+  if (!obj || typeof obj !== 'object') return '';
+  const nested = obj.data && typeof obj.data === 'object' ? obj.data : null;
+  return (
+    extractFixVulnerabilityId(obj) ||
+    extractFixVulnerabilityId(nested) ||
+    (obj._id != null && String(obj._id).trim()) ||
+    (nested?._id != null && String(nested._id).trim()) ||
+    ''
+  );
 }
 
 /** Match a vuln to its register row for the given asset IP */

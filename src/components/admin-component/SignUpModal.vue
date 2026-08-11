@@ -1444,7 +1444,7 @@ export default {
         const route = await authStore.getAdminOnboardingRoute();
         this.$router.replace(route);
       } catch {
-        this.$router.replace('/waiting-for-report');
+        this.$router.replace('/admin-upload-report');
       }
     },
     openForgotPassword(type) {

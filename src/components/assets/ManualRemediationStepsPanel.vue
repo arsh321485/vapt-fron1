@@ -597,6 +597,9 @@ export default {
       }
 
       try {
+        // Ensure we create/lookup against the latest uploaded report (not a stale localStorage id).
+        await this.authStore.resolveReportId();
+
         let preloadedId = this.fixId || '';
         if (!preloadedId) {
           preloadedId = await this.authStore.resolveAdminFixVulnerabilityId(
@@ -640,9 +643,42 @@ export default {
             assigned_team_members: stepsRes.data.steps[0]?.assigned_team_members || [],
           };
           this.applyStepsFromApi(stepsRes.data);
-        } else if (stepsRes.notFound) {
+          return;
+        }
+
+        // Fallback: card endpoint often has agent-generated remediation when step-complete is empty/404.
+        const cardRes = await this.authStore.fetchFixVulnerabilityCardDetails(preloadedId);
+        const cardData = cardRes.status ? cardRes.data : null;
+        const cardSteps = Array.isArray(cardData?.steps) ? cardData.steps : [];
+        if (cardSteps.length) {
+          this.fixNotStarted = false;
+          this.fixVulnData = {
+            solution: cardData?.solution || '',
+            assigned_team: cardData?.assigned_team || '',
+            assigned_team_members: cardSteps[0]?.assigned_team_members || [],
+          };
+          this.applyStepsFromApi({
+            steps: cardSteps,
+            next_step: cardData?.next_step,
+            assigned_team: cardData?.assigned_team,
+          });
+          return;
+        }
+
+        if (stepsRes.notFound && !cardData) {
           this.fixNotStarted = true;
           this.subtasks = [];
+        } else {
+          // Fix session exists (agent created it) but steps not populated yet.
+          this.fixNotStarted = false;
+          this.subtasks = [];
+          if (cardData) {
+            this.fixVulnData = {
+              solution: cardData.solution || '',
+              assigned_team: cardData.assigned_team || '',
+              assigned_team_members: cardData.assigned_team_members || [],
+            };
+          }
         }
       } finally {
         this.loadingFixVuln = false;

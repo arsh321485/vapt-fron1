@@ -4,6 +4,7 @@ import type { AxiosError } from "axios";
 import {
   buildVulnsFromRegister,
   enrichVulnsFromRegister,
+  extractCreatedFixVulnerabilityId,
   extractFixVulnerabilityId,
   filterDeletedVulnsForHost,
   lookupFixVulnerabilityId,
@@ -87,7 +88,7 @@ export const useAuthStore = defineStore("auth", {
     vulnerabilityRegister: [] as any[],
     vulnerabilityCount: 0,
     vulnerabilityRows: [] as any[],
-    latestReportId: null,
+    latestReportId: null as string | null,
     userLatestReportId: null as string | null,
     assetRows: [] as any[],
     assetCount: 0,
@@ -2715,6 +2716,120 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    // Extract human-readable message from upload_report error payloads:
+    // { errors: [{ file, error: "..." }] }
+    extractUploadReportErrorMessage(data: any, fallback = "Upload failed"): string {
+      const errors = data?.errors;
+      if (Array.isArray(errors) && errors.length > 0) {
+        const msgs = errors
+          .map((e: any) => {
+            if (typeof e === "string") return e.trim();
+            const msg = e?.error || e?.message || e?.detail;
+            return typeof msg === "string" && msg.trim() ? msg.trim() : null;
+          })
+          .filter(Boolean);
+        // Show first backend error only (short + clear)
+        if (msgs.length) return String(msgs[0]);
+      }
+      const top =
+        data?.error ||
+        data?.detail ||
+        data?.message;
+      if (typeof top === "string" && top.trim()) return top.trim();
+      return fallback;
+    },
+
+    // 🔹 Poll agent/card generation status for an uploaded report
+    // GET /api/admin/upload_report/upload/<report_id>/status/
+    async fetchUploadReportStatus(reportId: string): Promise<{
+      status: boolean;
+      data?: any;
+      message?: string;
+    }> {
+      try {
+        if (!reportId) {
+          return { status: false, message: "Report ID is required" };
+        }
+        const res = await endpoint.get(
+          `/api/admin/upload_report/upload/${encodeURIComponent(reportId)}/status/`,
+        );
+        return { status: true, data: res.data };
+      } catch (error: any) {
+        const data = error.response?.data;
+        return {
+          status: false,
+          data,
+          message:
+            data?.error ||
+            data?.message ||
+            data?.detail ||
+            error.message ||
+            "Failed to fetch upload status",
+        };
+      }
+    },
+
+    // 🔹 Admin scan report upload
+    // POST /api/admin/upload_report/upload/  (multipart form-data key: file)
+    async uploadAdminReport(
+      file: File,
+      onProgress?: (pct: number) => void,
+    ): Promise<{ status: boolean; data?: any; message?: string; details?: any }> {
+      try {
+        const formData = new FormData();
+        // Backend expects lowercase form-data key: file
+        formData.append("file", file, file.name);
+
+        const res = await endpoint.post("/api/admin/upload_report/upload/", formData, {
+          // Content-Type intentionally NOT set — axios auto-generates it
+          // with the correct multipart boundary when the body is FormData.
+          onUploadProgress: (evt) => {
+            if (!onProgress || !evt.total) return;
+            const pct = Math.min(95, Math.round((evt.loaded / evt.total) * 100));
+            onProgress(pct);
+          },
+        });
+
+        const data = res.data;
+        const hasErrors = Array.isArray(data?.errors) && data.errors.length > 0;
+        const hasResults =
+          (typeof data?.count === "number" && data.count > 0) ||
+          (Array.isArray(data?.results) && data.results.length > 0);
+
+        // Backend may return success:true with errors[] when file is rejected after processing
+        if (hasErrors && !hasResults) {
+          return {
+            status: false,
+            data,
+            message: this.extractUploadReportErrorMessage(data),
+            details: data,
+          };
+        }
+
+        if (data?.success || hasResults) {
+          onProgress?.(100);
+          return { status: true, data, message: data?.message };
+        }
+
+        return {
+          status: false,
+          data,
+          message: this.extractUploadReportErrorMessage(data),
+          details: data,
+        };
+      } catch (error: any) {
+        const data = error.response?.data;
+        return {
+          status: false,
+          message: this.extractUploadReportErrorMessage(
+            data,
+            error.message || "Failed to upload report",
+          ),
+          details: data || null,
+        };
+      }
+    },
+
     extractUploadedFileName(payload: unknown): string | null {
       const FILE_KEYS = [
         "file_name",
@@ -2733,7 +2848,7 @@ export const useAuthStore = defineStore("auth", {
         "file_path",
         "report_file_path",
       ];
-      const FILE_EXT = /\.(xlsx|xls|csv|xml|nessus|pdf|html|htm|zip|json|txt)$/i;
+      const FILE_EXT = /\.(xlsx|xls|csv|xml|nessus|pdf|html|htm|docx|doc|zip|json|txt)$/i;
 
       const isFileKey = (key: string) => /file|filename/i.test(key);
 
@@ -3764,7 +3879,7 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-    /** Resolve fix_vulnerability_id for admin read-only manual fix (register first, then existing-fix lookup) */
+    /** Resolve fix_vulnerability_id for admin read-only manual fix (register first, then create) */
     async resolveAdminFixVulnerabilityId(
       asset: string,
       vulnName: string,
@@ -3775,7 +3890,8 @@ export const useAuthStore = defineStore("auth", {
         allowCreate?: boolean;
       } = {},
     ): Promise<string> {
-      await this.fetchVulnerabilityRegister(false);
+      // After upload/agent generation, always refresh so new fix ids are visible.
+      await this.fetchVulnerabilityRegister(!!options.allowCreate);
 
       const vulnObj =
         options.vuln ||
@@ -3797,18 +3913,19 @@ export const useAuthStore = defineStore("auth", {
         plugin_name: vulnName,
         risk_factor: options.severity || "Medium",
       };
-      if (options.vulnId) payload.id = options.vulnId;
+      // Only forward numeric/plugin ids — string Mongo ids break create lookups.
+      if (options.vulnId && /^\d+$/.test(String(options.vulnId).trim())) {
+        payload.id = Number(options.vulnId);
+      }
 
       const res = await this.createFixVulnerability(reportId, asset, payload);
       if (res.status && res.data) {
-        return extractFixVulnerabilityId(res.data as Record<string, unknown>);
+        return extractCreatedFixVulnerabilityId(res.data as Record<string, unknown>);
       }
 
+      // "Already exists" responses often put the id on the error body.
       const details = (res.details || {}) as Record<string, unknown>;
-      return (
-        extractFixVulnerabilityId(details) ||
-        String(details.fix_vulnerability_id || "").trim()
-      );
+      return extractCreatedFixVulnerabilityId(details);
     },
 
     // CREATE/UPDATE Final Fix Feedback (User)
@@ -6093,15 +6210,47 @@ export const useAuthStore = defineStore("auth", {
       console.log("🔄 Completed steps reset");
     },
 
-    // ✅ Resolve reportId — reads localStorage, falls back to store state,
-    // and auto-fetches from the API if still missing.
+    // ✅ Resolve reportId — prefer latest register/upload id over a stale localStorage value.
     async resolveReportId(): Promise<string | null> {
+      if (this.latestReportId) {
+        localStorage.setItem("reportId", this.latestReportId);
+        this.reportStatus.reportId = this.latestReportId;
+        return this.latestReportId;
+      }
+
       let reportId: string | null = localStorage.getItem("reportId") || this.reportStatus.reportId;
       if (!reportId) {
         await this.getReportStatus();
         reportId = localStorage.getItem("reportId") || this.reportStatus.reportId;
       }
+
+      // Register/latest is the source of truth after a new upload.
+      if (!this.latestReportId) {
+        await this.fetchVulnerabilityRegister(true);
+        if (this.latestReportId) {
+          localStorage.setItem("reportId", this.latestReportId);
+          this.reportStatus.reportId = this.latestReportId;
+          return this.latestReportId;
+        }
+      }
+
       return reportId;
+    },
+
+    /** Persist the active report after upload/agent generation and drop stale caches. */
+    setActiveReportId(reportId: string) {
+      const id = String(reportId || "").trim();
+      if (!id) return;
+      localStorage.setItem("reportId", id);
+      this.reportStatus.reportId = id;
+      this.latestReportId = id;
+      // Force subsequent pages to refetch register/assets for the new report.
+      this.vulnerabilityRows = [];
+      this.vulnerabilityCount = 0;
+      this.selectedAssetVulnerabilities = [];
+      this.selectedAssetDetail = null;
+      this.allReportVulnerabilities = [];
+      this.allReportVulnerabilitiesFetched = false;
     },
 
     // ✅ GET Report Status (admin onboarding gate: no_report | needs_risk_criteria | ready)
@@ -6215,8 +6364,8 @@ export const useAuthStore = defineStore("auth", {
       if (state === "ready") return "/admindashboardonboarding";
 
       if (state === "needs_risk_criteria") {
-        // Email login: waiting → communication (add users) → risk criteria
-        // Slack/Teams login: waiting → risk criteria (unchanged)
+        // Email login: communication (add users) → risk criteria
+        // Slack/Teams login: risk criteria (unchanged)
         if (!this.isSlackOrTeamsLogin()) {
           this.initCompletedSteps();
           if (!this.completedSteps.includes(1)) {
@@ -6226,7 +6375,8 @@ export const useAuthStore = defineStore("auth", {
         return "/riskcriteria";
       }
 
-      return "/waiting-for-report";
+      // Admin must upload first report before waiting/processing screens
+      return "/admin-upload-report";
     },
 
     // Get all closed vulnerabilities for a report + asset

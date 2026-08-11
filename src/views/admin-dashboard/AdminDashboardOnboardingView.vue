@@ -2863,7 +2863,7 @@ export default {
       const state = res.state || (res.hasReport ? "ready" : "no_report");
 
       if (state === "no_report") {
-        this.$router.replace("/waiting-for-report");
+        this.$router.replace("/admin-upload-report");
         return;
       }
       if (state === "needs_risk_criteria") {

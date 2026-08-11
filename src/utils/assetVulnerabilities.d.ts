@@ -58,6 +58,9 @@ export function lookupRegisterRow(
 export function extractFixVulnerabilityId(
   obj: Record<string, unknown> | null | undefined,
 ): string;
+export function extractCreatedFixVulnerabilityId(
+  obj: Record<string, unknown> | null | undefined,
+): string;
 export function lookupFixVulnerabilityId(
   registerRows: unknown,
   vuln: Record<string, unknown> | null | undefined,
