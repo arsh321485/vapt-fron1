@@ -2540,6 +2540,332 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    // Normalize scope id from any common create/list payload shape
+    extractScopeId(payload: any): string | null {
+      if (!payload) return null;
+      if (typeof payload === "string" && payload.trim()) return payload.trim();
+      if (typeof payload !== "object") return null;
+
+      const direct = [
+        payload.id,
+        payload.scope_id,
+        payload.scopeId,
+        payload.scope?.id,
+        payload.scope?.scope_id,
+        payload.data?.id,
+        payload.data?.scope_id,
+        payload.data?.scope?.id,
+        Array.isArray(payload.scope_ids) ? payload.scope_ids[0] : null,
+        Array.isArray(payload.scopes)
+          ? payload.scopes[0]?.id || payload.scopes[0]?.scope_id || payload.scopes[0]
+          : null,
+        Array.isArray(payload.results)
+          ? payload.results[0]?.scope_id ||
+            payload.results[0]?.scope?.id ||
+            payload.results[0]?.id
+          : null,
+        Array.isArray(payload.created)
+          ? payload.created[0]?.scope_id ||
+            payload.created[0]?.scope?.id ||
+            payload.created[0]?.id
+          : null,
+        Array.isArray(payload.entries) ? payload.entries[0]?.scope_id : null,
+        Array.isArray(payload.scope?.entries) ? payload.scope.entries[0]?.scope_id : null,
+      ];
+
+      for (const value of direct) {
+        if (value != null && String(value).trim()) return String(value).trim();
+      }
+      return null;
+    },
+
+    normalizeScopeList(payload: any): any[] {
+      if (!payload) return [];
+      if (Array.isArray(payload)) return payload;
+      if (Array.isArray(payload.results)) return payload.results;
+      if (Array.isArray(payload.scopes)) return payload.scopes;
+      if (Array.isArray(payload.data)) return payload.data;
+      if (payload.id || payload.scope_id) return [payload];
+      return [];
+    },
+
+    // GET /api/admin/scope/ (optional testing box filter)
+    async listScopes(testingType?: string) {
+      try {
+        const type = String(testingType || "").trim();
+        const url = type
+          ? `/api/admin/scope/?current_testing_box=${encodeURIComponent(type)}`
+          : `/api/admin/scope/`;
+        const res = await endpoint.get(url);
+        return {
+          status: true,
+          data: res.data,
+          list: this.normalizeScopeList(res.data),
+        };
+      } catch (err) {
+        const error = err as AxiosError<any>;
+        const details = error.response?.data || null;
+        return {
+          status: false,
+          message:
+            details?.detail ||
+            details?.message ||
+            details?.error ||
+            error.message ||
+            "Failed to list scopes",
+          details,
+          list: [] as any[],
+        };
+      }
+    },
+
+    // Resolve latest / matching scope id when create response omits id
+    async resolveLatestScopeId(options?: {
+      preferredName?: string;
+      testingType?: string;
+    }): Promise<string | null> {
+      const preferredName = String(options?.preferredName || "").trim();
+      const testingType = String(options?.testingType || "").trim();
+
+      const tryPickFromList = (list: any[]) => {
+        if (!list.length) return null;
+        if (preferredName) {
+          const match = list.find((item) => {
+            const name = String(item?.name || "").trim();
+            const file = String(item?.source_file_name || "").trim();
+            return (
+              name === preferredName ||
+              name.toLowerCase() === preferredName.toLowerCase() ||
+              file === preferredName ||
+              file.replace(/\.csv$/i, "") === preferredName
+            );
+          });
+          const matchedId = this.extractScopeId(match);
+          if (matchedId) return matchedId;
+        }
+
+        const sorted = [...list].sort((a, b) =>
+          String(b?.created_at || b?.updated_at || "").localeCompare(
+            String(a?.created_at || a?.updated_at || ""),
+          ),
+        );
+        return this.extractScopeId(sorted[0]);
+      };
+
+      // 1) list endpoint (with / without testing type)
+      const typeCandidates = testingType
+        ? [testingType, ""]
+        : ["", "black_box", "white_box", "grey_box"];
+
+      for (const type of typeCandidates) {
+        const listRes = await this.listScopes(type || undefined);
+        if (!listRes.status) continue;
+        const picked = tryPickFromList(listRes.list || []);
+        if (picked) return picked;
+      }
+
+      // 2) names → scope data (legacy shape with scope_ids)
+      try {
+        const user =
+          this.user || JSON.parse(localStorage.getItem("user") || "null");
+        const adminId = user?.id || user?._id;
+        if (!adminId) return null;
+
+        const namesRes = await this.fetchScopeProjectNames(String(adminId));
+        if (!namesRes.status) return null;
+
+        const namesPayload = namesRes.data || {};
+        const names: string[] =
+          namesPayload.scope_names ||
+          namesPayload.data?.scope_names ||
+          namesPayload.names ||
+          [];
+
+        const nameToUse =
+          (preferredName && names.includes(preferredName) && preferredName) ||
+          names[0] ||
+          preferredName ||
+          "";
+
+        if (!nameToUse) return null;
+
+        const testingCandidates = testingType
+          ? [testingType]
+          : ["black_box", "white_box", "grey_box", "internal", "external"];
+
+        for (const t of testingCandidates) {
+          const full = await this.getFullScopeData(String(adminId), nameToUse, t);
+          if (!full.status) continue;
+          const id = this.extractScopeId(full.data);
+          if (id) return id;
+        }
+      } catch {
+        /* optional fallback */
+      }
+
+      return null;
+    },
+
+    // GET SCOPE BY ID
+    // GET /api/admin/scope/<scope_id>/
+    async getScopeById(scopeId: string) {
+      try {
+        const id = String(scopeId || "").trim();
+        if (!id) {
+          throw new Error("Scope ID is required");
+        }
+
+        const res = await endpoint.get(`/api/admin/scope/${id}/`);
+
+        return {
+          status: true,
+          data: res.data,
+        };
+      } catch (err) {
+        const error = err as AxiosError<any>;
+        const details = error.response?.data || null;
+        return {
+          status: false,
+          message:
+            details?.detail ||
+            details?.message ||
+            details?.error ||
+            error.message ||
+            "Failed to fetch scope",
+          details,
+        };
+      }
+    },
+
+    // Load previously uploaded scope (localStorage id → list fallback → detail GET)
+    async fetchActiveScope(options?: { preferredName?: string; testingType?: string }) {
+      try {
+        let scopeId = "";
+        try {
+          scopeId = String(localStorage.getItem("activeScopeId") || "").trim();
+        } catch {
+          scopeId = "";
+        }
+
+        if (!scopeId) {
+          scopeId =
+            (await this.resolveLatestScopeId({
+              preferredName: options?.preferredName,
+              testingType: options?.testingType,
+            })) || "";
+        }
+
+        if (!scopeId) {
+          return {
+            status: false,
+            message: "No scope found",
+            data: null,
+          };
+        }
+
+        const getRes = await this.getScopeById(scopeId);
+        if (getRes.status && getRes.data?.id) {
+          try {
+            localStorage.setItem("activeScopeId", String(getRes.data.id));
+          } catch {
+            /* ignore */
+          }
+        }
+        return getRes;
+      } catch (err) {
+        const error = err as AxiosError<any>;
+        return {
+          status: false,
+          message: error.message || "Failed to fetch active scope",
+          data: null,
+        };
+      }
+    },
+
+    // CREATE SCOPE — CSV file or manual targets
+    // POST /api/admin/scope/create/?current_testing_box=<type>
+    // FormData: name + (file | targets) [+ expand_subnets for file]
+    // On success → GET /api/admin/scope/<id>/ so caller gets full scope (entries, etc.)
+    async createScope(formData: FormData, testingType?: string) {
+      try {
+        const type = String(testingType || "").trim();
+        const url = type
+          ? `/api/admin/scope/create/?current_testing_box=${encodeURIComponent(type)}`
+          : `/api/admin/scope/create/`;
+
+        const res = await endpoint.post(url, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+
+        const createData = res.data || {};
+        let scopeId = this.extractScopeId(createData);
+
+        // Create often returns scope.entries without scope.id — resolve via list/names
+        if (!scopeId) {
+          const fileField = formData.get("file");
+          const fileStem =
+            fileField instanceof File
+              ? String(fileField.name || "").replace(/\.csv$/i, "").trim()
+              : "";
+          const preferredName =
+            String(createData?.scope?.name || createData?.name || formData.get("name") || "").trim() ||
+            fileStem;
+
+          const resolvedType =
+            type ||
+            String(createData?.testing_type || createData?.scope?.testing_type || "").trim();
+
+          scopeId = await this.resolveLatestScopeId({
+            preferredName: preferredName || undefined,
+            testingType: resolvedType || undefined,
+          });
+        }
+
+        let scope = null;
+        if (scopeId) {
+          const getRes = await this.getScopeById(String(scopeId));
+          if (getRes.status) {
+            scope = getRes.data;
+            try {
+              localStorage.setItem("activeScopeId", String(scopeId));
+            } catch {
+              /* ignore */
+            }
+          }
+        }
+
+        // Prefer full GET payload; keep create counters for UI toasts
+        const data = {
+          ...createData,
+          ...(scope || {}),
+          created_count: createData?.created_count,
+          skipped_count: createData?.skipped_count,
+          skipped: createData?.skipped,
+        };
+
+        return {
+          status: true,
+          data,
+          scope,
+          message: createData?.message || "Scope created successfully",
+        };
+      } catch (err) {
+        const error = err as AxiosError<any>;
+        const details = error.response?.data || null;
+        return {
+          status: false,
+          message:
+            details?.detail ||
+            details?.message ||
+            details?.error ||
+            (Array.isArray(details?.errors) && details.errors[0]?.error) ||
+            error.message ||
+            "Failed to create scope",
+          details,
+        };
+      }
+    },
+
     // GET TESTING TYPE BY SCOPE PROJECT NAME
     async getTestingTypeByScope(adminId: string, scopeName: string) {
       try {
@@ -2765,6 +3091,109 @@ export const useAuthStore = defineStore("auth", {
             data?.detail ||
             error.message ||
             "Failed to fetch upload status",
+        };
+      }
+    },
+
+    // GET /api/admin/upload_report/upload/<report_id>/
+    async getUploadReportById(reportId: string): Promise<{
+      status: boolean;
+      data?: any;
+      message?: string;
+    }> {
+      try {
+        const id = String(reportId || "").trim();
+        if (!id) {
+          return { status: false, message: "Report ID is required" };
+        }
+
+        const res = await endpoint.get(
+          `/api/admin/upload_report/upload/${encodeURIComponent(id)}/`,
+        );
+
+        const payload = res.data?.report || res.data?.data || res.data || null;
+        return { status: true, data: payload };
+      } catch (error: any) {
+        const data = error.response?.data;
+        return {
+          status: false,
+          data,
+          message:
+            data?.error ||
+            data?.message ||
+            data?.detail ||
+            error.message ||
+            "Failed to fetch upload report",
+        };
+      }
+    },
+
+    // Resolve active report id then GET report detail (+ optional status)
+    async fetchActiveUploadReport(): Promise<{
+      status: boolean;
+      data?: any;
+      message?: string;
+    }> {
+      try {
+        let reportId =
+          String(localStorage.getItem("reportId") || "").trim() ||
+          String(this.reportStatus?.reportId || "").trim() ||
+          String(this.latestReportId || "").trim();
+
+        if (!reportId) {
+          reportId = String((await this.resolveReportId()) || "").trim();
+        }
+
+        if (!reportId) {
+          return { status: false, message: "No report found", data: null };
+        }
+
+        const detailRes = await this.getUploadReportById(reportId);
+        if (!detailRes.status || !detailRes.data) {
+          return detailRes;
+        }
+
+        let statusData: any = null;
+        try {
+          const statusRes = await this.fetchUploadReportStatus(reportId);
+          if (statusRes.status) statusData = statusRes.data;
+        } catch {
+          /* optional */
+        }
+
+        const merged = {
+          ...(detailRes.data || {}),
+          ...(statusData || {}),
+          report_id:
+            detailRes.data?.report_id ||
+            detailRes.data?.id ||
+            detailRes.data?._id ||
+            reportId,
+          id:
+            detailRes.data?.id ||
+            detailRes.data?._id ||
+            detailRes.data?.report_id ||
+            reportId,
+          resolved_file_name:
+            this.extractUploadedFileName(detailRes.data) ||
+            detailRes.data?.file_name ||
+            detailRes.data?.filename ||
+            detailRes.data?.original_filename ||
+            null,
+        };
+
+        try {
+          localStorage.setItem("reportId", String(merged.report_id || reportId));
+        } catch {
+          /* ignore */
+        }
+
+        return { status: true, data: merged };
+      } catch (error: any) {
+        return {
+          status: false,
+          message: error.message || "Failed to fetch active upload report",
+          data: null,
         };
       }
     },

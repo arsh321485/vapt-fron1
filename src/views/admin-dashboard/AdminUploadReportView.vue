@@ -97,7 +97,7 @@
           </div>
 
           <!-- UPLOAD REPORT (existing flow) -->
-          <div v-else-if="viewMode === 'upload'">
+          <div v-else-if="viewMode === 'upload'" class="aur-panel">
             <button type="button" class="aur-back" @click="backToChoose">
               <i class="bi bi-arrow-left"></i> Back
             </button>
@@ -110,6 +110,48 @@
               <p class="aur-subtitle">
                 Upload your vulnerability assessment file (.nessus, .xml, .html, .htm, .csv, .xlsx, .xls, .pdf, .docx, .doc — including AWS Inspector) to begin.
               </p>
+            </div>
+
+            <div v-if="loadingExistingReport" class="aur-scope-loading">
+              <span class="spinner-border spinner-border-sm me-2"></span>
+              Loading current report...
+            </div>
+
+            <div v-else-if="hasExistingReport" class="aur-scope-board">
+              <div class="aur-scope-board-top">
+                <div class="aur-scope-board-title-row">
+                  <div class="aur-scope-board-icon">
+                    <i class="bi bi-file-earmark-check"></i>
+                  </div>
+                  <div>
+                    <p class="aur-scope-board-kicker">Current report</p>
+                    <h2 class="aur-scope-board-title">{{ existingReportFileName }}</h2>
+                  </div>
+                </div>
+                <span v-if="existingReportStatusLabel" class="aur-scope-count">
+                  {{ existingReportStatusLabel }}
+                </span>
+              </div>
+
+              <div v-if="existingReportCreatedAt" class="aur-scope-meta">
+                <span class="aur-scope-chip">
+                  <i class="bi bi-calendar3"></i>
+                  {{ existingReportCreatedAt }}
+                </span>
+              </div>
+
+              <div v-if="existingReportStats.length" class="aur-report-stats">
+                <div
+                  v-for="stat in existingReportStats"
+                  :key="stat.label"
+                  class="aur-report-stat"
+                >
+                  <span class="aur-report-stat-value">{{ stat.value }}</span>
+                  <span class="aur-report-stat-label">{{ stat.label }}</span>
+                </div>
+              </div>
+
+              <p class="aur-scope-replace-hint">Upload a new report below to replace the current one.</p>
             </div>
 
             <div
@@ -230,7 +272,7 @@
           </div>
 
           <!-- SCOPE CSV -->
-          <div v-else-if="viewMode === 'scope-csv'">
+          <div v-else-if="viewMode === 'scope-csv'" class="aur-panel">
             <button type="button" class="aur-back" @click="openEnterScope">
               <i class="bi bi-arrow-left"></i> Back
             </button>
@@ -243,6 +285,71 @@
               <p class="aur-subtitle">
                 Upload a .csv file listing the assets you want VAPTFix to include in scope.
               </p>
+            </div>
+
+            <div v-if="loadingExistingScope" class="aur-scope-loading">
+              <span class="spinner-border spinner-border-sm me-2"></span>
+              Loading current scope...
+            </div>
+
+            <div v-else-if="hasExistingScope" class="aur-scope-board">
+              <div class="aur-scope-board-top">
+                <div class="aur-scope-board-title-row">
+                  <div class="aur-scope-board-icon">
+                    <i class="bi bi-shield-check"></i>
+                  </div>
+                  <div>
+                    <p class="aur-scope-board-kicker">Current scope</p>
+                    <h2 class="aur-scope-board-title">{{ existingScopeDisplayName }}</h2>
+                  </div>
+                </div>
+                <span class="aur-scope-count">
+                  {{ existingEntryCount }} target{{ existingEntryCount === 1 ? '' : 's' }}
+                </span>
+              </div>
+
+              <div class="aur-scope-meta">
+                <span v-if="existingScopeLabel" class="aur-scope-chip">
+                  <i class="bi bi-filetype-csv"></i>
+                  {{ existingScopeLabel }}
+                </span>
+              </div>
+
+              <div v-if="existingScopeEntries.length" class="aur-scope-table-wrap">
+                <table class="aur-scope-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Target</th>
+                      <th>Type</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="(entry, idx) in existingScopeEntries"
+                      :key="entry.id || entry.value + '-' + idx"
+                    >
+                      <td>{{ idx + 1 }}</td>
+                      <td>
+                        <span class="aur-scope-target">{{ entry.value }}</span>
+                        <span v-if="entry.subnet_mask" class="aur-scope-subnet">
+                          /{{ entry.subnet_mask }}
+                        </span>
+                      </td>
+                      <td>
+                        <span
+                          class="aur-scope-type-pill"
+                          :class="entry.is_internal ? 'is-internal' : 'is-external'"
+                        >
+                          {{ formatEntryType(entry.entry_type) }}
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <p class="aur-scope-replace-hint">Upload a new CSV below to update scope.</p>
             </div>
 
             <div
@@ -301,7 +408,7 @@
           </div>
 
           <!-- SCOPE MANUAL -->
-          <div v-else-if="viewMode === 'scope-manual'">
+          <div v-else-if="viewMode === 'scope-manual'" class="aur-panel">
             <button type="button" class="aur-back" @click="openEnterScope">
               <i class="bi bi-arrow-left"></i> Back
             </button>
@@ -314,6 +421,69 @@
               <p class="aur-subtitle">
                 Add one IP, hostname, or CIDR range per line. You can paste a list at once.
               </p>
+            </div>
+
+            <div v-if="loadingExistingScope" class="aur-scope-loading">
+              <span class="spinner-border spinner-border-sm me-2"></span>
+              Loading current scope...
+            </div>
+
+            <div v-else-if="hasExistingScope" class="aur-scope-board">
+              <div class="aur-scope-board-top">
+                <div class="aur-scope-board-title-row">
+                  <div class="aur-scope-board-icon">
+                    <i class="bi bi-shield-check"></i>
+                  </div>
+                  <div>
+                    <p class="aur-scope-board-kicker">Current scope</p>
+                    <h2 class="aur-scope-board-title">{{ existingScopeDisplayName }}</h2>
+                  </div>
+                </div>
+                <span class="aur-scope-count">
+                  {{ existingEntryCount }} target{{ existingEntryCount === 1 ? '' : 's' }}
+                </span>
+              </div>
+
+              <div class="aur-scope-meta">
+                <span v-if="existingScopeLabel" class="aur-scope-chip">
+                  <i class="bi bi-filetype-csv"></i>
+                  {{ existingScopeLabel }}
+                </span>
+              </div>
+
+              <div v-if="existingScopeEntries.length" class="aur-scope-table-wrap">
+                <table class="aur-scope-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Target</th>
+                      <th>Type</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="(entry, idx) in existingScopeEntries"
+                      :key="entry.id || entry.value + '-' + idx"
+                    >
+                      <td>{{ idx + 1 }}</td>
+                      <td>
+                        <span class="aur-scope-target">{{ entry.value }}</span>
+                        <span v-if="entry.subnet_mask" class="aur-scope-subnet">
+                          /{{ entry.subnet_mask }}
+                        </span>
+                      </td>
+                      <td>
+                        <span
+                          class="aur-scope-type-pill"
+                          :class="entry.is_internal ? 'is-internal' : 'is-external'"
+                        >
+                          {{ formatEntryType(entry.entry_type) }}
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             <label class="aur-field-label" for="scope-manual-input">Targets</label>
@@ -393,6 +563,10 @@ export default {
       redirecting: false,
       manualScopeText: '',
       scopeSubmitting: false,
+      existingScope: null,
+      loadingExistingScope: false,
+      existingReport: null,
+      loadingExistingReport: false,
     };
   },
   computed: {
@@ -444,6 +618,102 @@ export default {
         return total > 0 && generated >= total;
       });
     },
+    hasExistingScope() {
+      return !!(this.existingScope?.id || this.existingScopeEntries.length);
+    },
+    existingScopeEntries() {
+      const entries = this.existingScope?.entries;
+      return Array.isArray(entries) ? entries : [];
+    },
+    existingScopeLabel() {
+      return this.existingScope?.source_file_name || '';
+    },
+    existingScopeDisplayName() {
+      return (
+        this.existingScope?.name ||
+        this.existingScope?.source_file_name ||
+        'Current scope'
+      );
+    },
+    existingEntryCount() {
+      return (
+        Number(this.existingScope?.entry_count) ||
+        this.existingScopeEntries.length ||
+        0
+      );
+    },
+    hasExistingReport() {
+      return !!(
+        this.existingReport?.id ||
+        this.existingReport?.report_id ||
+        this.existingReport?.resolved_file_name ||
+        this.existingReport?.file_name
+      );
+    },
+    existingReportId() {
+      return (
+        this.existingReport?.report_id ||
+        this.existingReport?.id ||
+        this.existingReport?._id ||
+        ''
+      );
+    },
+    existingReportFileName() {
+      return (
+        this.existingReport?.resolved_file_name ||
+        this.existingReport?.file_name ||
+        this.existingReport?.filename ||
+        this.existingReport?.original_filename ||
+        this.existingReport?.name ||
+        'Uploaded report'
+      );
+    },
+    existingReportStatusLabel() {
+      const raw =
+        this.existingReport?.status ||
+        this.existingReport?.upload_status ||
+        this.existingReport?.state ||
+        '';
+      if (!raw) {
+        const total = Number(this.existingReport?.cards_total) || 0;
+        const generated = Number(this.existingReport?.cards_generated) || 0;
+        if (total > 0 && generated >= total) return 'Ready';
+        if (total > 0) return 'Processing';
+        return '';
+      }
+      return String(raw).replace(/_/g, ' ');
+    },
+    existingReportCreatedAt() {
+      const raw =
+        this.existingReport?.created_at ||
+        this.existingReport?.uploaded_at ||
+        this.existingReport?.updated_at ||
+        '';
+      if (!raw) return '';
+      const d = new Date(raw);
+      if (Number.isNaN(d.getTime())) return String(raw);
+      return d.toLocaleString();
+    },
+    existingReportCardsLabel() {
+      const total = Number(this.existingReport?.cards_total) || 0;
+      const generated = Number(this.existingReport?.cards_generated) || 0;
+      if (!total && !generated) return '';
+      return `Agents ${generated}/${total || '?'}`;
+    },
+    existingReportStats() {
+      const r = this.existingReport || {};
+      const candidates = [
+        { label: 'Hosts', value: r.host_count ?? r.hosts_count ?? r.total_hosts },
+        { label: 'Vulnerabilities', value: r.vulnerability_count ?? r.vuln_count ?? r.total_vulnerabilities },
+        { label: 'Critical', value: r.critical_count ?? r.critical },
+        { label: 'High', value: r.high_count ?? r.high },
+        { label: 'Medium', value: r.medium_count ?? r.medium },
+        { label: 'Low', value: r.low_count ?? r.low },
+      ];
+      return candidates
+        .filter((item) => item.value != null && item.value !== '')
+        .map((item) => ({ label: item.label, value: String(item.value) }));
+    },
   },
   methods: {
     clearFileState() {
@@ -461,6 +731,28 @@ export default {
     openUploadReport() {
       this.clearFileState();
       this.viewMode = 'upload';
+      if (!this.existingReport && !this.loadingExistingReport) {
+        this.loadExistingReport();
+      }
+    },
+    shortReportId(id) {
+      const value = String(id || '');
+      if (value.length <= 12) return value;
+      return `${value.slice(0, 6)}…${value.slice(-4)}`;
+    },
+    async loadExistingReport() {
+      this.loadingExistingReport = true;
+      try {
+        const authStore = useAuthStore();
+        const res = await authStore.fetchActiveUploadReport();
+        if (res.status && res.data) {
+          this.existingReport = res.data;
+        }
+      } catch (err) {
+        console.error('Existing report GET failed:', err);
+      } finally {
+        this.loadingExistingReport = false;
+      }
     },
     openEnterScope() {
       this.clearFileState();
@@ -469,11 +761,192 @@ export default {
     openScopeCsv() {
       this.clearFileState();
       this.viewMode = 'scope-csv';
+      if (!this.existingScope && !this.loadingExistingScope) {
+        this.loadExistingScope();
+      }
     },
     openScopeManual() {
       this.clearFileState();
       this.uploadError = '';
       this.viewMode = 'scope-manual';
+      if (!this.existingScope && !this.loadingExistingScope) {
+        this.loadExistingScope();
+      }
+    },
+    formatEntryType(type) {
+      const raw = String(type || '').trim();
+      if (!raw) return 'target';
+      return raw.replace(/_/g, ' ');
+    },
+    applyRouteMode() {
+      const mode = String(this.$route?.query?.mode || '').toLowerCase();
+      // Default / profile Upload Scope → "Provide Your Scope" chooser
+      if (!mode || mode === 'choose' || mode === 'scope') {
+        this.viewMode = 'choose';
+      } else if (mode === 'scope-csv') {
+        this.viewMode = 'scope-csv';
+      } else if (mode === 'scope-manual') {
+        this.viewMode = 'scope-manual';
+      } else if (mode === 'scope-method') {
+        this.viewMode = 'scope-method';
+      } else if (mode === 'upload') {
+        this.viewMode = 'upload';
+      }
+    },
+    async loadExistingScope() {
+      this.loadingExistingScope = true;
+      try {
+        const authStore = useAuthStore();
+        const res = await authStore.fetchActiveScope();
+        if (res.status && res.data) {
+          this.existingScope = res.data;
+          if (res.data.id) {
+            try {
+              localStorage.setItem('activeScopeId', String(res.data.id));
+            } catch (_) {
+              /* ignore */
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Existing scope GET failed:', err);
+      } finally {
+        this.loadingExistingScope = false;
+      }
+    },
+    async ensureScopeGetAfterCreate(res, preferredName) {
+      if (res?.scope?.id) return res;
+
+      const authStore = useAuthStore();
+      const getRes = await authStore.fetchActiveScope({ preferredName });
+      if (!getRes.status || !getRes.data) return res;
+
+      return {
+        ...res,
+        scope: getRes.data,
+        data: {
+          ...(res.data || {}),
+          ...getRes.data,
+          created_count: res.data?.created_count,
+          skipped_count: res.data?.skipped_count,
+          skipped: res.data?.skipped,
+        },
+      };
+    },
+    async handleScopeCreateSuccess(res) {
+      const scope = res.scope || res.data || {};
+      const created =
+        Number(res.data?.created_count) ||
+        Number(scope?.entry_count) ||
+        (Array.isArray(scope?.entries) ? scope.entries.length : 0) ||
+        0;
+      const skipped = Number(res.data?.skipped_count) || 0;
+
+      if (scope?.id) {
+        try {
+          localStorage.setItem('activeScopeId', String(scope.id));
+        } catch (_) {
+          /* ignore */
+        }
+      }
+
+      if (skipped > 0 && created === 0) {
+        await Swal.fire({
+          icon: 'warning',
+          title: 'Already exists',
+          text: `${skipped} target(s) skipped`,
+          confirmButtonColor: '#241447',
+        });
+      } else {
+        await Swal.fire({
+          icon: 'success',
+          title: 'Scope created',
+          text:
+            created > 0
+              ? `${created} target(s) created${skipped ? ` · ${skipped} skipped` : ''}`
+              : res.message || 'Scope submitted successfully',
+          confirmButtonColor: '#241447',
+          timer: 2200,
+          showConfirmButton: true,
+        });
+      }
+
+      localStorage.removeItem('isNewProject');
+      const authStore = useAuthStore();
+      const route = authStore.isSlackOrTeamsLogin() ? '/riskcriteria' : '/communication';
+      this.$router.replace(route);
+    },
+    async submitScopeCsv() {
+      if (!this.selectedFile || this.scopeSubmitting) return;
+      if (!this.isCsvFile(this.selectedFile)) {
+        this.uploadError = 'Please upload a .csv file for scope.';
+        return;
+      }
+
+      this.scopeSubmitting = true;
+      this.uploadError = '';
+      try {
+        const formData = new FormData();
+        formData.append('file', this.selectedFile);
+        formData.append('expand_subnets', 'false');
+
+        const authStore = useAuthStore();
+        let res = await authStore.createScope(formData);
+
+        if (!res.status) {
+          this.uploadError = res.message || 'Failed to create scope';
+          Swal.fire({
+            icon: 'error',
+            title: this.uploadError,
+            confirmButtonColor: '#241447',
+          });
+          return;
+        }
+
+        const preferredName = String(this.selectedFile?.name || '')
+          .replace(/\.csv$/i, '')
+          .trim();
+        res = await this.ensureScopeGetAfterCreate(res, preferredName);
+        await this.handleScopeCreateSuccess(res);
+      } catch (err) {
+        console.error('Scope CSV error:', err);
+        this.uploadError = 'Something went wrong while submitting scope CSV';
+        Swal.fire('Scope failed', this.uploadError, 'error');
+      } finally {
+        this.scopeSubmitting = false;
+      }
+    },
+    async submitScopeManual() {
+      if (!this.manualTargetCount || this.scopeSubmitting) return;
+
+      this.scopeSubmitting = true;
+      this.uploadError = '';
+      try {
+        const formData = new FormData();
+        formData.append('targets', this.manualTargets.join('\n'));
+
+        const authStore = useAuthStore();
+        let res = await authStore.createScope(formData);
+
+        if (!res.status) {
+          this.uploadError = res.message || 'Failed to create scope';
+          Swal.fire({
+            icon: 'error',
+            title: this.uploadError,
+            confirmButtonColor: '#241447',
+          });
+          return;
+        }
+
+        res = await this.ensureScopeGetAfterCreate(res);
+        await this.handleScopeCreateSuccess(res);
+      } catch (err) {
+        console.error('Scope manual error:', err);
+        this.uploadError = 'Something went wrong while submitting scope';
+        Swal.fire('Scope failed', this.uploadError, 'error');
+      } finally {
+        this.scopeSubmitting = false;
+      }
     },
     getExtension(fileName) {
       const name = String(fileName || '').toLowerCase();
@@ -641,6 +1114,26 @@ export default {
           return;
         }
 
+        // Persist + GET report detail for UI
+        authStore.setActiveReportId(reportIds[0]);
+        try {
+          const getRes = await authStore.getUploadReportById(reportIds[0]);
+          if (getRes.status && getRes.data) {
+            this.existingReport = {
+              ...getRes.data,
+              report_id: getRes.data.report_id || getRes.data.id || getRes.data._id || reportIds[0],
+              resolved_file_name:
+                authStore.extractUploadedFileName(getRes.data) ||
+                getRes.data.file_name ||
+                getRes.data.filename ||
+                this.selectedFile?.name ||
+                null,
+            };
+          }
+        } catch (getErr) {
+          console.error('Report GET after upload failed:', getErr);
+        }
+
         this.uploading = false;
         this.startPolling(reportIds);
       } catch (err) {
@@ -651,37 +1144,15 @@ export default {
         this.uploading = false;
       }
     },
-    async submitScopeCsv() {
-      if (!this.selectedFile || this.scopeSubmitting) return;
-      if (!this.isCsvFile(this.selectedFile)) {
-        this.uploadError = 'Please upload a .csv file for scope.';
-        return;
-      }
-
-      // Reuse report upload pipeline for CSV until a dedicated scope API is wired.
-      this.scopeSubmitting = true;
-      try {
-        await this.startUpload();
-      } finally {
-        this.scopeSubmitting = false;
-      }
-    },
-    async submitScopeManual() {
-      if (!this.manualTargetCount || this.scopeSubmitting) return;
-      this.scopeSubmitting = true;
-      this.uploadError = '';
-      try {
-        // UI ready — backend scope API can be wired here later.
-        await Swal.fire({
-          icon: 'success',
-          title: 'Scope saved',
-          text: `${this.manualTargetCount} target(s) captured. Backend will process this scope next.`,
-          confirmButtonColor: '#241447',
-        });
-        this.$router.push('/waiting-for-report');
-      } finally {
-        this.scopeSubmitting = false;
-      }
+  },
+  async mounted() {
+    this.applyRouteMode();
+    // Prefetch previously uploaded scope + report for Current boards
+    await Promise.all([this.loadExistingScope(), this.loadExistingReport()]);
+  },
+  watch: {
+    '$route.query.mode'() {
+      this.applyRouteMode();
     },
   },
   beforeUnmount() {
@@ -797,6 +1268,240 @@ export default {
 }
 
 .aur-back:hover { color: #0f696e; }
+
+.aur-panel {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding-right: 2px;
+}
+
+.aur-scope-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  background: #f8fafc;
+  border-radius: 10px;
+}
+
+.aur-scope-board {
+  background: linear-gradient(180deg, #f7fcfc 0%, #ffffff 100%);
+  border: 1px solid rgba(15, 105, 110, 0.16);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.aur-scope-board-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.aur-scope-board-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.aur-scope-board-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(15, 105, 110, 0.1);
+  color: #0f696e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  flex-shrink: 0;
+}
+
+.aur-scope-board-kicker {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #0f696e;
+}
+
+.aur-scope-board-title {
+  margin: 2px 0 0;
+  font-size: 1rem;
+  font-weight: 750;
+  color: #241447;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.aur-scope-count {
+  flex-shrink: 0;
+  background: #0f696e;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.aur-scope-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.aur-scope-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff;
+  border: 1px solid rgba(36, 20, 71, 0.1);
+  color: #475569;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 5px 9px;
+  border-radius: 8px;
+  max-width: 100%;
+  word-break: break-all;
+}
+
+.aur-scope-chip i {
+  color: #0f696e;
+  font-size: 0.85rem;
+}
+
+.aur-scope-table-wrap {
+  border: 1px solid rgba(36, 20, 71, 0.08);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.aur-scope-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.aur-scope-table th,
+.aur-scope-table td {
+  padding: 9px 12px;
+  text-align: left;
+  border-bottom: 1px solid #eef2f7;
+  font-size: 0.82rem;
+}
+
+.aur-scope-table th {
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  z-index: 1;
+}
+
+.aur-scope-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.aur-scope-table td:first-child,
+.aur-scope-table th:first-child {
+  width: 42px;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.aur-scope-target {
+  font-weight: 700;
+  color: #1e293b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.84rem;
+}
+
+.aur-scope-subnet {
+  margin-left: 4px;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.aur-scope-type-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: capitalize;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.aur-scope-type-pill.is-external {
+  background: #ecfeff;
+  color: #0f696e;
+}
+
+.aur-scope-type-pill.is-internal {
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.aur-scope-replace-hint {
+  margin: 10px 0 0;
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.aur-report-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.aur-report-stat {
+  background: #fff;
+  border: 1px solid rgba(36, 20, 71, 0.08);
+  border-radius: 10px;
+  padding: 10px 8px;
+  text-align: center;
+}
+
+.aur-report-stat-value {
+  display: block;
+  font-size: 1rem;
+  font-weight: 750;
+  color: #241447;
+  line-height: 1.1;
+}
+
+.aur-report-stat-label {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
 
 .aur-header { text-align: center; margin-bottom: 20px; flex-shrink: 0; }
 
