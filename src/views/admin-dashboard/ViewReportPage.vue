@@ -853,7 +853,7 @@ export default {
 .score-grid { margin-top: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .score-box { background: #f4f5f8; border-radius: 10px; padding: 12px; }
 .score-box span { display: block; font-size: 11px; color: #8b95a7; text-transform: uppercase; font-weight: 700; letter-spacing: .06em; }
-.score-box strong { font-size: 38px; color: #1f2a42; line-height: 1.08; }
+.score-box strong { font-size: 26px; color: #1f2a42; line-height: 1.15; }
 
 .dark-card { background: #25124d; color: #fff; }
 .dark-card h3 { color: #fff; font-size: 28px; }
@@ -899,10 +899,10 @@ export default {
   border-radius: 14px;
 }
 .stat-card--compact span { font-size: 10px; }
-.stat-card--compact strong { font-size: 36px; }
+.stat-card--compact strong { font-size: 26px; }
 .stat-card--compact small { font-size: 11px; }
 .stat-card span { font-size: 11px; color: #8b95a7; text-transform: uppercase; font-weight: 800; letter-spacing: .07em; }
-.stat-card strong { font-size: 52px; line-height: 1; font-weight: 800; }
+.stat-card strong { font-size: 28px; line-height: 1; font-weight: 800; }
 .stat-card small { color: #8b95a7; font-size: 12px; }
 .stat-card.critical strong { color: #b91c1c; }
 .stat-card.high strong { color: #d97706; }
