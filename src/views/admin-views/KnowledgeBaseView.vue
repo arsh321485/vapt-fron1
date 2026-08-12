@@ -1,12 +1,11 @@
 <template>
-  <div class="legal-page-root">
+  <div class="legal-page-root kb-page">
     <Header />
 
     <div class="legal-page-frame">
       <div class="ld-page">
         <aside class="ld-sidebar">
-          <div class="ld-sidebar-label">On this page</div>
-          <nav @click="onTocNavClick">
+          <nav ref="tocNav" @click="onTocNavClick">
             <a
               v-for="item in tocItems"
               :key="item.href"
@@ -16,19 +15,19 @@
           </nav>
         </aside>
 
-        <main class="ld-content">
+        <div class="ld-main">
           <div class="ld-doc-header">
-            <div class="ld-doc-tag">Knowledge Base</div>
             <h1 class="ld-doc-title">{{ activeSectionLabel }}</h1>
             <p class="ld-doc-meta">
               <span><strong>Updated:</strong> May 12, 2026</span>
-              <span style="color:#e2e8f0">|</span>
+              <span class="ld-doc-meta-sep">|</span>
               <span><strong>Cycle:</strong> Annual</span>
-              <span style="color:#e2e8f0">|</span>
+              <span class="ld-doc-meta-sep">|</span>
               <span><strong>v</strong>1.0</span>
             </p>
           </div>
 
+          <main ref="contentScroller" class="ld-content" @scroll.passive="onContentScroll">
           <div class="ld-callout">
             <p>
               VAPTFIX is a web-based, real-time vulnerability management platform that identifies, classifies,
@@ -673,6 +672,7 @@
 
           <LegalDocInnerFooter />
         </main>
+        </div>
       </div>
     </div>
   </div>
@@ -691,6 +691,8 @@ export default {
   data() {
     return {
       activeTocHash: '',
+      _scrollSpyLocked: false,
+      _scrollSpyUnlockTimer: null,
       tocItems: [
         { href: '#executive-summary', label: 'Executive Summary' },
         { href: '#how-vaptfix-works', label: 'VAPTFIX Platform Guide' },
@@ -717,22 +719,28 @@ export default {
         this.scrollContentToHash(this.activeTocHash);
       });
     },
+    activeTocHash() {
+      this.$nextTick(() => this.ensureActiveTocVisible());
+    },
   },
   mounted() {
     document.documentElement.classList.add('legal-doc-sticky-context');
     this.lockWindowScroll();
+    window.addEventListener('scroll', this.lockWindowScroll, { passive: true });
     this.$nextTick(() => {
       this.syncTocFromRoute();
       if (this.$route.hash) this.scrollContentToHash(this.activeTocHash);
+      else this.updateActiveFromScroll();
     });
   },
   beforeUnmount() {
     document.documentElement.classList.remove('legal-doc-sticky-context');
     window.removeEventListener('scroll', this.lockWindowScroll);
+    if (this._scrollSpyUnlockTimer) clearTimeout(this._scrollSpyUnlockTimer);
   },
   computed: {
     activeSectionLabel() {
-      const active = this.tocItems.find(i => i.href === this.activeTocHash);
+      const active = this.tocItems.find((i) => i.href === this.activeTocHash);
       return active ? active.label : 'Executive Summary';
     },
   },
@@ -742,27 +750,81 @@ export default {
         window.scrollTo(0, 0);
       }
     },
+    getContentScroller() {
+      return this.$refs.contentScroller || this.$el?.querySelector?.('.ld-content');
+    },
+    stickyOffset() {
+      // Header is outside the scroller now — small top inset is enough
+      return 24;
+    },
     syncTocFromRoute() {
       const hashes = this.tocItems.map((i) => i.href);
       const h = this.$route.hash;
       if (h && hashes.includes(h)) this.activeTocHash = h;
-      else this.activeTocHash = hashes[0] || '';
+      else if (!this.activeTocHash) this.activeTocHash = hashes[0] || '';
+    },
+    onContentScroll() {
+      if (this._scrollSpyLocked) return;
+      this.updateActiveFromScroll();
+    },
+    updateActiveFromScroll() {
+      const scroller = this.getContentScroller();
+      if (!scroller) return;
+
+      const offset = this.stickyOffset();
+      const scrollerTop = scroller.getBoundingClientRect().top;
+      let current = this.tocItems[0]?.href || '';
+
+      for (const item of this.tocItems) {
+        const el = scroller.querySelector(item.href);
+        if (!el) continue;
+        const top = el.getBoundingClientRect().top - scrollerTop;
+        if (top <= offset) current = item.href;
+      }
+
+      if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 8) {
+        current = this.tocItems[this.tocItems.length - 1]?.href || current;
+      }
+
+      if (current && current !== this.activeTocHash) {
+        this.activeTocHash = current;
+        if (typeof history !== 'undefined' && history.replaceState) {
+          const url = `${window.location.pathname}${window.location.search}${current}`;
+          history.replaceState(null, '', url);
+        }
+      }
+    },
+    ensureActiveTocVisible() {
+      const nav = this.$refs.tocNav;
+      if (!nav) return;
+      const active = nav.querySelector('a.is-active');
+      if (!active) return;
+      active.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     },
     scrollContentToHash(href) {
       if (!href || !href.startsWith('#')) return;
       const id = href.slice(1);
-      const scroller = this.$el?.querySelector?.('.ld-content');
+      const scroller = this.getContentScroller();
       const target = scroller?.querySelector?.(`#${CSS.escape(id)}`);
       if (!target || !scroller) return;
+
       this.lockWindowScroll();
+      this._scrollSpyLocked = true;
+      if (this._scrollSpyUnlockTimer) clearTimeout(this._scrollSpyUnlockTimer);
+
       if (window.matchMedia('(min-width: 769px)').matches) {
         const sRect = scroller.getBoundingClientRect();
         const tRect = target.getBoundingClientRect();
-        const top = scroller.scrollTop + (tRect.top - sRect.top) - 16;
+        const top = scroller.scrollTop + (tRect.top - sRect.top) - this.stickyOffset() + 8;
         scroller.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
       } else {
         target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
+
+      this._scrollSpyUnlockTimer = setTimeout(() => {
+        this._scrollSpyLocked = false;
+        this.updateActiveFromScroll();
+      }, 450);
     },
     onTocNavClick(e) {
       const a = e.target.closest?.('a[href^="#"]');
@@ -772,7 +834,6 @@ export default {
       e.preventDefault();
       e.stopPropagation();
       this.activeTocHash = href;
-      // Avoid browser native hash-scroll (that was hiding the sidebar)
       if (typeof history !== 'undefined' && history.replaceState) {
         const url = `${window.location.pathname}${window.location.search}${href}`;
         history.replaceState(null, '', url);
@@ -838,48 +899,39 @@ export default {
 }
 
 .ld-sidebar-label {
-  font-family: 'Inter', sans-serif;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  color: #0f696e;
-  text-transform: uppercase;
-  margin: 0 0 0.75rem;
-  padding: 0 0 10px 8px;
-  border-bottom: 2px solid rgba(15, 105, 110, 0.15);
-  text-align: left;
+  display: none;
 }
 
 .ld-sidebar nav {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  padding: 0;
+  gap: 2px;
+  padding: 0.25rem 8px 0 0;
   margin: 0;
 }
 
 .ld-sidebar nav a {
   font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  font-weight: 400;
-  color: #64748b;
-  padding: 8px 12px 8px 8px;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: #475569;
+  padding: 10px 12px 10px 12px;
   margin: 0;
-  border-radius: 0;
+  border-radius: 0 10px 10px 0;
   border-left: 3px solid transparent;
   transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
-  line-height: 1.4;
+  line-height: 1.45;
   text-decoration: none;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   text-align: left;
 }
 
 .ld-sidebar nav a::before {
   content: '';
-  width: 5px;
-  height: 5px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: #cbd5e1;
   flex-shrink: 0;
@@ -888,9 +940,10 @@ export default {
 
 .ld-sidebar nav a:hover {
   color: #0f696e;
-  background: rgba(15, 105, 110, 0.06);
-  border-left-color: rgba(15, 105, 110, 0.35);
+  background: rgba(15, 105, 110, 0.07);
+  border-left-color: rgba(15, 105, 110, 0.4);
   text-decoration: none;
+  font-weight: 600;
 }
 
 .ld-sidebar nav a:hover::before {
@@ -898,24 +951,55 @@ export default {
 }
 
 .ld-sidebar nav a.is-active {
-  color: #0f696e;
-  background: linear-gradient(90deg, rgba(15, 105, 110, 0.12), rgba(15, 105, 110, 0.03));
+  color: #0b5256;
+  background: linear-gradient(90deg, rgba(15, 105, 110, 0.16), rgba(15, 105, 110, 0.04));
   border-left-color: #0f696e;
-  font-weight: 600;
+  font-weight: 700;
   text-decoration: none;
 }
 
 .ld-sidebar nav a.is-active::before {
   background: #0f696e;
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   box-shadow: 0 0 0 3px rgba(15, 105, 110, 0.22);
+}
+
+/* Right column: fixed header + scrollable body */
+.ld-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 0;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.ld-doc-header {
+  position: relative;
+  flex-shrink: 0;
+  z-index: 5;
+  width: 100%;
+  margin: 0;
+  padding: 1.25rem clamp(1.5rem, 4vw, 3rem) 1rem clamp(1.75rem, 3.5vw, 2.75rem);
+  border-bottom: 1px solid rgba(15, 105, 110, 0.12);
+  background: #ffffff;
+  background-image: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  box-shadow: 0 8px 16px -12px rgba(36, 20, 71, 0.18);
 }
 
 /* Right content — own scroller, bar hidden */
 .ld-content {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   position: relative;
   z-index: 0;
   padding: 1.25rem clamp(1.5rem, 4vw, 3rem) 2.5rem clamp(1.75rem, 3.5vw, 2.75rem);
@@ -925,6 +1009,7 @@ export default {
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  background: #ffffff;
 }
 
 .ld-content::-webkit-scrollbar {
@@ -933,28 +1018,11 @@ export default {
   display: none;
 }
 
-.ld-doc-header {
-  position: sticky;
-  top: 72px;
-  z-index: 1020;
-  margin-bottom: 2.5rem;
-  padding-top: 1.75rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 1px solid rgba(15, 105, 110, 0.12);
-  background-color: #ffffff;
-  background-image: radial-gradient(#ebe6f3 1px, #ffffff 1px);
-  background-size: 20px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: flex-start;
-}
-
 .ld-content > .ld-callout,
 .ld-content > section,
 .ld-content > .legal-doc-inner-footer {
   position: relative;
-  z-index: 1;
+  z-index: 0;
 }
 
 .ld-doc-tag {
@@ -996,9 +1064,9 @@ export default {
 
 .ld-doc-meta {
   font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  font-weight: 400;
-  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 500;
+  color: #64748b;
   line-height: 1.5;
   display: flex;
   align-items: center;
@@ -1006,9 +1074,13 @@ export default {
   flex-wrap: wrap;
 }
 
+.ld-doc-meta-sep {
+  color: #cbd5e1;
+}
+
 .ld-doc-meta strong {
-  color: #64748b;
-  font-weight: 600;
+  color: #334155;
+  font-weight: 700;
 }
 
 section {
@@ -1017,20 +1089,24 @@ section {
 }
 
 .ld-section-number {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
   font-family: 'Inter', sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  color: #0f696e;
-  background: rgba(15, 105, 110, 0.06);
-  border: 1px solid rgba(15, 105, 110, 0.14);
-  letter-spacing: 1.2px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #241447;
+  background: linear-gradient(90deg, rgba(15, 105, 110, 0.12), rgba(15, 105, 110, 0.03));
+  border: 1px solid rgba(15, 105, 110, 0.2);
+  border-left: 5px solid #0f696e;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  margin-bottom: 1.25rem;
-  padding: 4px 12px;
-  border-radius: 99px;
+  margin: 0 0 1.35rem;
+  padding: 14px 18px;
+  border-radius: 12px;
+  line-height: 1.35;
 }
 
 .ld-content h2 {
@@ -1215,11 +1291,26 @@ section {
     display: none;
   }
 
-  /* Right: independent scroll */
-  .ld-content {
+  /* Right column: fixed header + scrolling body */
+  .ld-main {
     flex: 1 1 auto;
     min-height: 0;
     height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ld-doc-header {
+    position: relative;
+    flex-shrink: 0;
+    top: auto;
+  }
+
+  .ld-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
@@ -1233,12 +1324,8 @@ section {
     display: none;
   }
 
-  .ld-doc-header {
-    top: 0;
-  }
-
   .ld-content > section {
-    scroll-margin-top: 1rem;
+    scroll-margin-top: 24px;
   }
 }
 
@@ -1265,10 +1352,23 @@ section {
     padding: 1.25rem 0 2rem;
   }
 
+  .ld-main {
+    overflow: visible;
+    height: auto;
+    display: block;
+  }
+
+  .ld-doc-header {
+    padding-left: 0;
+    padding-right: 0;
+    position: static;
+    box-shadow: none;
+  }
+
   .ld-content {
     overflow: visible;
     height: auto;
-    padding: 0;
+    padding: 1rem 0 0;
   }
 
   .ld-sidebar {
@@ -1314,5 +1414,114 @@ section {
   .legal-page-root .ld-content {
     overflow: visible !important;
   }
+}
+
+/* Knowledge Base: keep stepper, hide "On this page", stronger type */
+.legal-page-root.kb-page .ld-sidebar-label {
+  display: none !important;
+}
+
+.legal-page-root.kb-page .ld-sidebar nav a {
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  line-height: 1.45 !important;
+  padding: 11px 12px !important;
+  color: #475569 !important;
+}
+
+.legal-page-root.kb-page .ld-sidebar nav a.is-active {
+  font-weight: 800 !important;
+  color: #0b5256 !important;
+}
+
+.legal-page-root.kb-page .ld-section-number {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  width: 100% !important;
+  font-size: 1.2rem !important;
+  font-weight: 800 !important;
+  color: #241447 !important;
+  letter-spacing: 0.04em !important;
+  line-height: 1.35 !important;
+  margin: 0 0 1.35rem !important;
+  padding: 14px 18px !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(15, 105, 110, 0.2) !important;
+  border-left: 5px solid #0f696e !important;
+  background: linear-gradient(90deg, rgba(15, 105, 110, 0.12), rgba(15, 105, 110, 0.03)) !important;
+}
+
+.legal-page-root.kb-page .ld-doc-header {
+  position: relative !important;
+  top: auto !important;
+  z-index: 5 !important;
+  background: #ffffff !important;
+  background-image: none !important;
+  flex-shrink: 0 !important;
+}
+
+.legal-page-root.kb-page .ld-main {
+  overflow: hidden !important;
+  background: #ffffff !important;
+}
+
+.legal-page-root.kb-page .ld-content > section {
+  scroll-margin-top: 24px !important;
+  z-index: 0 !important;
+}
+
+.legal-page-root.kb-page .ld-doc-title {
+  font-size: clamp(1.9rem, 3.2vw, 2.45rem) !important;
+  font-weight: 800 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  display: block !important;
+}
+
+.legal-page-root.kb-page .ld-doc-title::before,
+.legal-page-root.kb-page .ld-content h2::before,
+.legal-page-root.kb-page .ld-content h3::before {
+  content: none !important;
+  display: none !important;
+}
+
+.legal-page-root.kb-page .ld-content h2 {
+  font-size: 1.55rem !important;
+  font-weight: 800 !important;
+  padding: 0 0 0.45rem 0 !important;
+  border: none !important;
+  border-bottom: 2px solid rgba(15, 105, 110, 0.18) !important;
+  border-radius: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  display: block !important;
+  max-width: 100% !important;
+}
+
+.legal-page-root.kb-page .ld-content h3 {
+  font-size: 1.2rem !important;
+  font-weight: 700 !important;
+  color: #241447 !important;
+  padding: 0 0 0 12px !important;
+  border: none !important;
+  border-left: 4px solid #0f696e !important;
+  border-radius: 0 !important;
+  background: none !important;
+  display: block !important;
+}
+
+.legal-page-root.kb-page .ld-content p,
+.legal-page-root.kb-page .ld-content li,
+.legal-page-root.kb-page .ld-callout,
+.legal-page-root.kb-page .ld-callout p {
+  font-size: 16.5px !important;
+  font-weight: 500 !important;
+  line-height: 1.8 !important;
+  color: #334155 !important;
 }
 </style>
