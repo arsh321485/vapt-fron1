@@ -4150,6 +4150,7 @@ export const useAuthStore = defineStore("auth", {
           status: true,
           message: res.data.message,
           vulnerability_status: res.data.status,
+          all_steps_completed: !!res.data.all_steps_completed,
           completed_steps: res.data.completed_steps,
           total_steps: res.data.total_steps,
           next_step: res.data.next_step,
@@ -4218,6 +4219,7 @@ export const useAuthStore = defineStore("auth", {
             deadline: res.data.deadline,
             artifacts_tools: res.data.artifacts_tools,
             vulnerability_status: res.data.status,
+            all_steps_completed: !!res.data.all_steps_completed,
             completed_steps: res.data.completed_steps,
             total_steps: res.data.total_steps,
             next_step: res.data.next_step,
@@ -4236,7 +4238,7 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-    // Send verification request to superadmin (User)
+    // Send verification / request retest (User) — used for already-closed vulns
     async sendUserFixVerification(fixVulnerabilityId: string) {
       try {
         const res = await endpoint.post(

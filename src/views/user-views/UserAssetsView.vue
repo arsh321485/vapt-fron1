@@ -174,9 +174,6 @@
                 <div class="right-panel-header">
                   <div class="d-flex align-items-center justify-content-between">
                     <h1 class="asset-detail-title mb-0">{{ selectedAsset?.asset }}</h1>
-                    <button class="rt-btn-support" @click="openAssetSupportModal">
-                      Support Request
-                    </button>
                   </div>
                   <div
                     v-if="selectedAsset?.host_information?.['Netbios Name'] || selectedAsset?.host_information?.['DNS Name'] || selectedAsset?.assigned_teams?.length"

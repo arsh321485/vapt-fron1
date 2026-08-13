@@ -191,7 +191,7 @@
             :class="{
               'mf-complete-btn--done': task.status === 'completed',
             }"
-            :disabled="task.status === 'completed' || task.submitting"
+            :disabled="task.status === 'completed' || task.submitting || isVulnerabilityClosed"
             @click="toggleStepComplete(task)"
           >
             <span v-if="task.submitting" class="spinner-border spinner-border-sm me-1"></span>
@@ -206,20 +206,23 @@
       <button
         type="button"
         class="mf-action-btn mf-action-btn--primary"
-        :disabled="allStepsCompleted || loadingFixVuln"
+        :disabled="allStepsCompleted || loadingFixVuln || isVulnerabilityClosed"
         @click="completeAllSteps"
       >
         <i class="bi bi-check2-all" aria-hidden="true"></i>
         <span>Complete all steps</span>
       </button>
+      <!-- After steps complete (auto-closed): offer Send for retest → open/review -->
       <button
-        v-if="isUser"
+        v-if="showSendForRetest"
         type="button"
         class="mf-action-btn mf-action-btn--outline"
-        @click="sendVerificationForSteps"
+        :disabled="loadingFixVuln || requestingRetest"
+        @click="requestRetestForSteps"
       >
-        <i class="bi bi-send" aria-hidden="true"></i>
-        <span>Send verification</span>
+        <span v-if="requestingRetest" class="spinner-border spinner-border-sm me-1"></span>
+        <i v-else class="bi bi-send" aria-hidden="true"></i>
+        <span>Send for retest</span>
       </button>
     </div>
 
@@ -234,7 +237,7 @@ import { useAuthStore } from '@/stores/authStore';
 
 export default {
   name: 'ManualRemediationStepsPanel',
-  emits: ['support-request-raised', 'open-support-modal', 'team-resolved'],
+  emits: ['support-request-raised', 'open-support-modal', 'team-resolved', 'vulnerability-status-changed'],
   props: {
     isUser: {
       type: Boolean,
@@ -278,6 +281,9 @@ export default {
       loadingFixVuln: false,
       selectedOs: 'windows',
       apiCompletedSteps: 0,
+      vulnerabilityStatus: '',
+      allStepsCompletedFlag: false,
+      requestingRetest: false,
     };
   },
   computed: {
@@ -308,14 +314,26 @@ export default {
       return this.subtasks.filter(t => t.status === 'completed').length;
     },
     allStepsCompleted() {
+      if (this.allStepsCompletedFlag) return true;
       if (!this.subtasks.length) return false;
       if (this.fixVulnerabilityId && this.apiCompletedSteps >= this.subtasks.length) {
         return true;
       }
       return this.subtasks.every(t => t.status === 'completed');
     },
+    isVulnerabilityClosed() {
+      return String(this.vulnerabilityStatus || '').toLowerCase() === 'closed';
+    },
+    isInReview() {
+      const s = String(this.vulnerabilityStatus || '').toLowerCase();
+      return s === 'open/review' || s === 'open_review' || s === 'review' || s === 'in_review';
+    },
+    // After all steps complete → closed → show Send for retest (until sent → open/review)
+    showSendForRetest() {
+      return this.isUser && (this.isVulnerabilityClosed || this.allStepsCompleted) && !this.isInReview;
+    },
     canRaiseSupport() {
-      return true;
+      return !this.isVulnerabilityClosed && !this.isInReview;
     },
   },
   watch: {
@@ -392,13 +410,64 @@ export default {
 
       return effective > total ? null : effective;
     },
+    syncVulnerabilityStatusFromPayload(payload) {
+      if (!payload) return;
+      const status =
+        payload.vulnerability_status ||
+        payload.status ||
+        payload.data?.vulnerability_status ||
+        payload.data?.status ||
+        '';
+      const allDone =
+        payload.all_steps_completed === true ||
+        payload.data?.all_steps_completed === true;
+
+      if (allDone) {
+        this.allStepsCompletedFlag = true;
+        if (!status) this.vulnerabilityStatus = 'closed';
+      }
+      if (status) {
+        const next = String(status).toLowerCase();
+        this.vulnerabilityStatus = next;
+        this.$emit('vulnerability-status-changed', {
+          vulnName: this.vulnName,
+          assetIp: this.assetIp,
+          status: next,
+          all_steps_completed: allDone || next === 'closed',
+        });
+      } else if (allDone) {
+        this.$emit('vulnerability-status-changed', {
+          vulnName: this.vulnName,
+          assetIp: this.assetIp,
+          status: 'closed',
+          all_steps_completed: true,
+        });
+      }
+    },
     applyStepProgressFromPost(res) {
       const nextStep = res.next_step ?? null;
+      this.syncVulnerabilityStatusFromPayload(res);
 
       if (res.completed_steps != null) {
         this.apiCompletedSteps = res.completed_steps;
       } else if (nextStep != null) {
         this.apiCompletedSteps = Math.max(0, nextStep - 1);
+      }
+
+      if (res.all_steps_completed || (nextStep == null && res.completed_steps != null
+          && this.subtasks.length > 0
+          && res.completed_steps >= this.subtasks.length)) {
+        this.allStepsCompletedFlag = true;
+        this.subtasks.forEach(task => {
+          task.status = 'completed';
+          task.isCurrent = false;
+          task.isLocked = false;
+          task.isExpanded = false;
+        });
+        if (!this.isInReview && String(this.vulnerabilityStatus || '').toLowerCase() !== 'closed') {
+          this.vulnerabilityStatus = 'closed';
+        }
+        return;
       }
 
       if (nextStep == null) {
@@ -434,6 +503,10 @@ export default {
       if (resolvedTeam) {
         this.$emit('team-resolved', { vulnName: this.vulnName, team: resolvedTeam });
       }
+
+      // Prefer post-complete payload for status (may already be "closed" / "open/review")
+      this.syncVulnerabilityStatusFromPayload(data);
+      if (postOverride) this.syncVulnerabilityStatusFromPayload(postOverride);
 
       const apiSteps = data.steps || [];
       const reportedNext = postOverride?.next_step ?? data.next_step ?? null;
@@ -514,6 +587,9 @@ export default {
       this.loadingFixVuln = true;
       this.fixVulnerabilityId = null;
       this.fixVulnData = null;
+      this.vulnerabilityStatus = '';
+      this.allStepsCompletedFlag = false;
+      this.requestingRetest = false;
       try {
         const reportId = await this.authStore.resolveUserReportId();
         if (!reportId) return;
@@ -845,6 +921,19 @@ export default {
             this.applyStepProgressFromPost(res);
           }
           await this.refreshStepsFromApi(this.isUser ? res : null);
+          if (
+            this.isUser
+            && (res.all_steps_completed
+              || String(res.vulnerability_status || '').toLowerCase() === 'closed')
+          ) {
+            Swal.fire({
+              icon: 'success',
+              title: 'Vulnerability closed',
+              text: res.message || 'All steps done. Case closed — you can Send for retest if needed.',
+              timer: 2800,
+              showConfirmButton: false,
+            });
+          }
         } else {
           step.submitting = false;
           Swal.fire({ icon: 'error', title: 'Failed', text: res.message || 'Failed to complete step', timer: 2000, showConfirmButton: false });
@@ -882,11 +971,16 @@ export default {
         if (res.status) {
           this.applyStepProgressFromPost(res);
           await this.refreshStepsFromApi(res);
+          const closed =
+            res.all_steps_completed
+            || String(res.vulnerability_status || '').toLowerCase() === 'closed';
           Swal.fire({
             icon: 'success',
-            title: 'All steps completed',
-            text: res.message || 'Verification request sent to admin.',
-            timer: 2500,
+            title: closed ? 'Vulnerability closed' : 'All steps completed',
+            text: closed
+              ? (res.message || 'All steps done. Case closed — you can Send for retest if needed.')
+              : (res.message || 'All steps completed.'),
+            timer: 2800,
             showConfirmButton: false,
           });
         } else {
@@ -896,26 +990,40 @@ export default {
         Swal.fire({ icon: 'error', title: 'Error', text: 'Network error — please try again.', timer: 2000, showConfirmButton: false });
       }
     },
-    async sendVerificationForSteps() {
+    async requestRetestForSteps() {
       if (!this.fixVulnerabilityId) {
         Swal.fire({ icon: 'error', title: 'Error', text: 'Fix vulnerability session not loaded. Please refresh and try again.', timer: 2500, showConfirmButton: false });
         return;
       }
+      if (!this.showSendForRetest) return;
+      this.requestingRetest = true;
       try {
         const res = await this.authStore.sendUserFixVerification(this.fixVulnerabilityId);
         if (res.status) {
+          const nextStatus = String(
+            res.vulnerability_status || 'open/review',
+          ).toLowerCase();
+          this.vulnerabilityStatus = nextStatus;
+          this.$emit('vulnerability-status-changed', {
+            vulnName: this.vulnName,
+            assetIp: this.assetIp,
+            status: nextStatus,
+            all_steps_completed: true,
+          });
           Swal.fire({
             icon: 'success',
-            title: 'Verification Sent',
-            text: res.message || 'Your verification request has been sent to the superadmin.',
+            title: 'Sent for retest',
+            text: res.message || 'Retest request sent. Status is now open/review.',
             timer: 3000,
             showConfirmButton: false,
           });
         } else {
-          Swal.fire({ icon: 'error', title: 'Failed', text: res.message || 'Failed to send verification', timer: 2500, showConfirmButton: false });
+          Swal.fire({ icon: 'error', title: 'Failed', text: res.message || 'Failed to send for retest', timer: 2500, showConfirmButton: false });
         }
       } catch {
         Swal.fire({ icon: 'error', title: 'Error', text: 'Network error — please try again.', timer: 2000, showConfirmButton: false });
+      } finally {
+        this.requestingRetest = false;
       }
     },
     isStepSupportRaised(stepId) {

@@ -168,9 +168,6 @@
         <div class="right-panel-header">
           <div class="d-flex align-items-center justify-content-between">
             <h1 class="asset-detail-title mb-0">{{ selectedVuln.vul_name }}</h1>
-            <button v-if="isUser" class="rt-btn-support" @click="openVulnSupportModal">
-              Support Request
-            </button>
           </div>
           <div class="detail-tabs">
             <button
