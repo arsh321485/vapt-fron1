@@ -1039,6 +1039,7 @@ class TLSConfigurator:
         const createRes = await this.authStore.createUserFixVulnerability(reportId, asset, {
           plugin_name: this.assetSrVulnName,
           risk_factor: selectedVuln?.severity || 'Medium',
+          ...(selectedVuln?.id ? { id: selectedVuln.id } : {}),
         });
         fixVulnId =
           createRes.data?.fix_vulnerability_id ||

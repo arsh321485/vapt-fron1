@@ -1168,6 +1168,7 @@ export default {
         const createRes = await this.authStore.createUserFixVulnerability(reportId, asset, {
           plugin_name: this.selectedVuln.vul_name,
           risk_factor: this.selectedVuln.severity || 'Medium',
+          ...(this.selectedVuln.id ? { id: this.selectedVuln.id } : {}),
         });
         fixVulnId =
           createRes.data?.fix_vulnerability_id ||

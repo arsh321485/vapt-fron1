@@ -67,7 +67,18 @@
       </div>
 
       <!-- Footer -->
-      <div class="notif-drawer-footer card-footer border-0 d-flex flex-wrap justify-content-end gap-2">
+      <div class="notif-drawer-footer card-footer border-0 d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <button
+          v-if="unreadCount > 0"
+          type="button"
+          class="btn btn-sm notif-btn-clear"
+          :disabled="markingAll"
+          @click="markAllAsRead"
+        >
+          <span v-if="markingAll" class="spinner-border spinner-border-sm me-1"></span>
+          {{ markingAll ? 'Clearing...' : 'Mark All as Read' }}
+        </button>
+        <span v-else></span>
         <button type="button" class="btn btn-sm notif-btn-primary" @click="toggleShowAll">
           {{ showAll ? "View Less" : "View All Notifications" }}
         </button>
@@ -99,6 +110,7 @@ export default {
       unreadCount: 0,
       pollTimer: null,
       isTogglingShowAll: false,
+      markingAll: false,
     };
   },
   computed: {
@@ -285,11 +297,28 @@ export default {
           : await this.authStore.markAdminNotificationRead(notification.id);
       if (!res.status) return;
 
-      this.notifications = this.notifications.map((n) =>
-        n.id === notification.id ? { ...n, is_read: true } : n,
-      );
+      // Backend permanently deletes on mark-read (res.deleted >= 1).
+      // Remove from local list immediately without re-fetch.
+      this.notifications = this.notifications.filter((n) => n.id !== notification.id);
       this.unreadCount = Math.max(0, this.unreadCount - 1);
     },
+    async markAllAsRead() {
+      if (this.markingAll) return;
+      this.markingAll = true;
+      const res = this.recipientType === 'user'
+        ? await this.authStore.markAllUserNotificationsRead()
+        : await this.authStore.markAllAdminNotificationsRead();
+      this.markingAll = false;
+      if (!res.status) return;
+      // Backend deletes all unread permanently (res.count = deleted count).
+      // Remove all unread from UI immediately.
+      this.notifications = this.notifications.filter((n) => n.is_read);
+      this.unreadCount = 0;
+      // Silently re-sync with server to confirm deletions.
+      this.fetchNotifications({ silent: true, includeRead: true });
+      this.fetchUnreadCount();
+    },
+
     toggleNotificationPanel() {
       this.showNotifications = !this.showNotifications;
       if (this.showNotifications) {

@@ -4344,9 +4344,9 @@ export const useAuthStore = defineStore("auth", {
         plugin_name: vulnName,
         risk_factor: options.severity || "Medium",
       };
-      // Only forward numeric/plugin ids — string Mongo ids break create lookups.
-      if (options.vulnId && /^\d+$/.test(String(options.vulnId).trim())) {
-        payload.id = Number(options.vulnId);
+      // Pass the vulnerability UUID id — required by backend create endpoint.
+      if (options.vulnId) {
+        payload.id = options.vulnId;
       }
 
       const res = await this.createFixVulnerability(reportId, asset, payload);
@@ -6930,17 +6930,22 @@ export const useAuthStore = defineStore("auth", {
     },
 
     // Mark a specific admin notification as read
+    // Mark a specific admin notification as read (backend now permanently deletes it)
     async markAdminNotificationRead(notificationId: string) {
       try {
         const res = await endpoint.patch(`/api/notifications/admin/${notificationId}/mark-read/`);
+        // Backend deletes the notification — response has deleted: 1
+        const deleted = res.data?.deleted ?? res.data?.updated ?? 1;
         return {
           status: true,
+          deleted,
           data: res.data,
         };
       } catch (error) {
         const err = error as AxiosError<any>;
         return {
           status: false,
+          deleted: 0,
           message:
             err.response?.data?.detail ||
             err.response?.data?.message ||
@@ -6949,18 +6954,22 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-    // Mark a specific user notification as read
+    // Mark a specific user notification as read (backend now permanently deletes it)
     async markUserNotificationRead(notificationId: string) {
       try {
         const res = await endpoint.patch(`/api/notifications/user/${notificationId}/mark-read/`);
+        // Backend deletes the notification — response has deleted: 1
+        const deleted = res.data?.deleted ?? res.data?.updated ?? 1;
         return {
           status: true,
+          deleted,
           data: res.data,
         };
       } catch (error) {
         const err = error as AxiosError<any>;
         return {
           status: false,
+          deleted: 0,
           message:
             err.response?.data?.detail ||
             err.response?.data?.message ||
@@ -6969,18 +6978,23 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-    // Mark all admin notifications as read
+    // Mark all admin notifications as read (backend now deletes them permanently)
     async markAllAdminNotificationsRead() {
       try {
         const res = await endpoint.patch(`/api/notifications/admin/mark-all-read/`);
+        // Backend changed response: was { updated: count }, now { deleted: count }
+        // Normalize both so callers always get `count`
+        const count = res.data?.deleted ?? res.data?.updated ?? 0;
         return {
           status: true,
+          count,
           data: res.data,
         };
       } catch (error) {
         const err = error as AxiosError<any>;
         return {
           status: false,
+          count: 0,
           message:
             err.response?.data?.detail ||
             err.response?.data?.message ||
@@ -6989,18 +7003,23 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-    // Mark all user notifications as read
+    // Mark all user notifications as read (backend now deletes them permanently)
     async markAllUserNotificationsRead() {
       try {
         const res = await endpoint.patch(`/api/notifications/user/mark-all-read/`);
+        // Backend changed response: was { updated: count }, now { deleted: count }
+        // Normalize both so callers always get `count`
+        const count = res.data?.deleted ?? res.data?.updated ?? 0;
         return {
           status: true,
+          count,
           data: res.data,
         };
       } catch (error) {
         const err = error as AxiosError<any>;
         return {
           status: false,
+          count: 0,
           message:
             err.response?.data?.detail ||
             err.response?.data?.message ||
