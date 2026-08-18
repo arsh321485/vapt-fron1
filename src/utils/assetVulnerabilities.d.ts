@@ -99,10 +99,12 @@ export function normalizeHeldVulnerabilityAssetList(
 export function mergeAssetThreatVulnerabilities(
   activeVulns: unknown,
   closedFixVulns?: unknown,
+  host?: string,
 ): NormalizedAssetVulnerability[];
 export function filterOpenAssetVulnerabilities(
   vulns: unknown,
   closedFixVulns?: unknown,
+  host?: string,
 ): NormalizedAssetVulnerability[];
 export function severityMatchesFilter(
   severity: unknown,

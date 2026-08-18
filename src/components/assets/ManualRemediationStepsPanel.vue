@@ -1048,13 +1048,16 @@ export default {
         .filter((n) => Number.isFinite(n));
     },
     openStepSupportModal(task) {
-      if (this.isStepSupportRaised(task.id)) return;
-      // Emit to parent so the parent's modal opens with vuln + step pre-filled
       const completedSteps = this.subtasks
         .filter(t => t.status === 'completed')
         .map(t => Number(t.id))
         .filter(n => Number.isFinite(n));
-      this.$emit('open-support-modal', { vulnName: this.vulnName, step: task.id, completedSteps });
+      this.$emit('open-support-modal', {
+        vulnName: this.vulnName,
+        step: task.id,
+        completedSteps,
+        raisedSupportSteps: this.raisedSupportSteps,
+      });
     },
   },
 };

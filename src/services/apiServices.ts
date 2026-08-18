@@ -176,6 +176,8 @@ endpoint.interceptors.response.use(
 
     const noRedirect401Paths = new Set([
       "/pricingplan",
+      "/billing/success",
+      "/billing/cancel",
       "/partner",
       "/partner-lead-portal",
       "/partner-lead-thankyou",

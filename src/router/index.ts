@@ -23,6 +23,8 @@ import UserMissingSecurityUpdatesView from "../views/user-views/UserMissingSecur
 import VulnerabilityCardView from "../views/admin-dashboard/VulnerabilityCardView.vue";
 import YourTeamView from "../views/admin-dashboard/YourTeamView.vue";
 import PricingplansView from "../views/admin-views/PricingplansView.vue";
+import BillingSuccessView from "../views/admin-views/BillingSuccessView.vue";
+import BillingCancelView from "../views/admin-views/BillingCancelView.vue";
 import PartnerView from "../views/admin-views/PartnerView.vue";
 import PartnerLeadPortalView from "../views/admin-views/PartnerLeadPortalView.vue";
 import PartnerLeadThankYouView from "../views/admin-views/PartnerLeadThankYouView.vue";
@@ -150,6 +152,16 @@ const router = createRouter({
       path: "/pricingplan",
       name: "pricingplan",
       component: PricingplansView,
+    },
+    {
+      path: "/billing/success",
+      name: "billing-success",
+      component: BillingSuccessView,
+    },
+    {
+      path: "/billing/cancel",
+      name: "billing-cancel",
+      component: BillingCancelView,
     },
     {
       path: "/partner",
