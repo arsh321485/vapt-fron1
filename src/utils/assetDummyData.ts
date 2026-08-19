@@ -1,11 +1,20 @@
-export const ASSET_TYPE_FILTERS = [
+export type AssetType = "web_app" | "firewall" | "server" | "other";
+export type AssetUiType = "webapp" | "firewall" | "server" | "assets";
+
+export interface AssetTypeFilter {
+  key: AssetUiType;
+  label: string;
+  assetType: AssetType;
+}
+
+export const ASSET_TYPE_FILTERS: AssetTypeFilter[] = [
   { key: "assets", label: "Assets", assetType: "other" },
   { key: "webapp", label: "Web App", assetType: "web_app" },
   { key: "firewall", label: "Firewall", assetType: "firewall" },
   { key: "server", label: "Server", assetType: "server" },
 ];
 
-export function normalizeAssetType(value) {
+export function normalizeAssetType(value: unknown): AssetType {
   const type = String(value || "other").toLowerCase().trim();
   if (type === "web_app" || type === "webapp" || type === "web-app") return "web_app";
   if (type === "firewall") return "firewall";
@@ -13,12 +22,12 @@ export function normalizeAssetType(value) {
   return "other";
 }
 
-export function assetTypeFromFilterKey(filterKey) {
+export function assetTypeFromFilterKey(filterKey: unknown): AssetType {
   const match = ASSET_TYPE_FILTERS.find((item) => item.key === filterKey);
   return match?.assetType || "other";
 }
 
-export function uiTypeFromAssetType(assetType) {
+export function uiTypeFromAssetType(assetType: unknown): AssetUiType {
   const type = normalizeAssetType(assetType);
   if (type === "web_app") return "webapp";
   if (type === "firewall") return "firewall";
@@ -26,12 +35,15 @@ export function uiTypeFromAssetType(assetType) {
   return "assets";
 }
 
-export function filterAssetsByType(assets, filterKey) {
+export function filterAssetsByType<T extends { asset_type?: unknown }>(
+  assets: T[] | null | undefined,
+  filterKey: unknown,
+): T[] {
   const wanted = assetTypeFromFilterKey(filterKey);
   return (assets || []).filter((asset) => normalizeAssetType(asset?.asset_type) === wanted);
 }
 
-export function extractAssetRows(payload) {
+export function extractAssetRows(payload: any): any[] {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.assets)) return payload.assets;
   if (Array.isArray(payload?.results)) return payload.results;
@@ -40,7 +52,7 @@ export function extractAssetRows(payload) {
   return [];
 }
 
-export function getAssetHostName(asset) {
+export function getAssetHostName(asset: any): string {
   return String(
     asset?.asset ||
       asset?.host ||
@@ -51,7 +63,7 @@ export function getAssetHostName(asset) {
   ).trim();
 }
 
-function looksLikeWebAppHost(name) {
+function looksLikeWebAppHost(name: unknown): boolean {
   const host = String(name || "").trim().toLowerCase();
   if (!host) return false;
   if (host.startsWith("http://") || host.startsWith("https://")) return true;
@@ -59,7 +71,7 @@ function looksLikeWebAppHost(name) {
   return /[a-z0-9-]+\.(com|net|org|io|co|app|gov|edu|in|uk|us|info|biz|dev)(\b|\/|:|$)/i.test(host);
 }
 
-function looksLikeFirewallHost(name) {
+function looksLikeFirewallHost(name: unknown): boolean {
   const host = String(name || "").toLowerCase();
   return [
     "palo",
@@ -77,7 +89,7 @@ function looksLikeFirewallHost(name) {
   ].some((hint) => host.includes(hint));
 }
 
-export function inferAssetType(asset) {
+export function inferAssetType(asset: any): AssetType {
   const name = getAssetHostName(asset);
   if (getAssetOs(asset)) return "server";
   if (looksLikeFirewallHost(name)) return "firewall";
@@ -85,7 +97,7 @@ export function inferAssetType(asset) {
   return "other";
 }
 
-export function resolveAssetType(asset) {
+export function resolveAssetType(asset: any): AssetType {
   const raw = asset?.asset_type;
   if (raw != null && String(raw).trim() !== "") {
     const normalized = normalizeAssetType(raw);
@@ -94,25 +106,25 @@ export function resolveAssetType(asset) {
   return inferAssetType(asset);
 }
 
-export function getAssetOs(asset) {
+export function getAssetOs(asset: any): string {
   const info = asset?.host_information || {};
-  return (
+  return String(
     info["operating-system"] ||
-    info.operating_system ||
-    info.os ||
-    info["Operating System"] ||
-    ""
+      info.operating_system ||
+      info.os ||
+      info["Operating System"] ||
+      "",
   );
 }
 
-export function getAssetResolvedIp(asset) {
+export function getAssetResolvedIp(asset: any): string {
   const info = asset?.host_information || {};
-  return (
+  return String(
     asset?.resolved_ip ||
-    info["IP Address"] ||
-    info.ip_address ||
-    info.ip ||
-    info["Host IP"] ||
-    ""
+      info["IP Address"] ||
+      info.ip_address ||
+      info.ip ||
+      info["Host IP"] ||
+      "",
   );
 }

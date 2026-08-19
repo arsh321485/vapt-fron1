@@ -33,7 +33,6 @@
               General questions, account issues, billing, and non-urgent technical inquiries.
             </p>
             <a class="sup-channel-action" href="mailto:support@vaptfix.ai">support@vaptfix.ai →</a>
-            <div class="sup-channel-sla">Response: within 24 hours (business days)</div>
           </div>
           <div class="sup-channel-card">
             <div class="sup-channel-icon" aria-hidden="true">🔐</div>
@@ -42,25 +41,14 @@
               Report vulnerabilities, potential breaches, or suspicious activity on the platform.
             </p>
             <a class="sup-channel-action" href="mailto:security@vaptfix.ai">security@vaptfix.ai →</a>
-            <div class="sup-channel-sla">Response: within 24 hours, always</div>
           </div>
           <div class="sup-channel-card">
             <div class="sup-channel-icon" aria-hidden="true">💼</div>
-            <div class="sup-channel-title">Enterprise Support</div>
+            <div class="sup-channel-title">Custom Support</div>
             <p class="sup-channel-desc">
               Priority support, dedicated CSM, SLA-backed response times for Business &amp; Enterprise plans.
             </p>
             <a class="sup-channel-action" href="mailto:enterprise@vaptfix.ai">enterprise@vaptfix.ai →</a>
-            <div class="sup-channel-sla">Response: within 4 hours (24/7 for critical)</div>
-          </div>
-          <div class="sup-channel-card">
-            <div class="sup-channel-icon" aria-hidden="true">💬</div>
-            <div class="sup-channel-title">Live Chat</div>
-            <p class="sup-channel-desc">
-              Real-time help from our support engineers, available for Pro and above plans.
-            </p>
-            <span class="sup-channel-action sup-channel-action--muted">In-app chat widget →</span>
-            <div class="sup-channel-sla">Available Mon–Fri 9am–6pm UTC</div>
           </div>
           <div class="sup-channel-card">
             <div class="sup-channel-icon" aria-hidden="true">💳</div>
@@ -69,104 +57,13 @@
               Subscription changes, invoices, refund requests, and payment method updates.
             </p>
             <a class="sup-channel-action" href="mailto:billing@vaptfix.ai">billing@vaptfix.ai →</a>
-            <div class="sup-channel-sla">Response: within 1 business day</div>
           </div>
           <div class="sup-channel-card">
             <div class="sup-channel-icon" aria-hidden="true">🤝</div>
             <div class="sup-channel-title">Partnerships</div>
-            <p class="sup-channel-desc">Reseller, integration, and technology partnership inquiries.</p>
+            <p class="sup-channel-desc">Reseller and technology partnership inquiries.</p>
             <a class="sup-channel-action" href="mailto:partners@vaptfix.ai">partners@vaptfix.ai →</a>
-            <div class="sup-channel-sla">Response: within 3 business days</div>
           </div>
-        </div>
-
-        <div class="sup-section-label">Response times</div>
-        <h2 class="sup-section-title">Support SLAs by Plan</h2>
-        <div class="sup-sla-grid">
-          <div class="sup-sla-cell">
-            <div class="sup-sla-plan">Free</div>
-            <div class="sup-sla-time">72h</div>
-            <div class="sup-sla-label">Email support with standard response handling during business hours.</div>
-          </div>
-          <div class="sup-sla-cell">
-            <div class="sup-sla-plan">Starter</div>
-            <div class="sup-sla-time">24h</div>
-            <div class="sup-sla-label">Email and Microsoft Teams support with business-hours remediation coordination.</div>
-          </div>
-          <div class="sup-sla-cell">
-            <div class="sup-sla-plan">Pro</div>
-            <div class="sup-sla-time">8h</div>
-            <div class="sup-sla-label">Email, Microsoft Teams, and Slack support with priority response handling.</div>
-          </div>
-          <div class="sup-sla-cell">
-            <div class="sup-sla-plan">Business</div>
-            <div class="sup-sla-time">4h</div>
-            <div class="sup-sla-label">All communication channels with dedicated remediation coordination and faster escalation handling.</div>
-          </div>
-          <div class="sup-sla-cell">
-            <div class="sup-sla-plan">Enterprise</div>
-            <div class="sup-sla-time">1h</div>
-            <div class="sup-sla-label">24/7 priority support across Email, Microsoft Teams, and Slack with critical vulnerability escalation management.</div>
-          </div>
-        </div>
-
-        <div class="sup-section-label sup-mt">Documentation</div>
-        <h2 class="sup-section-title">Browse the Docs</h2>
-        <div class="sup-doc-grid">
-          <div class="sup-doc-cat">
-            <div class="sup-doc-cat-title">Getting Started</div>
-            <div class="sup-doc-cat-links">
-              <a href="#" @click.prevent>Platform overview</a>
-              <!-- <a href="#" @click.prevent>Creating your first scan</a>
-              <a href="#" @click.prevent>API key setup</a>
-              <a href="#" @click.prevent>Team &amp; permissions</a> -->
-            </div>
-          </div>
-          <!-- <div class="sup-doc-cat">
-            <div class="sup-doc-cat-title">Scanning &amp; Assessment</div>
-            <div class="sup-doc-cat-links">
-              <a href="#" @click.prevent>Scan types explained</a>
-              <a href="#" @click.prevent>Configuring scan profiles</a>
-              <a href="#" @click.prevent>Scheduled scans</a>
-              <a href="#" @click.prevent>Scan exclusions &amp; scope</a>
-            </div>
-          </div> -->
-          <div class="sup-doc-cat">
-            <div class="sup-doc-cat-title">Reports &amp; Findings</div>
-            <div class="sup-doc-cat-links">
-              <a href="#" @click.prevent>Reading vulnerability reports</a>
-              <a href="#" @click.prevent>Severity scoring (CVSS)</a>
-              <a href="#" @click.prevent>Exporting to PDF/CSV</a>
-              <a href="#" @click.prevent>Remediation tracking</a>
-            </div>
-          </div>
-          <!-- <div class="sup-doc-cat">
-            <div class="sup-doc-cat-title">Integrations &amp; API</div>
-            <div class="sup-doc-cat-links">
-              <a href="#" @click.prevent>REST API reference</a>
-              <a href="#" @click.prevent>Webhook setup</a>
-              <a href="#" @click.prevent>Jira integration</a>
-              <a href="#" @click.prevent>Slack notifications</a>
-            </div>
-          </div> -->
-          <div class="sup-doc-cat">
-            <div class="sup-doc-cat-title">Account &amp; Billing</div>
-            <div class="sup-doc-cat-links">
-              <router-link to="/pricingplan">Plan comparison</router-link>
-              <a href="#" @click.prevent>Updating payment method</a>
-              <a href="#" @click.prevent>Downloading invoices</a>
-              <a href="#" @click.prevent>Cancelling subscription</a>
-            </div>
-          </div>
-          <!-- <div class="sup-doc-cat">
-            <div class="sup-doc-cat-title">Security &amp; Compliance</div>
-            <div class="sup-doc-cat-links">
-              <a href="#" @click.prevent>SSO / SAML setup</a>
-              <a href="#" @click.prevent>MFA configuration</a>
-              <a href="#" @click.prevent>Audit log access</a>
-              <a href="#" @click.prevent>Data residency options</a>
-            </div>
-          </div> -->
         </div>
 
         <div id="faq" class="sup-faq-wrap">
@@ -194,9 +91,7 @@
               <div class="sup-faq-q">How is my scan data stored and protected?</div>
               <div class="sup-faq-a">
                 All scan data is encrypted at rest (AES-256) and in transit (TLS 1.3), logically isolated per
-                customer, and hosted on AWS in SOC 2 certified infrastructure. See our
-                <router-link to="/security">Security Statement</router-link>
-                for full details.
+                customer, and hosted on AWS in SOC 2 certified infrastructure.
               </div>
             </div>
             <div class="sup-faq-item">
@@ -262,10 +157,25 @@ export default {
       searchQuery: '',
     };
   },
+  mounted() {
+    document.documentElement.classList.add('legal-doc-sticky-context');
+  },
+  beforeUnmount() {
+    document.documentElement.classList.remove('legal-doc-sticky-context');
+  },
   methods: {
     onSearchSubmit() {
       const el = document.getElementById('faq');
-      if (el) {
+      if (!el) return;
+      const scroller = this.$el?.querySelector?.('.sup-body');
+      if (window.matchMedia('(min-width: 769px)').matches && scroller) {
+        const sRect = scroller.getBoundingClientRect();
+        const tRect = el.getBoundingClientRect();
+        scroller.scrollTo({
+          top: Math.max(0, scroller.scrollTop + (tRect.top - sRect.top) - 16),
+          behavior: 'smooth',
+        });
+      } else {
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     },
@@ -302,9 +212,13 @@ export default {
 
 .sup-hero {
   text-align: center;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 5;
   padding: 3rem clamp(1rem, 4vw, 2.5rem) 2.5rem;
   border-bottom: 1px solid rgba(15, 105, 110, 0.12);
-  background: linear-gradient(180deg, #faf9fc 0%, #ffffff 100%);
+  background: #ffffff;
+  background-image: none;
 }
 
 .sup-hero-tag {
@@ -392,6 +306,7 @@ export default {
 
 .sup-body {
   padding: 2.5rem clamp(1rem, 4vw, 2.5rem) 2rem;
+  min-height: 0;
 }
 
 .sup-section-label {
@@ -631,6 +546,43 @@ export default {
 .sup-faq-a a:hover,
 .sup-faq-a :deep(a:hover) {
   text-decoration: underline;
+}
+
+@media (min-width: 769px) {
+  .legal-page-root {
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sup-frame {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sup-hero {
+    flex-shrink: 0;
+  }
+
+  .sup-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .sup-body::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
 }
 
 @media (max-width: 576px) {

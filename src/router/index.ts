@@ -33,7 +33,6 @@ import WebinarFormView from "../views/admin-views/WebinarFormView.vue";
 import WebinarThankYouView from "../views/admin-views/WebinarThankYouView.vue";
 import PrivacyPolicyView from "../views/admin-views/PrivacyPolicyView.vue";
 import TermsOfServiceView from "../views/admin-views/TermsOfServiceView.vue";
-import SecurityStatementView from "../views/admin-views/SecurityStatementView.vue";
 import KnowledgeBaseView from "../views/admin-views/KnowledgeBaseView.vue";
 import HowVaptfixWorksView from "../views/admin-views/HowVaptfixWorksView.vue";
 import DataProcessingAgreementView from "../views/admin-views/DataProcessingAgreementView.vue";
@@ -113,11 +112,6 @@ const router = createRouter({
       path: "/terms",
       name: "terms",
       component: TermsOfServiceView,
-    },
-    {
-      path: "/security",
-      name: "security",
-      component: SecurityStatementView,
     },
     {
       path: "/knowledge-base",

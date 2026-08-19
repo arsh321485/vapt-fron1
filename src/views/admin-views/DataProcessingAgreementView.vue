@@ -6,7 +6,7 @@
       <div class="ld-page">
         <aside class="ld-sidebar">
           <div class="ld-sidebar-label">On this page</div>
-          <nav @click="onTocNavClick">
+          <nav ref="tocNav" @click="onTocNavClick">
             <template v-for="item in tocItems" :key="item.href || item.label">
               <a
                 v-if="item.type === 'link'"
@@ -19,7 +19,7 @@
           </nav>
         </aside>
 
-        <main class="ld-content">
+        <div class="ld-main">
           <div class="ld-doc-header">
             <div class="ld-doc-tag">Global DPA · GDPR · CCPA · LGPD · PIPL · 15+ Frameworks</div>
             <h1 class="ld-doc-title">{{ activeSectionLabel }}</h1>
@@ -31,6 +31,8 @@
               <span><strong>Scope:</strong> Worldwide</span>
             </p>
           </div>
+
+          <main ref="contentScroller" class="ld-content" @scroll.passive="onContentScroll">
 
           <div class="ld-callout">
             <p>This Data Processing Agreement ("DPA") is entered into between the Customer ("Controller") and VaptFix.ai ("Processor"), and forms part of the VaptFix.ai Terms of Service. This DPA governs VaptFix.ai's processing of personal data on behalf of the Customer under applicable data protection laws globally, including GDPR, UK GDPR, Swiss revFADP, CCPA/CPRA, LGPD, PIPL, PDPA (Singapore), PDPA (Thailand), PIPA (South Korea), APPI (Japan), POPIA (South Africa), UAE PDPL, Saudi Arabia PDPL, India DPDP Act, Australian Privacy Act, and other applicable frameworks.</p>
@@ -119,7 +121,7 @@
           <section id="security-measures">
             <div class="ld-section-number">06 / SECURITY MEASURES</div>
             <h2>Technical &amp; Organizational Security Measures</h2>
-            <p>VaptFix.ai implements appropriate technical and organizational measures to ensure a level of security appropriate to the risk of processing, as required by Art. 32 GDPR and equivalent provisions in LGPD (Art. 46), PIPL (Art. 51), PIPA (Art. 29), PDPA Singapore (S.24), PDPA Thailand (S.37), POPIA (S.19), APPI (Art. 23), and other applicable laws. The specific measures are documented in <strong>Annex C</strong> and our public <router-link to="/security">Security Statement</router-link>.</p>
+            <p>VaptFix.ai implements appropriate technical and organizational measures to ensure a level of security appropriate to the risk of processing, as required by Art. 32 GDPR and equivalent provisions in LGPD (Art. 46), PIPL (Art. 51), PIPA (Art. 29), PDPA Singapore (S.24), PDPA Thailand (S.37), POPIA (S.19), APPI (Art. 23), and other applicable laws. The specific measures are documented in <strong>Annex C</strong>.</p>
           </section>
 
           <section id="subprocessors">
@@ -465,7 +467,7 @@
           <section id="annex-c">
             <div class="ld-section-number">ANNEX C</div>
             <h2>Technical &amp; Organizational Security Measures</h2>
-            <p>The following measures are implemented and maintained by VaptFix.ai. Full details are in our public <router-link to="/security">Security Statement</router-link>.</p>
+            <p>The following measures are implemented and maintained by VaptFix.ai.</p>
             <table class="ld-data-table">
               <thead>
                 <tr><th>Category</th><th>Measures Implemented</th><th>Relevant Standards / Laws</th></tr>
@@ -556,6 +558,7 @@
 
           <LegalDocInnerFooter />
         </main>
+        </div>
       </div>
     </div>
   </div>
@@ -574,6 +577,8 @@ export default {
   data() {
     return {
       activeTocHash: '',
+      _scrollSpyLocked: false,
+      _scrollSpyUnlockTimer: null,
       tocItems: [
         { type: 'group', label: 'Core Agreement' },
         { type: 'link', href: '#background', label: 'Background & Parties' },
@@ -631,23 +636,32 @@ export default {
         this.scrollContentToHash(this.activeTocHash);
       });
     },
+    activeTocHash() {
+      this.$nextTick(() => this.ensureActiveTocVisible());
+    },
   },
   mounted() {
     document.documentElement.classList.add('legal-doc-sticky-context');
     this.lockWindowScroll();
+    window.addEventListener('scroll', this.lockWindowScroll, { passive: true });
     this.$nextTick(() => {
       this.syncTocFromRoute();
       if (this.$route.hash) this.scrollContentToHash(this.activeTocHash);
+      else this.updateActiveFromScroll();
     });
   },
   beforeUnmount() {
     document.documentElement.classList.remove('legal-doc-sticky-context');
     window.removeEventListener('scroll', this.lockWindowScroll);
+    if (this._scrollSpyUnlockTimer) clearTimeout(this._scrollSpyUnlockTimer);
   },
   computed: {
     activeSectionLabel() {
       const active = this.tocItems.find(i => i.type === 'link' && i.href === this.activeTocHash);
       return active ? active.label : 'Data Processing Agreement';
+    },
+    tocLinkItems() {
+      return this.tocItems.filter((i) => i.type === 'link' && i.href);
     },
   },
   methods: {
@@ -656,27 +670,81 @@ export default {
         window.scrollTo(0, 0);
       }
     },
+    getContentScroller() {
+      return this.$refs.contentScroller || this.$el?.querySelector?.('.ld-content');
+    },
+    stickyOffset() {
+      return 24;
+    },
     syncTocFromRoute() {
-      const hashes = this.tocItems.filter((i) => i.type === 'link').map((i) => i.href);
+      const hashes = this.tocLinkItems.map((i) => i.href);
       const h = this.$route.hash;
       if (h && hashes.includes(h)) this.activeTocHash = h;
-      else this.activeTocHash = hashes[0] || '';
+      else if (!this.activeTocHash) this.activeTocHash = hashes[0] || '';
+    },
+    onContentScroll() {
+      if (this._scrollSpyLocked) return;
+      this.updateActiveFromScroll();
+    },
+    updateActiveFromScroll() {
+      const links = this.tocLinkItems;
+      const scroller = this.getContentScroller();
+      if (!links.length || !scroller) return;
+
+      const offset = this.stickyOffset();
+      const scrollerTop = scroller.getBoundingClientRect().top;
+      let current = links[0]?.href || '';
+
+      for (const item of links) {
+        const el = scroller.querySelector(item.href);
+        if (!el) continue;
+        const top = el.getBoundingClientRect().top - scrollerTop;
+        if (top <= offset) current = item.href;
+      }
+
+      if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 8) {
+        current = links[links.length - 1]?.href || current;
+      }
+
+      if (current && current !== this.activeTocHash) {
+        this.activeTocHash = current;
+        if (typeof history !== 'undefined' && history.replaceState) {
+          const url = `${window.location.pathname}${window.location.search}${current}`;
+          history.replaceState(null, '', url);
+        }
+      }
+    },
+    ensureActiveTocVisible() {
+      const nav = this.$refs.tocNav;
+      if (!nav) return;
+      const active = nav.querySelector('a.is-active');
+      if (!active) return;
+      active.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     },
     scrollContentToHash(href) {
       if (!href || !href.startsWith('#')) return;
       const id = href.slice(1);
-      const scroller = this.$el?.querySelector?.('.ld-content');
+      const scroller = this.getContentScroller();
       const target = scroller?.querySelector?.(`#${CSS.escape(id)}`);
       if (!target || !scroller) return;
+
       this.lockWindowScroll();
+      this._scrollSpyLocked = true;
+      if (this._scrollSpyUnlockTimer) clearTimeout(this._scrollSpyUnlockTimer);
+
       if (window.matchMedia('(min-width: 769px)').matches) {
         const sRect = scroller.getBoundingClientRect();
         const tRect = target.getBoundingClientRect();
-        const top = scroller.scrollTop + (tRect.top - sRect.top) - 16;
+        const top = scroller.scrollTop + (tRect.top - sRect.top) - this.stickyOffset() + 8;
         scroller.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
       } else {
         target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
+
+      this._scrollSpyUnlockTimer = setTimeout(() => {
+        this._scrollSpyLocked = false;
+        this.updateActiveFromScroll();
+      }, 450);
     },
     onTocNavClick(e) {
       const a = e.target.closest?.('a[href^="#"]');
@@ -835,9 +903,39 @@ export default {
   box-shadow: 0 0 0 3px rgba(15, 105, 110, 0.25);
 }
 
+.ld-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 0;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.ld-doc-header {
+  position: relative;
+  flex-shrink: 0;
+  z-index: 5;
+  width: 100%;
+  margin: 0;
+  padding: 1.25rem clamp(1.5rem, 4vw, 3rem) 1rem clamp(1.75rem, 3.5vw, 2.75rem);
+  border-bottom: 1px solid rgba(15, 105, 110, 0.12);
+  background: #ffffff;
+  background-image: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  box-shadow: 0 8px 16px -12px rgba(36, 20, 71, 0.18);
+}
+
 .ld-content {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   position: relative;
   z-index: 0;
   padding: 1.25rem clamp(1.5rem, 4vw, 3rem) 2.5rem clamp(1.75rem, 3.5vw, 2.75rem);
@@ -847,38 +945,13 @@ export default {
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  background: #ffffff;
 }
 
 .ld-content::-webkit-scrollbar {
   width: 0;
   height: 0;
   display: none;
-}
-
-.ld-doc-header {
-  position: sticky;
-  top: 72px;
-  z-index: 1020;
-  margin-bottom: 2rem;
-  padding-top: 1.75rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 1px solid rgba(15, 105, 110, 0.12);
-  background-color: #ffffff;
-  background-image: radial-gradient(#ebe6f3 1px, #ffffff 1px);
-  background-size: 20px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: flex-start;
-}
-
-
-
-.ld-content > .ld-callout,
-.ld-content > section,
-.ld-content > .legal-doc-inner-footer {
-  position: relative;
-  z-index: 1;
 }
 
 .ld-doc-tag {
@@ -1153,10 +1226,26 @@ section {
     display: none;
   }
 
-  .ld-content {
+  /* Right column: fixed header + scrolling body */
+  .ld-main {
     flex: 1 1 auto;
     min-height: 0;
     height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ld-doc-header {
+    position: relative;
+    flex-shrink: 0;
+    top: auto;
+  }
+
+  .ld-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
@@ -1168,10 +1257,6 @@ section {
     width: 0;
     height: 0;
     display: none;
-  }
-
-  .ld-doc-header {
-    top: 0;
   }
 
   .ld-content > section {
@@ -1200,6 +1285,19 @@ section {
     min-height: 0;
     height: auto;
     padding: 1.25rem 0 2rem;
+  }
+
+  .ld-main {
+    overflow: visible;
+    height: auto;
+    display: block;
+  }
+
+  .ld-doc-header {
+    padding-left: 0;
+    padding-right: 0;
+    position: static;
+    box-shadow: none;
   }
 
   .ld-content {
