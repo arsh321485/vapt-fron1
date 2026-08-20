@@ -555,7 +555,6 @@
             <tbody>
               <tr><td>Account &amp; profile data</td><td>Account lifetime + 30 days</td><td>Varies by jurisdiction</td></tr>
               <tr><td>Scan results &amp; security reports</td><td>2 years (configurable per plan)</td><td>No universal minimum</td></tr>
-              <tr><td>Billing records &amp; invoices</td><td>7 years</td><td>5–10 years under tax law</td></tr>
               <tr><td>Security &amp; access logs</td><td>12 months</td><td>90 days in some jurisdictions</td></tr>
               <tr><td>Support communications</td><td>3 years</td><td>No universal minimum</td></tr>
               <tr><td>Marketing preferences &amp; consent records</td><td>Until opt-out or account deletion; 5 years for consent records</td><td>Required by GDPR, PIPL, LGPD</td></tr>
@@ -1061,13 +1060,13 @@ export default {
   z-index: 5;
   width: 100%;
   margin: 0;
-  padding: 1.25rem clamp(1.5rem, 4vw, 3rem) 1rem clamp(1.75rem, 3.5vw, 2.75rem);
+  padding: 0.6rem clamp(1.5rem, 4vw, 3rem) 0.5rem clamp(1.75rem, 3.5vw, 2.75rem);
   border-bottom: 1px solid rgba(15, 105, 110, 0.12);
   background: #ffffff;
   background-image: none;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   align-items: flex-start;
   box-shadow: 0 8px 16px -12px rgba(36, 20, 71, 0.18);
 }

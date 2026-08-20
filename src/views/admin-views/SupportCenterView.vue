@@ -215,7 +215,7 @@ export default {
   flex-shrink: 0;
   position: relative;
   z-index: 5;
-  padding: 3rem clamp(1rem, 4vw, 2.5rem) 2.5rem;
+  padding: 1.25rem clamp(1rem, 4vw, 2.5rem) 1.1rem;
   border-bottom: 1px solid rgba(15, 105, 110, 0.12);
   background: #ffffff;
   background-image: none;
@@ -234,7 +234,7 @@ export default {
   border: 1px solid rgba(15, 105, 110, 0.2);
   padding: 4px 10px;
   border-radius: 20px;
-  margin-bottom: 1.25rem;
+  margin-bottom: 0.5rem;
   text-transform: uppercase;
 }
 
@@ -248,7 +248,7 @@ export default {
   font-size: clamp(2rem, 4vw, 3.4rem);
   font-weight: 800;
   color: #241447;
-  margin: 0 0 1rem;
+  margin: 0 0 0.5rem;
   line-height: 1.15;
 }
 
@@ -258,7 +258,7 @@ export default {
   color: #49454f;
   font-weight: 400;
   max-width: 520px;
-  margin: 0 auto 1.75rem;
+  margin: 0 auto 1rem;
   line-height: 1.6;
 }
 
@@ -310,24 +310,28 @@ export default {
 }
 
 .sup-section-label {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  color: #0f696e;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  margin-bottom: 0.35rem;
+  display: none;
 }
 
 .sup-section-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
   font-family: 'Inter', sans-serif;
-  font-size: clamp(1.5rem, 3.5vw, 2.25rem);
+  font-size: 1.2rem;
   font-weight: 800;
-  line-height: 1.25;
+  line-height: 1.35;
   color: #241447;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   margin: 0 0 1.5rem;
-  padding-bottom: 0.65rem;
-  border-bottom: 1px solid rgba(15, 105, 110, 0.15);
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 105, 110, 0.2);
+  border-left: 5px solid #0f696e;
+  background: linear-gradient(90deg, rgba(15, 105, 110, 0.12), rgba(15, 105, 110, 0.03));
 }
 
 .sup-mt {
@@ -592,7 +596,7 @@ export default {
   }
 
   .sup-hero {
-    padding: 2rem 1rem 2rem;
+    padding: 1.15rem 1rem 1rem;
   }
 
   .sup-body {
