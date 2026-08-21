@@ -203,6 +203,67 @@
           </div>
         </div>
 
+        <!-- Billing -->
+        <div v-else-if="activeTab === 'billing'" class="ma-section">
+          <h3 class="ma-section-title">Billing & Subscription</h3>
+          <p class="ma-section-desc">Current plan, invoices, and cancellation.</p>
+
+          <div v-if="billingLoading" class="text-center py-4">
+            <span class="spinner-border spinner-border-sm me-2"></span>
+            Loading subscription…
+          </div>
+
+          <template v-else>
+            <div v-if="billingError" class="alert alert-danger py-2">{{ billingError }}</div>
+
+            <div class="ma-security-card">
+              <div>
+                <h6 class="mb-1">{{ billingPlanLabel }}</h6>
+                <p class="ma-hint mb-0">
+                  <template v-if="subscription">
+                    Status: <strong class="text-capitalize">{{ subscription.status }}</strong>
+                    <span v-if="subscription.mode"> · {{ billingModeLabel }}</span>
+                    <span v-if="subscription.billing_cycle"> · {{ billingCycleLabel }}</span>
+                    <span v-if="subscription.asset_count != null"> · {{ subscription.asset_count }} assets</span>
+                  </template>
+                  <template v-else>No subscription yet.</template>
+                </p>
+              </div>
+              <router-link to="/pricingplan" class="btn btn-outline-dark btn-sm">
+                {{ subscription ? 'Change plan' : 'Choose a plan' }}
+              </router-link>
+            </div>
+
+            <div v-if="subscription && ['active', 'trialing', 'past_due'].includes(subscription.status)" class="ma-security-card">
+              <div>
+                <h6 class="mb-1">Cancel subscription</h6>
+                <p class="ma-hint mb-0">Cancels at the end of the current billing period. You keep access until then.</p>
+              </div>
+              <button type="button" class="btn btn-outline-danger btn-sm" :disabled="canceling" @click="cancelPlan">
+                <span v-if="canceling" class="spinner-border spinner-border-sm me-1"></span>
+                Cancel
+              </button>
+            </div>
+
+            <div v-if="invoices.length" class="mt-4">
+              <h6 class="ma-section-title" style="font-size: 16px;">Invoices</h6>
+              <div v-for="invoice in invoices" :key="invoice.stripe_invoice_id || invoice.created_at" class="ma-invoice-row">
+                <div>
+                  <strong>{{ formatUsd(invoice.amount, invoice.currency) }}</strong>
+                  <span class="ma-hint d-block text-capitalize">{{ invoice.status }} · {{ formatInvoiceDate(invoice.created_at) }}</span>
+                </div>
+                <a
+                  v-if="invoice.hosted_invoice_url"
+                  :href="invoice.hosted_invoice_url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="btn btn-outline-dark btn-sm"
+                >View invoice</a>
+              </div>
+            </div>
+          </template>
+        </div>
+
         <!-- Security / Session -->
         <div v-else-if="activeTab === 'security'" class="ma-section">
           <h3 class="ma-section-title">Security & Session</h3>
@@ -234,6 +295,7 @@ import { useAuthStore } from '@/stores/authStore';
 import Swal from 'sweetalert2';
 import router from '@/router';
 import AdminProjectField from '@/components/admin-component/AdminProjectField.vue';
+import { billingErrorMessage, cancelSubscription, formatUsd, getMySubscription } from '@/services/billingApi';
 
 const USER_TEAM_KEY = 'vaptfix_user_preferred_team';
 
@@ -281,6 +343,11 @@ export default {
       activeProjectName: localStorage.getItem('activeProjectName') || '',
       preferredTeam: localStorage.getItem(USER_TEAM_KEY) || 'both',
       userTeams: [],
+      subscription: null,
+      invoices: [],
+      billingLoading: false,
+      billingError: '',
+      canceling: false,
     };
   },
   computed: {
@@ -290,16 +357,36 @@ export default {
       return this.mode === 'admin' ? '/admindashboardonboarding' : '/userdashboard';
     },
     navItems() {
-      return [
+      const items = [
         { id: 'profile', label: 'Profile', icon: 'bi bi-person' },
         { id: 'password', label: 'Password', icon: 'bi bi-key' },
         { id: 'workspace', label: this.mode === 'admin' ? 'Projects' : 'Team', icon: 'bi bi-folder2' },
-        { id: 'security', label: 'Security', icon: 'bi bi-shield-lock' },
       ];
+      if (this.mode === 'admin') {
+        items.push({ id: 'billing', label: 'Billing', icon: 'bi bi-credit-card' });
+      }
+      items.push({ id: 'security', label: 'Security', icon: 'bi bi-shield-lock' });
+      return items;
     },
     visibleNavItems() {
       if (!this.allowedTabs?.length) return this.navItems;
       return this.navItems.filter(item => this.allowedTabs.includes(item.id));
+    },
+    billingPlanLabel() {
+      if (!this.subscription?.plan) return 'No plan';
+      const plan = String(this.subscription.plan);
+      return plan.charAt(0).toUpperCase() + plan.slice(1);
+    },
+    billingModeLabel() {
+      if (this.subscription?.mode === 'management_testing') return 'Management + Testing';
+      if (this.subscription?.mode === 'management') return 'Management';
+      return this.subscription?.mode || '';
+    },
+    billingCycleLabel() {
+      const cycle = this.subscription?.billing_cycle;
+      if (cycle === 'semi_annual') return 'Semi-annual';
+      if (!cycle) return '';
+      return String(cycle).charAt(0).toUpperCase() + String(cycle).slice(1);
     },
   },
   watch: {
@@ -311,14 +398,76 @@ export default {
         }
       },
     },
+    activeTab(tab) {
+      if (tab === 'billing' && this.mode === 'admin') this.loadBilling();
+    },
   },
   async mounted() {
     await this.loadProfile();
     if (this.mode === 'user') {
       await this.loadUserTeams();
     }
+    if (this.mode === 'admin') {
+      await this.loadBilling();
+    }
   },
   methods: {
+    formatUsd,
+    formatInvoiceDate(value) {
+      if (!value) return '';
+      try {
+        return new Date(value).toLocaleDateString();
+      } catch {
+        return value;
+      }
+    },
+    async loadBilling() {
+      this.billingLoading = true;
+      this.billingError = '';
+      try {
+        const data = await getMySubscription();
+        this.subscription = data?.subscription || null;
+        this.invoices = Array.isArray(data?.invoices) ? data.invoices : [];
+      } catch (error) {
+        this.subscription = null;
+        this.invoices = [];
+        this.billingError = billingErrorMessage(error, 'Unable to load billing details.');
+      } finally {
+        this.billingLoading = false;
+      }
+    },
+    async cancelPlan() {
+      const confirm = await Swal.fire({
+        icon: 'warning',
+        title: 'Cancel subscription?',
+        text: 'Access continues until the end of the current billing period.',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, cancel',
+        cancelButtonText: 'Keep plan',
+        confirmButtonColor: '#dc3545',
+      });
+      if (!confirm.isConfirmed) return;
+      this.canceling = true;
+      try {
+        const data = await cancelSubscription();
+        await Swal.fire({
+          icon: 'success',
+          title: 'Cancellation scheduled',
+          text: data?.detail || 'Subscription will cancel at the end of the current period.',
+          confirmButtonColor: '#241447',
+        });
+        await this.loadBilling();
+      } catch (error) {
+        await Swal.fire({
+          icon: 'error',
+          title: 'Could not cancel',
+          text: billingErrorMessage(error),
+          confirmButtonColor: '#241447',
+        });
+      } finally {
+        this.canceling = false;
+      }
+    },
     async loadProfile() {
       if (this.mode === 'user') {
         const res = await this.authStore.getMemberProfile();
@@ -875,5 +1024,14 @@ export default {
   background: #0f696e;
   border-color: #0f696e;
   color: #fff;
+}
+
+.ma-invoice-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f1f5f9;
 }
 </style>

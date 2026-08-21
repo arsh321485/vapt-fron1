@@ -23,6 +23,8 @@ import UserMissingSecurityUpdatesView from "../views/user-views/UserMissingSecur
 import VulnerabilityCardView from "../views/admin-dashboard/VulnerabilityCardView.vue";
 import YourTeamView from "../views/admin-dashboard/YourTeamView.vue";
 import PricingplansView from "../views/admin-views/PricingplansView.vue";
+import BillingSuccessView from "../views/admin-views/BillingSuccessView.vue";
+import BillingCancelView from "../views/admin-views/BillingCancelView.vue";
 import PartnerView from "../views/admin-views/PartnerView.vue";
 import PartnerLeadPortalView from "../views/admin-views/PartnerLeadPortalView.vue";
 import PartnerLeadThankYouView from "../views/admin-views/PartnerLeadThankYouView.vue";
@@ -31,7 +33,6 @@ import WebinarFormView from "../views/admin-views/WebinarFormView.vue";
 import WebinarThankYouView from "../views/admin-views/WebinarThankYouView.vue";
 import PrivacyPolicyView from "../views/admin-views/PrivacyPolicyView.vue";
 import TermsOfServiceView from "../views/admin-views/TermsOfServiceView.vue";
-import SecurityStatementView from "../views/admin-views/SecurityStatementView.vue";
 import KnowledgeBaseView from "../views/admin-views/KnowledgeBaseView.vue";
 import HowVaptfixWorksView from "../views/admin-views/HowVaptfixWorksView.vue";
 import DataProcessingAgreementView from "../views/admin-views/DataProcessingAgreementView.vue";
@@ -113,11 +114,6 @@ const router = createRouter({
       component: TermsOfServiceView,
     },
     {
-      path: "/security",
-      name: "security",
-      component: SecurityStatementView,
-    },
-    {
       path: "/knowledge-base",
       name: "knowledge-base",
       component: KnowledgeBaseView,
@@ -150,6 +146,16 @@ const router = createRouter({
       path: "/pricingplan",
       name: "pricingplan",
       component: PricingplansView,
+    },
+    {
+      path: "/billing/success",
+      name: "billing-success",
+      component: BillingSuccessView,
+    },
+    {
+      path: "/billing/cancel",
+      name: "billing-cancel",
+      component: BillingCancelView,
     },
     {
       path: "/partner",

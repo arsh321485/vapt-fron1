@@ -10,6 +10,11 @@ import {
   lookupFixVulnerabilityId,
   normalizeAssetVulnerabilityList,
 } from "@/utils/assetVulnerabilities";
+import {
+  extractAssetRows,
+  getAssetHostName,
+  resolveAssetType,
+} from "@/utils/assetDummyData";
 
 interface RoleAssignmentEntry {
   assets: string[];
@@ -3033,10 +3038,9 @@ export const useAuthStore = defineStore("auth", {
     async fetchLatestUploadedReport() {
       try {
         const res = await endpoint.get("/api/admin/upload_report/latest-report/");
-        if (res.data?.success) {
-          return { status: true, data: res.data };
-        }
-        return { status: false, data: null };
+        const data = res.data;
+        if (!data) return { status: false, data: null };
+        return { status: true, data };
       } catch (error: any) {
         return { status: false, data: null, message: error.response?.data?.detail || "Failed" };
       }
@@ -3135,7 +3139,15 @@ export const useAuthStore = defineStore("auth", {
       message?: string;
     }> {
       try {
+        const latestRes = await this.fetchLatestUploadedReport();
+        const latestPayload =
+          latestRes.data?.report ||
+          latestRes.data?.data ||
+          latestRes.data ||
+          null;
+
         let reportId =
+          String(latestPayload?.report_id || latestPayload?.id || latestPayload?._id || "").trim() ||
           String(localStorage.getItem("reportId") || "").trim() ||
           String(this.reportStatus?.reportId || "").trim() ||
           String(this.latestReportId || "").trim();
@@ -3144,46 +3156,64 @@ export const useAuthStore = defineStore("auth", {
           reportId = String((await this.resolveReportId()) || "").trim();
         }
 
-        if (!reportId) {
+        let detailData: any = null;
+        if (reportId) {
+          const detailRes = await this.getUploadReportById(reportId);
+          if (detailRes.status) detailData = detailRes.data;
+        }
+
+        const combined = {
+          ...(latestPayload && typeof latestPayload === "object" ? latestPayload : {}),
+          ...(detailData && typeof detailData === "object" ? detailData : {}),
+        };
+
+        if (!reportId && !Object.keys(combined).length) {
           return { status: false, message: "No report found", data: null };
         }
 
-        const detailRes = await this.getUploadReportById(reportId);
-        if (!detailRes.status || !detailRes.data) {
-          return detailRes;
+        let statusData: any = null;
+        if (reportId) {
+          try {
+            const statusRes = await this.fetchUploadReportStatus(reportId);
+            if (statusRes.status) statusData = statusRes.data;
+          } catch {
+            /* optional */
+          }
         }
 
-        let statusData: any = null;
-        try {
-          const statusRes = await this.fetchUploadReportStatus(reportId);
-          if (statusRes.status) statusData = statusRes.data;
-        } catch {
-          /* optional */
-        }
+        const uploadedFileNames = this.extractUploadedFileNames({
+          latest: latestRes.data,
+          detail: detailData,
+          status: statusData,
+        });
 
         const merged = {
-          ...(detailRes.data || {}),
+          ...combined,
           ...(statusData || {}),
           report_id:
-            detailRes.data?.report_id ||
-            detailRes.data?.id ||
-            detailRes.data?._id ||
+            combined.report_id ||
+            combined.id ||
+            combined._id ||
             reportId,
           id:
-            detailRes.data?.id ||
-            detailRes.data?._id ||
-            detailRes.data?.report_id ||
+            combined.id ||
+            combined._id ||
+            combined.report_id ||
             reportId,
           resolved_file_name:
-            this.extractUploadedFileName(detailRes.data) ||
-            detailRes.data?.file_name ||
-            detailRes.data?.filename ||
-            detailRes.data?.original_filename ||
+            uploadedFileNames[0] ||
+            this.extractUploadedFileName(combined) ||
+            combined.file_name ||
+            combined.filename ||
+            combined.original_filename ||
             null,
+          uploaded_file_names: uploadedFileNames,
         };
 
         try {
-          localStorage.setItem("reportId", String(merged.report_id || reportId));
+          if (merged.report_id) {
+            localStorage.setItem("reportId", String(merged.report_id));
+          }
         } catch {
           /* ignore */
         }
@@ -3199,15 +3229,23 @@ export const useAuthStore = defineStore("auth", {
     },
 
     // 🔹 Admin scan report upload
-    // POST /api/admin/upload_report/upload/  (multipart form-data key: file)
+    // POST /api/admin/upload_report/upload/  (multipart form-data key: file, repeatable)
     async uploadAdminReport(
-      file: File,
+      fileOrFiles: File | File[],
       onProgress?: (pct: number) => void,
     ): Promise<{ status: boolean; data?: any; message?: string; details?: any }> {
       try {
+        const files = (Array.isArray(fileOrFiles) ? fileOrFiles : [fileOrFiles]).filter(
+          (file): file is File => file instanceof File,
+        );
+        if (!files.length) {
+          return { status: false, message: "No file selected" };
+        }
         const formData = new FormData();
-        // Backend expects lowercase form-data key: file
-        formData.append("file", file, file.name);
+        // Same API key as before — send each file as "file" so backend getlist("file") works.
+        files.forEach((file) => {
+          formData.append("file", file, file.name);
+        });
 
         const res = await endpoint.post("/api/admin/upload_report/upload/", formData, {
           // Content-Type intentionally NOT set — axios auto-generates it
@@ -3330,6 +3368,69 @@ export const useAuthStore = defineStore("auth", {
       };
 
       return visit(payload);
+    },
+
+    extractUploadedFileNames(payload: unknown): string[] {
+      const names = new Set<string>();
+      const FILE_EXT = /\.(xlsx|xls|csv|xml|nessus|pdf|html|htm|docx|doc|zip|json|txt)$/i;
+      const LIST_KEYS = [
+        "files",
+        "uploaded_files",
+        "source_files",
+        "file_names",
+        "source_file_names",
+        "uploaded_file_names",
+        "merged_files",
+        "reports",
+        "results",
+      ];
+
+      const addName = (raw: unknown) => {
+        if (raw == null) return;
+        if (typeof raw === "string") {
+          const base = raw.trim().split(/[/\\]/).pop()?.trim() || "";
+          if (base && (FILE_EXT.test(base) || (base.length > 2 && base.length < 180 && base.includes(".")))) {
+            names.add(base);
+          }
+          return;
+        }
+        if (typeof raw !== "object") return;
+        const obj = raw as Record<string, unknown>;
+        const candidate =
+          obj.file_name ||
+          obj.filename ||
+          obj.original_filename ||
+          obj.uploaded_file_name ||
+          obj.source_file_name ||
+          obj.name ||
+          obj.file;
+        addName(candidate);
+      };
+
+      const visit = (node: unknown, depth = 0) => {
+        if (node == null || depth > 5) return;
+        if (Array.isArray(node)) {
+          node.forEach((item) => {
+            addName(item);
+            if (item && typeof item === "object") visit(item, depth + 1);
+          });
+          return;
+        }
+        if (typeof node !== "object") {
+          addName(node);
+          return;
+        }
+        const obj = node as Record<string, unknown>;
+        for (const key of LIST_KEYS) {
+          if (key in obj) visit(obj[key], depth + 1);
+        }
+        addName(obj);
+      };
+
+      visit(payload);
+      const single = this.extractUploadedFileName(payload);
+      if (single) names.add(single);
+      return Array.from(names);
     },
 
     // 🔹 Report header metadata (generated date, program, testing date, uploaded file name)
@@ -3627,17 +3728,26 @@ export const useAuthStore = defineStore("auth", {
       }
       try {
         const res = await endpoint.get("/api/user/asset/assets/");
-        const rows = res.data.assets || [];
-        const normalized = rows.map((a: any) => ({
-          ...a,
-          selected: false,
-          held: false,
-          isInternal: a.member_type === "internal",
-          host_information: a.host_information || {},
-          severity_counts: a.severity_counts || { critical: 0, high: 0, medium: 0, low: 0 },
-        }));
-        if (res.data.report_id) this.userLatestReportId = res.data.report_id;
-        const total = res.data.total_assets ?? normalized.length;
+        const payload = res.data || {};
+        const rows = extractAssetRows(payload);
+        const normalized = rows
+          .map((a: any) => {
+            const asset = getAssetHostName(a);
+            if (!asset) return null;
+            return {
+              ...a,
+              asset,
+              asset_type: resolveAssetType({ ...a, asset }),
+              selected: false,
+              held: false,
+              isInternal: a.member_type === "internal",
+              host_information: a.host_information || {},
+              severity_counts: a.severity_counts || { critical: 0, high: 0, medium: 0, low: 0 },
+            };
+          })
+          .filter(Boolean);
+        if (payload.report_id) this.userLatestReportId = payload.report_id;
+        const total = payload.total_assets ?? normalized.length;
         this.cachedUserAssets = normalized;
         this.cachedUserAssetTotal = total;
         return { status: true, data: normalized, total };
@@ -5574,6 +5684,42 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    // POST /api/user/automation-scripts/match/by-name/
+    async fetchAutomationScriptsByName(names: string[], os?: string | null) {
+      const vulnerability_names = (names || []).map((n) => String(n || "").trim()).filter(Boolean);
+      if (!vulnerability_names.length) return { status: true, results: [] };
+      try {
+        const payload: Record<string, any> = { vulnerability_names };
+        if (os) payload.os = os;
+        const res = await endpoint.post("/api/user/automation-scripts/match/by-name/", payload);
+        return { status: true, results: res.data?.results || [] };
+      } catch (error: any) {
+        return {
+          status: false,
+          results: [],
+          message: error.response?.data?.detail || "Failed to match automation scripts by name",
+        };
+      }
+    },
+
+    // POST /api/admin/automation-scripts/match/by-name/
+    async fetchAutomationScriptsByNameAdmin(names: string[], os?: string | null) {
+      const vulnerability_names = (names || []).map((n) => String(n || "").trim()).filter(Boolean);
+      if (!vulnerability_names.length) return { status: true, results: [] };
+      try {
+        const payload: Record<string, any> = { vulnerability_names };
+        if (os) payload.os = os;
+        const res = await endpoint.post("/api/admin/automation-scripts/match/by-name/", payload);
+        return { status: true, results: res.data?.results || [] };
+      } catch (error: any) {
+        return {
+          status: false,
+          results: [],
+          message: error.response?.data?.detail || "Failed to match automation scripts by name",
+        };
+      }
+    },
+
     // 🔹 ADMIN — Report assets & vulnerabilities filtered by team role
     // GET /api/admin/users_details/report-assets-vulns/?role=<role>
     async fetchReportAssetVulnsByRole(role: string) {
@@ -6128,27 +6274,29 @@ export const useAuthStore = defineStore("auth", {
       try {
         const res = await endpoint.get(`/api/admin/adminasset/assets/`);
 
-        const rows = res.data.assets || [];
+        const rows = extractAssetRows(res.data);
 
-        const normalized = rows.map((a: any) => ({
-          ...a,
-
-          // UI state flags
-          selected: false,
-          held: false,
-
-          // NEW: member type comes from top-level response
-          isInternal: res.data.member_type === "internal",
-
-          // safety defaults
-          host_information: a.host_information || {},
-          severity_counts: a.severity_counts || {
-            critical: 0,
-            high: 0,
-            medium: 0,
-            low: 0,
-          },
-        }));
+        const normalized = rows
+          .map((a: any) => {
+            const asset = getAssetHostName(a);
+            if (!asset) return null;
+            return {
+              ...a,
+              asset,
+              asset_type: resolveAssetType({ ...a, asset }),
+              selected: false,
+              held: false,
+              isInternal: res.data.member_type === "internal" || a.member_type === "internal",
+              host_information: a.host_information || {},
+              severity_counts: a.severity_counts || {
+                critical: 0,
+                high: 0,
+                medium: 0,
+                low: 0,
+              },
+            };
+          })
+          .filter(Boolean);
 
         // 🔥 store assignments
         this.assetRows = normalized;
