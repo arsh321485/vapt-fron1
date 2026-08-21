@@ -381,6 +381,8 @@ import Header from '@/components/admin-component/Header.vue';
 import Footer from '@/components/admin-component/Footer.vue';
 import AdminSignUpModal from '@/components/admin-component/AdminSignUpModal.vue';
 import AnimatedDashboard from '@/components/home-components/AnimatedDashboard.vue';
+import { extractClaimInviteToken, storeClaimInviteToken } from '@/utils/claimInvite';
+import { writeLockedRoute } from '@/utils/routeLock';
 
 export default {
   name: 'HomeView',
@@ -394,6 +396,7 @@ export default {
     return {
       showAdminSignUpModal: false,
       showWebinarPopup: false,
+      webinarPopupTimer: null,
       highlightSliderPaused: false,
       highlightWindowWidth: 1200,
       reviewSlideIndex: 0,
@@ -531,17 +534,46 @@ export default {
     },
   },
   mounted() {
+    writeLockedRoute(this.$route.fullPath || '/home');
     this.highlightWindowWidth = window.innerWidth;
     window.addEventListener('resize', this.onHighlightResize);
     this.startReviewSlider();
-    // Show webinar popup after 1.5s on homepage
-    setTimeout(() => { this.showWebinarPopup = true; }, 1500);
+    if (!this.applyClaimInviteFromRoute()) {
+      this.scheduleWebinarPopup();
+    }
+  },
+  watch: {
+    '$route.query.invite'() {
+      this.applyClaimInviteFromRoute();
+    },
   },
   beforeUnmount() {
     window.removeEventListener('resize', this.onHighlightResize);
     this.stopReviewSlider();
+    this.clearWebinarPopupTimer();
   },
   methods: {
+    applyClaimInviteFromRoute() {
+      const invite = extractClaimInviteToken(this.$route?.query || {});
+      if (!invite) return false;
+      storeClaimInviteToken(invite);
+      this.showWebinarPopup = false;
+      this.clearWebinarPopupTimer();
+      this.showAdminSignUpModal = true;
+      return true;
+    },
+    scheduleWebinarPopup() {
+      this.clearWebinarPopupTimer();
+      this.webinarPopupTimer = window.setTimeout(() => {
+        this.showWebinarPopup = true;
+      }, 1500);
+    },
+    clearWebinarPopupTimer() {
+      if (this.webinarPopupTimer != null) {
+        clearTimeout(this.webinarPopupTimer);
+        this.webinarPopupTimer = null;
+      }
+    },
     onHighlightResize() {
       this.highlightWindowWidth = window.innerWidth;
       this.reviewSlideIndex = Math.min(this.reviewSlideIndex, this.reviewMaxSlideIndex);

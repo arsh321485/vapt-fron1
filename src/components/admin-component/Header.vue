@@ -132,6 +132,7 @@
       :show="showSignUpModal"
       :preSelectedType="signUpPreSelectedType"
       :userInitialTab="signUpUserInitialTab"
+      :adminInitialTab="signUpAdminInitialTab"
       :setPasswordUidb64="setPasswordUidb64"
       :setPasswordToken="setPasswordToken"
       :setPasswordEmail="setPasswordEmail"
@@ -154,10 +155,16 @@
 import SignUpModal from './SignUpModal.vue';
 import AdminSignUpModal from './AdminSignUpModal.vue';
 import {
+  applyAdminSetPasswordModalState,
   applySetPasswordModalState,
+  clearStoredAdminSetPasswordDeepLink,
   clearStoredSetPasswordDeepLink,
+  extractAdminSetPasswordFromRoute,
+  isAdminSetPasswordDeepLink,
+  isAdminSetPasswordPath,
   isUserSetPasswordDeepLink,
   readStoredSetPasswordDeepLink,
+  storeAdminSetPasswordDeepLink,
 } from '@/utils/userSetPasswordDeepLink';
 
 export default {
@@ -172,6 +179,7 @@ export default {
       showSignUpModal: false,
       signUpPreSelectedType: '',
       signUpUserInitialTab: '',
+      signUpAdminInitialTab: '',
       setPasswordUidb64: '',
       setPasswordToken: '',
       setPasswordEmail: '',
@@ -196,16 +204,52 @@ export default {
      * Also: email action=set-password, Slack/Teams ?platform=slack|teams, uid+token only.
      */
     applyUserSetPasswordDeepLink() {
-      if (this.$route.path !== '/home') return;
+      const path = this.$route.path || '';
       const q = this.$route.query || {};
       const pick = (v) => {
         if (v === undefined || v === null) return '';
         return (Array.isArray(v) ? v[0] : v).toString().trim();
       };
 
+      // Admin-only: /set-password/{uid}/{token} or /reset-password/{uid}/{token}
+      const fromAdminPath = extractAdminSetPasswordFromRoute(this.$route);
+      if (isAdminSetPasswordPath(path) && fromAdminPath?.uidb64 && fromAdminPath?.token) {
+        storeAdminSetPasswordDeepLink(fromAdminPath);
+        this.signUpPreSelectedType = 'admin';
+        this.signUpAdminInitialTab = 'setPassword';
+        this.setPasswordUidb64 = fromAdminPath.uidb64;
+        this.setPasswordToken = fromAdminPath.token;
+        this.setPasswordEmail = fromAdminPath.email || '';
+        this.$nextTick(() => {
+          this.showSignUpModal = true;
+        });
+        return;
+      }
+
+      if (path !== '/home') return;
+
       const signin = pick(q.signin);
       const tabVal = pick(q.tab);
       const tabRaw = tabVal.toLowerCase();
+
+      if (signin === 'admin' && (tabRaw === 'signin' || tabRaw === 'sign-in' || tabVal === 'signIn')) {
+        this.signUpPreSelectedType = 'admin';
+        this.signUpAdminInitialTab = 'signIn';
+        this.showSignUpModal = true;
+        this.$nextTick(() => {
+          this.$router.replace({ path: '/home' });
+        });
+        return;
+      }
+
+      if (isAdminSetPasswordDeepLink(q)) {
+        applyAdminSetPasswordModalState(this, q);
+        this.$nextTick(() => {
+          this.$router.replace({ path: '/home' });
+        });
+        return;
+      }
+
       const isSignInTab =
         signin === 'user' && (tabRaw === 'signin' || tabRaw === 'sign-in' || tabVal === 'signIn');
       if (isSignInTab) {
@@ -234,6 +278,7 @@ export default {
     openSignUpModal() {
       this.signUpPreSelectedType = '';
       this.signUpUserInitialTab = '';
+      this.signUpAdminInitialTab = '';
       this.setPasswordUidb64 = '';
       this.setPasswordToken = '';
       this.setPasswordEmail = '';
@@ -243,10 +288,12 @@ export default {
       this.showSignUpModal = false;
       this.signUpPreSelectedType = '';
       this.signUpUserInitialTab = '';
+      this.signUpAdminInitialTab = '';
       this.setPasswordUidb64 = '';
       this.setPasswordToken = '';
       this.setPasswordEmail = '';
       clearStoredSetPasswordDeepLink();
+      clearStoredAdminSetPasswordDeepLink();
     },
     openAdminSignUpModal() {
       this.showAdminSignUpModal = true;

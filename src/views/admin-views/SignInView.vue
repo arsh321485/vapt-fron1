@@ -156,7 +156,7 @@
 
 <script>
 import { useAuthStore } from '@/stores/authStore'
-import { markPostLoginSuccess } from '@/utils/postLoginSuccess'
+import { markAdminSetPasswordEmailIfNew, markPostLoginSuccess } from '@/utils/postLoginSuccess'
 import Swal from 'sweetalert2'
 import teamsIcon from '@/assets/images/teams.png'
 import slackIcon from '@/assets/images/slack.png'
@@ -310,6 +310,7 @@ export default {
         try {
           useAuthStore().setAdminLoginMethod('slack')
         } catch (_) { /* ignore */ }
+        markAdminSetPasswordEmailIfNew(event.data.is_new_user === true)
         await this.finishOAuthSignIn()
         return
       }
@@ -329,6 +330,7 @@ export default {
         try {
           useAuthStore().setAdminLoginMethod('teams')
         } catch (_) { /* ignore */ }
+        markAdminSetPasswordEmailIfNew(event.data.is_new_user === true)
         await this.finishOAuthSignIn()
       }
     },

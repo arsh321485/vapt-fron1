@@ -212,6 +212,9 @@ export default {
       },
       loading: false,
       isLocked: false,
+      redirecting: false,
+      slackWatchTimer: null,
+      slackWatching: false,
     };
   },
   computed: {
@@ -340,6 +343,7 @@ export default {
             this.newForm.medium = d.medium;
             this.newForm.low = d.low;
             this.isLocked = !this.isEditMode;
+            if (this.isLocked) await this.ensureOnboardingGate();
           }
           return;
         }
@@ -365,6 +369,7 @@ export default {
           if (d.admin_id) localStorage.setItem("adminId", d.admin_id);
 
           this.isLocked = !this.isEditMode;
+          if (this.isLocked) await this.ensureOnboardingGate();
         }
       } catch (err) {
         console.error("Risk criteria fetch error", err);
@@ -372,20 +377,66 @@ export default {
     },
     async ensureOnboardingGate() {
       // Edit mode from dashboard header should still work when already ready
-      if (this.isEditMode) return;
+      if (this.isEditMode || this.redirecting || this.slackWatching) return false;
 
-      const auth = useAuthStore();
-      const route = await auth.getAdminOnboardingRoute();
-      if (route !== "/riskcriteria") {
-        this.$router.replace(route);
+      this.slackWatching = true;
+      try {
+        const auth = useAuthStore();
+        const route = await auth.getAdminOnboardingRoute();
+        if (route !== "/riskcriteria") {
+          this.redirecting = true;
+          this.stopSlackWatch();
+          await this.$router.replace(route);
+          return true;
+        }
+
+        const res = await auth.getRiskCriteriaByAdmin();
+        const data = res.data?.risk_criteria || res.data;
+        const alreadySet = !!(data && data.critical && data.high && data.medium && data.low);
+        if (res.status && alreadySet) {
+          auth.markStepCompleted(2);
+          this.redirecting = true;
+          this.stopSlackWatch();
+          await this.$router.replace("/admindashboardonboarding");
+          return true;
+        }
+      } finally {
+        this.slackWatching = false;
       }
+      return false;
+    },
+    onSlackWatchVisibility() {
+      if (!document.hidden) this.ensureOnboardingGate();
+    },
+    startSlackWatch() {
+      this.stopSlackWatch();
+      if (this.isEditMode) return;
+      this.slackWatchTimer = setInterval(() => {
+        if (!document.hidden && !this.redirecting) this.ensureOnboardingGate();
+      }, 4000);
+      document.addEventListener("visibilitychange", this.onSlackWatchVisibility);
+    },
+    stopSlackWatch() {
+      if (this.slackWatchTimer) {
+        clearInterval(this.slackWatchTimer);
+        this.slackWatchTimer = null;
+      }
+      document.removeEventListener("visibilitychange", this.onSlackWatchVisibility);
     },
   },
-  mounted() {
+  async mounted() {
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
     tooltipTriggerList.forEach(el => new Tooltip(el))
-    this.ensureOnboardingGate();
-    this.getRiskCriteria();
+    if (this.isEditMode) {
+      await this.getRiskCriteria();
+      return;
+    }
+    if (await this.ensureOnboardingGate()) return;
+    this.startSlackWatch();
+    await this.getRiskCriteria();
+  },
+  beforeUnmount() {
+    this.stopSlackWatch();
   },
 };
 </script>

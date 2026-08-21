@@ -67,10 +67,10 @@
                   </div>
                   <div class="d-flex gap-3 mb-3">
                     <i class="bi bi-trash action-icon" data-bs-toggle="tooltip"
-                      :class="{ 'text-muted': assetTypeFilter !== 'assets' || (activeAction !== '' && activeAction !== 'delete') }"
+                      :class="{ 'text-muted': activeAction !== '' && activeAction !== 'delete' }"
                       @click.stop="handleDeleteClick" title="Remove an asset" role="button"></i>
                     <i class="bi bi-eye-slash action-icon" data-bs-toggle="tooltip"
-                      :class="{ 'text-muted': assetTypeFilter !== 'assets' || (activeAction !== '' && activeAction !== 'hold') }"
+                      :class="{ 'text-muted': activeAction !== '' && activeAction !== 'hold' }"
                       @click.stop="toggleHoldMode" title="Hold mitigation" role="button"></i>
                   </div>
                   <div class="position-relative search-wrap">
@@ -82,6 +82,9 @@
 
                 <!-- Asset List -->
                 <div class="asset-list-scroll">
+                  <div v-if="!pagedAssets.length" class="asset-list-empty">
+                    {{ emptyAssetTabTitle }}
+                  </div>
                   <div v-for="(asset, i) in pagedAssets" :key="asset.id || asset.asset || i"
                     class="asset-item-new"
                     :class="{ 'asset-item-active': activeIndex === asset.asset }"
@@ -94,7 +97,7 @@
                         <span
                           v-if="getAssetTypeBadge(asset)"
                           class="asset-type-badge asset-type-badge-sm"
-                          :class="'asset-type-badge-' + asset.member_type"
+                          :class="'asset-type-badge-' + uiTypeFromAsset(asset)"
                           :title="getAssetTypeBadge(asset).label"
                         >{{ getAssetTypeBadge(asset).code }}</span>
                       </div>
@@ -106,7 +109,7 @@
                       <span
                         v-if="getAssetTypeBadge(asset)"
                         class="asset-type-label"
-                        :class="'asset-type-label-' + asset.member_type"
+                        :class="'asset-type-label-' + uiTypeFromAsset(asset)"
                       >{{ getAssetSubLabel(asset) }}</span>
                       <template v-else>
                         <i class="bi bi-link-45deg me-1"></i>
@@ -200,6 +203,12 @@
                   @close-verified="showVaptfixVerifiedAlert = false"
                   @open-python-guide="openPythonGuideFromAlert"
                 />
+                <div v-if="!hasActiveAssetInTab" class="assets-right-empty">
+                  <i class="bi bi-inbox assets-right-empty-icon"></i>
+                  <p class="assets-right-empty-title">{{ emptyAssetTabTitle }}</p>
+                  <p class="assets-right-empty-sub">Select another category to view assets and vulnerabilities.</p>
+                </div>
+                <template v-else>
                 <!-- Detail Header -->
                 <div class="right-panel-header">
                   <h1 class="asset-detail-title mb-0">
@@ -207,21 +216,21 @@
                     <span
                       v-if="selectedAssetTypeBadge"
                       class="asset-type-badge"
-                      :class="'asset-type-badge-' + assetTypeFilter"
+                      :class="'asset-type-badge-' + uiTypeFromAsset(authStore.selectedAssetDetail)"
                       :title="selectedAssetTypeBadge.label"
                     >{{ selectedAssetTypeBadge.code }}</span>
                   </h1>
                   <div
                     v-if="selectedAssetMetaValue"
                     class="right-panel-meta"
-                    :class="{ 'right-panel-meta-column': assetTypeFilter !== 'assets' }"
+                    :class="{ 'right-panel-meta-column': !!selectedAssetTypeBadge }"
                   >
-                    <p class="meta-inline" :class="{ 'meta-inline-resolved': assetTypeFilter !== 'assets' }">
+                    <p class="meta-inline" :class="{ 'meta-inline-resolved': !!selectedAssetTypeBadge }">
                       <span class="meta-label">{{ selectedAssetMetaLabel }}</span>
-                      <span v-if="assetTypeFilter !== 'assets'" class="meta-separator">-</span>
+                      <span v-if="selectedAssetTypeBadge" class="meta-separator">-</span>
                       <span class="meta-value">{{ selectedAssetMetaValue }}</span>
                     </p>
-                    <div v-if="assetTypeFilter !== 'assets' && selectedAssetDescription" class="asset-description-block">
+                    <div v-if="selectedAssetDescription" class="asset-description-block">
                       <p class="asset-description-heading">Description</p>
                       <p class="asset-description-text">{{ displayAssetDescription }}</p>
                       <button
@@ -337,18 +346,16 @@
                               :asset-index="selectedAssetDemoIndex"
                               :automation-matched="resolveAutomationMatched(v)"
                             />
-                            <!-- Download button hidden for admin side -->
-                            <!-- <button
+                            <button
+                              v-if="hasAutomationScript(v)"
                               type="button"
                               class="vuln-download-icon-btn"
-                              :class="{ 'vuln-download-icon-btn--disabled': isVulnDownloadDisabled(v) }"
-                              :disabled="isVulnDownloadDisabled(v)"
-                              :title="isVulnDownloadDisabled(v) ? 'Script not available — automation not possible' : 'Download fix'"
-                              :aria-label="isVulnDownloadDisabled(v) ? 'Script download not available' : 'Download fix'"
-                              @click.stop="!isVulnDownloadDisabled(v) && downloadAutomationScript()"
+                              title="Download fix"
+                              aria-label="Download fix"
+                              @click.stop="downloadAutomationScript()"
                             >
                               <i class="bi bi-download"></i>
-                            </button> -->
+                            </button>
                             <i class="bi text-muted" :class="expandedVulnIndex === i ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
                           </div>
                         </div>
@@ -403,9 +410,7 @@
                             <!-- Tab Content -->
                             <div class="av-detail-tab-content">
                               <div v-show="currentVulnTab === 'auto'" class="av-auto-tab">
-                                <AutomationNotSafeBanner v-if="isSelectedAssetAutomationNo" />
                                 <AutomatedFixPanel
-                                  v-else
                                   :key="v.vul_name + '-' + i"
                                   :severity="v.severity"
                                   :vuln-name="v.vul_name"
@@ -413,6 +418,7 @@
                                   :asset-index="selectedAssetDemoIndex"
                                   :is-user="false"
                                   :automation-data="getAutomationForVuln(v)"
+                                  :match-loading="loadingAutomation"
                                   @view-code="showCodeModal = true"
                                 />
                               </div>
@@ -522,6 +528,7 @@
                   </div>
 
                 </div>
+                </template>
               </div>
             </div>
 
@@ -602,7 +609,23 @@ import {
   lookupFixVulnerabilityId,
 } from "@/utils/assetVulnerabilities";
 import { useAuthStore } from "@/stores/authStore";
-import { ASSET_TYPE_FILTERS, getDummyAssetsByType } from "@/utils/assetDummyData";
+import { resolveVulnPluginId as lookupVulnPluginId } from "@/utils/automationScriptDownload";
+import {
+  isNessusPluginId,
+  vulnMatchName,
+  vulnMatchNameKey,
+  matchAutomationScriptsForVulns,
+  mergeMatchResultsIntoMap,
+  getMatchedAutomation,
+  isPositiveAutomationMatch,
+} from "@/utils/automationScriptMatch";
+import {
+  ASSET_TYPE_FILTERS,
+  filterAssetsByType,
+  getAssetOs,
+  getAssetResolvedIp,
+  uiTypeFromAssetType,
+} from "@/utils/assetDummyData";
 
 export default {
   name: "AssetsView",
@@ -662,6 +685,7 @@ export default {
       automationScriptMap: {},
       singleFetchedIds: [],
       loadingAutomation: false,
+      downloadingScript: false,
       showCodeModal: false,
       showPythonModal: false,
       pythonGuideSeverity: '',
@@ -724,6 +748,7 @@ class TLSConfigurator:
       return mergeAssetThreatVulnerabilities(
         this.authStore.selectedAssetVulnerabilities,
         this.closedFixVulnerabilities,
+        this.activeIndex,
       );
     },
     vulnsForStatusCounts() {
@@ -746,18 +771,22 @@ class TLSConfigurator:
       return filterOpenAssetVulnerabilities(
         this.authStore.selectedAssetVulnerabilities,
         this.closedFixVulnerabilities,
+        this.activeIndex,
       );
     },
     sourceAssetRows() {
-      if (this.assetTypeFilter === "assets") {
-        return this.authStore.assetRows || [];
-      }
-      return getDummyAssetsByType(this.assetTypeFilter);
+      return filterAssetsByType(this.authStore.assetRows || [], this.assetTypeFilter);
+    },
+    hasActiveAssetInTab() {
+      if (!this.activeIndex) return false;
+      return this.sourceAssetRows.some((a) => a.asset === this.activeIndex);
+    },
+    emptyAssetTabTitle() {
+      const filter = this.assetTypeFilters.find((item) => item.key === this.assetTypeFilter);
+      const name = filter?.label || "this type";
+      return `No ${name} assets in this report`;
     },
     displayAssetCount() {
-      if (this.assetTypeFilter === "assets") {
-        return this.authStore.assetCount;
-      }
       return this.getFilteredSortedAssets().length;
     },
     pagedAssets() {
@@ -821,19 +850,22 @@ class TLSConfigurator:
       );
     },
     selectedAssetTypeBadge() {
-      if (this.assetTypeFilter === 'assets') return null;
-      return this.getAssetTypeBadgeCode(this.assetTypeFilter);
+      const type = this.authStore.selectedAssetDetail?.asset_type || this.assetTypeFilter;
+      return this.getAssetTypeBadgeCode(type);
     },
     selectedAssetMetaLabel() {
-      return this.assetTypeFilter !== 'assets' ? 'Resolved IP' : 'Owner';
+      const type = uiTypeFromAssetType(this.authStore.selectedAssetDetail?.asset_type || this.assetTypeFilter);
+      if (type === 'server') return 'Operating system';
+      if (type === 'webapp' || type === 'firewall') return 'Resolved IP';
+      return 'Owner';
     },
     selectedAssetMetaValue() {
       const detail = this.authStore.selectedAssetDetail;
       if (!detail) return '';
-      if (this.assetTypeFilter !== 'assets') {
-        return detail.resolved_ip || '';
-      }
-      return detail.owner || '';
+      const type = uiTypeFromAssetType(detail.asset_type || this.assetTypeFilter);
+      if (type === 'server') return getAssetOs(detail) || detail.resolved_ip || '';
+      if (type === 'webapp' || type === 'firewall') return getAssetResolvedIp(detail);
+      return detail.owner || this.authStore.memberType || '';
     },
     selectedAssetDescription() {
       return this.authStore.selectedAssetDetail?.description || '';
@@ -866,10 +898,10 @@ class TLSConfigurator:
     assetTypeFilter() {
       this.currentPage = 1;
       this.query = "";
-      this.activeIndex = null;
       this.resetActions();
       this.authStore.assetSearchResults = [];
       this.authStore.assetSearchCount = 0;
+      this.clearAssetSelection();
       this.$nextTick(() => {
         if (this.pagedAssets.length) {
           this.setActive(this.pagedAssets[0]);
@@ -885,7 +917,11 @@ class TLSConfigurator:
     pagedAssets: {
       handler(list) {
         if (this.$route.query?.asset) return;
-        if (list.length && !this.activeIndex) {
+        if (!list.length) {
+          if (!this.hasActiveAssetInTab) this.clearAssetSelection();
+          return;
+        }
+        if (!this.hasActiveAssetInTab) {
           this.setActive(list[0]);
         }
       },
@@ -991,35 +1027,39 @@ class TLSConfigurator:
         });
         // Fetch individual automation script for opened vuln
         const vuln = this.filteredVulnerabilities[index];
+        const already = this.getAutomationForVuln(vuln);
+        if (already) return;
         const id = this.resolveVulnPluginId(vuln);
-        if (id > 0 && !this.singleFetchedIds.includes(id)) {
+        if (isNessusPluginId(id) && !this.singleFetchedIds.includes(id)) {
           this.singleFetchedIds = [...this.singleFetchedIds, id];
           const res = await this.authStore.fetchAutomationScriptSingleAdmin(id);
           if (res.status && res.data) {
-            this.automationScriptMap = { ...this.automationScriptMap, [id]: res.data };
+            this.automationScriptMap = mergeMatchResultsIntoMap(this.automationScriptMap, [res.data]);
+          }
+          return;
+        }
+        const name = vulnMatchName(vuln);
+        const nameKey = `name:${vulnMatchNameKey(vuln)}`;
+        if (name && !this.singleFetchedIds.includes(nameKey)) {
+          this.singleFetchedIds = [...this.singleFetchedIds, nameKey];
+          const res = await this.authStore.fetchAutomationScriptsByNameAdmin([name]);
+          if (res.status && Array.isArray(res.results)) {
+            this.automationScriptMap = mergeMatchResultsIntoMap(this.automationScriptMap, res.results);
           }
         }
       }
     },
     resolveVulnPluginId(vuln) {
-      if (!vuln) return 0;
-      let id = Number(vuln.plugin_id || vuln.nessus_plugin_id || vuln.pluginId || 0);
-      if (id > 0) return id;
-      const name = String(vuln.vul_name || vuln.plugin_name || '').toLowerCase().trim();
-      const register = this.authStore.vulnerabilityRows || [];
-      const row = register.find(r =>
-        String(r.vul_name || r.plugin_name || '').toLowerCase().trim() === name
-      );
-      id = Number(row?.plugin_id || row?.nessus_plugin_id || 0);
-      if (id > 0) return id;
-      const entry = Object.values(this.automationScriptMap).find(
-        e => String(e.vulnerability || e.vul_name || e.plugin_name || '').toLowerCase().trim() === name
-      );
-      return Number(entry?.plugin_id || 0);
+      return lookupVulnPluginId(vuln, {
+        registerRows: this.authStore.vulnerabilityRows || [],
+        automationScriptMap: this.automationScriptMap,
+      });
     },
     getAutomationForVuln(vuln) {
-      const id = this.resolveVulnPluginId(vuln);
-      return id > 0 ? (this.automationScriptMap[id] || null) : null;
+      return getMatchedAutomation(vuln, this.automationScriptMap);
+    },
+    hasAutomationScript(vuln) {
+      return isPositiveAutomationMatch(this.getAutomationForVuln(vuln));
     },
     onVulnTeamResolved({ vulnName, team }) {
       if (!vulnName || !team) return;
@@ -1036,53 +1076,29 @@ class TLSConfigurator:
       const data = this.getAutomationForVuln(vuln);
       if (!data) return null;
       if (typeof data.matched === 'boolean') return data.matched;
-      const ap = String(data.automation_possible || '').toLowerCase().trim();
-      if (!ap) return null;
-      if (ap.startsWith('no')) return false;
-      return true;
+      return this.hasAutomationScript(vuln);
     },
     async loadAutomationScripts() {
       const vulns = this.authStore.selectedAssetVulnerabilities || [];
-      const register = this.authStore.vulnerabilityRows || [];
-      const nameToId = {};
-      register.forEach(r => {
-        const n = String(r.vul_name || r.plugin_name || '').toLowerCase().trim();
-        const id = Number(r.plugin_id || r.nessus_plugin_id || 0);
-        if (n && id > 0) nameToId[n] = id;
-      });
-      const pluginIds = [...new Set(
-        vulns.map(v => {
-          let id = Number(v.plugin_id || 0);
-          if (!(id > 0)) {
-            const n = String(v.vul_name || v.plugin_name || '').toLowerCase().trim();
-            id = nameToId[n] || 0;
-          }
-          return id;
-        }).filter(id => id > 0)
-      )];
-      if (!pluginIds.length) return;
       this.loadingAutomation = true;
-      const res = await this.authStore.fetchAutomationScriptsBulkAdmin(pluginIds);
+      const map = await matchAutomationScriptsForVulns({
+        authStore: this.authStore,
+        isUser: false,
+        vulns,
+      });
       this.loadingAutomation = false;
-      if (res.status && Array.isArray(res.results)) {
-        const map = {};
-        res.results.forEach(r => {
-          const pid = Number(r.plugin_id || 0);
-          if (pid > 0) map[pid] = r;
-          // Directly patch assigned_team on vuln objects so outer badge is correct
-          if (r.assigned_team) {
-            const rName = String(r.vulnerability || r.vul_name || '').toLowerCase().trim();
-            const vulns = this.authStore.selectedAssetVulnerabilities || [];
-            vulns.forEach(v => {
-              if (!v.assigned_team &&
-                String(v.vul_name || v.plugin_name || '').toLowerCase().trim() === rName) {
-                v.assigned_team = r.assigned_team;
-              }
-            });
+      this.automationScriptMap = map;
+      Object.values(map || {}).forEach((r) => {
+        if (!r || typeof r !== 'object' || !r.assigned_team) return;
+        const rName = String(r.vulnerability || r.vul_name || r.vulnerability_name || '').toLowerCase().trim();
+        if (!rName) return;
+        (this.authStore.selectedAssetVulnerabilities || []).forEach((v) => {
+          if (!v.assigned_team &&
+            String(v.vul_name || v.plugin_name || '').toLowerCase().trim() === rName) {
+            v.assigned_team = r.assigned_team;
           }
         });
-        this.automationScriptMap = { ...map };
-      }
+      });
     },
     async reloadAssetsAndHeld() {
       await this.authStore.fetchAssets(true);
@@ -1158,9 +1174,13 @@ class TLSConfigurator:
 
       this.loadingClosedFix = false;
       if (fixRes.status && fixRes.data?.results) {
-        const closedOnly = fixRes.data.results.filter(
-          (v) => v.status?.toLowerCase() === "closed"
-        );
+        const current = String(asset || "").trim().toLowerCase();
+        const closedOnly = fixRes.data.results.filter((v) => {
+          if (String(v.status || "").toLowerCase() !== "closed") return false;
+          const host = String(v.host_name || v.asset || v.host || "").trim().toLowerCase();
+          if (host && current && host !== current) return false;
+          return true;
+        });
         this.closedFixVulnerabilities = closedOnly;
         this.closedFixCount = closedOnly.length;
       } else {
@@ -1223,31 +1243,44 @@ class TLSConfigurator:
       if (this.assetTypeFilter === type) return;
       this.assetTypeFilter = type;
     },
+    clearAssetSelection() {
+      this.assetFetchSeq += 1;
+      this.activeIndex = null;
+      this.authStore.selectedAssetDetail = null;
+      this.authStore.selectedAssetVulnerabilities = [];
+      this.closedFixVulnerabilities = [];
+      this.closedFixCount = 0;
+      this.supportRequestsByHost = [];
+      this.supportRequestCount = 0;
+      this.expandedVulnIndex = null;
+      this.assetDescriptionExpanded = false;
+    },
+    uiTypeFromAsset(asset) {
+      return uiTypeFromAssetType(asset?.asset_type || asset?.member_type);
+    },
     getAssetTypeBadgeCode(type) {
-      if (type === "webapp") return { code: "WA", label: "Web App" };
-      if (type === "firewall") return { code: "FR", label: "Firewall" };
-      if (type === "server") return { code: "SR", label: "Server" };
+      const ui = uiTypeFromAssetType(type);
+      if (ui === "webapp") return { code: "WA", label: "Web App" };
+      if (ui === "firewall") return { code: "FR", label: "Firewall" };
+      if (ui === "server") return { code: "SR", label: "Server" };
       return null;
     },
     getAssetTypeBadge(asset) {
-      if (this.assetTypeFilter === "assets") return null;
-      return this.getAssetTypeBadgeCode(asset?.member_type || this.assetTypeFilter);
+      return this.getAssetTypeBadgeCode(asset?.asset_type || asset?.member_type);
     },
     getAssetSubLabel(asset) {
-      if (asset?.member_type === "webapp") return "Web App";
-      if (asset?.member_type === "firewall") return "Firewall";
-      if (asset?.member_type === "server") return "Server";
-      const memberType = this.authStore.memberType || "";
-      if (!memberType) return "";
-      return memberType.charAt(0).toUpperCase() + memberType.slice(1);
+      const badge = this.getAssetTypeBadge(asset);
+      if (badge) return badge.label;
+      const memberType = asset?.member_type || this.authStore.memberType || "";
+      if (!memberType || memberType === "other") return "Asset";
+      return String(memberType).replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
     },
     handleDeleteClick() {
-      if (this.assetTypeFilter !== "assets") return;
       if (this.activeAction === "hold") {
         return;
       }
       this.activeAction = "delete";
-      const rows = this.authStore.assetRows || [];
+      const rows = this.sourceAssetRows || [];
       if (!this.showCheckboxes) {
         this.showCheckboxes = true;
         return;
@@ -1291,28 +1324,20 @@ class TLSConfigurator:
       this.statusFilter = [];
       this.activeTab = 'vulnerabilities';
 
-      if (this.assetTypeFilter !== "assets" || asset._isDummy) {
-        this.loadingAssetVulns = false;
-        this.closedFixVulnerabilities = [];
-        this.closedFixCount = 0;
-        this.supportRequestsByHost = [];
-        this.supportRequestCount = 0;
-        this.authStore.selectedAssetDetail = {
-          asset: asset.asset,
-          resolved_ip: asset.resolved_ip || "192.168.1.100",
-          description: asset.description || "",
-          severity: this.getPrioritySeverity(asset),
-        };
-        this.authStore.selectedAssetVulnerabilities = asset.dummyVulns || [];
-        return;
-      }
-
       this.loadingAssetVulns = true;
 
       // Primary details first, so UI updates quickly for selected asset.
       await this.authStore.fetchSingleAssetVulnerabilities(asset.asset);
       if (requestSeq !== this.assetFetchSeq) return;
       this.loadingAssetVulns = false;
+      this.authStore.selectedAssetDetail = {
+        ...(this.authStore.selectedAssetDetail || {}),
+        ...asset,
+        asset: asset.asset,
+        resolved_ip: getAssetResolvedIp(asset),
+        description: asset.description || this.authStore.selectedAssetDetail?.description || "",
+        severity: this.getPrioritySeverity(asset) || this.authStore.selectedAssetDetail?.severity || "",
+      };
 
       // Fetch automation scripts — await so badges show real data immediately
       this.automationScriptMap = {};
@@ -1339,10 +1364,9 @@ class TLSConfigurator:
       URL.revokeObjectURL(url);
     },
     toggleHoldMode() {
-      if (this.assetTypeFilter !== "assets") return;
       if (this.activeAction === "delete") return;
 
-      const source = this.authStore.assetRows;
+      const source = this.sourceAssetRows || [];
 
       source.forEach(a => {
         if (typeof a.selected === "undefined") a.selected = false;
@@ -1509,14 +1533,6 @@ class TLSConfigurator:
     },
     onSearchInput() {
       this.currentPage = 1;
-      if (!this.query) {
-        this.clearSearch();
-        return;
-      }
-      if (this.assetTypeFilter !== "assets") {
-        return;
-      }
-      this.authStore.searchAssets(this.query.trim());
     },
     clearSearch() {
       this.query = "";
@@ -2174,6 +2190,46 @@ class TLSConfigurator:
   align-self: stretch;
   overflow: hidden;
   position: relative;
+}
+
+.asset-list-empty,
+.assets-right-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 32px 24px;
+  color: #64748b;
+}
+
+.asset-list-empty {
+  font-size: 0.82rem;
+  padding: 28px 16px;
+}
+
+.assets-right-empty {
+  flex: 1;
+  min-height: 0;
+}
+
+.assets-right-empty-icon {
+  font-size: 2rem;
+  color: #94a3b8;
+  margin-bottom: 10px;
+}
+
+.assets-right-empty-title {
+  margin: 0 0 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.assets-right-empty-sub {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #64748b;
 }
 
 /* right-panel-header / scroll — shared rules in main.css (.assets-right-panel) */
