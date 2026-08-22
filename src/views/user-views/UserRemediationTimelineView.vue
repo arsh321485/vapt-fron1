@@ -54,11 +54,12 @@
                           :class="[
                             completedSteps.includes(n) ? 'vc-step-pill-disabled' : '',
                             raisedSupportSteps.includes(n) && !completedSteps.includes(n) ? 'vc-step-pill-raised' : '',
-                            selectedSteps.includes(n) && !completedSteps.includes(n) && !raisedSupportSteps.includes(n) ? 'vc-step-pill-active' : ''
+                            selectedSteps.includes(n) && !completedSteps.includes(n) && !raisedSupportSteps.includes(n) ? 'vc-step-pill-active' : '',
+                            selectedSteps.includes(n) && raisedSupportSteps.includes(n) ? 'vc-step-pill-raised-selected' : '',
                           ]"
-                          :style="(completedSteps.includes(n) || raisedSupportSteps.includes(n)) ? 'cursor:not-allowed;opacity:0.5;' : 'cursor:pointer;'"
-                          :title="completedSteps.includes(n) ? 'Step already completed' : raisedSupportSteps.includes(n) ? 'Support already raised for this step' : ''"
-                          @click="(!completedSteps.includes(n) && !raisedSupportSteps.includes(n)) && toggleStep(n)"
+                          :style="completedSteps.includes(n) ? 'cursor:not-allowed;opacity:0.5;' : 'cursor:pointer;'"
+                          :title="completedSteps.includes(n) ? 'Step already completed' : raisedSupportSteps.includes(n) ? 'Support already raised — click to view' : 'Select this step'"
+                          @click="!completedSteps.includes(n) && toggleStep(n)"
                         >Step {{ n }}</span>
                       </div>
                     </div>
@@ -68,7 +69,7 @@
                       class="vc-textarea"
                       rows="4"
                       placeholder="Write your issue here..."
-                      :disabled="isSupportAlreadyRaised"
+                      :readonly="isSupportAlreadyRaised"
                     ></textarea>
                     <div v-if="isSupportAlreadyRaised" class="rt-support-raised-note mt-3">
                       <i class="bi bi-check-circle-fill me-2" style="color:#0f696e;"></i>
@@ -912,6 +913,7 @@ export default {
       modal.show();
     },
     async submitSupport() {
+      if (this.isSupportAlreadyRaised) return;
       if (!this.supportDescription.trim()) return;
       const vulnerabilityId = this.currentVuln?.id;
       if (!vulnerabilityId) {
@@ -1543,7 +1545,8 @@ export default {
   cursor: pointer; transition: all 0.15s; width: 100%; text-align: center;
 }
 .vc-step-pill-active { background: #e0f2f1; color: #0f696e; border-color: #0f696e; }
-.vc-step-pill-raised { background: #fff7ed; color: #c2410c; border-color: #fdba74; }
+.vc-step-pill-raised { background: #e2e8f0; color: #64748b; border-color: #cbd5e1; }
+.vc-step-pill-raised-selected { background: #e2e8f0; color: #334155; border-color: #0f696e; box-shadow: 0 0 0 2px rgba(15,105,110,0.2); }
 .vc-step-pill-disabled { background: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; }
 .vc-textarea {
   width: 100%; border: 1px solid #e2e8f0; border-radius: 10px;

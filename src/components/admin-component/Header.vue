@@ -78,24 +78,73 @@
 
 
           <div class="header-cta d-flex align-items-center gap-3">
-            <!-- <button type="button" class="signin-btn text-decoration-none" @click="openSignInModal('user')">
-              <i class="bi bi-person me-1"></i> User Sign In
-            </button>
+            <template v-if="hasSession">
+              <NotificationPanel :recipient-type="isTeamMember ? 'user' : 'admin'" />
+              <div class="position-relative d-inline-block">
+                <div
+                  class="circle-bottom header-profile-circle d-flex align-items-center justify-content-center fw-bold"
+                  style="cursor:pointer;"
+                  @click="toggleDropdown"
+                >
+                  {{ userInitial }}
+                </div>
+                <div
+                  v-if="showDropdown"
+                  class="dropdown-box shadow-lg p-3 rounded"
+                >
+                  <div class="mb-2 text-muted text-center header-profile-email">
+                    {{ userEmail }}
+                  </div>
 
-            <button type="button" class="btn hero-btn text-light text-decoration-none" @click="openSignInModal('admin')">
-             Admin Sign In
-              <i class="bi bi-arrow-right-circle-fill fs-5 ms-1"></i>
-            </button> -->
+                  <template v-if="isTeamMember">
+                    <router-link
+                      :to="{ path: '/user-manage-account', query: { returnTo: $route.fullPath } }"
+                      class="btn btn-sm btn-outline-secondary w-100 mb-2"
+                      @click="showDropdown = false"
+                    >
+                      Manage Account
+                    </router-link>
+                  </template>
+                  <template v-else>
+                    <router-link
+                      :to="{ path: '/admin-upload-report', query: { returnTo: $route.fullPath } }"
+                      class="btn btn-sm btn-outline-primary w-100 mb-2"
+                      @click="showDropdown = false"
+                    >
+                      Upload Scope
+                    </router-link>
+                    <router-link
+                      :to="{ path: '/riskcriteria', query: { returnTo: $route.fullPath } }"
+                      class="btn btn-sm btn-outline-primary w-100 mb-2"
+                      @click="showDropdown = false"
+                    >
+                      Update Risk Criteria
+                    </router-link>
+                  </template>
 
-            <button type="button" class="btn hero-btn text-light text-decoration-none" @click="openAdminSignUpModal">
-             Get Started
-              <i class="bi bi-arrow-right-circle-fill fs-5 ms-1"></i>
-            </button>
-
-            <button type="button" class="btn signup-modal-btn text-light text-decoration-none" @click="openSignUpModal">
-              Sign In
-              <i class="bi bi-arrow-right-circle-fill fs-5 ms-1"></i>
-            </button>
+                  <router-link
+                    to="/pricingplan"
+                    class="btn btn-sm btn-outline-dark w-100 mb-2"
+                    @click="showDropdown = false"
+                  >
+                    Upgrade Plan
+                  </router-link>
+                  <button class="btn btn-sm btn-danger w-100" @click="handleLogout">
+                    Logout
+                  </button>
+                </div>
+              </div>
+            </template>
+            <template v-else>
+              <button type="button" class="btn hero-btn text-light text-decoration-none" @click="openAdminSignUpModal">
+               Get Started
+                <i class="bi bi-arrow-right-circle-fill fs-5 ms-1"></i>
+              </button>
+              <button type="button" class="btn signup-modal-btn text-light text-decoration-none" @click="openSignUpModal">
+                Sign In
+                <i class="bi bi-arrow-right-circle-fill fs-5 ms-1"></i>
+              </button>
+            </template>
           </div>
 
 
@@ -132,6 +181,7 @@
       :show="showSignUpModal"
       :preSelectedType="signUpPreSelectedType"
       :userInitialTab="signUpUserInitialTab"
+      :adminInitialTab="signUpAdminInitialTab"
       :setPasswordUidb64="setPasswordUidb64"
       :setPasswordToken="setPasswordToken"
       :setPasswordEmail="setPasswordEmail"
@@ -153,33 +203,64 @@
 <script>
 import SignUpModal from './SignUpModal.vue';
 import AdminSignUpModal from './AdminSignUpModal.vue';
+import NotificationPanel from '@/components/admin-component/NotificationPanel.vue';
+import { useAuthStore } from '@/stores/authStore';
+import Swal from 'sweetalert2';
 import {
+  applyAdminSetPasswordModalState,
   applySetPasswordModalState,
+  clearStoredAdminSetPasswordDeepLink,
   clearStoredSetPasswordDeepLink,
+  extractAdminSetPasswordFromRoute,
+  isAdminSetPasswordDeepLink,
+  isAdminSetPasswordPath,
   isUserSetPasswordDeepLink,
   readStoredSetPasswordDeepLink,
+  storeAdminSetPasswordDeepLink,
 } from '@/utils/userSetPasswordDeepLink';
+
+function readStoredUser() {
+  try {
+    const raw = sessionStorage.getItem('user') || localStorage.getItem('user');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function hasAuthToken() {
+  const token = sessionStorage.getItem('authorization') || localStorage.getItem('authorization');
+  return !!(token && token !== 'null' && token !== 'undefined');
+}
 
 export default {
   name: 'Header',
   components: {
     SignUpModal,
-    AdminSignUpModal
+    AdminSignUpModal,
+    NotificationPanel,
   },
   data() {
     return {
       user: null,
+      hasSession: false,
+      showDropdown: false,
+      userEmail: '',
+      userInitial: '',
       showSignUpModal: false,
       signUpPreSelectedType: '',
       signUpUserInitialTab: '',
+      signUpAdminInitialTab: '',
       setPasswordUidb64: '',
       setPasswordToken: '',
       setPasswordEmail: '',
       showAdminSignUpModal: false
     };
   },
-  mounted() {
-    this.applyUserSetPasswordDeepLink();
+  computed: {
+    isTeamMember() {
+      return !!(this.user && Array.isArray(this.user.Member_role));
+    },
   },
   watch: {
     $route: {
@@ -196,16 +277,52 @@ export default {
      * Also: email action=set-password, Slack/Teams ?platform=slack|teams, uid+token only.
      */
     applyUserSetPasswordDeepLink() {
-      if (this.$route.path !== '/home') return;
+      const path = this.$route.path || '';
       const q = this.$route.query || {};
       const pick = (v) => {
         if (v === undefined || v === null) return '';
         return (Array.isArray(v) ? v[0] : v).toString().trim();
       };
 
+      // Admin-only: /set-password/{uid}/{token} or /reset-password/{uid}/{token}
+      const fromAdminPath = extractAdminSetPasswordFromRoute(this.$route);
+      if (isAdminSetPasswordPath(path) && fromAdminPath?.uidb64 && fromAdminPath?.token) {
+        storeAdminSetPasswordDeepLink(fromAdminPath);
+        this.signUpPreSelectedType = 'admin';
+        this.signUpAdminInitialTab = 'setPassword';
+        this.setPasswordUidb64 = fromAdminPath.uidb64;
+        this.setPasswordToken = fromAdminPath.token;
+        this.setPasswordEmail = fromAdminPath.email || '';
+        this.$nextTick(() => {
+          this.showSignUpModal = true;
+        });
+        return;
+      }
+
+      if (path !== '/home') return;
+
       const signin = pick(q.signin);
       const tabVal = pick(q.tab);
       const tabRaw = tabVal.toLowerCase();
+
+      if (signin === 'admin' && (tabRaw === 'signin' || tabRaw === 'sign-in' || tabVal === 'signIn')) {
+        this.signUpPreSelectedType = 'admin';
+        this.signUpAdminInitialTab = 'signIn';
+        this.showSignUpModal = true;
+        this.$nextTick(() => {
+          this.$router.replace({ path: '/home' });
+        });
+        return;
+      }
+
+      if (isAdminSetPasswordDeepLink(q)) {
+        applyAdminSetPasswordModalState(this, q);
+        this.$nextTick(() => {
+          this.$router.replace({ path: '/home' });
+        });
+        return;
+      }
+
       const isSignInTab =
         signin === 'user' && (tabRaw === 'signin' || tabRaw === 'sign-in' || tabVal === 'signIn');
       if (isSignInTab) {
@@ -234,6 +351,7 @@ export default {
     openSignUpModal() {
       this.signUpPreSelectedType = '';
       this.signUpUserInitialTab = '';
+      this.signUpAdminInitialTab = '';
       this.setPasswordUidb64 = '';
       this.setPasswordToken = '';
       this.setPasswordEmail = '';
@@ -243,10 +361,12 @@ export default {
       this.showSignUpModal = false;
       this.signUpPreSelectedType = '';
       this.signUpUserInitialTab = '';
+      this.signUpAdminInitialTab = '';
       this.setPasswordUidb64 = '';
       this.setPasswordToken = '';
       this.setPasswordEmail = '';
       clearStoredSetPasswordDeepLink();
+      clearStoredAdminSetPasswordDeepLink();
     },
     openAdminSignUpModal() {
       this.showAdminSignUpModal = true;
@@ -275,14 +395,96 @@ export default {
     handleOpenAdminSignUpFromSignIn() {
       this.closeSignUpModal();
       this.showAdminSignUpModal = true;
-    }
+    },
+    toggleDropdown() {
+      this.showDropdown = !this.showDropdown;
+    },
+    setUserData(user) {
+      if (!user) return;
+      this.user = user;
+      this.userEmail = user.email || '';
+      const nameSource =
+        user.first_name ||
+        user.firstname ||
+        user.full_name ||
+        user.name ||
+        user.email ||
+        '';
+      this.userInitial = nameSource.trim().charAt(0).toUpperCase() || 'U';
+    },
+    async loadUserData() {
+      this.hasSession = hasAuthToken();
+      if (!this.hasSession) {
+        this.user = null;
+        this.userEmail = '';
+        this.userInitial = '';
+        this.showDropdown = false;
+        return;
+      }
+
+      const authStore = useAuthStore();
+      const storedUser = authStore.user || readStoredUser();
+      if (storedUser) this.setUserData(storedUser);
+
+      const isMember = !!(storedUser && Array.isArray(storedUser.Member_role));
+      if (isMember) {
+        const response = await authStore.getMemberProfile();
+        if (response.status && response.data?.user) {
+          this.setUserData(response.data.user);
+        }
+        return;
+      }
+
+      const response = await authStore.getUserProfile();
+      if (response.status && response.data?.user) {
+        this.setUserData(response.data.user);
+      }
+    },
+    async handleLogout() {
+      const authStore = useAuthStore();
+      const response = await authStore.logout();
+      sessionStorage.removeItem('authenticatedTabId');
+      this.hasSession = false;
+      this.user = null;
+      this.userEmail = '';
+      this.userInitial = '';
+      this.showDropdown = false;
+
+      if (response.status) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Logged out',
+          text: 'You have been logged out successfully.',
+          timer: 2000,
+          showConfirmButton: false,
+        });
+        this.$router.replace('/home');
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Logout Failed',
+          text: response.message || 'Something went wrong!',
+          timer: 3000,
+          showConfirmButton: false,
+        });
+      }
+    },
+    handleClickOutside(e) {
+      if (
+        !e.target.closest('.header-profile-circle') &&
+        !e.target.closest('.dropdown-box')
+      ) {
+        this.showDropdown = false;
+      }
+    },
   },
   mounted() {
-    const savedUser = localStorage.getItem("user");
-    if (savedUser) {
-      this.user = JSON.parse(savedUser);
-    }
+    document.addEventListener('click', this.handleClickOutside);
+    this.loadUserData();
     this.applyUserSetPasswordDeepLink();
+  },
+  beforeUnmount() {
+    document.removeEventListener('click', this.handleClickOutside);
   },
 };
 </script>
@@ -387,6 +589,24 @@ export default {
 
 .signup-modal-btn:hover {
   background-color: #0a4e52;
+  color: #ffffff;
+}
+
+.header-cta .dropdown-box {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  background: #fff;
+  min-width: 220px;
+  z-index: 1050;
+}
+
+.header-profile-email {
+  font-size: 0.8rem;
+  word-break: break-all;
+}
+
+.header-cta :deep(.nav-menu) {
   color: #ffffff;
 }
 </style>

@@ -54,9 +54,6 @@
                                 <router-link to="/terms" class="footer-legal-link text-decoration-none">Terms</router-link>
                             </li>
                             <li>
-                                <router-link to="/security" class="footer-legal-link text-decoration-none">Security</router-link>
-                            </li>
-                            <li>
                                 <router-link to="/support" class="footer-legal-link text-decoration-none">Support</router-link>
                             </li>
                             <li>

@@ -936,11 +936,18 @@ export default {
           }
         } else {
           step.submitting = false;
-          Swal.fire({ icon: 'error', title: 'Failed', text: res.message || 'Failed to complete step', timer: 2000, showConfirmButton: false });
+          // Race / already-done / generic miss — data still loads, don't flash this popup.
+          const msg = String(res.message || '');
+          const skipPopup =
+            !msg ||
+            /^failed to complete step$/i.test(msg) ||
+            /already (completed|done|saved|marked)|step already|already closed|not found/i.test(msg);
+          if (!skipPopup) {
+            Swal.fire({ icon: 'error', title: 'Failed', text: msg, timer: 2000, showConfirmButton: false });
+          }
         }
       } catch {
         step.submitting = false;
-        Swal.fire({ icon: 'error', title: 'Error', text: 'Network error — please try again.', timer: 2000, showConfirmButton: false });
       }
     },
     async completeAllSteps() {
@@ -1048,13 +1055,16 @@ export default {
         .filter((n) => Number.isFinite(n));
     },
     openStepSupportModal(task) {
-      if (this.isStepSupportRaised(task.id)) return;
-      // Emit to parent so the parent's modal opens with vuln + step pre-filled
       const completedSteps = this.subtasks
         .filter(t => t.status === 'completed')
         .map(t => Number(t.id))
         .filter(n => Number.isFinite(n));
-      this.$emit('open-support-modal', { vulnName: this.vulnName, step: task.id, completedSteps });
+      this.$emit('open-support-modal', {
+        vulnName: this.vulnName,
+        step: task.id,
+        completedSteps,
+        raisedSupportSteps: this.raisedSupportSteps,
+      });
     },
   },
 };

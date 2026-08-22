@@ -984,13 +984,13 @@ export default {
   z-index: 5;
   width: 100%;
   margin: 0;
-  padding: 1.25rem clamp(1.5rem, 4vw, 3rem) 1rem clamp(1.75rem, 3.5vw, 2.75rem);
+  padding: 0.6rem clamp(1.5rem, 4vw, 3rem) 0.5rem clamp(1.75rem, 3.5vw, 2.75rem);
   border-bottom: 1px solid rgba(15, 105, 110, 0.12);
   background: #ffffff;
   background-image: none;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
   align-items: flex-start;
   box-shadow: 0 8px 16px -12px rgba(36, 20, 71, 0.18);
 }

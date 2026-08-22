@@ -19,8 +19,113 @@
           <div class="aur-step" :class="{ active: generating }"><span>3</span> Get Started</div>
         </div>
 
+        <!-- PLAN SUGGEST: continue with matched plan or pick another -->
+        <div v-if="planSuggestPrompt" class="aur-limit-overlay">
+          <div class="aur-limit-card">
+            <p class="aur-limit-kicker">Recommended plan</p>
+            <h2 class="aur-limit-title">Continue with {{ planSuggestPrompt.suggestedName }}?</h2>
+            <p class="aur-limit-copy">
+              <template v-if="planSuggestPrompt.unpaidResume">
+                Your file is saved. Choose any plan and complete payment to continue.
+                You can add users after payment is complete.
+              </template>
+              <template v-else>
+                <template v-if="planSuggestPrompt.count">
+                  This {{ planSuggestPrompt.source === 'upload' ? 'report' : 'scope' }} has
+                  <strong>{{ planSuggestPrompt.count }}</strong>
+                  IP{{ planSuggestPrompt.count === 1 ? '' : 's' }}.
+                  Based on that count,
+                </template>
+                <strong>{{ planSuggestPrompt.suggestedName }}</strong> is recommended.
+                You can continue with it, or choose a different plan.
+                If you choose a smaller plan, you will upload a new report that fits that plan.
+              </template>
+            </p>
+            <ul
+              v-if="planSuggestPrompt.unpaidResume && existingUploadedFiles.length"
+              class="aur-uploaded-files"
+            >
+              <li v-for="(name, idx) in existingUploadedFiles" :key="name + '-' + idx">
+                <i class="bi bi-file-earmark-text"></i>
+                <span>{{ name }}</span>
+              </li>
+            </ul>
+            <p
+              v-else-if="planSuggestPrompt.unpaidResume && hasExistingScope"
+              class="aur-limit-copy"
+            >
+              Saved scope: <strong>{{ existingScopeDisplayName }}</strong>
+            </p>
+            <p v-if="planSuggestPrompt.unpaidResume && planSuggestPrompt.count" class="aur-limit-copy">
+              This {{ planSuggestPrompt.source === 'upload' ? 'report' : 'scope' }} has
+              <strong>{{ planSuggestPrompt.count }}</strong>
+              IP{{ planSuggestPrompt.count === 1 ? '' : 's' }}.
+              <strong>{{ planSuggestPrompt.suggestedName }}</strong> is recommended.
+              Choose Freemium, Premium, or Custom. A smaller plan needs a new report that fits that plan.
+            </p>
+            <button type="button" class="aur-limit-keep" :disabled="planSuggestBusy" @click="selectPlanForUpload(planSuggestPrompt.suggested)">
+              <span v-if="planSuggestBusy" class="spinner-border spinner-border-sm me-2"></span>
+              Yes, continue with {{ planSuggestPrompt.suggestedName }}
+            </button>
+            <button
+              v-for="planId in planSuggestPrompt.otherPlans"
+              :key="planId"
+              type="button"
+              class="aur-limit-upgrade"
+              :disabled="planSuggestBusy"
+              @click="selectPlanForUpload(planId)"
+            >
+              Choose {{ planLabel(planId) }}
+            </button>
+            <button type="button" class="aur-limit-cancel" :disabled="planSuggestBusy" @click="replaceUploadedFile">
+              Upload a different file
+            </button>
+          </div>
+        </div>
+
+        <!-- PLAN LIMIT: keep same plan vs upgrade -->
+        <div v-else-if="planLimitPrompt" class="aur-limit-overlay">
+          <div class="aur-limit-card">
+            <p class="aur-limit-kicker">Plan limit</p>
+            <h2 class="aur-limit-title">Extra IPs in this upload</h2>
+            <p class="aur-limit-copy">
+              This {{ planLimitPrompt.source === 'upload' ? 'report' : 'scope' }} has
+              <strong>{{ planLimitPrompt.count }}</strong> IPs.
+              <strong>{{ planLimitPrompt.planName }}</strong> allows
+              <strong>{{ planLimitPrompt.limit }}</strong>.
+              {{ planLimitPrompt.extra }} extra IP{{ planLimitPrompt.extra === 1 ? '' : 's' }}
+              will be removed so you can continue on this plan, or you can pick a different plan.
+            </p>
+            <button type="button" class="aur-limit-keep" :disabled="planLimitBusy" @click="keepSamePlan">
+              <span v-if="planLimitBusy" class="spinner-border spinner-border-sm me-2"></span>
+              Continue with {{ planLimitPrompt.planName }} — keep {{ planLimitPrompt.limit }} IPs
+            </button>
+            <button
+              v-if="planLimitPrompt.chosenPlan"
+              type="button"
+              class="aur-limit-upgrade"
+              :disabled="planLimitBusy"
+              @click="backToPlanChoices"
+            >
+              Choose a different plan
+            </button>
+            <button
+              v-else
+              type="button"
+              class="aur-limit-upgrade"
+              :disabled="planLimitBusy"
+              @click="upgradePlan"
+            >
+              Upgrade the plan
+            </button>
+            <button type="button" class="aur-limit-cancel" :disabled="planLimitBusy" @click="cancelPlanLimitPrompt">
+              Cancel
+            </button>
+          </div>
+        </div>
+
         <!-- GENERATING AGENTS STATE -->
-        <div v-if="generating" class="aur-generating">
+        <div v-else-if="generating" class="aur-generating">
           <div class="aur-icon-wrap">
             <i class="bi bi-gear-fill aur-upload-icon aur-spin"></i>
           </div>
@@ -108,8 +213,26 @@
               </div>
               <h1 class="aur-title">Upload Your Scan Report</h1>
               <p class="aur-subtitle">
-                Upload your vulnerability assessment file (.nessus, .xml, .html, .htm, .csv, .xlsx, .xls, .pdf, .docx, .doc — including AWS Inspector) to begin.
+                {{
+                  planFitNotice
+                    ? `Upload a report with up to ${planFitNotice.limit} IPs to continue on ${planFitNotice.planName}.`
+                    : 'Upload your vulnerability assessment file (.nessus, .xml, .html, .htm, .csv, .xlsx, .xls, .pdf, .docx, .doc — including AWS Inspector) to begin.'
+                }}
               </p>
+              <p v-if="planLimitLabel" class="aur-plan-chip">{{ planLimitLabel }}</p>
+            </div>
+
+            <div v-if="planFitNotice" class="aur-plan-fit-banner">
+              <p>
+                You chose <strong>{{ planFitNotice.planName }}</strong>, which allows up to
+                <strong>{{ planFitNotice.limit }}</strong> IPs.
+                The current report has <strong>{{ planFitNotice.count }}</strong> IPs,
+                so it cannot be used for this plan.
+                Please choose a new file that fits {{ planFitNotice.planName }}, then complete payment.
+              </p>
+              <button type="button" class="aur-limit-upgrade" @click="backToPlanChoicesFromNotice">
+                Choose a different plan
+              </button>
             </div>
 
             <div v-if="loadingExistingReport" class="aur-scope-loading">
@@ -117,21 +240,30 @@
               Loading current report...
             </div>
 
-            <div v-else-if="hasExistingReport" class="aur-scope-board">
+            <div v-else-if="hasExistingReport && !planFitNotice" class="aur-scope-board">
               <div class="aur-scope-board-top">
                 <div class="aur-scope-board-title-row">
                   <div class="aur-scope-board-icon">
                     <i class="bi bi-file-earmark-check"></i>
                   </div>
                   <div>
-                    <p class="aur-scope-board-kicker">Current report</p>
-                    <h2 class="aur-scope-board-title">{{ existingReportFileName }}</h2>
+                    <p class="aur-scope-board-kicker">Uploaded files</p>
+                    <h2 class="aur-scope-board-title">
+                      {{ existingUploadedFiles.length }} file{{ existingUploadedFiles.length === 1 ? '' : 's' }} merged
+                    </h2>
                   </div>
                 </div>
                 <span v-if="existingReportStatusLabel" class="aur-scope-count">
                   {{ existingReportStatusLabel }}
                 </span>
               </div>
+
+              <ul v-if="existingUploadedFiles.length" class="aur-uploaded-files">
+                <li v-for="(name, idx) in existingUploadedFiles" :key="name + '-' + idx">
+                  <i class="bi bi-file-earmark-text"></i>
+                  <span>{{ name }}</span>
+                </li>
+              </ul>
 
               <div v-if="existingReportCreatedAt" class="aur-scope-meta">
                 <span class="aur-scope-chip">
@@ -151,12 +283,14 @@
                 </div>
               </div>
 
-              <p class="aur-scope-replace-hint">Upload a new report below to replace the current one.</p>
+              <p class="aur-scope-replace-hint">
+                Upload another file below — it will merge with the files above (up to 10 per day).
+              </p>
             </div>
 
             <div
               class="aur-dropzone"
-              :class="{ 'aur-dropzone-active': isDragging, 'aur-dropzone-has-file': selectedFile }"
+              :class="{ 'aur-dropzone-active': isDragging, 'aur-dropzone-has-file': selectedFiles.length }"
               @dragover.prevent="isDragging = true"
               @dragleave.prevent="isDragging = false"
               @drop.prevent="onDrop"
@@ -166,47 +300,78 @@
                 ref="fileInput"
                 type="file"
                 name="file"
+                multiple
                 accept=".nessus,.xml,.html,.htm,.csv,.xlsx,.xls,.pdf,.docx,.doc"
                 class="aur-file-input"
                 @change="onFileChange"
               />
 
-              <div v-if="!selectedFile" class="aur-drop-content">
+              <div class="aur-drop-content">
                 <i class="bi bi-file-earmark-arrow-up aur-drop-icon"></i>
-                <p class="aur-drop-text">Drag &amp; drop your report here</p>
+                <p class="aur-drop-text">
+                  {{ selectedFiles.length ? 'Drop more reports, or browse' : 'Drag &amp; drop your reports here' }}
+                </p>
                 <p class="aur-drop-sub">or <span class="aur-browse">browse files</span></p>
+                <p class="aur-drop-types">Up to 10 files / day · merged into one report</p>
                 <p class="aur-drop-types">.nessus · .xml · .html · .htm · .csv · .xlsx · .xls · .pdf · .docx · .doc</p>
-              </div>
-
-              <div v-else class="aur-file-info">
-                <i class="bi bi-file-earmark-check aur-file-icon"></i>
-                <div>
-                  <p class="aur-file-name">{{ selectedFile.name }}</p>
-                  <p class="aur-file-size">{{ fileSize }}</p>
-                </div>
-                <button class="aur-remove-btn" @click.stop="removeFile">
-                  <i class="bi bi-x-circle"></i>
-                </button>
               </div>
             </div>
 
+            <ul v-if="selectedFiles.length" class="aur-file-list">
+              <li v-for="(file, idx) in selectedFiles" :key="file.name + '-' + file.size + '-' + idx" class="aur-file-info">
+                <i class="bi bi-file-earmark-check aur-file-icon"></i>
+                <div>
+                  <p class="aur-file-name">{{ file.name }}</p>
+                  <p class="aur-file-size">{{ formatFileSize(file.size) }}</p>
+                </div>
+                <button type="button" class="aur-remove-btn" @click.stop="removeSelectedFile(idx)">
+                  <i class="bi bi-x-circle"></i>
+                </button>
+              </li>
+            </ul>
+
             <div v-if="uploading" class="aur-progress-wrap">
               <div class="aur-progress-header">
-                <span class="aur-progress-label">{{ uploadPct >= 95 ? 'Processing report...' : 'Uploading...' }}</span>
+                <span class="aur-progress-label">{{ uploadProgressLabel }}</span>
                 <span class="aur-progress-pct">{{ uploadPct }}%</span>
               </div>
               <div class="aur-progress-bar">
                 <div class="aur-progress-fill" :style="{ width: uploadPct + '%' }"></div>
               </div>
-              <p class="aur-progress-hint">Please wait, do not close this window</p>
+              <p class="aur-progress-hint">
+                {{ uploadBeforePay
+                  ? 'Report upload will finish first. Payment opens only after that.'
+                  : 'Please wait, do not close this window' }}
+              </p>
             </div>
 
             <p v-if="uploadError" class="aur-error">{{ uploadError }}</p>
+            <div v-if="uploadPlanOffer" class="aur-plan-offer">
+              <p class="aur-plan-offer-copy">
+                <template v-if="uploadPlanOffer.count">
+                  {{ uploadPlanOffer.count }} IPs detected —
+                </template>
+                <strong>{{ uploadPlanOffer.suggestedName }}</strong> is auto-selected for this report.
+              </p>
+              <button type="button" class="aur-limit-keep" :disabled="planSuggestBusy || uploading" @click="selectPlanForUpload(uploadPlanOffer.suggested)">
+                Continue with {{ uploadPlanOffer.suggestedName }}
+              </button>
+              <button
+                v-for="planId in uploadPlanOffer.otherPlans"
+                :key="planId"
+                type="button"
+                class="aur-limit-upgrade"
+                :disabled="planSuggestBusy || uploading"
+                @click="selectPlanForUpload(planId)"
+              >
+                Choose {{ planLabel(planId) }}
+              </button>
+            </div>
 
             <div class="aur-actions">
               <button
                 class="aur-btn-primary"
-                :disabled="!selectedFile || uploading"
+                :disabled="!selectedFiles.length || uploading"
                 @click="startUpload"
               >
                 <span v-if="uploading">
@@ -283,8 +448,23 @@
               </div>
               <h1 class="aur-title">Upload Scope CSV</h1>
               <p class="aur-subtitle">
-                Upload a .csv file listing the assets you want VAPTFix to include in scope.
+                {{
+                  planFitNotice
+                    ? `Upload a CSV with up to ${planFitNotice.limit} targets to continue on ${planFitNotice.planName}.`
+                    : 'Upload a .csv file listing the assets you want VAPTFix to include in scope.'
+                }}
               </p>
+            </div>
+
+            <div v-if="planFitNotice" class="aur-plan-fit-banner">
+              <p>
+                You chose <strong>{{ planFitNotice.planName }}</strong>, which allows up to
+                <strong>{{ planFitNotice.limit }}</strong> IPs.
+                Please upload a CSV that fits this plan.
+              </p>
+              <button type="button" class="aur-limit-upgrade" @click="backToPlanChoicesFromNotice">
+                Choose a different plan
+              </button>
             </div>
 
             <div v-if="loadingExistingScope" class="aur-scope-loading">
@@ -292,7 +472,7 @@
               Loading current scope...
             </div>
 
-            <div v-else-if="hasExistingScope" class="aur-scope-board">
+            <div v-else-if="hasExistingScope && !planFitNotice" class="aur-scope-board">
               <div class="aur-scope-board-top">
                 <div class="aur-scope-board-title-row">
                   <div class="aur-scope-board-icon">
@@ -388,6 +568,27 @@
             </div>
 
             <p v-if="uploadError" class="aur-error">{{ uploadError }}</p>
+            <div v-if="uploadPlanOffer" class="aur-plan-offer">
+              <p class="aur-plan-offer-copy">
+                <template v-if="uploadPlanOffer.count">
+                  {{ uploadPlanOffer.count }} IPs detected —
+                </template>
+                <strong>{{ uploadPlanOffer.suggestedName }}</strong> is auto-selected for this scope.
+              </p>
+              <button type="button" class="aur-limit-keep" :disabled="planSuggestBusy || uploading" @click="selectPlanForUpload(uploadPlanOffer.suggested)">
+                Continue with {{ uploadPlanOffer.suggestedName }}
+              </button>
+              <button
+                v-for="planId in uploadPlanOffer.otherPlans"
+                :key="planId"
+                type="button"
+                class="aur-limit-upgrade"
+                :disabled="planSuggestBusy || uploading"
+                @click="selectPlanForUpload(planId)"
+              >
+                Choose {{ planLabel(planId) }}
+              </button>
+            </div>
 
             <div class="aur-actions">
               <button
@@ -419,8 +620,23 @@
               </div>
               <h1 class="aur-title">Enter Scope Manually</h1>
               <p class="aur-subtitle">
-                Add one IP, hostname, or CIDR range per line. You can paste a list at once.
+                {{
+                  planFitNotice
+                    ? `Enter up to ${planFitNotice.limit} targets to continue on ${planFitNotice.planName}.`
+                    : 'Add one IP, hostname, or CIDR range per line. You can paste a list at once.'
+                }}
               </p>
+            </div>
+
+            <div v-if="planFitNotice && viewMode === 'scope-manual'" class="aur-plan-fit-banner">
+              <p>
+                You chose <strong>{{ planFitNotice.planName }}</strong>, which allows up to
+                <strong>{{ planFitNotice.limit }}</strong> IPs.
+                Enter a smaller list that fits this plan.
+              </p>
+              <button type="button" class="aur-limit-upgrade" @click="backToPlanChoicesFromNotice">
+                Choose a different plan
+              </button>
             </div>
 
             <div v-if="loadingExistingScope" class="aur-scope-loading">
@@ -428,7 +644,7 @@
               Loading current scope...
             </div>
 
-            <div v-else-if="hasExistingScope" class="aur-scope-board">
+            <div v-else-if="hasExistingScope && !planFitNotice" class="aur-scope-board">
               <div class="aur-scope-board-top">
                 <div class="aur-scope-board-title-row">
                   <div class="aur-scope-board-icon">
@@ -500,6 +716,27 @@
             </div>
 
             <p v-if="uploadError" class="aur-error">{{ uploadError }}</p>
+            <div v-if="uploadPlanOffer" class="aur-plan-offer">
+              <p class="aur-plan-offer-copy">
+                <template v-if="uploadPlanOffer.count">
+                  {{ uploadPlanOffer.count }} IPs detected —
+                </template>
+                <strong>{{ uploadPlanOffer.suggestedName }}</strong> is auto-selected for this scope.
+              </p>
+              <button type="button" class="aur-limit-keep" :disabled="planSuggestBusy || uploading" @click="selectPlanForUpload(uploadPlanOffer.suggested)">
+                Continue with {{ uploadPlanOffer.suggestedName }}
+              </button>
+              <button
+                v-for="planId in uploadPlanOffer.otherPlans"
+                :key="planId"
+                type="button"
+                class="aur-limit-upgrade"
+                :disabled="planSuggestBusy || uploading"
+                @click="selectPlanForUpload(planId)"
+              >
+                Choose {{ planLabel(planId) }}
+              </button>
+            </div>
 
             <div class="aur-actions">
               <button
@@ -528,6 +765,28 @@
 <script>
 import Swal from 'sweetalert2';
 import { useAuthStore } from '@/stores/authStore';
+import { isClaimInviteFlow } from '@/utils/claimInvite';
+import {
+  getMySubscription,
+  syncSubscriptionAssets,
+} from '@/services/billingApi';
+import {
+  extraIpCount,
+  isActiveSubscription,
+  otherPlans,
+  parsePlanHintFromMessage,
+  planAssetLimit,
+  planDisplayName,
+  setBillingReturnTo,
+  suggestedPlanFromAssetCount,
+  UPLOAD_RETURN_PATH,
+} from '@/utils/planLimits';
+import {
+  clearPendingUpload,
+  peekPendingUploadFile,
+  peekPendingUploadFiles,
+  stashPendingUpload,
+} from '@/utils/pendingUpload';
 
 const ALLOWED_EXTENSIONS = [
   '.nessus',
@@ -542,7 +801,9 @@ const ALLOWED_EXTENSIONS = [
   '.doc',
 ];
 
-const STATUS_POLL_MS = 3500;
+const MAX_UPLOAD_FILES = 10;
+const STATUS_POLL_MS = 4000;
+const EXTERNAL_REPORT_WATCH_MS = 4000;
 
 export default {
   name: 'AdminUploadReportView',
@@ -550,6 +811,7 @@ export default {
     return {
       viewMode: 'choose', // choose | upload | scope-method | scope-csv | scope-manual
       selectedFile: null,
+      selectedFiles: [],
       isDragging: false,
       uploading: false,
       uploadPct: 0,
@@ -561,12 +823,26 @@ export default {
       pollTimer: null,
       polling: false,
       redirecting: false,
+      externalReportWatchTimer: null,
+      externalReportWatching: false,
       manualScopeText: '',
       scopeSubmitting: false,
       existingScope: null,
       loadingExistingScope: false,
       existingReport: null,
       loadingExistingReport: false,
+      subscription: null,
+      planLimitPrompt: null,
+      planLimitBusy: false,
+      planLimitResolved: false,
+      planSuggestPrompt: null,
+      planSuggestBusy: false,
+      planSuggestResolved: false,
+      uploadPlanOffer: null,
+      uploadBeforePay: false,
+      savedSuggestPrompt: null,
+      pendingPlan: '',
+      planFitNotice: null,
     };
   },
   computed: {
@@ -642,12 +918,37 @@ export default {
         0
       );
     },
+    maxUploadFiles() {
+      return MAX_UPLOAD_FILES;
+    },
+    existingUploadedFiles() {
+      const fromApi = this.existingReport?.uploaded_file_names;
+      if (Array.isArray(fromApi) && fromApi.length) {
+        return fromApi.map((name) => String(name)).filter(Boolean);
+      }
+      const single = this.existingReportFileName;
+      return single && single !== 'Uploaded report' ? [single] : [];
+    },
+    existingReportIpCount() {
+      const r = this.existingReport || {};
+      const n = Number(
+        r.host_count ??
+        r.hosts_count ??
+        r.total_hosts ??
+        r.asset_count ??
+        r.ip_count ??
+        r.vulnerability_host_count ??
+        0,
+      );
+      return Number.isFinite(n) ? n : 0;
+    },
     hasExistingReport() {
       return !!(
         this.existingReport?.id ||
         this.existingReport?.report_id ||
         this.existingReport?.resolved_file_name ||
-        this.existingReport?.file_name
+        this.existingReport?.file_name ||
+        this.existingUploadedFiles.length
       );
     },
     existingReportId() {
@@ -692,7 +993,7 @@ export default {
       if (!raw) return '';
       const d = new Date(raw);
       if (Number.isNaN(d.getTime())) return String(raw);
-      return d.toLocaleString();
+      return d.toLocaleDateString();
     },
     existingReportCardsLabel() {
       const total = Number(this.existingReport?.cards_total) || 0;
@@ -714,11 +1015,535 @@ export default {
         .filter((item) => item.value != null && item.value !== '')
         .map((item) => ({ label: item.label, value: String(item.value) }));
     },
+    planLimitLabel() {
+      if (!isActiveSubscription(this.subscription)) return '';
+      const limit = planAssetLimit(this.subscription);
+      const name = planDisplayName(this.subscription);
+      if (!Number.isFinite(limit)) return `${name} plan · custom asset scope`;
+      return `${name} plan · up to ${limit} IPs`;
+    },
+    uploadProgressLabel() {
+      if (this.uploadBeforePay) {
+        return this.uploadPct >= 95 ? 'Finishing upload before payment...' : 'Uploading report...';
+      }
+      return this.uploadPct >= 95 ? 'Processing report...' : 'Uploading...';
+    },
   },
   methods: {
+    async loadSubscription() {
+      try {
+        const data = await getMySubscription();
+        this.subscription = data?.subscription || null;
+      } catch {
+        this.subscription = null;
+      }
+      return this.subscription;
+    },
+    goToPricing(planId = '', assetCount = 0, uploadDone = false) {
+      const authStore = useAuthStore();
+      const dashboard = authStore.isSlackOrTeamsLogin() ? '/riskcriteria' : '/communication';
+      const count = Number(assetCount)
+        || this.planSuggestPrompt?.count
+        || this.uploadPlanOffer?.count
+        || this.planLimitPrompt?.count
+        || 0;
+      const returnTo = uploadDone ? dashboard : `${UPLOAD_RETURN_PATH}?resume=1`;
+      setBillingReturnTo(returnTo);
+      const query = { returnTo };
+      if (planId) query.plan = planId;
+      if (count) query.assets = String(count);
+      this.$router.push({ path: '/pricingplan', query });
+    },
+    planLabel(planId) {
+      return planDisplayName(planId);
+    },
+    dashboardRoute() {
+      const authStore = useAuthStore();
+      return authStore.isSlackOrTeamsLogin() ? '/riskcriteria' : '/communication';
+    },
+    showPlanSuggestPrompt(source, count, hintedPlan = '', unpaidResume = false) {
+      if (this.planSuggestResolved && !unpaidResume && !this.pendingPlan) return false;
+      const n = Number(count) || 0;
+      if (this.pendingPlan) {
+        const limit = planAssetLimit(this.pendingPlan);
+        if (extraIpCount(n, limit) > 0) {
+          this.planFitNotice = {
+            plan: this.pendingPlan,
+            planName: planDisplayName(this.pendingPlan),
+            limit,
+            count: n,
+          };
+          this.planSuggestPrompt = null;
+          this.uploadPlanOffer = null;
+          this.viewMode = source === 'scope-csv'
+            ? 'scope-csv'
+            : source === 'scope-manual'
+              ? 'scope-manual'
+              : 'upload';
+          return true;
+        }
+        this.planSuggestResolved = true;
+        this.planFitNotice = null;
+        this.$nextTick(() => this.continueWithSelectedPlan(this.pendingPlan, n));
+        return true;
+      }
+      if (this.planSuggestResolved && !unpaidResume) return false;
+      const suggested = hintedPlan || suggestedPlanFromAssetCount(n) || 'freemium';
+      if (!suggested) return false;
+      const currentPlan = String(this.subscription?.plan || '').toLowerCase();
+      const currentLimit = planAssetLimit(this.subscription);
+      if (!unpaidResume && isActiveSubscription(this.subscription) && n && n <= currentLimit && currentPlan === suggested) {
+        this.planSuggestResolved = true;
+        return false;
+      }
+      if (!unpaidResume && isActiveSubscription(this.subscription) && n && n <= currentLimit) {
+        this.planSuggestResolved = true;
+        return false;
+      }
+      const other = otherPlans(suggested);
+      this.planSuggestPrompt = {
+        source,
+        count: n,
+        suggested,
+        suggestedName: planDisplayName(suggested),
+        otherPlans: other,
+        unpaidResume: !!unpaidResume,
+      };
+      this.setUploadPlanOffer(n, suggested);
+      return true;
+    },
+    setUploadPlanOffer(count, suggested) {
+      if (!suggested) {
+        this.uploadPlanOffer = null;
+        return;
+      }
+      const n = Number(count) || 0;
+      this.uploadPlanOffer = {
+        count: n,
+        suggested,
+        suggestedName: planDisplayName(suggested),
+        otherPlans: otherPlans(suggested),
+      };
+    },
+    handleUploadPlanFailure(res) {
+      const payload = res?.details || res?.data || {};
+      const message = String(res?.message || '');
+      const errorBlob = [
+        message,
+        payload.detail,
+        payload.error,
+        payload.message,
+        Array.isArray(payload.errors)
+          ? payload.errors.map((item) => (typeof item === 'string' ? item : item?.error || item?.message || '')).join(' ')
+          : '',
+      ]
+        .filter(Boolean)
+        .join(' ');
+      const hint = parsePlanHintFromMessage(errorBlob);
+      const count = Number(
+        payload.asset_count ||
+        payload.host_count ||
+        payload.hosts_count ||
+        payload.ip_count ||
+        hint.count ||
+        0,
+      );
+      const suggested = hint.suggested || (count ? suggestedPlanFromAssetCount(count) : '');
+      this.uploadError = message || 'Failed to upload report';
+      if (this.pendingPlan) {
+        this.planFitNotice = {
+          plan: this.pendingPlan,
+          planName: planDisplayName(this.pendingPlan),
+          limit: planAssetLimit(this.pendingPlan),
+          count: count || this.planFitNotice?.count || 0,
+        };
+        this.uploadPlanOffer = null;
+        return true;
+      }
+      if (suggested) {
+        this.setUploadPlanOffer(count, suggested);
+        return true;
+      }
+      if (count && this.isPlanLimitError(payload, message) && this.showPlanLimitPrompt('upload', count)) {
+        return true;
+      }
+      return false;
+    },
+    async confirmSuggestedPlan() {
+      if (!this.planSuggestPrompt) return;
+      await this.selectPlanForUpload(this.planSuggestPrompt.suggested);
+    },
+    chooseOtherPlan(planId) {
+      return this.selectPlanForUpload(planId);
+    },
+    replaceUploadedFile() {
+      const source = this.planSuggestPrompt?.source || this.savedSuggestPrompt?.source || 'upload';
+      this.planSuggestPrompt = null;
+      this.uploadPlanOffer = null;
+      this.savedSuggestPrompt = null;
+      this.planSuggestResolved = true;
+      if (source === 'scope-csv') this.viewMode = 'scope-csv';
+      else if (source === 'scope-manual') this.viewMode = 'scope-manual';
+      else this.viewMode = 'upload';
+    },
+    backToPlanChoices() {
+      this.planLimitPrompt = null;
+      this.planLimitBusy = false;
+      if (this.savedSuggestPrompt) {
+        this.planSuggestPrompt = this.savedSuggestPrompt;
+        this.savedSuggestPrompt = null;
+        return;
+      }
+      const count = this.existingReportIpCount || this.existingEntryCount || 0;
+      this.showPlanSuggestPrompt('upload', count, '', true);
+    },
+    requireFileForPlan(planId, source = 'upload', count = 0) {
+      const limit = planAssetLimit(planId);
+      this.pendingPlan = planId;
+      this.planFitNotice = {
+        plan: planId,
+        planName: planDisplayName(planId),
+        limit,
+        count: Number(count) || 0,
+      };
+      this.planSuggestPrompt = null;
+      this.planLimitPrompt = null;
+      this.uploadPlanOffer = null;
+      this.savedSuggestPrompt = null;
+      this.planSuggestResolved = true;
+      this.clearFileState();
+      if (source === 'scope-csv') this.viewMode = 'scope-csv';
+      else if (source === 'scope-manual') this.viewMode = 'scope-manual';
+      else this.viewMode = 'upload';
+    },
+    backToPlanChoicesFromNotice() {
+      const count = this.planFitNotice?.count || this.existingReportIpCount || this.existingEntryCount || 0;
+      const source = this.viewMode === 'scope-csv'
+        ? 'scope-csv'
+        : this.viewMode === 'scope-manual'
+          ? 'scope-manual'
+          : 'upload';
+      this.pendingPlan = '';
+      this.planFitNotice = null;
+      this.planSuggestResolved = false;
+      this.showPlanSuggestPrompt(source, count, '', true);
+    },
+    async selectPlanForUpload(planId) {
+      if (!planId || this.uploading) return;
+      const count = Number(
+        this.planSuggestPrompt?.count ||
+        this.uploadPlanOffer?.count ||
+        this.planLimitPrompt?.count ||
+        this.existingReportIpCount ||
+        this.existingEntryCount ||
+        0,
+      );
+      const source =
+        this.planSuggestPrompt?.source ||
+        this.uploadPlanOffer?.source ||
+        (this.viewMode === 'scope-csv' ? 'scope-csv' : this.viewMode === 'scope-manual' ? 'scope-manual' : 'upload');
+      const extra = extraIpCount(count, planAssetLimit(planId));
+      if (extra > 0) {
+        this.requireFileForPlan(planId, source, count);
+        return;
+      }
+      await this.continueWithSelectedPlan(planId, count);
+    },
+    async continueWithSelectedPlan(planId, assetCount = 0) {
+      if (!planId || this.uploading) return;
+      const count = Number(assetCount)
+        || this.uploadPlanOffer?.count
+        || this.planSuggestPrompt?.count
+        || this.planLimitPrompt?.count
+        || this.planFitNotice?.count
+        || 0;
+      const files = this.selectedFiles.length
+        ? this.selectedFiles
+        : (this.selectedFile ? [this.selectedFile] : []);
+      const alreadyUploaded = !files.length && (this.hasExistingReport || this.hasExistingScope);
+      this.planSuggestBusy = true;
+      this.uploadBeforePay = true;
+      this.uploadError = '';
+      this.uploadPlanOffer = null;
+      this.planSuggestPrompt = null;
+      this.pendingPlan = '';
+      this.planFitNotice = null;
+
+      if (planId === 'freemium') {
+        this.planSuggestBusy = false;
+        this.uploadBeforePay = false;
+        this.goToPricing(planId, count, alreadyUploaded);
+        return;
+      }
+
+      if (!files.length) {
+        this.planSuggestBusy = false;
+        this.uploadBeforePay = false;
+        this.goToPricing(planId, count, alreadyUploaded);
+        return;
+      }
+
+      this.uploading = true;
+      this.uploadPct = 0;
+      try {
+        const authStore = useAuthStore();
+        const res = await authStore.uploadAdminReport(files, (pct) => {
+          this.uploadPct = pct;
+        });
+        if (res.status) {
+          const ok = await this.finishSuccessfulUpload(res);
+          if (ok) {
+            this.goToPricing(planId, count, true);
+            return;
+          }
+        }
+        await stashPendingUpload(files, { count, plan: planId, name: files[0].name });
+        this.goToPricing(planId, count, false);
+      } catch (error) {
+        console.error('Upload before payment failed:', error);
+        try {
+          await stashPendingUpload(files, { count, plan: planId, name: files[0]?.name });
+        } catch {
+          /* ignore stash failure */
+        }
+        this.goToPricing(planId, count, false);
+      } finally {
+        this.uploading = false;
+        this.planSuggestBusy = false;
+        this.uploadBeforePay = false;
+      }
+    },
+    async finishSuccessfulUpload(res) {
+      this.uploadPct = 100;
+      this.uploadResult = res.data;
+      const authStore = useAuthStore();
+      const reportIds = this.extractReportIds(res.data);
+      if (!reportIds.length) {
+        this.uploadError = 'Upload succeeded but no report_id was returned.';
+        Swal.fire('Upload incomplete', this.uploadError, 'warning');
+        return false;
+      }
+      try {
+        authStore.setActiveReportId(reportIds[0]);
+        await this.loadExistingReport();
+        if (!this.existingReport) {
+          try {
+            const getRes = await authStore.getUploadReportById(reportIds[0]);
+            if (getRes.status && getRes.data) {
+              const names = authStore.extractUploadedFileNames(getRes.data);
+              this.existingReport = {
+                ...getRes.data,
+                report_id: getRes.data.report_id || getRes.data.id || getRes.data._id || reportIds[0],
+                resolved_file_name:
+                  names[0] ||
+                  authStore.extractUploadedFileName(getRes.data) ||
+                  getRes.data.file_name ||
+                  getRes.data.filename ||
+                  this.selectedFiles[0]?.name ||
+                  this.selectedFile?.name ||
+                  null,
+                uploaded_file_names: names.length ? names : (this.selectedFiles.map((f) => f.name)),
+              };
+            }
+          } catch (getErr) {
+            console.error('Report GET after upload failed:', getErr);
+          }
+        }
+        this.selectedFiles = [];
+        this.selectedFile = null;
+        this.uploading = false;
+        this.startPolling(reportIds);
+        try {
+          const { syncSubscriptionAssets } = await import('@/services/billingApi');
+          await syncSubscriptionAssets();
+        } catch {
+          /* no active premium subscription, or billing not ready yet */
+        }
+        try {
+          await clearPendingUpload();
+        } catch {
+          /* ignore */
+        }
+        return true;
+      } catch (err) {
+        console.error('Post-upload setup failed:', err);
+        if (!this.generating && reportIds.length) {
+          this.startPolling(reportIds);
+        }
+        return this.generating || reportIds.length > 0;
+      }
+    },
+    async resumePendingUploadIfNeeded() {
+      if (String(this.$route.query.resume || '') !== '1') return;
+      const files = await peekPendingUploadFiles();
+      if (!files.length) return;
+      this.viewMode = 'upload';
+      this.selectedFiles = files;
+      this.selectedFile = files[0];
+      await this.startUpload();
+    },
+    showPlanLimitPrompt(source, count) {
+      const limit = planAssetLimit(this.subscription);
+      const extra = extraIpCount(count, limit);
+      if (!extra) return false;
+      this.planLimitPrompt = {
+        source,
+        count,
+        limit,
+        extra,
+        planName: planDisplayName(this.subscription),
+      };
+      return true;
+    },
+    cancelPlanLimitPrompt() {
+      this.planLimitBusy = false;
+      this.generating = false;
+      this.stopPolling();
+      if (this.savedSuggestPrompt) {
+        this.planLimitPrompt = null;
+        this.planSuggestPrompt = this.savedSuggestPrompt;
+        this.savedSuggestPrompt = null;
+        return;
+      }
+      this.planLimitPrompt = null;
+    },
+    upgradePlan() {
+      const count = this.planLimitPrompt?.count || 0;
+      const suggested = suggestedPlanFromAssetCount(count);
+      this.planLimitPrompt = null;
+      if (count && suggested) this.setUploadPlanOffer(count, suggested);
+      this.selectPlanForUpload(suggested);
+    },
+    async keepSamePlan() {
+      if (!this.planLimitPrompt) return;
+      this.planLimitBusy = true;
+      try {
+        const source = this.planLimitPrompt.source;
+        const limit = this.planLimitPrompt.limit;
+        const chosenPlan = this.planLimitPrompt.chosenPlan
+          || String(this.subscription?.plan || 'freemium').toLowerCase();
+        if (source === 'scope-manual') {
+          this.manualScopeText = this.manualTargets.slice(0, limit).join('\n');
+          this.planLimitPrompt = null;
+          this.planLimitResolved = true;
+          this.planLimitBusy = false;
+          await this.loadSubscription();
+          if (!isActiveSubscription(this.subscription)) {
+            this.goToPricing(chosenPlan, limit, this.hasExistingScope);
+            return;
+          }
+          await this.submitScopeManual();
+          return;
+        }
+        if (source === 'scope-csv') {
+          this.selectedFile = await this.trimCsvFile(this.selectedFile, limit);
+          this.planLimitPrompt = null;
+          this.planLimitResolved = true;
+          this.planLimitBusy = false;
+          await this.loadSubscription();
+          if (!isActiveSubscription(this.subscription)) {
+            this.goToPricing(chosenPlan, limit, this.hasExistingScope);
+            return;
+          }
+          await this.submitScopeCsv();
+          return;
+        }
+        await this.trimUploadedAssets(limit);
+        this.planLimitResolved = true;
+        this.planLimitPrompt = null;
+        await this.loadSubscription();
+        if (!isActiveSubscription(this.subscription)) {
+          this.goToPricing(chosenPlan, limit, true);
+          return;
+        }
+        await this.redirectAfterAgentsReady();
+      } catch (error) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Could not remove extra IPs',
+          text: error?.message || 'Please try again or choose a different plan.',
+          confirmButtonColor: '#241447',
+        });
+      } finally {
+        this.planLimitBusy = false;
+      }
+    },
+    async trimCsvFile(file, limit) {
+      if (!file) return file;
+      const text = await file.text();
+      const lines = String(text || '').split(/\r?\n/);
+      if (!lines.length) return file;
+      const first = (lines[0] || '').toLowerCase();
+      const hasHeader = /ip|host|asset|target|url|address/.test(first);
+      const kept = [];
+      if (hasHeader) kept.push(lines[0]);
+      const start = hasHeader ? 1 : 0;
+      let taken = 0;
+      for (let i = start; i < lines.length && taken < limit; i += 1) {
+        if (!String(lines[i] || '').trim()) continue;
+        kept.push(lines[i]);
+        taken += 1;
+      }
+      return new File([`${kept.join('\n')}\n`], file.name, { type: file.type || 'text/csv' });
+    },
+    async countCsvTargets(file) {
+      if (!file) return 0;
+      const text = await file.text();
+      const lines = String(text || '')
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+      if (!lines.length) return 0;
+      const hasHeader = /ip|host|asset|target|url|address/.test(lines[0].toLowerCase());
+      return hasHeader ? Math.max(0, lines.length - 1) : lines.length;
+    },
+    async trimUploadedAssets(limit) {
+      const authStore = useAuthStore();
+      const res = await authStore.fetchAssets(true);
+      const rows = Array.isArray(res?.data?.assets)
+        ? res.data.assets
+        : (authStore.assetRows || []);
+      const extras = rows.slice(limit);
+      for (const row of extras) {
+        const ip = row?.asset || row?.host || row?.ip;
+        if (!ip) continue;
+        await authStore.deleteAsset(ip);
+      }
+      try {
+        await syncSubscriptionAssets();
+      } catch {
+        /* ignore if not premium/management */
+      }
+    },
+    async enforcePlanLimitAfterAssetsReady() {
+      if (this.planLimitResolved && this.planSuggestResolved) return true;
+      await this.loadSubscription();
+      const authStore = useAuthStore();
+      await authStore.fetchAssets(true);
+      const count = Number(authStore.assetCount) || (authStore.assetRows || []).length;
+      if (this.showPlanSuggestPrompt('upload', count)) return false;
+      if (isActiveSubscription(this.subscription)) {
+        const limit = planAssetLimit(this.subscription);
+        if (Number.isFinite(limit) && this.showPlanLimitPrompt('upload', count)) return false;
+      }
+      return true;
+    },
+    isPlanLimitError(payload, message) {
+      const text = [
+        message,
+        payload?.error,
+        payload?.detail,
+        payload?.message,
+      ]
+        .filter(Boolean)
+        .join(' ');
+      return /upgrade|asset.?limit|over.?limit|extra.?ip|plan.?limit|freemium/i.test(text);
+    },
     clearFileState() {
       this.selectedFile = null;
+      this.selectedFiles = [];
       this.uploadError = '';
+      this.uploadPlanOffer = null;
       this.isDragging = false;
       if (this.$refs.fileInput) this.$refs.fileInput.value = '';
       if (this.$refs.csvInput) this.$refs.csvInput.value = '';
@@ -731,9 +1556,7 @@ export default {
     openUploadReport() {
       this.clearFileState();
       this.viewMode = 'upload';
-      if (!this.existingReport && !this.loadingExistingReport) {
-        this.loadExistingReport();
-      }
+      this.loadExistingReport();
     },
     shortReportId(id) {
       const value = String(id || '');
@@ -872,8 +1695,19 @@ export default {
       }
 
       localStorage.removeItem('isNewProject');
+      await this.loadSubscription();
+      if (!isActiveSubscription(this.subscription)) {
+        const count = created || this.existingEntryCount;
+        this.showPlanSuggestPrompt(
+          this.viewMode === 'scope-csv' ? 'scope-csv' : 'scope-manual',
+          count,
+          '',
+          true,
+        );
+        return;
+      }
       const authStore = useAuthStore();
-      const route = authStore.isSlackOrTeamsLogin() ? '/riskcriteria' : '/communication';
+      const route = await authStore.getAdminOnboardingRoute();
       this.$router.replace(route);
     },
     async submitScopeCsv() {
@@ -881,6 +1715,14 @@ export default {
       if (!this.isCsvFile(this.selectedFile)) {
         this.uploadError = 'Please upload a .csv file for scope.';
         return;
+      }
+      if (!this.planSuggestResolved) {
+        const count = await this.countCsvTargets(this.selectedFile);
+        if (this.showPlanSuggestPrompt('scope-csv', count)) return;
+      }
+      if (!this.planLimitResolved && isActiveSubscription(this.subscription)) {
+        const count = await this.countCsvTargets(this.selectedFile);
+        if (this.showPlanLimitPrompt('scope-csv', count)) return;
       }
 
       this.scopeSubmitting = true;
@@ -918,6 +1760,12 @@ export default {
     },
     async submitScopeManual() {
       if (!this.manualTargetCount || this.scopeSubmitting) return;
+      if (!this.planSuggestResolved && this.showPlanSuggestPrompt('scope-manual', this.manualTargetCount)) {
+        return;
+      }
+      if (!this.planLimitResolved && isActiveSubscription(this.subscription) && this.showPlanLimitPrompt('scope-manual', this.manualTargetCount)) {
+        return;
+      }
 
       this.scopeSubmitting = true;
       this.uploadError = '';
@@ -962,17 +1810,47 @@ export default {
       if (!file) return false;
       return this.getExtension(file.name) === '.csv';
     },
-    setSelectedFile(file) {
-      this.uploadError = '';
-      if (!file) return;
-      if (!this.isAllowedFile(file)) {
-        this.selectedFile = null;
+    formatFileSize(bytes) {
+      const n = Number(bytes) || 0;
+      if (n < 1024) return n + ' B';
+      if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+      return (n / (1024 * 1024)).toFixed(1) + ' MB';
+    },
+    addReportFiles(fileList) {
+      const incoming = Array.from(fileList || []);
+      if (!incoming.length) return;
+      const next = [...this.selectedFiles];
+      const skipped = [];
+      for (const file of incoming) {
+        if (!this.isAllowedFile(file)) {
+          skipped.push(file.name || 'file');
+          continue;
+        }
+        const duplicate = next.some((item) => item.name === file.name && item.size === file.size);
+        if (duplicate) continue;
+        if (next.length >= MAX_UPLOAD_FILES) {
+          this.uploadError = `You can upload up to ${MAX_UPLOAD_FILES} files per day.`;
+          break;
+        }
+        next.push(file);
+      }
+      this.selectedFiles = next;
+      this.selectedFile = next[0] || null;
+      if (skipped.length && !next.length) {
         this.uploadError =
           'Unsupported file type. Allowed: .nessus, .xml, .html, .htm, .csv, .xlsx, .xls, .pdf, .docx, .doc';
         Swal.fire('Unsupported file', this.uploadError, 'warning');
-        return;
       }
-      this.selectedFile = file;
+    },
+    removeSelectedFile(index) {
+      this.selectedFiles = this.selectedFiles.filter((_, idx) => idx !== index);
+      this.selectedFile = this.selectedFiles[0] || null;
+      this.uploadError = '';
+    },
+    setSelectedFile(file) {
+      this.uploadError = '';
+      if (!file) return;
+      this.addReportFiles([file]);
     },
     setScopeCsvFile(file) {
       this.uploadError = '';
@@ -986,14 +1864,12 @@ export default {
       this.selectedFile = file;
     },
     onFileChange(e) {
-      const file = e.target.files?.[0];
-      this.setSelectedFile(file);
+      this.addReportFiles(e.target.files);
       e.target.value = '';
     },
     onDrop(e) {
       this.isDragging = false;
-      const file = e.dataTransfer.files?.[0];
-      this.setSelectedFile(file);
+      this.addReportFiles(e.dataTransfer.files);
     },
     onScopeCsvChange(e) {
       const file = e.target.files?.[0];
@@ -1009,10 +1885,21 @@ export default {
       this.clearFileState();
     },
     extractReportIds(data) {
-      const results = Array.isArray(data?.results) ? data.results : [];
-      const ids = results
-        .map((r) => r?.report_id)
-        .filter((id) => typeof id === 'string' && id.trim());
+      const ids = [];
+      const push = (id) => {
+        if (typeof id === 'string' && id.trim()) ids.push(id.trim());
+      };
+      push(data?.merged_report_id);
+      push(data?.merged_report?.report_id);
+      push(data?.report_id);
+      push(data?.id);
+      const buckets = [
+        ...(Array.isArray(data?.results) ? data.results : []),
+        ...(Array.isArray(data?.reports) ? data.reports : []),
+      ];
+      buckets.forEach((row) => {
+        push(row?.report_id || row?.id || row?.merged_report_id);
+      });
       return [...new Set(ids)];
     },
     stopPolling() {
@@ -1020,6 +1907,131 @@ export default {
         clearInterval(this.pollTimer);
         this.pollTimer = null;
       }
+    },
+    async continueAfterPayment() {
+      await this.loadSubscription();
+      if (!isActiveSubscription(this.subscription)) return false;
+      this.redirecting = true;
+      const authStore = useAuthStore();
+      const route = await authStore.getAdminOnboardingRoute();
+      await this.$router.replace(route);
+      return true;
+    },
+    async resumeUnpaidScopePayment() {
+      if (isClaimInviteFlow()) {
+        const authStore = useAuthStore();
+        const route = await authStore.getAdminOnboardingRoute();
+        if (route && route !== '/admin-upload-report') {
+          this.redirecting = true;
+          await this.$router.replace(route);
+          return true;
+        }
+        return false;
+      }
+      if (isActiveSubscription(this.subscription)) return false;
+      if (this.planSuggestPrompt || this.planLimitPrompt || this.uploading) return false;
+
+      let count = this.existingReportIpCount || this.existingEntryCount || 0;
+      if (!count) {
+        try {
+          const authStore = useAuthStore();
+          await authStore.fetchAssets(true);
+          count = Number(authStore.assetCount) || (authStore.assetRows || []).length || 0;
+        } catch {
+          /* ignore */
+        }
+      }
+
+      if (this.hasExistingReport) {
+        this.viewMode = 'upload';
+        this.showPlanSuggestPrompt('upload', count, '', true);
+        return true;
+      }
+      if (this.hasExistingScope) {
+        this.viewMode = this.existingScopeLabel ? 'scope-csv' : 'scope-manual';
+        this.showPlanSuggestPrompt(
+          this.existingScopeLabel ? 'scope-csv' : 'scope-manual',
+          count || this.existingEntryCount,
+          '',
+          true,
+        );
+        return true;
+      }
+      return false;
+    },
+    isOnboardingScopeGate() {
+      const returnTo = this.$route?.query?.returnTo;
+      if (typeof returnTo === 'string' && returnTo.startsWith('/')) return false;
+      if (String(this.$route?.query?.resume || '') === '1') return false;
+      return true;
+    },
+    async redirectIfReportReadyFromElsewhere() {
+      if (this.redirecting || this.uploading || this.generating || this.externalReportWatching) return false;
+      if (this.selectedFiles.length || this.selectedFile) return false;
+      if (!this.isOnboardingScopeGate()) return false;
+
+      this.externalReportWatching = true;
+      try {
+        const authStore = useAuthStore();
+        const route = await authStore.getAdminOnboardingRoute();
+        if (route && route !== '/admin-upload-report') {
+          this.redirecting = true;
+          this.stopExternalReportWatch();
+          await this.$router.replace(route);
+          return true;
+        }
+
+        if (!isActiveSubscription(this.subscription)) {
+          return false;
+        }
+
+        try {
+          const upload = await authStore.getScopingUploadStatus();
+          const hasSlackFile =
+            upload.file_uploaded === true ||
+            upload.cards_generating === true ||
+            Number(upload.reports_ready) > 0 ||
+            Number(upload.reports_total) > 0;
+          if (hasSlackFile) {
+            this.redirecting = true;
+            this.stopExternalReportWatch();
+            await this.$router.replace('/admindashboardonboarding');
+            return true;
+          }
+        } catch {
+          /* optional */
+        }
+
+        await this.loadExistingReport();
+        if (this.hasExistingReport) {
+          this.redirecting = true;
+          this.stopExternalReportWatch();
+          await this.$router.replace('/admindashboardonboarding');
+          return true;
+        }
+      } finally {
+        this.externalReportWatching = false;
+      }
+      return false;
+    },
+    onExternalReportVisibility() {
+      if (!document.hidden) this.redirectIfReportReadyFromElsewhere();
+    },
+    startExternalReportWatch() {
+      this.stopExternalReportWatch();
+      if (!this.isOnboardingScopeGate()) return;
+      this.redirectIfReportReadyFromElsewhere();
+      this.externalReportWatchTimer = setInterval(() => {
+        if (!document.hidden && !this.redirecting) this.redirectIfReportReadyFromElsewhere();
+      }, EXTERNAL_REPORT_WATCH_MS);
+      document.addEventListener('visibilitychange', this.onExternalReportVisibility);
+    },
+    stopExternalReportWatch() {
+      if (this.externalReportWatchTimer) {
+        clearInterval(this.externalReportWatchTimer);
+        this.externalReportWatchTimer = null;
+      }
+      document.removeEventListener('visibilitychange', this.onExternalReportVisibility);
     },
     async pollOnce() {
       if (this.polling || this.redirecting || !this.reportIds.length) return;
@@ -1061,39 +2073,66 @@ export default {
     },
     async redirectAfterAgentsReady() {
       if (this.redirecting) return;
+      if (!this.allAgentsReady && !this.planLimitResolved && !this.planSuggestResolved) return;
+      if (this.planLimitPrompt || this.planSuggestPrompt) return;
       if (!this.allAgentsReady) return;
+
+      if (!(await this.enforcePlanLimitAfterAssetsReady())) return;
+
+      await this.loadSubscription();
+      if (!isActiveSubscription(this.subscription)) {
+        this.generating = false;
+        await this.resumeUnpaidScopePayment();
+        return;
+      }
 
       this.redirecting = true;
       this.stopPolling();
+
+      try {
+        const { syncSubscriptionAssets } = await import('@/services/billingApi');
+        await syncSubscriptionAssets();
+      } catch {
+        /* ignore — only applies to active Premium/Management subscriptions */
+      }
 
       const authStore = useAuthStore();
       const primaryReportId = this.reportIds[0];
       if (primaryReportId) {
         authStore.setActiveReportId(primaryReportId);
       }
-      const route = authStore.isSlackOrTeamsLogin() ? '/riskcriteria' : '/communication';
+      const route = await authStore.getAdminOnboardingRoute();
       this.$router.replace(route);
     },
     async startUpload() {
-      if (!this.selectedFile || this.uploading || this.generating) return;
-      if (!this.isAllowedFile(this.selectedFile)) {
+      const files = this.selectedFiles.length
+        ? this.selectedFiles
+        : (this.selectedFile ? [this.selectedFile] : []);
+      if (!files.length || this.uploading || this.generating) return;
+      if (files.some((file) => !this.isAllowedFile(file))) {
         this.uploadError =
           'Unsupported file type. Allowed: .nessus, .xml, .html, .htm, .csv, .xlsx, .xls, .pdf, .docx, .doc';
         return;
       }
+      this.planLimitResolved = false;
+      this.planSuggestResolved = false;
 
       this.uploading = true;
       this.uploadPct = 0;
       this.uploadError = '';
+      this.uploadPlanOffer = null;
       this.uploadResult = null;
+      let uploadAccepted = false;
 
       try {
         const authStore = useAuthStore();
-        const res = await authStore.uploadAdminReport(this.selectedFile, (pct) => {
+        const res = await authStore.uploadAdminReport(files, (pct) => {
           this.uploadPct = pct;
         });
 
         if (!res.status) {
+          await this.loadSubscription();
+          if (this.handleUploadPlanFailure(res)) return;
           this.uploadError = res.message || 'Failed to upload report';
           Swal.fire({
             icon: 'error',
@@ -1104,40 +2143,20 @@ export default {
           return;
         }
 
+        uploadAccepted = true;
         this.uploadPct = 100;
-        this.uploadResult = res.data;
-
-        const reportIds = this.extractReportIds(res.data);
-        if (!reportIds.length) {
-          this.uploadError = 'Upload succeeded but no report_id was returned.';
-          Swal.fire('Upload incomplete', this.uploadError, 'warning');
-          return;
-        }
-
-        // Persist + GET report detail for UI
-        authStore.setActiveReportId(reportIds[0]);
-        try {
-          const getRes = await authStore.getUploadReportById(reportIds[0]);
-          if (getRes.status && getRes.data) {
-            this.existingReport = {
-              ...getRes.data,
-              report_id: getRes.data.report_id || getRes.data.id || getRes.data._id || reportIds[0],
-              resolved_file_name:
-                authStore.extractUploadedFileName(getRes.data) ||
-                getRes.data.file_name ||
-                getRes.data.filename ||
-                this.selectedFile?.name ||
-                null,
-            };
-          }
-        } catch (getErr) {
-          console.error('Report GET after upload failed:', getErr);
-        }
-
-        this.uploading = false;
-        this.startPolling(reportIds);
+        Swal.fire({
+          icon: 'success',
+          title: 'Upload successful',
+          text: 'Your report was uploaded. Creating agents next.',
+          timer: 1800,
+          showConfirmButton: false,
+        });
+        await this.finishSuccessfulUpload(res);
       } catch (err) {
         console.error('Upload error:', err);
+        // File already saved on the server — do not show a false failure over "Creating agents".
+        if (uploadAccepted || this.generating || this.reportIds?.length) return;
         this.uploadError = 'Something went wrong while uploading the report';
         Swal.fire('Upload failed', this.uploadError, 'error');
       } finally {
@@ -1147,8 +2166,11 @@ export default {
   },
   async mounted() {
     this.applyRouteMode();
-    // Prefetch previously uploaded scope + report for Current boards
-    await Promise.all([this.loadExistingScope(), this.loadExistingReport()]);
+    await Promise.all([this.loadExistingScope(), this.loadExistingReport(), this.loadSubscription()]);
+    if (await this.redirectIfReportReadyFromElsewhere()) return;
+    if (await this.resumeUnpaidScopePayment()) return;
+    this.startExternalReportWatch();
+    await this.resumePendingUploadIfNeeded();
   },
   watch: {
     '$route.query.mode'() {
@@ -1157,6 +2179,7 @@ export default {
   },
   beforeUnmount() {
     this.stopPolling();
+    this.stopExternalReportWatch();
   },
 };
 </script>
@@ -1181,6 +2204,109 @@ export default {
 }
 
 .aur-logo { height: 32px; width: auto; }
+
+.aur-plan-chip {
+  display: inline-block;
+  margin: 0.35rem 0 0;
+  background: #eef8f8;
+  color: #0f696e;
+  border-radius: 999px;
+  padding: 0.28rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.aur-plan-fit-banner {
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  margin: 0 0 1rem;
+  text-align: left;
+}
+
+.aur-plan-fit-banner p {
+  margin: 0 0 0.75rem;
+  color: #9a3412;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.aur-plan-fit-banner .aur-limit-upgrade {
+  width: auto;
+}
+
+.aur-limit-overlay {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+}
+
+.aur-limit-card {
+  width: 100%;
+  max-width: 460px;
+  background: #fff;
+  border: 1px solid rgba(36, 20, 71, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(36, 20, 71, 0.08);
+  padding: 1.6rem 1.4rem 1.35rem;
+  text-align: center;
+}
+
+.aur-limit-kicker {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #0f696e;
+}
+
+.aur-limit-title {
+  color: #241447;
+  font-size: 1.35rem;
+  font-weight: 800;
+  margin: 0 0 0.7rem;
+}
+
+.aur-limit-copy {
+  color: #49454f;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  margin: 0 0 1.2rem;
+}
+
+.aur-limit-keep,
+.aur-limit-upgrade,
+.aur-limit-cancel {
+  width: 100%;
+  border-radius: 999px;
+  font-weight: 600;
+  padding: 0.7rem 1rem;
+  margin-bottom: 0.55rem;
+}
+
+.aur-limit-keep {
+  border: none;
+  background: #241447;
+  color: #fff;
+}
+
+.aur-limit-upgrade {
+  border: 1px solid #241447;
+  background: #fff;
+  color: #241447;
+}
+
+.aur-limit-cancel {
+  border: none;
+  background: transparent;
+  color: #64748b;
+  margin-bottom: 0;
+}
 
 .aur-page {
   flex: 1;
@@ -1636,6 +2762,9 @@ export default {
   border-color: #0f696e;
   border-style: solid;
   background: rgba(15, 105, 110, 0.03);
+  flex: 0 0 auto;
+  min-height: 0;
+  padding: 16px 20px;
 }
 
 .aur-file-input { display: none; }
@@ -1646,6 +2775,86 @@ export default {
 .aur-browse { color: #0f696e; font-weight: 600; text-decoration: underline; }
 .aur-drop-types { font-size: 11px; color: #9ca3af; letter-spacing: 0.04em; margin: 0; }
 
+.aur-uploaded-files {
+  list-style: none;
+  margin: 0.75rem 0 0.85rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.aur-uploaded-files li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #f7f5fb;
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+  color: #241447;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.aur-uploaded-files i {
+  color: #0f696e;
+}
+
+.aur-file-list {
+  list-style: none;
+  margin: 0.75rem 0 0.85rem;
+  padding: 0 10px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1 0 auto;
+  min-height: 120px;
+  max-height: min(320px, 38vh);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: auto;
+  scrollbar-color: #0f696e #e8e4f2;
+}
+
+.aur-file-list::-webkit-scrollbar {
+  width: 12px;
+}
+
+.aur-file-list::-webkit-scrollbar-track {
+  background: #efeaf8;
+  border-radius: 8px;
+}
+
+.aur-file-list::-webkit-scrollbar-thumb {
+  background: #0f696e;
+  border-radius: 8px;
+  border: 2px solid #efeaf8;
+}
+
+.aur-file-list::-webkit-scrollbar-button {
+  display: none;
+}
+
+.aur-file-list .aur-file-info {
+  background: #f7f5fb;
+  border-radius: 12px;
+  padding: 0.7rem 0.85rem;
+  min-height: 64px;
+}
+
+.aur-file-list .aur-file-info > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.aur-file-count {
+  margin: 0 0 0.75rem;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0f696e;
+}
+
 .aur-file-info {
   display: flex;
   align-items: center;
@@ -1654,7 +2863,14 @@ export default {
 }
 
 .aur-file-icon { font-size: 32px; color: #0f696e; flex-shrink: 0; }
-.aur-file-name { font-size: 14px; font-weight: 700; color: #241447; margin: 0; }
+.aur-file-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #241447;
+  margin: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
 .aur-file-size { font-size: 12px; color: #6b7280; margin: 2px 0 0; }
 
 .aur-remove-btn {
@@ -1757,6 +2973,33 @@ export default {
   line-height: 1.4;
   white-space: pre-line;
   flex-shrink: 0;
+}
+
+.aur-plan-offer {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #eef8f8;
+  border: 1px solid rgba(15, 105, 110, 0.18);
+  flex-shrink: 0;
+}
+
+.aur-plan-offer-copy {
+  margin: 0 0 4px;
+  color: #0f696e;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.45;
+}
+
+.aur-plan-offer .aur-limit-keep,
+.aur-plan-offer .aur-limit-upgrade {
+  margin-bottom: 0;
 }
 
 .aur-actions {

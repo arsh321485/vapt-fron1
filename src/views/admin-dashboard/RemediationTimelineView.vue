@@ -46,9 +46,11 @@
                       <div class="col-4" v-for="n in totalSteps" :key="n">
                         <span class="vc-step-pill"
                           :class="[
-                            selectedSteps.includes(n) ? 'vc-step-pill-active' : '',
-                            raisedSupportSteps.includes(n) ? 'vc-step-pill-raised' : ''
+                            selectedSteps.includes(n) && !raisedSupportSteps.includes(n) ? 'vc-step-pill-active' : '',
+                            raisedSupportSteps.includes(n) ? 'vc-step-pill-raised' : '',
+                            selectedSteps.includes(n) && raisedSupportSteps.includes(n) ? 'vc-step-pill-raised-selected' : '',
                           ]"
+                          :title="raisedSupportSteps.includes(n) ? 'Support already raised — click to view' : 'Select this step'"
                           style="cursor:pointer;"
                           @click="toggleStep(n)">
                           Step {{ n }}
@@ -1378,9 +1380,15 @@ cp target/application.war /opt/tomcat/webapps/`,
   border-color: #0f696e;
 }
 .vc-step-pill-raised {
-  background: #fff7ed;
-  color: #c2410c;
-  border-color: #fdba74;
+  background: #e2e8f0;
+  color: #64748b;
+  border-color: #cbd5e1;
+}
+.vc-step-pill-raised-selected {
+  background: #e2e8f0;
+  color: #334155;
+  border-color: #0f696e;
+  box-shadow: 0 0 0 2px rgba(15,105,110,0.2);
 }
 .vc-textarea {
   width: 100%;

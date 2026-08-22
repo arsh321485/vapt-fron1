@@ -2859,20 +2859,13 @@ export default {
     async initReportStatusCheck() {
       console.log("🚀 Initializing report status check...");
 
-      const res = await this.authStore.getReportStatus();
-      const state = res.state || (res.hasReport ? "ready" : "no_report");
-
-      if (state === "no_report") {
-        this.$router.replace("/admin-upload-report");
-        return;
-      }
-      if (state === "needs_risk_criteria") {
-        const route = await this.authStore.getAdminOnboardingRoute();
+      const route = await this.authStore.getAdminOnboardingRoute();
+      if (route !== "/admindashboardonboarding") {
         this.$router.replace(route);
         return;
       }
 
-      // ready — show dashboard
+      const res = this.authStore.reportStatus;
       this.hasReport = true;
       this.currentReportId = res.reportId || this.authStore.reportStatus.reportId;
       this.reportStatusChecking = false;

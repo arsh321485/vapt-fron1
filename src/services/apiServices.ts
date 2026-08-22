@@ -59,6 +59,7 @@ const PUBLIC_URL_PATTERNS = [
   "/api/admin/users/teams/member-login/",
   "/api/admin/users/slack/oauth-url/",
   "/api/admin/users/microsoft-teams/oauth-url/",
+  "/api/admin/upload_report/claim-invite/validate/",
   "/api/webinar/form-options/",
   "/api/webinar/register/",
   "/api/partners/form-options/",
@@ -176,6 +177,8 @@ endpoint.interceptors.response.use(
 
     const noRedirect401Paths = new Set([
       "/pricingplan",
+      "/billing/success",
+      "/billing/cancel",
       "/partner",
       "/partner-lead-portal",
       "/partner-lead-thankyou",

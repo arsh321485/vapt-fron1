@@ -32,21 +32,6 @@
         <div class="mb-2 text-muted text-center">
           {{ userEmail }}
         </div>
-<!-- <router-link
-  :to="{ path: '/location', query: { returnTo: $route.fullPath } }"
-  class="btn btn-sm btn-outline-primary w-100 mb-2"
->
-  Add User
-</router-link> -->
-
-<router-link
-  :to="{ path: '/manage-account', query: { returnTo: $route.fullPath } }"
-  class="btn btn-sm btn-outline-secondary w-100 mb-2"
-  @click="showDropdown = false"
->
-  Manage Account
-</router-link>
-
 <router-link
   :to="{ path: '/admin-upload-report', query: { returnTo: $route.fullPath } }"
   class="btn btn-sm btn-outline-primary w-100 mb-2"
