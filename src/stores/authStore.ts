@@ -10,6 +10,15 @@ import {
   lookupFixVulnerabilityId,
   normalizeAssetVulnerabilityList,
 } from "@/utils/assetVulnerabilities";
+import {
+  extractAssetRows,
+  getAssetHostName,
+  resolveAssetType,
+} from "@/utils/assetDummyData";
+import { isClaimInviteFlow, clearClaimInvite } from "@/utils/claimInvite";
+import { clearLockedRoute } from "@/utils/routeLock";
+import { getMySubscription } from "@/services/billingApi";
+import { isActiveSubscription } from "@/utils/planLimits";
 
 interface RoleAssignmentEntry {
   assets: string[];
@@ -69,6 +78,75 @@ function clearAllAuthTokens() {
   localStorage.removeItem("user");
   localStorage.removeItem("authenticated");
   localStorage.removeItem("adminLoginMethod");
+}
+
+function flattenFieldErrors(value: unknown): string[] {
+  if (value == null) return [];
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed ? [trimmed] : [];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => flattenFieldErrors(item));
+  }
+  if (typeof value === "object") {
+    return Object.values(value as Record<string, unknown>).flatMap((item) =>
+      flattenFieldErrors(item),
+    );
+  }
+  return [];
+}
+
+/** Prefer backend field errors (`detail` / `errors`) over Axios "status code 400". */
+function extractApiErrorMessage(error: unknown, fallback = "Request failed"): string {
+  const err = error as any;
+  const data = err?.response?.data ?? err?.data ?? err;
+  const fieldMsgs = [
+    ...flattenFieldErrors(data?.detail),
+    ...flattenFieldErrors(data?.errors),
+  ];
+  const unique = [...new Set(fieldMsgs.filter(Boolean))];
+  if (unique.length) return unique.join(" ");
+
+  const top = data?.message || data?.error;
+  if (typeof top === "string" && top.trim() && !/^request failed with status code/i.test(top)) {
+    return top.trim();
+  }
+  if (typeof data === "string" && data.trim()) return data.trim();
+
+  const axiosMsg = typeof err?.message === "string" ? err.message.trim() : "";
+  if (axiosMsg && !/^request failed with status code/i.test(axiosMsg)) return axiosMsg;
+  return fallback;
+}
+
+function decodeJwtPayload(token: string): Record<string, any> | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+    return JSON.parse(atob(padded));
+  } catch {
+    return null;
+  }
+}
+
+function isSlackPlatformUserId(id: unknown): boolean {
+  return typeof id === "string" && /^[UWC][A-Z0-9]{8,}$/i.test(id.trim());
+}
+
+function pickAppUserId(obj: Record<string, any> | null | undefined): string | null {
+  if (!obj || typeof obj !== "object") return null;
+  const candidates = [obj._id, obj.pk, obj.user_id, obj.admin_id];
+  for (const value of candidates) {
+    if (value != null && String(value).trim() && !isSlackPlatformUserId(value)) {
+      return String(value).trim();
+    }
+  }
+  if (obj.id != null && String(obj.id).trim() && !isSlackPlatformUserId(obj.id)) {
+    return String(obj.id).trim();
+  }
+  return null;
 }
 
 export const useAuthStore = defineStore("auth", {
@@ -391,10 +469,34 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-    // ✅ Signup Step 2: Verify OTP
-    async signupVerifyOtp(payload: { email: string; otp: string }) {
+    async validateClaimInvite(token: string) {
       try {
-        const res = await endpoint.post("/api/admin/users/signup/verify-otp/", payload);
+        const res = await endpoint.get("/api/admin/upload_report/claim-invite/validate/", {
+          params: { token },
+        });
+        const data = res.data || {};
+        return {
+          status: true,
+          valid: data.valid === true,
+          report_count: Number(data.report_count) || 0,
+          data,
+        };
+      } catch {
+        return { status: false, valid: false, report_count: 0, data: null };
+      }
+    },
+
+    // ✅ Signup Step 2: Verify OTP
+    async signupVerifyOtp(payload: { email: string; otp: string; invite_token?: string }) {
+      try {
+        const body: { email: string; otp: string; invite_token?: string } = {
+          email: payload.email,
+          otp: payload.otp,
+        };
+        if (payload.invite_token) {
+          body.invite_token = payload.invite_token;
+        }
+        const res = await endpoint.post("/api/admin/users/signup/verify-otp/", body);
 
         const data = res.data;
 
@@ -532,6 +634,34 @@ export const useAuthStore = defineStore("auth", {
           status: false,
           message: error.response?.data?.message || error.message || "Request failed",
           details: error.response?.data || null,
+        };
+      }
+    },
+
+    /** Slack/Teams admin: resend set-password email. Auth required, no body. */
+    async sendSetPasswordEmail() {
+      try {
+        const res = await endpoint.post("/api/admin/users/send-set-password/");
+        return {
+          status: true,
+          data: res.data,
+          message:
+            res.data?.msg ||
+            res.data?.message ||
+            "Set-password link sent. Please check your email.",
+        };
+      } catch (error: any) {
+        const data = error.response?.data;
+        const message =
+          data?.error || data?.message || data?.msg || error.message || "Failed to send set-password link";
+        const alreadySet =
+          error.response?.status === 400 &&
+          /password is already set/i.test(String(message));
+        return {
+          status: false,
+          alreadySet,
+          message,
+          details: data || null,
         };
       }
     },
@@ -706,35 +836,38 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-    /** Admin id for add-user-detail — survives Slack/Teams OAuth popup flow. */
+    /** Admin id for add-user-detail — JWT / Django local_user, never Slack/Teams profile id. */
     resolveAdminId(): string | null {
-      const fromStore = this.user?._id || this.user?.id;
-      if (fromStore) return String(fromStore);
-
-      // ✅ JWT token se user_id nikalo — Slack login ke baad most reliable source
       try {
         const token =
           sessionStorage.getItem("authorization") || localStorage.getItem("authorization");
         if (token) {
-          const parts = token.split(".");
-          if (parts.length === 3) {
-            const payload = JSON.parse(atob(parts[1]));
-            if (payload.user_id) return String(payload.user_id);
-          }
+          const payload = decodeJwtPayload(token);
+          const jwtId = payload?.user_id || payload?.userId || payload?.uid;
+          if (jwtId && !isSlackPlatformUserId(jwtId)) return String(jwtId);
         }
       } catch {
         /* ignore */
       }
 
-      for (const key of ["local_user", "user"] as const) {
+      try {
+        const localUser = JSON.parse(localStorage.getItem("local_user") || "null");
+        const fromLocal = pickAppUserId(localUser);
+        if (fromLocal) return fromLocal;
+      } catch {
+        /* ignore */
+      }
+
+      const fromStore = pickAppUserId(this.user as Record<string, any> | null);
+      if (fromStore) return fromStore;
+
+      for (const key of ["user"] as const) {
         try {
-          const raw = localStorage.getItem(key) || sessionStorage.getItem(key);
+          const raw = sessionStorage.getItem(key) || localStorage.getItem(key);
           if (!raw) continue;
           const parsed = JSON.parse(raw);
-          if (parsed && typeof parsed === "object") {
-            const id = parsed._id || parsed.id;
-            if (id) return String(id);
-          }
+          const id = pickAppUserId(parsed);
+          if (id) return id;
         } catch {
           /* ignore */
         }
@@ -800,7 +933,7 @@ export const useAuthStore = defineStore("auth", {
 
         return {
           status: false,
-          message: err.response?.data?.message || err.message || "Create user detail failed",
+          message: extractApiErrorMessage(err, "Create user detail failed"),
           details: err.response?.data || null,
         };
       }
@@ -829,6 +962,7 @@ export const useAuthStore = defineStore("auth", {
         email,
         first_name: (payload.first_name || profile.first_name || defaultFirst).trim(),
         last_name: (payload.last_name || profile.last_name || "User").trim(),
+        Member_role: memberRoles.map((r) => String(r || "").trim()).filter(Boolean),
       };
       delete dbPayload.slack_bot_token;
 
@@ -837,12 +971,25 @@ export const useAuthStore = defineStore("auth", {
         return { ...res, platformSync: { status: false, skipped: true, message: res.message } };
       }
 
+      this.usersByAdminFetched = false;
+      this.cachedUsersByAdmin = [];
+
       let platformSync: { status: boolean; skipped?: boolean; message?: string } = {
         status: true,
         skipped: true,
       };
       if (platforms.length > 0) {
-        platformSync = await this.syncNewUserToAllConnectedPlatforms(email, { memberRoles });
+        try {
+          platformSync = await this.syncNewUserToAllConnectedPlatforms(email, {
+            memberRoles: dbPayload.Member_role as string[],
+          });
+        } catch (error: unknown) {
+          platformSync = {
+            status: false,
+            skipped: false,
+            message: extractApiErrorMessage(error, "Platform sync failed"),
+          };
+        }
       }
 
       return { ...res, platformSync };
@@ -923,7 +1070,7 @@ export const useAuthStore = defineStore("auth", {
         };
       }
       try {
-        const adminId = this.user?._id || this.user?.id;
+        const adminId = this.resolveAdminId();
 
         if (!adminId) {
           throw new Error("Admin ID not found");
@@ -1315,11 +1462,18 @@ export const useAuthStore = defineStore("auth", {
     },
 
     //Microsoft Teams
-    async getMicrosoftOAuthUrl(redirectUri: string, adminId?: string | null) {
+    async getMicrosoftOAuthUrl(
+      redirectUri: string,
+      adminId?: string | null,
+      inviteToken?: string | null,
+    ) {
       try {
         let url = `/api/admin/users/microsoft-teams/oauth-url/?redirect_uri=${encodeURIComponent(redirectUri)}`;
         if (adminId) {
           url += `&admin_id=${encodeURIComponent(adminId)}`;
+        }
+        if (inviteToken) {
+          url += `&invite_token=${encodeURIComponent(inviteToken)}`;
         }
         const res = await endpoint.get(url);
 
@@ -1571,7 +1725,8 @@ export const useAuthStore = defineStore("auth", {
         console.error("Add user to Teams channel error:", error);
         return {
           status: false,
-          message: error.response?.data?.message || "Failed to add user to Teams channel",
+          message:
+            extractApiErrorMessage(error, "Failed to add user to Teams channel"),
         };
       }
     },
@@ -2033,15 +2188,24 @@ export const useAuthStore = defineStore("auth", {
     },
 
     // Slack
-    async getSlackOAuthUrl(baseUrl: string, adminId?: string | null) {
+    async getSlackOAuthUrl(
+      baseUrl: string,
+      adminId?: string | null,
+      inviteToken?: string | null,
+    ) {
       console.log(
         "Calling POST /api/admin/users/slack/oauth-url/ with baseUrl and adminId:",
         baseUrl,
         adminId || "(signup)",
       );
-      const payload: { base_url: string; admin_id?: string } = { base_url: baseUrl };
+      const payload: { base_url: string; admin_id?: string; invite_token?: string } = {
+        base_url: baseUrl,
+      };
       if (adminId) {
         payload.admin_id = adminId;
+      }
+      if (inviteToken) {
+        payload.invite_token = inviteToken;
       }
       const res = await endpoint.post("/api/admin/users/slack/oauth-url/", payload);
       console.log("Slack OAuth URL response:", res.data);
@@ -2081,9 +2245,8 @@ export const useAuthStore = defineStore("auth", {
             localStorage.setItem("slack_channels", JSON.stringify(data.channels));
           }
 
-          // ✅ Save Slack user
+          // ✅ Save Slack user separately — do not overwrite Django admin user
           if (data.user) {
-            this.user = data.user;
             localStorage.setItem("slack_user_login_data", JSON.stringify(data.user));
           }
 
@@ -3033,10 +3196,9 @@ export const useAuthStore = defineStore("auth", {
     async fetchLatestUploadedReport() {
       try {
         const res = await endpoint.get("/api/admin/upload_report/latest-report/");
-        if (res.data?.success) {
-          return { status: true, data: res.data };
-        }
-        return { status: false, data: null };
+        const data = res.data;
+        if (!data) return { status: false, data: null };
+        return { status: true, data };
       } catch (error: any) {
         return { status: false, data: null, message: error.response?.data?.detail || "Failed" };
       }
@@ -3135,7 +3297,15 @@ export const useAuthStore = defineStore("auth", {
       message?: string;
     }> {
       try {
+        const latestRes = await this.fetchLatestUploadedReport();
+        const latestPayload =
+          latestRes.data?.report ||
+          latestRes.data?.data ||
+          latestRes.data ||
+          null;
+
         let reportId =
+          String(latestPayload?.report_id || latestPayload?.id || latestPayload?._id || "").trim() ||
           String(localStorage.getItem("reportId") || "").trim() ||
           String(this.reportStatus?.reportId || "").trim() ||
           String(this.latestReportId || "").trim();
@@ -3144,46 +3314,64 @@ export const useAuthStore = defineStore("auth", {
           reportId = String((await this.resolveReportId()) || "").trim();
         }
 
-        if (!reportId) {
+        let detailData: any = null;
+        if (reportId) {
+          const detailRes = await this.getUploadReportById(reportId);
+          if (detailRes.status) detailData = detailRes.data;
+        }
+
+        const combined = {
+          ...(latestPayload && typeof latestPayload === "object" ? latestPayload : {}),
+          ...(detailData && typeof detailData === "object" ? detailData : {}),
+        };
+
+        if (!reportId && !Object.keys(combined).length) {
           return { status: false, message: "No report found", data: null };
         }
 
-        const detailRes = await this.getUploadReportById(reportId);
-        if (!detailRes.status || !detailRes.data) {
-          return detailRes;
+        let statusData: any = null;
+        if (reportId) {
+          try {
+            const statusRes = await this.fetchUploadReportStatus(reportId);
+            if (statusRes.status) statusData = statusRes.data;
+          } catch {
+            /* optional */
+          }
         }
 
-        let statusData: any = null;
-        try {
-          const statusRes = await this.fetchUploadReportStatus(reportId);
-          if (statusRes.status) statusData = statusRes.data;
-        } catch {
-          /* optional */
-        }
+        const uploadedFileNames = this.extractUploadedFileNames({
+          latest: latestRes.data,
+          detail: detailData,
+          status: statusData,
+        });
 
         const merged = {
-          ...(detailRes.data || {}),
+          ...combined,
           ...(statusData || {}),
           report_id:
-            detailRes.data?.report_id ||
-            detailRes.data?.id ||
-            detailRes.data?._id ||
+            combined.report_id ||
+            combined.id ||
+            combined._id ||
             reportId,
           id:
-            detailRes.data?.id ||
-            detailRes.data?._id ||
-            detailRes.data?.report_id ||
+            combined.id ||
+            combined._id ||
+            combined.report_id ||
             reportId,
           resolved_file_name:
-            this.extractUploadedFileName(detailRes.data) ||
-            detailRes.data?.file_name ||
-            detailRes.data?.filename ||
-            detailRes.data?.original_filename ||
+            uploadedFileNames[0] ||
+            this.extractUploadedFileName(combined) ||
+            combined.file_name ||
+            combined.filename ||
+            combined.original_filename ||
             null,
+          uploaded_file_names: uploadedFileNames,
         };
 
         try {
-          localStorage.setItem("reportId", String(merged.report_id || reportId));
+          if (merged.report_id) {
+            localStorage.setItem("reportId", String(merged.report_id));
+          }
         } catch {
           /* ignore */
         }
@@ -3199,15 +3387,23 @@ export const useAuthStore = defineStore("auth", {
     },
 
     // 🔹 Admin scan report upload
-    // POST /api/admin/upload_report/upload/  (multipart form-data key: file)
+    // POST /api/admin/upload_report/upload/  (multipart form-data key: file, repeatable)
     async uploadAdminReport(
-      file: File,
+      fileOrFiles: File | File[],
       onProgress?: (pct: number) => void,
     ): Promise<{ status: boolean; data?: any; message?: string; details?: any }> {
       try {
+        const files = (Array.isArray(fileOrFiles) ? fileOrFiles : [fileOrFiles]).filter(
+          (file): file is File => file instanceof File,
+        );
+        if (!files.length) {
+          return { status: false, message: "No file selected" };
+        }
         const formData = new FormData();
-        // Backend expects lowercase form-data key: file
-        formData.append("file", file, file.name);
+        // Same API key as before — send each file as "file" so backend getlist("file") works.
+        files.forEach((file) => {
+          formData.append("file", file, file.name);
+        });
 
         const res = await endpoint.post("/api/admin/upload_report/upload/", formData, {
           // Content-Type intentionally NOT set — axios auto-generates it
@@ -3330,6 +3526,69 @@ export const useAuthStore = defineStore("auth", {
       };
 
       return visit(payload);
+    },
+
+    extractUploadedFileNames(payload: unknown): string[] {
+      const names = new Set<string>();
+      const FILE_EXT = /\.(xlsx|xls|csv|xml|nessus|pdf|html|htm|docx|doc|zip|json|txt)$/i;
+      const LIST_KEYS = [
+        "files",
+        "uploaded_files",
+        "source_files",
+        "file_names",
+        "source_file_names",
+        "uploaded_file_names",
+        "merged_files",
+        "reports",
+        "results",
+      ];
+
+      const addName = (raw: unknown) => {
+        if (raw == null) return;
+        if (typeof raw === "string") {
+          const base = raw.trim().split(/[/\\]/).pop()?.trim() || "";
+          if (base && (FILE_EXT.test(base) || (base.length > 2 && base.length < 180 && base.includes(".")))) {
+            names.add(base);
+          }
+          return;
+        }
+        if (typeof raw !== "object") return;
+        const obj = raw as Record<string, unknown>;
+        const candidate =
+          obj.file_name ||
+          obj.filename ||
+          obj.original_filename ||
+          obj.uploaded_file_name ||
+          obj.source_file_name ||
+          obj.name ||
+          obj.file;
+        addName(candidate);
+      };
+
+      const visit = (node: unknown, depth = 0) => {
+        if (node == null || depth > 5) return;
+        if (Array.isArray(node)) {
+          node.forEach((item) => {
+            addName(item);
+            if (item && typeof item === "object") visit(item, depth + 1);
+          });
+          return;
+        }
+        if (typeof node !== "object") {
+          addName(node);
+          return;
+        }
+        const obj = node as Record<string, unknown>;
+        for (const key of LIST_KEYS) {
+          if (key in obj) visit(obj[key], depth + 1);
+        }
+        addName(obj);
+      };
+
+      visit(payload);
+      const single = this.extractUploadedFileName(payload);
+      if (single) names.add(single);
+      return Array.from(names);
     },
 
     // 🔹 Report header metadata (generated date, program, testing date, uploaded file name)
@@ -3627,17 +3886,26 @@ export const useAuthStore = defineStore("auth", {
       }
       try {
         const res = await endpoint.get("/api/user/asset/assets/");
-        const rows = res.data.assets || [];
-        const normalized = rows.map((a: any) => ({
-          ...a,
-          selected: false,
-          held: false,
-          isInternal: a.member_type === "internal",
-          host_information: a.host_information || {},
-          severity_counts: a.severity_counts || { critical: 0, high: 0, medium: 0, low: 0 },
-        }));
-        if (res.data.report_id) this.userLatestReportId = res.data.report_id;
-        const total = res.data.total_assets ?? normalized.length;
+        const payload = res.data || {};
+        const rows = extractAssetRows(payload);
+        const normalized = rows
+          .map((a: any) => {
+            const asset = getAssetHostName(a);
+            if (!asset) return null;
+            return {
+              ...a,
+              asset,
+              asset_type: resolveAssetType({ ...a, asset }),
+              selected: false,
+              held: false,
+              isInternal: a.member_type === "internal",
+              host_information: a.host_information || {},
+              severity_counts: a.severity_counts || { critical: 0, high: 0, medium: 0, low: 0 },
+            };
+          })
+          .filter(Boolean);
+        if (payload.report_id) this.userLatestReportId = payload.report_id;
+        const total = payload.total_assets ?? normalized.length;
         this.cachedUserAssets = normalized;
         this.cachedUserAssetTotal = total;
         return { status: true, data: normalized, total };
@@ -5574,19 +5842,76 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    // POST /api/user/automation-scripts/match/by-name/
+    async fetchAutomationScriptsByName(names: string[], os?: string | null) {
+      const vulnerability_names = (names || []).map((n) => String(n || "").trim()).filter(Boolean);
+      if (!vulnerability_names.length) return { status: true, results: [] };
+      try {
+        const payload: Record<string, any> = { vulnerability_names };
+        if (os) payload.os = os;
+        const res = await endpoint.post("/api/user/automation-scripts/match/by-name/", payload);
+        return { status: true, results: res.data?.results || [] };
+      } catch (error: any) {
+        return {
+          status: false,
+          results: [],
+          message: error.response?.data?.detail || "Failed to match automation scripts by name",
+        };
+      }
+    },
+
+    // POST /api/admin/automation-scripts/match/by-name/
+    async fetchAutomationScriptsByNameAdmin(names: string[], os?: string | null) {
+      const vulnerability_names = (names || []).map((n) => String(n || "").trim()).filter(Boolean);
+      if (!vulnerability_names.length) return { status: true, results: [] };
+      try {
+        const payload: Record<string, any> = { vulnerability_names };
+        if (os) payload.os = os;
+        const res = await endpoint.post("/api/admin/automation-scripts/match/by-name/", payload);
+        return { status: true, results: res.data?.results || [] };
+      } catch (error: any) {
+        return {
+          status: false,
+          results: [],
+          message: error.response?.data?.detail || "Failed to match automation scripts by name",
+        };
+      }
+    },
+
     // 🔹 ADMIN — Report assets & vulnerabilities filtered by team role
     // GET /api/admin/users_details/report-assets-vulns/?role=<role>
     async fetchReportAssetVulnsByRole(role: string) {
       try {
+        const params: Record<string, string> = { role: String(role || "").trim() };
+        const reportId =
+          this.latestReportId ||
+          this.reportStatus?.reportId ||
+          localStorage.getItem("reportId") ||
+          "";
+        if (reportId) params.report_id = String(reportId);
+
         const res = await endpoint.get(`/api/admin/users_details/report-assets-vulns/`, {
-          params: { role },
+          params,
+          timeout: 25000,
         });
-        return { status: true, data: res.data };
+        const raw = res.data;
+        const payload =
+          raw?.data && typeof raw.data === "object" && !Array.isArray(raw.data) ? raw.data : raw;
+        const assets = Array.isArray(payload?.assets)
+          ? payload.assets
+          : Array.isArray(payload?.results)
+            ? payload.results
+            : Array.isArray(payload?.hosts)
+              ? payload.hosts
+              : Array.isArray(payload)
+                ? payload
+                : [];
+        return { status: true, data: { ...payload, assets } };
       } catch (error: any) {
         return {
           status: false,
           data: null,
-          message: error.response?.data?.detail || "Failed to fetch role assets/vulns",
+          message: extractApiErrorMessage(error, "Failed to fetch role assets/vulns"),
         };
       }
     },
@@ -6128,27 +6453,29 @@ export const useAuthStore = defineStore("auth", {
       try {
         const res = await endpoint.get(`/api/admin/adminasset/assets/`);
 
-        const rows = res.data.assets || [];
+        const rows = extractAssetRows(res.data);
 
-        const normalized = rows.map((a: any) => ({
-          ...a,
-
-          // UI state flags
-          selected: false,
-          held: false,
-
-          // NEW: member type comes from top-level response
-          isInternal: res.data.member_type === "internal",
-
-          // safety defaults
-          host_information: a.host_information || {},
-          severity_counts: a.severity_counts || {
-            critical: 0,
-            high: 0,
-            medium: 0,
-            low: 0,
-          },
-        }));
+        const normalized = rows
+          .map((a: any) => {
+            const asset = getAssetHostName(a);
+            if (!asset) return null;
+            return {
+              ...a,
+              asset,
+              asset_type: resolveAssetType({ ...a, asset }),
+              selected: false,
+              held: false,
+              isInternal: res.data.member_type === "internal" || a.member_type === "internal",
+              host_information: a.host_information || {},
+              severity_counts: a.severity_counts || {
+                critical: 0,
+                high: 0,
+                medium: 0,
+                low: 0,
+              },
+            };
+          })
+          .filter(Boolean);
 
         // 🔥 store assignments
         this.assetRows = normalized;
@@ -6560,6 +6887,8 @@ export const useAuthStore = defineStore("auth", {
       sessionStorage.removeItem("isNewUser");
       sessionStorage.removeItem("admin_slack_connected");
       sessionStorage.removeItem("admin_teams_connected");
+      clearClaimInvite();
+      clearLockedRoute();
       this.user = null;
       this.accessToken = null;
       this.refreshToken = null;
@@ -6597,6 +6926,8 @@ export const useAuthStore = defineStore("auth", {
       localStorage.setItem("user", JSON.stringify(user));
       localStorage.setItem("authenticated", JSON.stringify(true));
 
+      this.initCompletedSteps();
+
       console.log("Access Token saved:", token);
       console.log("Refresh Token saved:", sessionStorage.getItem("refreshToken"));
       // console.log("✅ Locations saved in localStorage:", this.locations);
@@ -6627,11 +6958,44 @@ export const useAuthStore = defineStore("auth", {
 
     // ✅ Initialize completed steps from localStorage
     initCompletedSteps() {
-      const saved = localStorage.getItem(this._stepsKey());
-      if (saved) {
-        this.completedSteps = JSON.parse(saved);
-        console.log("♻️ Restored completed steps:", this.completedSteps);
-      }
+      const user =
+        this.user ||
+        (sessionStorage.getItem("user") ? JSON.parse(sessionStorage.getItem("user")!) : null);
+      const ids = [user?.id, user?.pk, user?.user_id, user?.email]
+        .map((v) => String(v || "").trim())
+        .filter(Boolean);
+      const keys = [...ids.map((id) => `completedSteps_${id}`), "completedSteps"];
+      const merged = new Set<number>();
+      keys.forEach((key) => {
+        try {
+          const saved = localStorage.getItem(key);
+          if (!saved) return;
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) parsed.forEach((n) => merged.add(Number(n)));
+        } catch {
+          /* ignore */
+        }
+      });
+      this.completedSteps = [...merged].filter((n) => Number.isFinite(n));
+    },
+
+    _isOnboardingComplete(res: {
+      state?: string | null;
+      hasReport?: boolean;
+      hasRiskCriteria?: boolean;
+      showDashboard?: boolean;
+    }): boolean {
+      return (
+        res?.state === "ready" ||
+        res?.showDashboard === true ||
+        !!(res?.hasReport && res?.hasRiskCriteria)
+      );
+    },
+
+    _markOnboardingComplete() {
+      this.initCompletedSteps();
+      this.markStepCompleted(1);
+      this.markStepCompleted(2);
     },
 
     // ✅ Reset completed steps (useful for testing or new onboarding)
@@ -6787,26 +7151,57 @@ export const useAuthStore = defineStore("auth", {
       return method === "slack" || method === "teams";
     },
 
+    /** True when the admin has an active, trial, or past-due paid plan. */
+    async hasPaidPlan(): Promise<boolean> {
+      try {
+        const data = await getMySubscription();
+        return isActiveSubscription(data?.subscription);
+      } catch {
+        return false;
+      }
+    },
+
     /** Route after login / onboarding actions based on report-status.state */
     async getAdminOnboardingRoute(): Promise<string> {
-      const res = await this.getReportStatus();
-      const state = res.state || "no_report";
+      this.initCompletedSteps();
 
-      if (state === "ready") return "/admindashboardonboarding";
-
-      if (state === "needs_risk_criteria") {
-        // Email login: communication (add users) → risk criteria
-        // Slack/Teams login: risk criteria (unchanged)
-        if (!this.isSlackOrTeamsLogin()) {
-          this.initCompletedSteps();
-          if (!this.completedSteps.includes(1)) {
-            return "/communication";
-          }
+      if (isClaimInviteFlow()) {
+        // Super-admin already uploaded the report. Skip upload and payment.
+        const res = await this.getReportStatus();
+        if (this._isOnboardingComplete(res)) {
+          clearClaimInvite();
+          this._markOnboardingComplete();
+          return "/admindashboardonboarding";
+        }
+        if (!this.completedSteps.includes(1)) {
+          return "/communication";
         }
         return "/riskcriteria";
       }
 
-      // Admin must upload first report before waiting/processing screens
+      if (!(await this.hasPaidPlan())) {
+        return "/admin-upload-report";
+      }
+
+      const res = await this.getReportStatus();
+
+      // Report + risk criteria already done → dashboard on every later login.
+      if (this._isOnboardingComplete(res)) {
+        this._markOnboardingComplete();
+        return "/admindashboardonboarding";
+      }
+
+      if (res.state === "needs_risk_criteria" || res.hasReport) {
+        if (res.hasRiskCriteria) {
+          this._markOnboardingComplete();
+          return "/admindashboardonboarding";
+        }
+        if (!this.isSlackOrTeamsLogin() && !this.completedSteps.includes(1)) {
+          return "/communication";
+        }
+        return "/riskcriteria";
+      }
+
       return "/admin-upload-report";
     },
 

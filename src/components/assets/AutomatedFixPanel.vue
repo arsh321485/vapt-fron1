@@ -1,6 +1,39 @@
 <template>
-  <div class="auto-tab-content" :class="{ 'auto-tab-content--greyed': !scriptAvailable }">
+  <div
+    class="auto-tab-content"
+    :class="{
+      'auto-tab-content--greyed': hasPositiveMatch && !scriptAvailable,
+      'auto-tab-content--unmatched': !matchLoading && !hasPositiveMatch,
+    }"
+  >
+    <div v-if="matchLoading" class="auto-empty-state auto-empty-state--loading">
+      <span class="spinner-border spinner-border-sm me-2"></span>
+      Checking for an automated fix…
+    </div>
 
+    <div v-else-if="!hasPositiveMatch" class="auto-empty-state">
+      <div class="capability-banner" :style="theme.banner">
+        <div class="cap-banner-top">
+          <div class="cap-left">
+            <div class="cap-label">Automation Possible</div>
+            <div class="cap-value" :style="{ color: theme.accent }">
+              No <span class="cap-pct">[0%]</span>
+            </div>
+          </div>
+        </div>
+        <div class="cap-bar-col">
+          <div class="cap-bar-track cap-bar-track--no">
+            <div class="cap-bar-fill" :style="{ width: '100%', background: theme.accent }"></div>
+          </div>
+        </div>
+      </div>
+      <div class="auto-unmatched-notice">
+        <i class="bi bi-info-circle-fill me-2"></i>
+        {{ unmatchedMessage }}
+      </div>
+    </div>
+
+    <template v-else>
     <!-- OS Selector -->
     <div v-if="availableOs.length > 1" class="os-selector-row">
       <span class="os-selector-label">OS:</span>
@@ -203,12 +236,14 @@
         <i class="bi bi-send" aria-hidden="true"></i> Send verification
       </button>
     </div>
+    </template>
 
   </div>
 </template>
 
 <script>
 import { canonSeverity, resolveAutomationDisplay } from '@/utils/assetVulnerabilities';
+import { isPositiveAutomationMatch } from '@/utils/automationScriptMatch';
 import { useAuthStore } from '@/stores/authStore';
 import {
   buildScriptFeedbackKey,
@@ -322,6 +357,7 @@ export default {
     runCommand: { type: String, default: '' },
     // Real API data from automation-scripts/match endpoint
     automationData: { type: Object, default: null },
+    matchLoading: { type: Boolean, default: false },
   },
   data() {
     return {
@@ -369,6 +405,13 @@ export default {
     effectiveData() {
       return this.localData || this.automationData;
     },
+    hasPositiveMatch() {
+      return isPositiveAutomationMatch(this.effectiveData);
+    },
+    unmatchedMessage() {
+      const msg = String(this.effectiveData && this.effectiveData.message || '').trim();
+      return msg || 'No automated fix available for this vulnerability.';
+    },
     availableOs() {
       const d = this.effectiveData;
       if (!d || !Array.isArray(d.available_os) || d.available_os.length <= 1) return [];
@@ -377,7 +420,7 @@ export default {
     // Helper: parse numbered string list "1. A. 2. B." into ["A.", "B."]
     _apiParsed() {
       const d = this.effectiveData;
-      if (!d) return null;
+      if (!d || !this.hasPositiveMatch) return null;
       const split = str => !str ? [] : str.split(/\d+\.\s+/).map(s => s.trim()).filter(Boolean);
       const splitComma = str => !str ? [] : str.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
       const autoLevel = (() => {
@@ -404,10 +447,14 @@ export default {
       };
     },
     scriptAvailable() {
+      if (!this.hasPositiveMatch) return false;
       if (this._apiParsed) return this._apiParsed.scriptAvailable;
-      return true;
+      return false;
     },
     autoDisplay() {
+      if (!this.hasPositiveMatch) {
+        return { tier: 'no', label: 'No', pct: 0, barWidth: 100, displayPct: '0%' };
+      }
       const level = this._apiParsed?.automationLevel || this.automationLevel;
       return resolveAutomationDisplay(
         level,
@@ -1079,6 +1126,30 @@ export default {
   border-radius: 6px;
   padding: 6px 12px;
   margin-top: 8px;
+}
+.auto-empty-state {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.auto-empty-state--loading {
+  flex-direction: row;
+  align-items: center;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 12px 0;
+}
+.auto-unmatched-notice {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #991b1b;
+  display: flex;
+  align-items: flex-start;
 }
 .script-unavailable-notice {
   opacity: 1 !important;

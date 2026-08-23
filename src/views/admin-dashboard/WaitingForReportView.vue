@@ -1,7 +1,9 @@
 <template>
   <main class="wait-main">
     <div class="wait-topbar">
-      <img src="@/assets/images/vaptfix_white.png" alt="VaptFix" class="wait-logo" />
+      <router-link to="/admindashboardonboarding">
+        <img src="@/assets/images/vaptfix_white.png" alt="VaptFix" class="wait-logo" />
+      </router-link>
     </div>
 
     <div class="wait-page">
