@@ -51,7 +51,6 @@ export function clearExternalDeepLink() {
   }
 }
 
-
 /** OAuth / email / payment returns must still work from a typed or new-tab URL. */
 export function isRouteLockExempt(to: { path?: string; query?: Record<string, unknown> }): boolean {
   const path = pathOf(to);
@@ -122,11 +121,24 @@ export function sameLockedRoute(locked: string, fullPath: string): boolean {
   return normalizeFullPath(locked) === normalizeFullPath(fullPath);
 }
 
+function lockedPathOnly(fullPath: string): string {
+  return String(fullPath || "").split("?")[0].replace(/\/+$/, "") || "/";
+}
+
+export function isPublicHomeLock(fullPath: string): boolean {
+  const path = lockedPathOnly(fullPath);
+  return path === "/" || path === "/home";
+}
+
 /** Remember /home even if afterEach has not run yet (HMR / first paint). */
 export function seedLockFromWindow() {
   try {
     const path = window.location.pathname.replace(/\/+$/, "") || "/";
     if (path === "/" || path === "/home") {
+      // Logged-in leftover session must not pin /home — that fights the in-app redirect and whitescreens.
+      const token =
+        sessionStorage.getItem("authorization") || localStorage.getItem("authorization") || "";
+      if (token && token !== "null" && token !== "undefined") return;
       writeLockedRoute(`${path === "/" ? "/home" : path}${window.location.search || ""}`);
     }
   } catch {

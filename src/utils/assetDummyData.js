@@ -5,12 +5,73 @@ export const ASSET_TYPE_FILTERS = [
   { key: "server", label: "Server", assetType: "server" },
 ];
 
+function slugAssetType(value) {
+  return String(value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[\s-]+/g, "_");
+}
+
 export function normalizeAssetType(value) {
-  const type = String(value || "other").toLowerCase().trim();
-  if (type === "web_app" || type === "webapp" || type === "web-app") return "web_app";
-  if (type === "firewall") return "firewall";
-  if (type === "server") return "server";
+  const type = slugAssetType(value) || "other";
+  if (
+    [
+      "web_app",
+      "webapp",
+      "web",
+      "website",
+      "web_server",
+      "webserver",
+      "web_application",
+      "webapplication",
+      "url",
+      "http",
+      "https",
+      "application",
+    ].includes(type)
+  ) {
+    return "web_app";
+  }
+  if (["firewall", "fw", "waf"].includes(type)) return "firewall";
+  if (["server", "os", "host", "machine"].includes(type)) return "server";
   return "other";
+}
+
+function readRawApiAssetType(asset) {
+  const nested = asset?.host_information || {};
+  const candidates = [
+    asset?.asset_type,
+    asset?.assetType,
+    asset?.type,
+    asset?.target_type,
+    asset?.targetType,
+    asset?.category,
+    asset?.asset_category,
+    asset?.host_type,
+    asset?.hostType,
+    asset?.scan_target_type,
+    asset?.kind,
+    nested.asset_type,
+    nested.type,
+    nested.target_type,
+    nested.category,
+  ];
+  for (const value of candidates) {
+    if (value == null) continue;
+    if (Array.isArray(value)) {
+      const first = value.map((item) => String(item || "").trim()).find(Boolean);
+      if (!first) continue;
+      const slug = slugAssetType(first);
+      if (["host", "ip", "ipv4", "ipv6", "open", "closed", "asset", "node"].includes(slug)) continue;
+      return first;
+    }
+    const text = String(value).trim();
+    if (!text) continue;
+    const slug = slugAssetType(text);
+    if (["host", "ip", "ipv4", "ipv6", "open", "closed", "asset", "node"].includes(slug)) continue;
+    return text;
+  }
+  return "";
 }
 
 export function assetTypeFromFilterKey(filterKey) {
@@ -28,7 +89,7 @@ export function uiTypeFromAssetType(assetType) {
 
 export function filterAssetsByType(assets, filterKey) {
   const wanted = assetTypeFromFilterKey(filterKey);
-  return (assets || []).filter((asset) => normalizeAssetType(asset?.asset_type) === wanted);
+  return (assets || []).filter((asset) => resolveAssetType(asset) === wanted);
 }
 
 export function extractAssetRows(payload) {
@@ -79,17 +140,34 @@ function looksLikeFirewallHost(name) {
 
 export function inferAssetType(asset) {
   const name = getAssetHostName(asset);
+  const info = asset?.host_information || {};
+  const hints = [
+    getAssetOs(asset),
+    info.product,
+    info.service,
+    info["system-type"],
+    info.system_type,
+    asset?.plugin_name,
+    asset?.top_vulnerability,
+  ]
+    .join(" ")
+    .toLowerCase();
+  if (looksLikeWebAppHost(name) || /iis|apache|nginx|tomcat|http server|web server/.test(hints)) {
+    return "web_app";
+  }
+  if (looksLikeFirewallHost(name) || /firewall|fortigate|palo alto/.test(hints)) return "firewall";
   if (getAssetOs(asset)) return "server";
-  if (looksLikeFirewallHost(name)) return "firewall";
-  if (looksLikeWebAppHost(name)) return "web_app";
   return "other";
 }
 
 export function resolveAssetType(asset) {
-  const raw = asset?.asset_type;
-  if (raw != null && String(raw).trim() !== "") {
+  const raw = readRawApiAssetType(asset);
+  if (raw) {
     const normalized = normalizeAssetType(raw);
     if (normalized !== "other") return normalized;
+    const slug = slugAssetType(raw);
+    if (["internal", "external"].includes(slug)) return inferAssetType(asset);
+    return "other";
   }
   return inferAssetType(asset);
 }
@@ -115,4 +193,54 @@ export function getAssetResolvedIp(asset) {
     info["Host IP"] ||
     ""
   );
+}
+
+export function assetMatchesQueryHost(asset, host) {
+  const target = String(host || "").trim().toLowerCase();
+  if (!target) return false;
+  return [getAssetHostName(asset), getAssetResolvedIp(asset), asset?.asset, asset?.ip, asset?.host]
+    .some((value) => String(value || "").trim().toLowerCase() === target);
+}
+
+export function findAssetByQueryHost(assets, host) {
+  return (assets || []).find((asset) => assetMatchesQueryHost(asset, host)) || null;
+}
+
+export function tabKeyForAsset(asset) {
+  return uiTypeFromAssetType(resolveAssetType(asset));
+}
+
+function inferAssetTypeFromVulnText(text) {
+  const value = String(text || "").toLowerCase();
+  if (
+    /iis|internet information services|apache|nginx|tomcat|http server|web server|wordpress|drupal|jquery/.test(
+      value,
+    )
+  ) {
+    return "web_app";
+  }
+  if (/firewall|fortigate|palo alto|cisco asa|checkpoint|pfsense/.test(value)) return "firewall";
+  return "";
+}
+
+/** When user assets API omits asset_type, use register vuln names (same report as admin). */
+export function enrichAssetsWithVulnTypes(assets, registerRows) {
+  const namesByHost = {};
+  (registerRows || []).forEach((row) => {
+    const host = String(row.asset || row.host_name || row.host || "")
+      .trim()
+      .toLowerCase();
+    const name = row.vul_name || row.plugin_name || row.vulnerability_name || "";
+    if (!host || !name) return;
+    (namesByHost[host] ||= []).push(name);
+  });
+  return (assets || []).map((asset) => {
+    const current = resolveAssetType(asset);
+    if (current !== "other") return { ...asset, asset_type: current };
+    const host = String(getAssetHostName(asset) || "")
+      .trim()
+      .toLowerCase();
+    const inferred = inferAssetTypeFromVulnText((namesByHost[host] || []).join(" "));
+    return { ...asset, asset_type: inferred || current };
+  });
 }

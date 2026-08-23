@@ -63,6 +63,7 @@
                       @click="setAssetTypeFilter(filter.key)"
                     >
                       {{ filter.label }}
+                      <span class="asset-type-filter-count">{{ assetTypeTabCount(filter.key) }}</span>
                     </button>
                   </div>
                   <div class="d-flex gap-3 mb-3">
@@ -622,8 +623,11 @@ import {
 import {
   ASSET_TYPE_FILTERS,
   filterAssetsByType,
+  findAssetByQueryHost,
   getAssetOs,
   getAssetResolvedIp,
+  assetMatchesQueryHost,
+  tabKeyForAsset,
   uiTypeFromAssetType,
 } from "@/utils/assetDummyData";
 
@@ -903,6 +907,7 @@ class TLSConfigurator:
       this.authStore.assetSearchCount = 0;
       this.clearAssetSelection();
       this.$nextTick(() => {
+        if (this.$route.query?.asset) return;
         if (this.pagedAssets.length) {
           this.setActive(this.pagedAssets[0]);
         }
@@ -1104,6 +1109,7 @@ class TLSConfigurator:
       await this.authStore.fetchAssets(true);
       await this.loadHeldAssets();
       this.resetPaginationIfNeeded();
+      if (this.$route.query?.asset) return;
       if (!this.activeIndex || !this.authStore.assetRows.some(a => a.asset === this.activeIndex)) {
         this.activeIndex = null;
         if (this.pagedAssets.length) {
@@ -1242,6 +1248,9 @@ class TLSConfigurator:
     setAssetTypeFilter(type) {
       if (this.assetTypeFilter === type) return;
       this.assetTypeFilter = type;
+    },
+    assetTypeTabCount(type) {
+      return filterAssetsByType(this.authStore.assetRows || [], type).length;
     },
     clearAssetSelection() {
       this.assetFetchSeq += 1;
@@ -1685,7 +1694,7 @@ class TLSConfigurator:
     findAssetPage(assetIp) {
       const sorted = this.getFilteredSortedAssets();
       const idx = sorted.findIndex(
-        a => String(a.asset || '').trim() === String(assetIp || '').trim(),
+        a => assetMatchesQueryHost(a, assetIp) || String(a.asset || '').trim() === String(assetIp || '').trim(),
       );
       if (idx < 0) return null;
       return Math.floor(idx / this.pageSize) + 1;
@@ -1743,25 +1752,28 @@ class TLSConfigurator:
       this.activeTab = q.tab === 'exceptions' ? 'exceptions' : 'vulnerabilities';
 
       if (assetIp) {
-        const page = this.findAssetPage(assetIp);
+        const assetRow = findAssetByQueryHost(this.authStore.assetRows || [], assetIp);
+        if (!assetRow) return;
+
+        const tab = tabKeyForAsset(assetRow);
+        if (this.assetTypeFilter !== tab) {
+          this.assetTypeFilter = tab;
+          await this.$nextTick();
+        }
+
+        const page = this.findAssetPage(assetIp) || this.findAssetPage(assetRow.asset);
         if (page) this.currentPage = page;
 
-        const assetRow = this.getFilteredSortedAssets().find(
-          a => String(a.asset || '').trim() === String(assetIp).trim(),
-        );
-
-        if (assetRow) {
-          await this.setActive(assetRow);
-          await this.$nextTick();
-          if (pluginName || vulnId) {
-            this.expandVulnFromQuery(pluginName, vulnId);
-          }
-          if (q.fix_tab === 'manual' || q.fix_tab === 'auto') {
-            if (q.fix_tab === 'manual') {
-              this.setVulnDetailTab('manual');
-            } else {
-              this.currentVulnTab = q.fix_tab;
-            }
+        await this.setActive(assetRow);
+        await this.$nextTick();
+        if (pluginName || vulnId) {
+          this.expandVulnFromQuery(pluginName, vulnId);
+        }
+        if (q.fix_tab === 'manual' || q.fix_tab === 'auto') {
+          if (q.fix_tab === 'manual') {
+            this.setVulnDetailTab('manual');
+          } else {
+            this.currentVulnTab = q.fix_tab;
           }
         }
       }
@@ -1945,6 +1957,15 @@ class TLSConfigurator:
   border-radius: 20px;
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.asset-type-filter-count {
+  font-size: 0.62rem;
+  font-weight: 700;
+  opacity: 0.85;
 }
 
 .asset-type-filter-btn:hover {

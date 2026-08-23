@@ -702,7 +702,7 @@ export default {
     }
 
     Swal.fire({
-      icon: platformSync.status === false ? "warning" : "success",
+      icon: "success",
       title: "User Added",
       text: successText,
       timer: 2500,

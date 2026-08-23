@@ -779,6 +779,9 @@ import { useAuthStore } from "@/stores/authStore";
 import {
   ASSET_TYPE_FILTERS,
   filterAssetsByType,
+  findAssetByQueryHost,
+  tabKeyForAsset,
+  assetMatchesQueryHost,
   uiTypeFromAssetType,
 } from "@/utils/assetDummyData";
 import { filterSupportRequestsByVuln, mapSupportRequestsByStep } from "@/utils/supportRequests";
@@ -1262,6 +1265,7 @@ class TLSConfigurator:
       this.currentPage = 1;
       this.clearAssetSelection();
       this.$nextTick(() => {
+        if (this.$route.query?.asset) return;
         if (this.pagedAssets.length) this.setActive(this.pagedAssets[0]);
       });
     },
@@ -1269,6 +1273,7 @@ class TLSConfigurator:
       return filterAssetsByType(this.assets, type).length;
     },
     selectFirstNonEmptyAssetTab() {
+      if (this.$route.query?.asset) return;
       if (this.filteredAssets.length || !this.assets.length) return;
       const firstWithItems = this.assetTypeFilters.find(
         (filter) => filterAssetsByType(this.assets, filter.key).length,
@@ -1367,16 +1372,15 @@ class TLSConfigurator:
       this.loading = true;
       const result = await this.authStore.fetchUserAssets(force);
       await this.authStore.fetchUserVulnerabilityRegister(force);
+      this.authStore.applyUserAssetTypeHints();
       if (result.status) {
-        this.assets = result.data;
+        this.assets = this.authStore.cachedUserAssets;
         this.selectFirstNonEmptyAssetTab();
         this.syncTotalAssets();
-        if (this.filteredAssets.length > 0) {
-          if (this.$route.query?.asset || this.$route.query?.plugin_name) {
-            await this.applyRouteQueryContext();
-          } else {
-            await this.setActive(this.filteredAssets[0]);
-          }
+        if (this.$route.query?.asset || this.$route.query?.plugin_name) {
+          await this.applyRouteQueryContext();
+        } else if (this.filteredAssets.length > 0) {
+          await this.setActive(this.filteredAssets[0]);
         } else {
           this.activeIndex = null;
         }
@@ -1386,15 +1390,15 @@ class TLSConfigurator:
     async reloadAssetsAndHeld() {
       this.loading = true;
       const result = await this.authStore.fetchUserAssets(true);
+      await this.authStore.fetchUserVulnerabilityRegister(true);
+      this.authStore.applyUserAssetTypeHints();
       if (result.status) {
-        this.assets = result.data;
+        this.assets = this.authStore.cachedUserAssets;
         this.selectFirstNonEmptyAssetTab();
-        if (this.filteredAssets.length > 0) {
-          if (this.$route.query?.asset || this.$route.query?.plugin_name) {
-            await this.applyRouteQueryContext();
-          } else {
-            await this.setActive(this.filteredAssets[0]);
-          }
+        if (this.$route.query?.asset || this.$route.query?.plugin_name) {
+          await this.applyRouteQueryContext();
+        } else if (this.filteredAssets.length > 0) {
+          await this.setActive(this.filteredAssets[0]);
         } else {
           this.activeIndex = null;
         }
@@ -1710,7 +1714,7 @@ class TLSConfigurator:
     },
     findAssetPage(assetIp) {
       const idx = this.filteredAssets.findIndex(
-        a => String(a.asset || '').trim() === String(assetIp || '').trim(),
+        a => assetMatchesQueryHost(a, assetIp) || String(a.asset || '').trim() === String(assetIp || '').trim(),
       );
       if (idx < 0) return null;
       return Math.floor(idx / this.pageSize) + 1;
@@ -1750,19 +1754,23 @@ class TLSConfigurator:
       this.activeTab = q.tab === 'exceptions' ? 'exceptions' : 'vulnerabilities';
 
       if (assetIp) {
-        const page = this.findAssetPage(assetIp);
+        const assetRow = findAssetByQueryHost(this.assets, assetIp);
+        if (!assetRow) return;
+
+        const tab = tabKeyForAsset(assetRow);
+        if (this.assetTypeFilter !== tab) {
+          this.assetTypeFilter = tab;
+          this.currentPage = 1;
+          await this.$nextTick();
+        }
+
+        const page = this.findAssetPage(assetIp) || this.findAssetPage(assetRow.asset);
         if (page) this.currentPage = page;
 
-        const assetRow = this.assets.find(
-          a => String(a.asset || '').trim() === String(assetIp).trim(),
-        );
-
-        if (assetRow) {
-          await this.setActive(assetRow);
-          await this.$nextTick();
-          if (pluginName || vulnId) {
-            this.expandVulnFromQuery(pluginName, vulnId);
-          }
+        await this.setActive(assetRow);
+        await this.$nextTick();
+        if (pluginName || vulnId) {
+          this.expandVulnFromQuery(pluginName, vulnId);
         }
       }
     },

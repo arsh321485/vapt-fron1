@@ -14,6 +14,7 @@ import {
   extractAssetRows,
   getAssetHostName,
   resolveAssetType,
+  enrichAssetsWithVulnTypes,
 } from "@/utils/assetDummyData";
 import { isClaimInviteFlow, clearClaimInvite } from "@/utils/claimInvite";
 import { clearLockedRoute } from "@/utils/routeLock";
@@ -3880,8 +3881,16 @@ export const useAuthStore = defineStore("auth", {
     },
 
     // 🔹 USER ASSETS
+    applyUserAssetTypeHints() {
+      this.cachedUserAssets = enrichAssetsWithVulnTypes(
+        this.cachedUserAssets,
+        this.cachedUserVulnRegister,
+      );
+    },
+
     async fetchUserAssets(force = false) {
       if (!force && this.cachedUserAssets.length > 0) {
+        this.applyUserAssetTypeHints();
         return { status: true, data: this.cachedUserAssets, total: this.cachedUserAssetTotal };
       }
       try {
@@ -3908,7 +3917,8 @@ export const useAuthStore = defineStore("auth", {
         const total = payload.total_assets ?? normalized.length;
         this.cachedUserAssets = normalized;
         this.cachedUserAssetTotal = total;
-        return { status: true, data: normalized, total };
+        this.applyUserAssetTypeHints();
+        return { status: true, data: this.cachedUserAssets, total };
       } catch (error: any) {
         return {
           status: false,
@@ -4209,6 +4219,7 @@ export const useAuthStore = defineStore("auth", {
         this.userLatestReportId = res.data?.report_id || null;
         this.cachedUserVulnRegister = Array.isArray(rows) ? rows : [];
         this.userVulnRegisterFetched = true;
+        this.applyUserAssetTypeHints();
         return { status: true, data: this.cachedUserVulnRegister };
       } catch (error: any) {
         return {
@@ -7163,53 +7174,45 @@ export const useAuthStore = defineStore("auth", {
 
     /** Route after login / onboarding actions based on report-status.state */
     async getAdminOnboardingRoute(): Promise<string> {
+      this.initCompletedSteps();
+
       if (isClaimInviteFlow()) {
         // Super-admin already uploaded the report. Skip upload and payment.
-        // Keep the invite until dashboard is actually ready so later gates do not bounce to upload.
         const res = await this.getReportStatus();
-        if (this._isOnboardingComplete(res) || (res.hasReport && res.hasRiskCriteria)) {
+        if (this._isOnboardingComplete(res)) {
           clearClaimInvite();
           this._markOnboardingComplete();
           return "/admindashboardonboarding";
         }
-        if (!this.isSlackOrTeamsLogin()) {
-          this.initCompletedSteps();
-          if (!this.completedSteps.includes(1)) {
-            return "/communication";
-          }
+        if (!this.completedSteps.includes(1)) {
+          return "/communication";
         }
         return "/riskcriteria";
       }
 
-      // Scope/report can exist before checkout. Do not send unpaid admins to add-users.
       if (!(await this.hasPaidPlan())) {
         return "/admin-upload-report";
       }
 
       const res = await this.getReportStatus();
-      const state = res.state || "no_report";
 
-      if (this._isOnboardingComplete(res) || state === "ready" || (res.hasReport && res.hasRiskCriteria)) {
+      // Report + risk criteria already done → dashboard on every later login.
+      if (this._isOnboardingComplete(res)) {
         this._markOnboardingComplete();
         return "/admindashboardonboarding";
       }
 
-      if (state === "needs_risk_criteria") {
-        // Email login: communication (add users) → risk criteria
-        // Slack/Teams login: risk criteria (unchanged)
-        if (!this.isSlackOrTeamsLogin()) {
-          this.initCompletedSteps();
-          if (!this.completedSteps.includes(1)) {
-            return "/communication";
-          }
+      if (res.state === "needs_risk_criteria" || res.hasReport) {
+        if (res.hasRiskCriteria) {
+          this._markOnboardingComplete();
+          return "/admindashboardonboarding";
+        }
+        if (!this.isSlackOrTeamsLogin() && !this.completedSteps.includes(1)) {
+          return "/communication";
         }
         return "/riskcriteria";
       }
 
-      // Slack/Teams (or another tab) may have ingested a report already
-      if (res.hasReport) return "/admindashboardonboarding";
-
-      // Admin must upload first report before waiting/processing screens
       return "/admin-upload-report";
     },
 

@@ -86,6 +86,7 @@ import {
 import {
   clearExternalDeepLink,
   isAuthDeepLink,
+  isPublicHomeLock,
   isRouteLockExempt,
   lockedLocation,
   markExternalDeepLink,
@@ -649,7 +650,10 @@ router.beforeEach(async (to, from, next) => {
   if (isAddressBarEntry && !isRouteLockExempt(to) && !isAuthDeepLink(to)) {
     const locked = readLockedRoute();
     if (locked && !sameLockedRoute(locked, to.fullPath)) {
-      return next(lockedLocation(locked));
+      // Logged-in /home → dashboard must not be bounced back to public /home (white-screen loop).
+      if (!(hasAuthSession() && isPublicHomeLock(locked))) {
+        return next(lockedLocation(locked));
+      }
     }
     // No lock yet (or HMR missed afterEach) — never open inner pages from the address bar.
     if (!locked && to.meta.requiresAuth && to.path !== "/home") {
