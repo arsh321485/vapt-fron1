@@ -1092,7 +1092,6 @@ export default {
       return this.subscription;
     },
     goToPricing(planId = '', assetCount = 0, uploadDone = false) {
-      if (!planId) return;
       const authStore = useAuthStore();
       const nextAfterPay = authStore.isSlackOrTeamsLogin() ? '/riskcriteria' : '/communication';
       const count = Number(assetCount)
@@ -1102,7 +1101,8 @@ export default {
         || 0;
       const returnTo = uploadDone ? nextAfterPay : `${UPLOAD_RETURN_PATH}?resume=1`;
       setBillingReturnTo(returnTo);
-      const query = { returnTo, plan: planId };
+      const query = { returnTo };
+      if (planId) query.plan = planId;
       if (count) query.assets = String(count);
       this.$router.push({ path: '/pricingplan', query });
     },
@@ -2025,6 +2025,13 @@ export default {
     async resumeUnpaidScopePayment() {
       if (this.isReplacingUpload) return false;
       if (isClaimInviteFlow() || readClaimInviteToken()) {
+        const authStore = useAuthStore();
+        const route = await authStore.getAdminOnboardingRoute();
+        if (route && route !== '/admin-upload-report') {
+          this.redirecting = true;
+          await this.$router.replace(route);
+          return true;
+        }
         this.redirecting = true;
         await this.$router.replace('/communication');
         return true;

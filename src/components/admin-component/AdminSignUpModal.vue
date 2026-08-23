@@ -228,6 +228,7 @@ import teamsIcon from '@/assets/images/teams.png';
 import slackIcon from '@/assets/images/slack.png';
 import {
   extractClaimInviteToken,
+  getClaimInviteSignupRedirect,
   readClaimInviteToken,
   setClaimInviteValid,
   storeClaimInviteToken,
@@ -370,14 +371,14 @@ export default {
       const authStore = useAuthStore();
       if (readClaimInviteToken()) {
         setClaimInviteValid(true);
-        this.$router.push('/communication');
-        return;
       }
+      let path = getClaimInviteSignupRedirect(authStore.isSlackOrTeamsLogin());
       try {
-        this.$router.push(await authStore.getAdminOnboardingRoute());
+        path = await authStore.getAdminOnboardingRoute();
       } catch {
-        this.$router.push('/admin-upload-report');
+        /* keep invite-aware fallback */
       }
+      this.$router.push(path);
     },
     resetForm() {
       this.form = { email: '', password: '', confirm_password: '' };

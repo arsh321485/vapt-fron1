@@ -51,6 +51,7 @@ export function clearExternalDeepLink() {
   }
 }
 
+
 /** OAuth / email / payment returns must still work from a typed or new-tab URL. */
 export function isRouteLockExempt(to: { path?: string; query?: Record<string, unknown> }): boolean {
   const path = pathOf(to);

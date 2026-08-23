@@ -90,10 +90,10 @@ export function clearClaimInvite() {
 }
 
 /**
- * Magic-link signup: report is already assigned — skip upload and payment.
- * Always land on Add Users first.
+ * After magic-link signup the report is already assigned — skip upload/payment.
+ * Email: add users, then risk criteria. Slack/Teams: skip add-users.
  */
-export function getClaimInviteSignupRedirect(_isSlackOrTeams = false): string {
-  if (!hasClaimInviteToken()) return "/admin-upload-report";
-  return "/communication";
+export function getClaimInviteSignupRedirect(isSlackOrTeams = false): string {
+  if (!isClaimInviteFlow() && !hasClaimInviteToken()) return "/admin-upload-report";
+  return isSlackOrTeams ? "/riskcriteria" : "/communication";
 }
