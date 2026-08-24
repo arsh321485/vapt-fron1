@@ -1065,11 +1065,9 @@ export default {
           icon: 'success',
           title: 'Freemium started',
           text: 'Trial is active',
-          timer: 1800,
-          showConfirmButton: false,
+          confirmButtonColor: '#241447',
         });
-        const dest = consumeBillingReturnTo('/communication');
-        this.$router.push(dest);
+        this.goAfterBilling();
       } catch (error) {
         const message = billingErrorMessage(error);
         if (isBillingAuthError(error)) {

@@ -19,6 +19,7 @@ export function isFreemiumPlan(planOrSubscription) {
   return plan === "freemium" || plan.includes("freemium");
 }
 
+
 export function planAssetLimit(planOrSubscription) {
   const plan = String(
     typeof planOrSubscription === "string"

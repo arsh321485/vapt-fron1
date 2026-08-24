@@ -19,3 +19,4 @@ export function getAssetResolvedIp(asset: unknown): string;
 export function assetMatchesQueryHost(asset: unknown, host: unknown): boolean;
 export function findAssetByQueryHost(assets: unknown, host: unknown): unknown;
 export function tabKeyForAsset(asset: unknown): string;
+export function enrichAssetsWithVulnTypes(assets: unknown, registerRows: unknown): unknown[];

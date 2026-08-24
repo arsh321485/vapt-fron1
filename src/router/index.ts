@@ -97,7 +97,7 @@ import {
 } from "../utils/routeLock";
 import { extractClaimInviteToken, isClaimInviteFlow, storeClaimInviteToken } from "../utils/claimInvite";
 import { useAuthStore } from "../stores/authStore";
-import { hasAuthSession } from "../utils/authenticatedHome";
+import { getAuthenticatedAppHome, hasAuthSession } from "../utils/authenticatedHome";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -631,6 +631,14 @@ router.beforeEach(async (to, from, next) => {
       query: { ...to.query, invite: inviteToken },
       replace: true,
     });
+  }
+
+  // Logged-in users stay inside the app. Public /home only after logout.
+  if (to.path === "/home" && !isRouteLockExempt(to) && hasAuthSession()) {
+    const appHome = getAuthenticatedAppHome();
+    if (appHome !== "/home") {
+      return next({ path: appHome, replace: true });
+    }
   }
 
   // Public marketing pages must always render (Chrome leftover login used to

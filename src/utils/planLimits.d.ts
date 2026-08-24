@@ -16,8 +16,21 @@ export function parsePlanHintFromMessage(text: unknown): {
   suggested: string;
 };
 export function plansThatCoverCount(count: unknown): string[];
+
+export interface LocalPremiumEstimate {
+  plan: string;
+  asset_count: number;
+  over_ceiling?: boolean;
+  message?: string;
+  currency: string;
+  amount_due: string;
+  mode?: string;
+  billing_cycle?: string;
+  price_per_ip?: string;
+}
+
 export function localPremiumEstimate(
   assetCount: unknown,
   mode?: unknown,
   billingCycle?: unknown,
-): Record<string, unknown> | null;
+): LocalPremiumEstimate | null;
