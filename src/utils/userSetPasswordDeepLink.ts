@@ -52,9 +52,11 @@ export type StoredSetPasswordDeepLink = {
 
 /** True when URL should open User Sign In → Set Password tab. */
 export function isUserSetPasswordDeepLink(query: RouteQuery = {}): boolean {
+  const signin = pickQueryValue(query.signin);
+  if (signin === 'admin') return false;
+
   const tabVal = pickQueryValue(query.tab);
   const tabRaw = tabVal.toLowerCase();
-  const signin = pickQueryValue(query.signin);
   if (signin === 'user' && (tabRaw === 'set-password' || tabVal === 'setPassword')) {
     return true;
   }
@@ -77,6 +79,144 @@ export function isUserSetPasswordDeepLink(query: RouteQuery = {}): boolean {
 
   const { token, uidb64 } = extractSetPasswordParams(query);
   return !!(token && uidb64);
+}
+
+/** Canonical admin set-password URL: /home?signin=admin&tab=setPassword&uidb64=...&token=... */
+export function buildAdminSetPasswordHomeQuery(
+  uidb64: string,
+  token: string,
+  email = '',
+): Record<string, string> {
+  const query: Record<string, string> = {
+    signin: 'admin',
+    tab: 'setPassword',
+    uidb64,
+    token,
+  };
+  if (email) query.email = email;
+  return query;
+}
+
+export function isAdminSetPasswordDeepLink(query: RouteQuery = {}): boolean {
+  const signin = pickQueryValue(query.signin);
+  const tabVal = pickQueryValue(query.tab);
+  const tabRaw = tabVal.toLowerCase();
+  return signin === 'admin' && (tabRaw === 'set-password' || tabVal === 'setPassword');
+}
+
+export function isAdminSetPasswordPath(path: string): boolean {
+  const p = String(path || '').toLowerCase();
+  return p.startsWith('/set-password/') || p.startsWith('/reset-password/');
+}
+
+/** Tokens from /set-password/:uid/:token, /reset-password/:uid/:token, or home query. */
+export function extractAdminSetPasswordFromRoute(route: {
+  path?: string;
+  params?: Record<string, unknown>;
+  query?: RouteQuery;
+}): StoredSetPasswordDeepLink | null {
+  const path = String(route?.path || '');
+  const query = route?.query || {};
+  const email = pickQueryValue(query.email);
+  const paramUid = String(route?.params?.uidb64 ?? '').trim();
+  const paramToken = String(route?.params?.token ?? '').trim();
+
+  if (isAdminSetPasswordPath(path) && paramUid && paramToken) {
+    return { uidb64: paramUid, token: paramToken, email };
+  }
+
+  if (isAdminSetPasswordDeepLink(query)) {
+    const fromQuery = extractSetPasswordParams(query);
+    if (fromQuery.uidb64 && fromQuery.token) {
+      return { uidb64: fromQuery.uidb64, token: fromQuery.token, email: fromQuery.email || email };
+    }
+  }
+
+  return null;
+}
+
+const ADMIN_SET_PASSWORD_STORAGE_KEY = 'vaptfix_admin_set_password_deeplink';
+
+export function storeAdminSetPasswordDeepLink(payload: StoredSetPasswordDeepLink) {
+  try {
+    sessionStorage.setItem(ADMIN_SET_PASSWORD_STORAGE_KEY, JSON.stringify(payload));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function readStoredAdminSetPasswordDeepLink(): StoredSetPasswordDeepLink | null {
+  try {
+    const raw = sessionStorage.getItem(ADMIN_SET_PASSWORD_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StoredSetPasswordDeepLink;
+    if (!parsed?.uidb64 || !parsed?.token) return null;
+    return {
+      uidb64: String(parsed.uidb64).trim(),
+      token: String(parsed.token).trim(),
+      email: String(parsed.email || '').trim(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function clearStoredAdminSetPasswordDeepLink() {
+  try {
+    sessionStorage.removeItem(ADMIN_SET_PASSWORD_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function resolveAdminSetPasswordDeepLink(
+  query: RouteQuery = {},
+): StoredSetPasswordDeepLink | null {
+  if (!isAdminSetPasswordDeepLink(query)) return readStoredAdminSetPasswordDeepLink();
+  const fromQuery = extractSetPasswordParams(query);
+  if (fromQuery.uidb64 && fromQuery.token) return fromQuery;
+  return readStoredAdminSetPasswordDeepLink();
+}
+
+export function applyAdminSetPasswordModalState(
+  vm: {
+    signUpPreSelectedType: string;
+    signUpAdminInitialTab: string;
+    setPasswordUidb64: string;
+    setPasswordToken: string;
+    setPasswordEmail: string;
+    showSignUpModal: boolean;
+    $nextTick: (fn: () => void) => void;
+  },
+  query: RouteQuery,
+) {
+  const resolved = resolveAdminSetPasswordDeepLink(query);
+  if (resolved?.uidb64 && resolved?.token) {
+    storeAdminSetPasswordDeepLink(resolved);
+    vm.signUpPreSelectedType = 'admin';
+    vm.signUpAdminInitialTab = 'setPassword';
+    vm.setPasswordUidb64 = resolved.uidb64;
+    vm.setPasswordToken = resolved.token;
+    vm.setPasswordEmail = resolved.email;
+    vm.$nextTick(() => {
+      vm.showSignUpModal = true;
+    });
+    return true;
+  }
+
+  const signin = pickQueryValue(query.signin);
+  const tabVal = pickQueryValue(query.tab);
+  const tabRaw = tabVal.toLowerCase();
+  if (signin === 'admin' && (tabRaw === 'set-password' || tabVal === 'setPassword')) {
+    vm.signUpPreSelectedType = 'admin';
+    vm.signUpAdminInitialTab = 'setPassword';
+    vm.$nextTick(() => {
+      vm.showSignUpModal = true;
+    });
+    return true;
+  }
+
+  return false;
 }
 
 export function storeSetPasswordDeepLink(payload: StoredSetPasswordDeepLink) {

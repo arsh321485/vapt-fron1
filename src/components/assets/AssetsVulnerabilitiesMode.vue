@@ -284,18 +284,24 @@
                   :severity="v.severity"
                   :asset-ip="v.assets?.[0]"
                   :asset-index="panelVulnDemoIndex(v)"
+                  :automation-matched="resolveAutomationMatched(v)"
                 />
+                <span
+                  v-if="hasAutomationScript(v)"
+                  class="vuln-download-wrap"
+                  :title="automationDownloadLocked ? (authStore.automationPremiumMessage || 'Upgrade to Premium to download automation scripts') : 'Download fix'"
+                >
                 <button
                   type="button"
                   class="vuln-download-icon-btn"
-                  :class="{ 'vuln-download-icon-btn--disabled': isVulnAutomationNo(v, i) }"
-                  :disabled="isVulnAutomationNo(v, i)"
-                  :title="isVulnAutomationNo(v, i) ? 'Script not available — automation not possible' : 'Download fix'"
-                  :aria-label="isVulnAutomationNo(v, i) ? 'Script download not available' : 'Download fix'"
-                  @click.stop="!isVulnAutomationNo(v, i) && downloadAutomationScript()"
+                  :class="{ 'vuln-download-icon-btn--disabled': automationDownloadLocked }"
+                  :disabled="automationDownloadLocked"
+                  :aria-label="automationDownloadLocked ? 'Upgrade to Premium to download automation scripts' : 'Download fix'"
+                  @click.stop="downloadAutomationScript()"
                 >
                   <i class="bi bi-download"></i>
                 </button>
+                </span>
                 <i class="bi text-muted" :class="expandedVulnIndex === i ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
               </div>
             </div>
@@ -348,13 +354,15 @@
                   <!-- Affected Assets content hidden -->
 
                   <div v-if="currentVulnTab === 'auto'" class="av-auto-tab">
-                    <AutomationNotSafeBanner v-if="isVulnAutomationNo(v, i)" />
                     <AutomatedFixPanel
-                      v-else
                       :key="v._key + '-' + i + '-' + panelAssetKey"
                       :severity="v.severity"
+                      :vuln-name="v.vul_name"
                       :asset-ip="selectedPanelAsset || v.assets?.[0]"
                       :asset-index="panelVulnDemoIndex(v)"
+                      :is-user="isUser"
+                      :automation-data="getAutomationForVuln(v)"
+                      :match-loading="loadingAutomation"
                       :can-automate="canAutomate"
                       :must-manual="mustManual"
                       :recommended-text="recommendedText"
@@ -369,11 +377,11 @@
                       </div>
                       <ManualRemediationStepsPanel
                         :is-user="isUser"
-                        :key="v.vul_name + '-' + asset + '-' + panelAssetKey"
+                        :key="String(v.plugin_id || v.nessus_plugin_id || v.vulnerability_id || v.id || v.vul_name) + '-' + asset + '-' + panelAssetKey"
                         :vuln-name="v.vul_name"
                         :asset-ip="asset"
                         :severity="v.severity"
-                        :vuln-id="String(v.fix_vulnerability_id || v.id || '')"
+                        :vuln-id="String(v.plugin_id || v.nessus_plugin_id || v.vulnerability_id || v.id || '')"
                         :fix-id="String(v.fix_vulnerability_id || '')"
                         :asset-os="assetMetaFor(v, asset).os || ''"
                         @open-support-modal="$emit('open-support-modal', $event)"
@@ -564,19 +572,25 @@
                 class="vc-step-pill"
                 :class="[
                   vulnSrRaisedSteps.includes(n) ? 'vc-step-pill-raised' : '',
-                  vulnSrStep === n && !vulnSrRaisedSteps.includes(n) ? 'vc-step-pill-active' : ''
+                  vulnSrStep === n && !vulnSrRaisedSteps.includes(n) ? 'vc-step-pill-active' : '',
+                  vulnSrStep === n && vulnSrRaisedSteps.includes(n) ? 'vc-step-pill-raised-selected' : '',
                 ]"
-                :style="vulnSrRaisedSteps.includes(n) ? 'cursor:not-allowed;opacity:0.6;' : 'cursor:pointer;'"
-                :title="vulnSrRaisedSteps.includes(n) ? 'Support already raised for this step' : ''"
-                @click="!vulnSrRaisedSteps.includes(n) && (vulnSrStep = n)"
+                :title="vulnSrRaisedSteps.includes(n) ? 'Support already raised — click to view' : 'Select this step'"
+                @click="selectVulnSrStep(n)"
               >Step {{ n }}</span>
             </div>
           </div>
-          <p class="vc-modal-section-label mt-4 mb-2">Description <span class="text-danger">*</span></p>
-          <textarea v-model="vulnSrDescription" class="vc-textarea" rows="4" placeholder="Write your issue here..."></textarea>
-          <div v-if="vulnSrRaised" class="rt-support-raised-note mt-3">
+          <p class="vc-modal-section-label mt-4 mb-2">Description <span v-if="!vulnSrRaisedSteps.includes(vulnSrStep)" class="text-danger">*</span></p>
+          <textarea
+            v-model="vulnSrDescription"
+            class="vc-textarea"
+            rows="4"
+            :placeholder="vulnSrRaisedSteps.includes(vulnSrStep) ? 'Previously raised request' : 'Write your issue here...'"
+            :readonly="vulnSrRaisedSteps.includes(vulnSrStep)"
+          ></textarea>
+          <div v-if="vulnSrRaised && !vulnSrJustSubmitted" class="rt-support-raised-note mt-3">
             <i class="bi bi-check-circle-fill me-2" style="color:#0f696e;"></i>
-            Support request has been raised successfully.
+            Support request already raised for this step.
           </div>
         </div>
         <div class="modal-footer vc-modal-footer">
@@ -615,6 +629,17 @@ import FixAvailableIndicator from '@/components/assets/FixAvailableIndicator.vue
 import AutomationNotSafeBanner from '@/components/assets/AutomationNotSafeBanner.vue';
 import FixPanelHeaderAlerts from '@/components/assets/FixPanelHeaderAlerts.vue';
 import { isAutomationNotAvailable, matchesVulnStatusFilter } from '@/utils/assetVulnerabilities';
+import { filterSupportRequestsByVuln, mapSupportRequestsByStep } from '@/utils/supportRequests';
+import { resolveVulnPluginId as lookupVulnPluginId } from '@/utils/automationScriptDownload';
+import {
+  isNessusPluginId,
+  vulnMatchName,
+  vulnMatchNameKey,
+  matchAutomationScriptsForVulns,
+  mergeMatchResultsIntoMap,
+  getMatchedAutomation,
+  isPositiveAutomationMatch,
+} from '@/utils/automationScriptMatch';
 
 const DESC_LIMIT = 280;
 
@@ -652,6 +677,10 @@ export default {
       statusFilter: [],
       selectedKey: null,
       expandedVulnIndex: null,
+      automationScriptMap: {},
+      singleFetchedIds: [],
+      downloadingScript: false,
+      loadingAutomation: false,
       expandedVulnAssets: null,
       selectedPanelAsset: null,
       panelAssetKey: 0,
@@ -721,13 +750,18 @@ export default {
       vulnSrDescription: '',
       vulnSrSubmitting: false,
       vulnSrRaised: false,
+      vulnSrJustSubmitted: false,
       vulnSrRaisedSteps: [],
+      vulnSrRequestsByStep: {},
       vulnSrFixVulnId: null,
       codeCopied: false,
       automationCode: `import paramiko\nimport requests\nimport subprocess\nimport re\nfrom datetime import import datetime\n\nclass TLSConfigurator:\n    def __init__(self, host, username, password):\n        self.host = host\n        self.username = username\n        self.password = password\n        self.ssh_client = paramiko.SSHClient()\n        self.log = []\n\n    def connect(self):\n        """Establish SSH connection to target host"""\n        self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())\n        try:\n            self.ssh_client.connect(self.host, username=self.username, password=self.password)\n            self.log_action("SSH connection established")\n            return True\n        except Exception as e:\n            self.log_action(f"Connection failed: {str(e)}")\n            return False`,
     };
   },
   computed: {
+    automationDownloadLocked() {
+      return !!this.authStore.automationPremiumRequired;
+    },
     rawRows() {
       if (this.isUser) {
         return this.authStore.cachedUserVulnRegister || [];
@@ -762,6 +796,9 @@ export default {
             cve: row.cve || row.cve_id || '',
             exposure: row.exposure || '',
             first_observation: row.first_observation,
+            plugin_id: row.plugin_id || row.nessus_plugin_id || null,
+            nessus_plugin_id: row.nessus_plugin_id || row.plugin_id || null,
+            assigned_team: row.assigned_team || '',
             assets: asset ? [asset] : [],
             rows: [row],
             selected: false,
@@ -772,6 +809,11 @@ export default {
           g.rows.push(row);
           if (!g.description && row.description) g.description = row.description;
           if (!g.cve && (row.cve || row.cve_id)) g.cve = row.cve || row.cve_id;
+          if (!g.plugin_id && (row.plugin_id || row.nessus_plugin_id)) {
+            g.plugin_id = row.plugin_id || row.nessus_plugin_id;
+            g.nessus_plugin_id = row.nessus_plugin_id || row.plugin_id;
+          }
+          if (!g.assigned_team && row.assigned_team) g.assigned_team = row.assigned_team;
           if ((g.cvss_score == null || g.cvss_score === '') && (row.cvss_score ?? row.cvss)) {
             g.cvss_score = row.cvss_score ?? row.cvss;
           }
@@ -866,9 +908,13 @@ export default {
         this.selectVulnFromList(list[0]);
       }
     },
+    vulnSrAsset() {
+      this.loadVulnSrRequests();
+    },
   },
   async mounted() {
     await Promise.all([this.loadVulnerabilities(), this.loadHeldAssets()]);
+    await this.authStore.refreshAutomationPremiumLock(this.isUser);
   },
   methods: {
     getHeldPrioritySeverity(held) {
@@ -1077,6 +1123,7 @@ export default {
         await this.authStore.fetchVulnerabilityRegister(true);
       }
       this.loading = false;
+      await this.loadAutomationScripts();
       if (this.filteredVulns.length) {
         this.selectVulnFromList(this.filteredVulns[0]);
       }
@@ -1135,24 +1182,52 @@ export default {
       this.supportRequestCount = 0;
       this.$nextTick(() => this.scrollToAccordion(item._key));
     },
-    openVulnSupportModal() {
+    async openVulnSupportModal() {
       this.vulnSrStep = null;
       this.vulnSrAsset = this.selectedVuln?.assets?.length === 1 ? this.selectedVuln.assets[0] : '';
       this.vulnSrDescription = '';
       this.vulnSrRaised = false;
+      this.vulnSrJustSubmitted = false;
       this.vulnSrRaisedSteps = [];
+      this.vulnSrRequestsByStep = {};
       this.vulnSrFixVulnId = null;
       const modal = new bootstrap.Modal(document.getElementById('vulnSrModal'));
       modal.show();
+      await this.loadVulnSrRequests();
+    },
+    selectVulnSrStep(step) {
+      const n = Number(step);
+      this.vulnSrStep = n;
+      this.vulnSrJustSubmitted = false;
+      const existing = this.vulnSrRequestsByStep[n];
+      if (existing) {
+        this.vulnSrRaised = true;
+        this.vulnSrDescription = existing.description || existing.issue || '';
+      } else {
+        this.vulnSrRaised = false;
+        this.vulnSrDescription = '';
+      }
+    },
+    async loadVulnSrRequests() {
+      this.vulnSrRequestsByStep = {};
+      this.vulnSrRaisedSteps = [];
+      const host = this.vulnSrAsset || this.selectedVuln?.assets?.[0];
+      const vulnName = this.selectedVuln?.vul_name;
+      if (!host || !vulnName) return;
+      const res = this.isUser
+        ? await this.authStore.getUserSupportRequestsByHost(host)
+        : await this.authStore.getSupportRequestsByHost(host);
+      const matching = filterSupportRequestsByVuln(res.status ? res.data : [], vulnName);
+      this.vulnSrRequestsByStep = mapSupportRequestsByStep(matching);
+      this.vulnSrRaisedSteps = Object.keys(this.vulnSrRequestsByStep).map(Number);
     },
     prepareAnotherVulnSr() {
       const step = this.nextVulnSrStep;
       if (!step) return;
-      this.vulnSrStep = step;
-      this.vulnSrRaised = false;
-      this.vulnSrDescription = '';
+      this.selectVulnSrStep(step);
     },
     async submitVulnSr() {
+      if (this.vulnSrRaisedSteps.includes(this.vulnSrStep)) return;
       if (!this.vulnSrStep || !this.vulnSrDescription.trim()) return;
       const asset = this.vulnSrAsset || (this.selectedVuln?.assets?.[0] ?? '');
       if (!asset) { Swal.fire('Error', 'Asset not found', 'error'); return; }
@@ -1189,7 +1264,12 @@ export default {
       this.vulnSrSubmitting = false;
       if (res.status) {
         this.vulnSrRaisedSteps.push(this.vulnSrStep);
+        this.vulnSrRequestsByStep = {
+          ...this.vulnSrRequestsByStep,
+          [this.vulnSrStep]: { step_number: this.vulnSrStep, description: this.vulnSrDescription },
+        };
         this.vulnSrRaised = true;
+        this.vulnSrJustSubmitted = true;
         Swal.fire({ icon: 'success', title: 'Support Request Raised', timer: 2000, showConfirmButton: false });
       } else {
         Swal.fire('Error', res.message || 'Failed to raise support request', 'error');
@@ -1240,6 +1320,34 @@ export default {
       }
       if (isOpening && item) {
         this.$nextTick(() => this.scrollToAccordion(item._key));
+        const already = this.getAutomationForVuln(item);
+        if (already) return;
+        const id = this.resolveVulnPluginId(item);
+        if (isNessusPluginId(id) && !this.singleFetchedIds.includes(id)) {
+          this.singleFetchedIds = [...this.singleFetchedIds, id];
+          const fetchMatch = this.isUser
+            ? this.authStore.fetchAutomationScriptSingle(id)
+            : this.authStore.fetchAutomationScriptSingleAdmin(id);
+          fetchMatch.then((res) => {
+            if (res.status && res.data) {
+              this.automationScriptMap = mergeMatchResultsIntoMap(this.automationScriptMap, [res.data]);
+            }
+          });
+          return;
+        }
+        const name = vulnMatchName(item);
+        const nameKey = `name:${vulnMatchNameKey(item)}`;
+        if (name && !this.singleFetchedIds.includes(nameKey)) {
+          this.singleFetchedIds = [...this.singleFetchedIds, nameKey];
+          const fetchMatch = this.isUser
+            ? this.authStore.fetchAutomationScriptsByName([name])
+            : this.authStore.fetchAutomationScriptsByNameAdmin([name]);
+          fetchMatch.then((res) => {
+            if (res.status && Array.isArray(res.results)) {
+              this.automationScriptMap = mergeMatchResultsIntoMap(this.automationScriptMap, res.results);
+            }
+          });
+        }
       }
     },
     scrollToAccordion(refKey) {
@@ -1423,7 +1531,37 @@ export default {
         }, 2000);
       });
     },
+    resolveVulnPluginId(vuln) {
+      return lookupVulnPluginId(vuln, {
+        registerRows: this.rawRows || [],
+        automationScriptMap: this.automationScriptMap,
+      });
+    },
+    getAutomationForVuln(vuln) {
+      return getMatchedAutomation(vuln, this.automationScriptMap);
+    },
+    hasAutomationScript(vuln) {
+      return isPositiveAutomationMatch(this.getAutomationForVuln(vuln));
+    },
+    resolveAutomationMatched(vuln) {
+      const data = this.getAutomationForVuln(vuln);
+      if (!data) return null;
+      if (typeof data.matched === 'boolean') return data.matched;
+      return this.hasAutomationScript(vuln);
+    },
+    async loadAutomationScripts() {
+      const vulns = this.groupedVulns || [];
+      this.loadingAutomation = true;
+      const map = await matchAutomationScriptsForVulns({
+        authStore: this.authStore,
+        isUser: this.isUser,
+        vulns,
+      });
+      this.loadingAutomation = false;
+      this.automationScriptMap = map;
+    },
     downloadAutomationScript() {
+      if (this.automationDownloadLocked) return;
       const blob = new Blob([this.automationCode], { type: 'text/x-python' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -3237,7 +3375,9 @@ export default {
 .vc-modal-footer   { border-top: 1px solid #f1f5f9; padding: 14px 24px; display: flex; justify-content: flex-end; gap: 10px; }
 .vc-step-pill { display: inline-flex; align-items: center; justify-content: center; padding: 6px 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; color: #475569; background: #f1f5f9; border: 1.5px solid #e2e8f0; cursor: pointer; transition: all 0.15s; width: 100%; text-align: center; }
 .vc-step-pill-active { background: #e0f2f1; color: #0f696e; border-color: #0f696e; }
-.vc-step-pill-raised { background: #fff7ed; color: #c2410c; border-color: #fdba74; }
+.vc-step-pill-raised { background: #e2e8f0; color: #64748b; border-color: #cbd5e1; opacity: 0.85; }
+.vc-step-pill-raised-selected { background: #e2e8f0; color: #334155; border-color: #0f696e; opacity: 1; box-shadow: 0 0 0 2px rgba(15,105,110,0.2); }
+.vc-textarea[readonly] { background: #f1f5f9; color: #475569; cursor: default; }
 .vc-textarea { width: 100%; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; font-size: 0.875rem; color: #1e293b; background: #f8f9fc; outline: none; resize: vertical; font-family: inherit; }
 .vc-textarea:focus { box-shadow: 0 0 0 2px rgba(15,105,110,0.2); border-color: #0f696e; }
 .vc-btn-primary { background: #241447; color: white; border: none; border-radius: 8px; padding: 8px 18px; font-size: 0.875rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }

@@ -66,6 +66,28 @@
         ></script>
 
         <title>VaptFix</title>
+        <script>
+            (function () {
+                function dropBad(storage, key) {
+                    try {
+                        var raw = storage.getItem(key);
+                        if (!raw) return;
+                        JSON.parse(raw);
+                    } catch (e) {
+                        try {
+                            storage.removeItem(key);
+                        } catch (e2) {}
+                    }
+                }
+                try {
+                    dropBad(sessionStorage, "user");
+                    dropBad(sessionStorage, "authenticated");
+                    dropBad(localStorage, "user");
+                    dropBad(localStorage, "authenticated");
+                    dropBad(localStorage, "completedSteps");
+                } catch (e) {}
+            })();
+        </script>
     </head>
     <body data-bs-theme="light">
         <div id="app"></div>

@@ -111,6 +111,10 @@ export function extractCreatedFixVulnerabilityId(obj) {
   );
 }
 
+function recordHostKey(row) {
+  return String(row?.host_name || row?.asset || row?.host || row?.hostname || '').trim().toLowerCase();
+}
+
 /** Match a vuln to its register row for the given asset IP */
 export function lookupRegisterRow(registerRows, vuln, assetIp) {
   const key = vulnNameKey(vuln);
@@ -118,14 +122,42 @@ export function lookupRegisterRow(registerRows, vuln, assetIp) {
   if (!key || !ip) return null;
 
   const rows = (registerRows || []).filter(r => assetMatchesRegisterRow(r, assetIp));
-  const exact = rows.find(r => vulnNameKey(r) === key);
-  if (exact) return exact;
+  const fixId = extractFixVulnerabilityId(vuln);
+  if (fixId) {
+    const byFixId = rows.find(r => extractFixVulnerabilityId(r) === fixId);
+    if (byFixId) return byFixId;
+  }
+  return rows.find(r => vulnNameKey(r) === key) || null;
+}
 
-  // Fallback: partial name match for the same asset (handles minor label differences)
-  return rows.find(r => {
-    const rowKey = vulnNameKey(r);
-    return rowKey && (rowKey.includes(key) || key.includes(rowKey));
-  }) || null;
+export function closedRecordsForHost(closedFixVulns = [], host = '') {
+  const currentHost = String(host || '').trim().toLowerCase();
+  return (closedFixVulns || []).filter((fix) => {
+    if (!vulnNameKey(fix) && !extractFixVulnerabilityId(fix)) return false;
+    const fixHost = recordHostKey(fix);
+    if (currentHost && fixHost && fixHost !== currentHost) return false;
+    return true;
+  });
+}
+
+export function closedRecordMatchesVuln(fix, vuln) {
+  if (!fix || !vuln) return false;
+  const fixName = vulnNameKey(fix);
+  const vulnName = vulnNameKey(vuln);
+  if (fixName && vulnName) return fixName === vulnName;
+  const fixId = extractFixVulnerabilityId(fix);
+  const vulnId = extractFixVulnerabilityId(vuln);
+  return Boolean(fixId && vulnId && String(fixId) === String(vulnId));
+}
+
+export function isVulnClosedOnHost(vuln, closedFixVulns = [], host = '') {
+  const closedForHost = closedRecordsForHost(closedFixVulns, host);
+  const matched = closedForHost.some((fix) => closedRecordMatchesVuln(fix, vuln));
+  if (matched) return true;
+  // If this host already has specific closed records, do not trust a blanket
+  // "closed" status on a different plugin (same asset, different vuln).
+  if (closedForHost.length) return false;
+  return !isActiveVulnStatus(vuln?.status);
 }
 
 /** Resolve fix_vulnerability_id from register (never use row.id for step-complete API) */
@@ -155,13 +187,14 @@ export function enrichVulnsFromRegister(vulns, registerRows, assetIp) {
 
 export function matchesVulnStatusFilter(vuln, statusFilter) {
   if (!statusFilter?.length) return true;
+  const isGrouped = vuln?.open_count != null && (vuln.total_assets != null || Array.isArray(vuln.assets));
   return statusFilter.some(f => {
     if (f === 'open') {
-      if (vuln?.open_count != null) return Number(vuln.open_count) > 0;
+      if (isGrouped) return Number(vuln.open_count) > 0;
       return isActiveVulnStatus(vuln?.status);
     }
     if (f === 'closed') {
-      if (vuln?.open_count != null) return Number(vuln.open_count) === 0;
+      if (isGrouped) return Number(vuln.open_count) === 0;
       return !isActiveVulnStatus(vuln?.status);
     }
     return false;
@@ -272,28 +305,20 @@ export function normalizeHeldVulnerabilityAssetList(list, pluginName = '') {
 }
 
 /** Active vulns plus fixed-recently entries for Open/Closed status filters */
-export function mergeAssetThreatVulnerabilities(activeVulns, closedFixVulns = []) {
-  // Build set of names that are confirmed closed/fixed
-  const closedNames = new Set();
-  (closedFixVulns || []).forEach(fix => {
-    const key = vulnNameKey(fix);
-    if (key) closedNames.add(key);
-  });
+export function mergeAssetThreatVulnerabilities(activeVulns, closedFixVulns = [], host = '') {
+  const closedForHost = closedRecordsForHost(closedFixVulns, host);
+  const hostKey = String(host || '').toLowerCase();
 
-  // If an active vuln is also in closedFixVulns, mark it closed so it
-  // does not appear as open in Active Threats
-  const list = normalizeAssetVulnerabilityList(activeVulns).map(v => {
-    if (closedNames.has(vulnNameKey(v))) {
-      return { ...v, status: 'closed' };
-    }
-    return v;
-  });
+  const list = normalizeAssetVulnerabilityList(activeVulns).map((v) => ({
+    ...v,
+    status: isVulnClosedOnHost(v, closedForHost, host) ? 'closed' : 'open',
+  }));
 
-  const seen = new Set(list.map(vulnNameKey));
-  (closedFixVulns || []).forEach(fix => {
+  const seen = new Set(list.map((v) => `${recordHostKey(v) || hostKey}::${vulnNameKey(v)}`));
+  closedForHost.forEach((fix) => {
     const name = vulnDisplayName(fix);
-    const key = vulnNameKey(fix);
-    if (!key || seen.has(key)) return;
+    const key = `${recordHostKey(fix) || hostKey}::${vulnNameKey(fix)}`;
+    if (!vulnNameKey(fix) || seen.has(key)) return;
     seen.add(key);
     list.push(
       normalizeAssetVulnerability({
@@ -302,7 +327,7 @@ export function mergeAssetThreatVulnerabilities(activeVulns, closedFixVulns = []
         plugin_name: fix.plugin_name || name,
         vulnerability_name: fix.vulnerability_name || name,
         severity: fix.severity || fix.risk_factor || 'Medium',
-        status: fix.status || 'closed',
+        status: 'closed',
         description: fix.description || '',
       }),
     );
@@ -310,19 +335,8 @@ export function mergeAssetThreatVulnerabilities(activeVulns, closedFixVulns = []
   return list;
 }
 
-export function filterOpenAssetVulnerabilities(vulns, closedFixVulns = []) {
-  const closedNames = new Set();
-  (closedFixVulns || []).forEach(v => {
-    [v.plugin_name, v.vulnerability_name, v.vul_name].forEach(n => {
-      const key = String(n || '').trim().toLowerCase();
-      if (key) closedNames.add(key);
-    });
-  });
-
-  return normalizeAssetVulnerabilityList(vulns).filter(v => {
-    const key = vulnNameKey(v);
-    return isActiveVulnStatus(v.status) && (!key || !closedNames.has(key));
-  });
+export function filterOpenAssetVulnerabilities(vulns, closedFixVulns = [], host = '') {
+  return normalizeAssetVulnerabilityList(vulns).filter((v) => !isVulnClosedOnHost(v, closedFixVulns, host));
 }
 
 export function severityMatchesFilter(severity, activeFilters) {

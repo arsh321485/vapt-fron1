@@ -49,7 +49,15 @@ export default {
   methods: {
     isMemberFlow() {
       const params = new URLSearchParams(window.location.search);
-      return params.get("flow") === "member";
+      if (params.get("flow") === "member") return true;
+      try {
+        return (
+          sessionStorage.getItem("pending_member_flow") === "slack" ||
+          localStorage.getItem("pending_member_flow") === "slack"
+        );
+      } catch {
+        return false;
+      }
     },
     notifyOpener(payload) {
       if (window.opener) {
@@ -145,6 +153,7 @@ export default {
           local_user: localUser,
           bot_token: botToken,
           slack_user_id: validateRes?.data?.user?.id || "",
+          is_new_user: loginData.is_new_user === true,
           django_access_token:
             loginData.jwt_tokens?.access ||
             loginData.tokens?.access ||
