@@ -76,7 +76,7 @@ export default {
   name: 'Footer',
   computed: {
     appHomePath() {
-      return getAuthenticatedAppHome();
+      return getAuthenticatedAppHome(this.$route?.path || '/home');
     },
   },
 };

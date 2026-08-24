@@ -71,7 +71,12 @@ export function isRouteLockExempt(to: { path?: string; query?: Record<string, un
     if (value == null) return "";
     return String(Array.isArray(value) ? value[0] : value).trim();
   };
-  if (pick(query.invite) || pick(query.uidb64) || pick(query.token)) return true;
+  if (pick(query.invite) || pick(query.uidb64) || pick(query.token) || pick(query.admin_token)) return true;
+  try {
+    if (sessionStorage.getItem("vaptfix_handoff_nav") === path) return true;
+  } catch {
+    /* ignore */
+  }
   if (pick(query.signin) === "user" || pick(query.signin) === "admin") return true;
   return false;
 }

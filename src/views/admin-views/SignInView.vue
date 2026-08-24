@@ -157,6 +157,7 @@
 <script>
 import { useAuthStore } from '@/stores/authStore'
 import { markAdminSetPasswordEmailIfNew, markPostLoginSuccess } from '@/utils/postLoginSuccess'
+import { extractTeamsDeepLink, persistTeamsDeepLink } from '@/utils/teamsDeepLink'
 import Swal from 'sweetalert2'
 import teamsIcon from '@/assets/images/teams.png'
 import slackIcon from '@/assets/images/slack.png'
@@ -323,6 +324,7 @@ export default {
         if (event.data.django_access_token) localStorage.setItem('django_access_token', event.data.django_access_token)
         if (event.data.django_refresh_token) localStorage.setItem('django_refresh_token', event.data.django_refresh_token)
         if (event.data.user) localStorage.setItem('local_user', JSON.stringify(event.data.user))
+        persistTeamsDeepLink(extractTeamsDeepLink(event.data))
         localStorage.setItem('teams_connected', 'true')
         this.teamsConnected = true
         this.slackConnected = false

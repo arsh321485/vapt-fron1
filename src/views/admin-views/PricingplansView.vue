@@ -562,11 +562,16 @@ import {
 } from '@/services/billingApi';
 import {
   consumeBillingReturnTo,
+  isActiveSubscription,
+  isExistingSubscriptionMessage,
+  isFreemiumPlan,
   localPremiumEstimate,
   planDisplayName,
   setBillingReturnTo,
   UPLOAD_RETURN_PATH,
 } from '@/utils/planLimits';
+import { setCachedPaidPlan } from '@/utils/authenticatedHome';
+import { consumeHandoffError } from '@/utils/adminHandoff';
 import { peekPendingUploadMeta } from '@/utils/pendingUpload';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -836,6 +841,16 @@ export default {
     },
   },
   async mounted() {
+    const handoffError = consumeHandoffError();
+    if (handoffError) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'This link has expired',
+        text: handoffError,
+        confirmButtonText: 'OK',
+      });
+      return;
+    }
     const returnTo = this.$route.query.returnTo;
     if (typeof returnTo === 'string' && returnTo.startsWith('/')) {
       this.billingReturnTo = returnTo;
@@ -848,13 +863,14 @@ export default {
     }
     const requestedPlan = String(this.$route.query.plan || '').toLowerCase();
     const requestedAssets = Number(this.$route.query.assets) || 0;
+    const requestedMode = String(this.$route.query.mode || '').toLowerCase();
     if (requestedPlan === 'freemium' || requestedPlan === 'premium' || requestedPlan === 'custom') {
       this.autoSelectedPlan = requestedPlan;
       this.autoSelectedFromAssets = requestedAssets;
       if (requestedPlan === 'custom' && requestedAssets && !this.leadForm.assets) {
         this.leadForm.assets = String(requestedAssets);
       }
-      this.selectPlan(requestedPlan);
+      this.selectPlan(requestedPlan, { premiumMode: requestedMode });
     }
   },
   beforeUnmount() {
@@ -877,6 +893,14 @@ export default {
       try {
         const data = await getMySubscription();
         this.currentSubscription = data?.subscription || null;
+        if (isActiveSubscription(this.currentSubscription)) {
+          setCachedPaidPlan(true);
+        }
+        if (isFreemiumPlan(this.currentSubscription)) {
+          useAuthStore().lockAutomationScriptsForFreemium(
+            'Automation scripts are not available on the Freemium plan. Upgrade to Premium to download scripts.',
+          );
+        }
       } catch {
         this.currentSubscription = null;
       }
@@ -999,23 +1023,38 @@ export default {
       if (!method || method.comingSoon) return;
       this.paymentMethod = method.id;
     },
-    selectPlan(planId) {
+    freemiumContinuePath() {
+      return '/communication';
+    },
+    selectPlan(planId, options = {}) {
+      if (planId === 'freemium') {
+        this.selectedPlan = planId;
+        this.startFreemium();
+        return;
+      }
       this.selectedPlan = planId;
-      this.step = 'details';
       this.estimate = null;
       this.estimateError = '';
       this.needsReportUpload = false;
       this.checkoutError = '';
       this.paymentMethod = 'card';
       if (planId === 'premium') {
-        this.premiumMode = 'management';
+        const mode = String(options.premiumMode || '').toLowerCase();
+        this.premiumMode = (mode === 'testing' || mode === 'management_testing')
+          ? 'testing'
+          : 'management';
         this.billingCycle = 'annual';
       }
+      this.step = 'details';
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
     async goToPayment() {
       if (this.estimate?.over_ceiling) {
         this.selectPlan('custom');
+        return;
+      }
+      if (this.selectedPlan === 'freemium') {
+        await this.startFreemium();
         return;
       }
       if (this.needsScope || this.detailsContinueDisabled) return;
@@ -1061,21 +1100,35 @@ export default {
         useAuthStore().lockAutomationScriptsForFreemium(
           'Automation scripts are not available on the Freemium plan. Upgrade to Premium to download scripts.',
         );
+        setCachedPaidPlan(true);
         await Swal.fire({
           icon: 'success',
           title: 'Freemium started',
           text: 'Trial is active',
           confirmButtonColor: '#241447',
+          timer: 1800,
+          showConfirmButton: false,
         });
-        this.goAfterBilling();
+        if (this.comingFromUpload || this.billingReturnTo) {
+          this.goAfterBilling();
+        } else {
+          this.$router.push(this.freemiumContinuePath());
+        }
       } catch (error) {
         const message = billingErrorMessage(error);
         if (isBillingAuthError(error)) {
           await this.promptAuth();
           return;
         }
-        if (/already exists/i.test(message)) {
+        if (isExistingSubscriptionMessage(message) || /already exists/i.test(message)) {
+          setCachedPaidPlan(true);
           await this.loadCurrentSubscription();
+          if (this.comingFromUpload || this.billingReturnTo) {
+            this.goAfterBilling();
+          } else {
+            this.$router.push(this.freemiumContinuePath());
+          }
+          return;
         }
         this.checkoutError = message;
         await Swal.fire({ icon: 'error', title: 'Could not start Freemium', text: message, confirmButtonColor: '#241447' });

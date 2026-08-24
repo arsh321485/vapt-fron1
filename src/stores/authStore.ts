@@ -18,18 +18,45 @@ import {
 } from "@/utils/assetDummyData";
 import { isClaimInviteFlow, clearClaimInvite } from "@/utils/claimInvite";
 import { clearLockedRoute } from "@/utils/routeLock";
+import { clearCachedPaidPlan, hasCachedPaidPlan, setCachedPaidPlan } from "@/utils/authenticatedHome";
 import { getMySubscription } from "@/services/billingApi";
 import { isActiveSubscription, isFreemiumPlan } from "@/utils/planLimits";
+import { extractTeamsDeepLink, persistTeamsDeepLink } from "@/utils/teamsDeepLink";
 
 const AUTOMATION_PREMIUM_LOCK_KEY = "vaptfix_automation_premium_lock";
 const AUTOMATION_PREMIUM_FALLBACK =
   "Automation scripts are not available on the Freemium plan — download counts will stay at 0 until you upgrade to Premium.";
 
+function readSessionItem(key: string): string | null {
+  try {
+    return sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function readLocalItem(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeJsonParse<T>(raw: string | null, fallback: T): T {
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
 function readStoredAutomationPremiumLock() {
   try {
-    const raw = sessionStorage.getItem(AUTOMATION_PREMIUM_LOCK_KEY);
+    const raw = readSessionItem(AUTOMATION_PREMIUM_LOCK_KEY);
     if (!raw) return { locked: false, message: "" };
-    const parsed = JSON.parse(raw);
+    const parsed = safeJsonParse<any>(raw, null);
     return {
       locked: !!parsed?.locked,
       message: String(parsed?.message || ""),
@@ -105,6 +132,7 @@ function clearAllAuthTokens() {
   sessionStorage.removeItem("user");
   sessionStorage.removeItem("authenticated");
   sessionStorage.removeItem("adminLoginMethod");
+  clearCachedPaidPlan();
 
   // Clear localStorage
   localStorage.removeItem("authorization");
@@ -185,13 +213,15 @@ function pickAppUserId(obj: Record<string, any> | null | undefined): string | nu
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
-    user: sessionStorage.getItem("user") ? JSON.parse(sessionStorage.getItem("user")!) : null,
-    token: sessionStorage.getItem("authorization") ? sessionStorage.getItem("authorization") : null,
-    authenticated: sessionStorage.getItem("authenticated")
-      ? JSON.parse(sessionStorage.getItem("authenticated")!)
-      : false,
-    accessToken: sessionStorage.getItem("authorization") || null,
-    refreshToken: sessionStorage.getItem("refreshToken") || null,
+    user: safeJsonParse<any>(readSessionItem("user"), null),
+    token: readSessionItem("authorization"),
+    authenticated: (() => {
+      const raw = readSessionItem("authenticated");
+      if (raw === "true") return true;
+      return safeJsonParse<boolean>(raw, false) === true;
+    })(),
+    accessToken: readSessionItem("authorization"),
+    refreshToken: readSessionItem("refreshToken"),
     tickets: [] as any[],
     countries: [] as string[],
     totalAssets: 0 as number,
@@ -223,9 +253,10 @@ export const useAuthStore = defineStore("auth", {
     reportLocations: [] as { id: string; name: string }[],
     selectedReportLocation: null as { id: string; name: string } | null,
     uploadedReportDetails: null as any,
-    completedSteps: localStorage.getItem("completedSteps")
-      ? JSON.parse(localStorage.getItem("completedSteps")!)
-      : ([] as number[]),
+    completedSteps: (() => {
+      const parsed = safeJsonParse<number[]>(readLocalItem("completedSteps"), []);
+      return Array.isArray(parsed) ? parsed : [];
+    })(),
     projectNames: [] as string[],
     isLoadingProjects: false,
     reportStatus: {
@@ -1527,6 +1558,40 @@ export const useAuthStore = defineStore("auth", {
         return { status: false, message: "API failed" };
       }
     },
+    async exchangePricingHandoff(adminToken: string) {
+      try {
+        const res = await endpoint.post("/api/admin/users/slack/pricing-handoff/", {
+          admin_token: adminToken,
+        });
+        const data = res.data || {};
+        const access = String(data.access || data.access_token || "").trim();
+        const refresh = String(data.refresh || data.refresh_token || "").trim();
+        const email = String(data.email || "").trim();
+        if (!access) {
+          return {
+            status: false,
+            message: data.error || data.detail || data.message || "This link has expired. Go back to Teams and tap the button again.",
+          };
+        }
+        this.setAuth(access, email ? { email } : {});
+        if (refresh) {
+          sessionStorage.setItem("refreshToken", refresh);
+          localStorage.setItem("refreshToken", refresh);
+        }
+        sessionStorage.setItem("authenticated", "true");
+        return { status: true, data: { access, refresh, email } };
+      } catch (error: any) {
+        const body = error?.response?.data || {};
+        return {
+          status: false,
+          message:
+            body.error ||
+            body.detail ||
+            body.message ||
+            "This link has expired. Go back to Teams and tap the button again.",
+        };
+      }
+    },
     async microsoftLogin(accessToken: string) {
       try {
         const response = await endpoint.post("/api/admin/users/microsoft-teams-oauth/", {
@@ -1568,6 +1633,8 @@ export const useAuthStore = defineStore("auth", {
           }
         }
 
+        persistTeamsDeepLink(extractTeamsDeepLink(data));
+
         // 🆕 Save new user flag
         localStorage.setItem("is_new_teams_user", String(data.is_new_user));
 
@@ -1590,6 +1657,17 @@ export const useAuthStore = defineStore("auth", {
       } catch (error) {
         console.error("Microsoft login API error:", error);
         return { status: false, message: "Microsoft login failed" };
+      }
+    },
+    async fetchMicrosoftTeamsLoginStatus() {
+      try {
+        const res = await endpoint.get("/api/admin/users/microsoft-teams/login-status/");
+        const data = res.data || {};
+        persistTeamsDeepLink(extractTeamsDeepLink(data));
+        return { status: true, data };
+      } catch (error) {
+        console.error("Microsoft Teams login-status error:", error);
+        return { status: false, data: null };
       }
     },
     // async microsoftLogin(accessToken: string) {
@@ -2841,7 +2919,7 @@ export const useAuthStore = defineStore("auth", {
               name === preferredName ||
               name.toLowerCase() === preferredName.toLowerCase() ||
               file === preferredName ||
-              file.replace(/\.csv$/i, "") === preferredName
+              file.replace(/\.(csv|xlsx|xls|txt)$/i, "") === preferredName
             );
           });
           const matchedId = this.extractScopeId(match);
@@ -3009,7 +3087,7 @@ export const useAuthStore = defineStore("auth", {
           const fileField = formData.get("file");
           const fileStem =
             fileField instanceof File
-              ? String(fileField.name || "").replace(/\.csv$/i, "").trim()
+              ? String(fileField.name || "").replace(/\.(csv|xlsx|xls|txt)$/i, "").trim()
               : "";
           const preferredName =
             String(createData?.scope?.name || createData?.name || formData.get("name") || "").trim() ||
@@ -3038,13 +3116,15 @@ export const useAuthStore = defineStore("auth", {
           }
         }
 
-        // Prefer full GET payload; keep create counters for UI toasts
+        // Prefer full GET payload; keep create counters + plan routing for UI
         const data = {
           ...createData,
           ...(scope || {}),
-          created_count: createData?.created_count,
+          created_count: createData?.created_count ?? createData?.processing?.created_count,
           skipped_count: createData?.skipped_count,
           skipped: createData?.skipped,
+          processing: createData?.processing,
+          plan_recommendation: createData?.plan_recommendation,
         };
 
         return {
@@ -3998,7 +4078,6 @@ export const useAuthStore = defineStore("auth", {
       this._lockAutomationPremium(message);
     },
 
-    // 🔹 USER ASSETS
     applyUserAssetTypeHints() {
       this.cachedUserAssets = enrichAssetsWithVulnTypes(
         this.cachedUserAssets,
@@ -7287,12 +7366,33 @@ export const useAuthStore = defineStore("auth", {
     async hasPaidPlan(): Promise<boolean> {
       try {
         const data = await getMySubscription();
-        return isActiveSubscription(data?.subscription);
-      } catch {
+        const paid = isActiveSubscription(data?.subscription);
+        if (paid) {
+          setCachedPaidPlan(true);
+          return true;
+        }
+        // Freemium checkout can succeed before billing/subscription GET catches up.
+        if (hasCachedPaidPlan()) return true;
+        setCachedPaidPlan(false);
         return false;
+      } catch {
+        return hasCachedPaidPlan();
       }
     },
 
+    async hasSubmittedScope(): Promise<boolean> {
+      try {
+        const stored = String(localStorage.getItem("activeScopeId") || "").trim();
+        if (stored) return true;
+      } catch {
+        /* ignore */
+      }
+      const res = await this.fetchActiveScope();
+      const data = res?.data;
+      if (!data) return false;
+      const entries = Array.isArray(data.entries) ? data.entries : [];
+      return !!(data.id || Number(data.entry_count) || entries.length);
+    },
     /** Route after login / onboarding actions based on report-status.state */
     async getAdminOnboardingRoute(): Promise<string> {
       this.initCompletedSteps();
@@ -7323,10 +7423,14 @@ export const useAuthStore = defineStore("auth", {
         return "/admindashboardonboarding";
       }
 
-      if (res.state === "needs_risk_criteria" || res.hasReport) {
+      if (res.state === "needs_risk_criteria" || res.hasReport || (await this.hasSubmittedScope())) {
         if (res.hasRiskCriteria) {
           this._markOnboardingComplete();
           return "/admindashboardonboarding";
+        }
+        // Scan report missing → stay on communication (upload prompt lives there), not risk criteria.
+        if (!res.hasReport) {
+          return "/communication";
         }
         if (!this.isSlackOrTeamsLogin() && !this.completedSteps.includes(1)) {
           return "/communication";

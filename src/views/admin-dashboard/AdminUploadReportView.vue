@@ -2,7 +2,7 @@
   <main class="aur-root">
     <!-- Top bar -->
     <div class="aur-topbar">
-      <router-link to="/admindashboardonboarding">
+      <router-link to="/home">
         <img src="@/assets/images/vaptfix_white.png" alt="VaptFix" class="aur-logo" />
       </router-link>
     </div>
@@ -397,7 +397,11 @@
                 </span>
                 <span v-else>
                   <i class="bi bi-cloud-upload me-1"></i>
-                  {{ canContinueWithExistingFile ? 'Upload a new report' : 'Upload Report' }}
+                  {{
+                    canContinueWithExistingFile
+                      ? 'Upload a new report'
+                      : (selectedFiles.length ? 'Continue with this file' : 'Upload Report')
+                  }}
                 </span>
               </button>
             </div>
@@ -420,21 +424,21 @@
               </div>
               <h1 class="aur-title">Enter Your Scope</h1>
               <p class="aur-subtitle">
-                Add targets with a CSV file, or enter IPs / hosts manually.
+                Add targets with a file, or enter IPs / hosts manually.
               </p>
             </div>
 
             <div class="aur-choice-grid">
               <button type="button" class="aur-choice-card" @click="openScopeCsv">
                 <div class="aur-choice-icon">
-                  <i class="bi bi-filetype-csv"></i>
+                  <i class="bi bi-file-earmark-spreadsheet"></i>
                 </div>
-                <h3 class="aur-choice-title">CSV File</h3>
+                <h3 class="aur-choice-title">Upload File</h3>
                 <p class="aur-choice-copy">
-                  Upload a CSV of assets / IPs. One row per target works best.
+                  Upload a CSV, Excel, or text file of assets / IPs. One row per target works best.
                 </p>
                 <span class="aur-choice-cta">
-                  Upload CSV <i class="bi bi-arrow-right"></i>
+                  Upload file <i class="bi bi-arrow-right"></i>
                 </span>
               </button>
 
@@ -461,14 +465,14 @@
 
             <div class="aur-header">
               <div class="aur-icon-wrap">
-                <i class="bi bi-filetype-csv aur-upload-icon"></i>
+                <i class="bi bi-file-earmark-spreadsheet aur-upload-icon"></i>
               </div>
-              <h1 class="aur-title">Upload Scope CSV</h1>
+              <h1 class="aur-title">Upload Scope File</h1>
               <p class="aur-subtitle">
                 {{
                   planFitNotice
-                    ? `Upload a CSV with up to ${planFitNotice.limit} targets to continue on ${planFitNotice.planName}.`
-                    : 'Upload a .csv file listing the assets you want VAPTFix to include in scope.'
+                    ? `Upload a file with up to ${planFitNotice.limit} targets to continue on ${planFitNotice.planName}.`
+                    : 'Upload a .csv, .xlsx, .xls, or .txt file listing the assets you want VAPTFix to include in scope.'
                 }}
               </p>
             </div>
@@ -477,7 +481,7 @@
               <p>
                 You chose <strong>{{ planFitNotice.planName }}</strong>, which allows up to
                 <strong>{{ planFitNotice.limit }}</strong> IPs.
-                Please upload a CSV that fits this plan.
+                Please upload a file that fits this plan.
               </p>
               <button type="button" class="aur-limit-upgrade" @click="backToPlanChoicesFromNotice">
                 Choose a different plan
@@ -546,7 +550,7 @@
                 </table>
               </div>
 
-              <p class="aur-scope-replace-hint">Upload a new CSV below to update scope.</p>
+              <p class="aur-scope-replace-hint">Upload a new file below to update scope.</p>
             </div>
 
             <div
@@ -560,16 +564,16 @@
               <input
                 ref="csvInput"
                 type="file"
-                accept=".csv,text/csv"
+                accept=".csv,.xlsx,.xls,.txt,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 class="aur-file-input"
                 @change="onScopeCsvChange"
               />
 
               <div v-if="!selectedFile" class="aur-drop-content">
                 <i class="bi bi-file-earmark-spreadsheet aur-drop-icon"></i>
-                <p class="aur-drop-text">Drag &amp; drop your CSV here</p>
+                <p class="aur-drop-text">Drag &amp; drop your scope file here</p>
                 <p class="aur-drop-sub">or <span class="aur-browse">browse files</span></p>
-                <p class="aur-drop-types">.csv only</p>
+                <p class="aur-drop-types">.csv · .xlsx · .xls · .txt</p>
               </div>
 
               <div v-else class="aur-file-info">
@@ -630,7 +634,7 @@
                 </span>
                 <span v-else>
                   <i class="bi bi-check2-circle me-1"></i>
-                  Submit Scope CSV
+                  Submit Scope File
                 </span>
               </button>
             </div>
@@ -735,13 +739,31 @@
               id="scope-manual-input"
               v-model="manualScopeText"
               class="aur-textarea"
+              :class="{ 'has-errors': scopeLineErrors.length }"
               rows="8"
               placeholder="192.168.1.10&#10;192.168.1.0/24&#10;app.example.com"
             ></textarea>
 
             <div class="aur-manual-meta">
-              <span>{{ manualTargetCount }} target{{ manualTargetCount === 1 ? '' : 's' }} detected</span>
+              <span>{{ manualValidTargetCount }} valid target{{ manualValidTargetCount === 1 ? '' : 's' }} detected</span>
+              <span v-if="manualInvalidLineCount" class="aur-manual-meta-warn">
+                · {{ manualInvalidLineCount }} line{{ manualInvalidLineCount === 1 ? '' : 's' }} won’t be accepted
+              </span>
             </div>
+
+            <p v-if="scopeSubmitSummary" class="aur-submit-summary">
+              {{ scopeSubmitSummary.created }} valid target{{ scopeSubmitSummary.created === 1 ? '' : 's' }} created
+              <template v-if="scopeSubmitSummary.errors">
+                · {{ scopeSubmitSummary.errors }} rejected
+              </template>
+            </p>
+
+            <ul v-if="scopeLineErrors.length" class="aur-line-errors">
+              <li v-for="(item, idx) in scopeLineErrors" :key="(item.value || 'err') + '-' + idx">
+                <strong>{{ item.value || 'Line' }}</strong>
+                <span>{{ item.error }}</span>
+              </li>
+            </ul>
 
             <p v-if="uploadError" class="aur-error">{{ uploadError }}</p>
             <div v-if="uploadPlanOffer" class="aur-plan-offer">
@@ -807,12 +829,18 @@ import { useAuthStore } from '@/stores/authStore';
 import { isClaimInviteFlow, readClaimInviteToken } from '@/utils/claimInvite';
 import { isExternalDeepLink } from '@/utils/routeLock';
 import {
+  billingErrorMessage,
+  checkoutFreemium,
   getMySubscription,
   syncSubscriptionAssets,
 } from '@/services/billingApi';
 import {
   extraIpCount,
   isActiveSubscription,
+  isExistingSubscriptionMessage,
+  isFreemiumPlan,
+  isInvalidScanFileMessage,
+  isPlanQuotaMessage,
   otherPlans,
   parsePlanHintFromMessage,
   planAssetLimit,
@@ -822,10 +850,17 @@ import {
   UPLOAD_RETURN_PATH,
 } from '@/utils/planLimits';
 import {
+  extractPlanRecommendation,
+  extractScopeProcessing,
+  isValidScopeTarget,
+  planRecommendationBreakdown,
+  planRecommendationMessage,
+} from '@/utils/scopeTargets';
+import { setCachedPaidPlan } from '@/utils/authenticatedHome';
+import { consumeHandoffError } from '@/utils/adminHandoff';
+import {
   clearPendingUpload,
-  peekPendingUploadFile,
   peekPendingUploadFiles,
-  stashPendingUpload,
 } from '@/utils/pendingUpload';
 
 const ALLOWED_EXTENSIONS = [
@@ -840,6 +875,10 @@ const ALLOWED_EXTENSIONS = [
   '.docx',
   '.doc',
 ];
+
+const SCOPE_ALLOWED_EXTENSIONS = ['.csv', '.xlsx', '.xls', '.txt'];
+const SCOPE_TEXT_EXTENSIONS = ['.csv', '.txt'];
+const SCOPE_FILE_ERROR = 'Please upload a .csv, .xlsx, .xls, or .txt file for scope.';
 
 const MAX_UPLOAD_FILES = 10;
 const STATUS_POLL_MS = 4000;
@@ -884,6 +923,8 @@ export default {
       pendingPlan: '',
       planFitNotice: null,
       replacingFile: false,
+      scopeLineErrors: [],
+      scopeSubmitSummary: null,
     };
   },
   computed: {
@@ -902,6 +943,12 @@ export default {
     },
     manualTargetCount() {
       return this.manualTargets.length;
+    },
+    manualValidTargetCount() {
+      return this.manualTargets.filter(isValidScopeTarget).length;
+    },
+    manualInvalidLineCount() {
+      return Math.max(0, this.manualTargetCount - this.manualValidTargetCount);
     },
     pollSummary() {
       const statuses = this.reportIds
@@ -1091,7 +1138,8 @@ export default {
       }
       return this.subscription;
     },
-    goToPricing(planId = '', assetCount = 0, uploadDone = false) {
+    goToPricing(planId = '', assetCount = 0, uploadDone = false, extras = {}) {
+      if (!planId) return;
       const authStore = useAuthStore();
       const nextAfterPay = authStore.isSlackOrTeamsLogin() ? '/riskcriteria' : '/communication';
       const count = Number(assetCount)
@@ -1101,9 +1149,10 @@ export default {
         || 0;
       const returnTo = uploadDone ? nextAfterPay : `${UPLOAD_RETURN_PATH}?resume=1`;
       setBillingReturnTo(returnTo);
-      const query = { returnTo };
-      if (planId) query.plan = planId;
+      const query = { returnTo, plan: planId };
       if (count) query.assets = String(count);
+      const mode = String(extras.mode || '').toLowerCase();
+      if (mode === 'testing' || mode === 'management_testing') query.mode = 'testing';
       this.$router.push({ path: '/pricingplan', query });
     },
     planLabel(planId) {
@@ -1112,6 +1161,59 @@ export default {
     dashboardRoute() {
       const authStore = useAuthStore();
       return authStore.isSlackOrTeamsLogin() ? '/riskcriteria' : '/communication';
+    },
+    showInvalidFileError(backendMessage) {
+      const msg = String(backendMessage || '').trim() || 'Invalid file';
+      this.uploadError = msg;
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid file',
+        text: msg,
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#241447',
+      });
+    },
+    async activateFreemiumAndContinue() {
+      this.planSuggestBusy = true;
+      this.uploadError = '';
+      try {
+        if (isActiveSubscription(this.subscription) && isFreemiumPlan(this.subscription)) {
+          setCachedPaidPlan(true);
+          await this.$router.replace(this.dashboardRoute());
+          return;
+        }
+        const data = await checkoutFreemium(false);
+        this.subscription = data?.subscription || this.subscription;
+        setCachedPaidPlan(true);
+        useAuthStore().lockAutomationScriptsForFreemium(
+          'Automation scripts are not available on the Freemium plan. Upgrade to Premium to download scripts.',
+        );
+        await Swal.fire({
+          icon: 'success',
+          title: 'Freemium started',
+          text: 'Your free plan is active. Continue to add your team.',
+          timer: 1600,
+          showConfirmButton: false,
+        });
+        await this.$router.replace(this.dashboardRoute());
+      } catch (error) {
+        const message = billingErrorMessage(error);
+        if (isExistingSubscriptionMessage(message)) {
+          setCachedPaidPlan(true);
+          await this.loadSubscription();
+          await this.$router.replace(this.dashboardRoute());
+          return;
+        }
+        this.uploadError = message;
+        await Swal.fire({
+          icon: 'error',
+          title: 'Could not start Freemium',
+          text: message,
+          confirmButtonColor: '#241447',
+        });
+      } finally {
+        this.planSuggestBusy = false;
+      }
     },
     showPlanSuggestPrompt(source, count, hintedPlan = '', unpaidResume = false) {
       if (this.planSuggestResolved && !unpaidResume && !this.pendingPlan) return false;
@@ -1140,7 +1242,7 @@ export default {
         return true;
       }
       if (this.planSuggestResolved && !unpaidResume) return false;
-      const suggested = hintedPlan || suggestedPlanFromAssetCount(n) || 'freemium';
+      const suggested = hintedPlan || (n > 0 ? suggestedPlanFromAssetCount(n) : '');
       if (!suggested) return false;
       const currentPlan = String(this.subscription?.plan || '').toLowerCase();
       const currentLimit = planAssetLimit(this.subscription);
@@ -1201,7 +1303,10 @@ export default {
         0,
       );
       const suggested = hint.suggested || (count ? suggestedPlanFromAssetCount(count) : '');
-      this.uploadError = message || 'Failed to upload report';
+      this.uploadError = message || 'Invalid file';
+      if (isInvalidScanFileMessage(errorBlob) || !count || !this.isPlanLimitError(payload, message)) {
+        return false;
+      }
       if (this.pendingPlan) {
         this.planFitNotice = {
           plan: this.pendingPlan,
@@ -1373,7 +1478,7 @@ export default {
       if (planId === 'freemium') {
         this.planSuggestBusy = false;
         this.uploadBeforePay = false;
-        this.goToPricing(planId, count, alreadyUploaded);
+        await this.activateFreemiumAndContinue();
         return;
       }
 
@@ -1398,16 +1503,12 @@ export default {
             return;
           }
         }
-        await stashPendingUpload(files, { count, plan: planId, name: files[0].name });
-        this.goToPricing(planId, count, false);
+        this.showInvalidFileError(res.message);
+        return;
       } catch (error) {
         console.error('Upload before payment failed:', error);
-        try {
-          await stashPendingUpload(files, { count, plan: planId, name: files[0]?.name });
-        } catch {
-          /* ignore stash failure */
-        }
-        this.goToPricing(planId, count, false);
+        this.showInvalidFileError(error?.message);
+        return;
       } finally {
         this.uploading = false;
         this.planSuggestBusy = false;
@@ -1571,6 +1672,7 @@ export default {
     },
     async trimCsvFile(file, limit) {
       if (!file) return file;
+      if (!this.isTextScopeFile(file)) return file;
       const text = await file.text();
       const lines = String(text || '').split(/\r?\n/);
       if (!lines.length) return file;
@@ -1588,7 +1690,7 @@ export default {
       return new File([`${kept.join('\n')}\n`], file.name, { type: file.type || 'text/csv' });
     },
     async countCsvTargets(file) {
-      if (!file) return 0;
+      if (!file || !this.isTextScopeFile(file)) return 0;
       const text = await file.text();
       const lines = String(text || '')
         .split(/\r?\n/)
@@ -1638,7 +1740,7 @@ export default {
       ]
         .filter(Boolean)
         .join(' ');
-      return /upgrade|asset.?limit|over.?limit|extra.?ip|plan.?limit|freemium/i.test(text);
+      return isPlanQuotaMessage(text);
     },
     clearFileState() {
       this.selectedFile = null;
@@ -1692,6 +1794,8 @@ export default {
     openScopeManual() {
       this.clearFileState();
       this.uploadError = '';
+      this.scopeLineErrors = [];
+      this.scopeSubmitSummary = null;
       this.viewMode = 'scope-manual';
       if (!this.existingScope && !this.loadingExistingScope) {
         this.loadExistingScope();
@@ -1755,15 +1859,74 @@ export default {
         data: {
           ...(res.data || {}),
           ...getRes.data,
-          created_count: res.data?.created_count,
+          created_count: res.data?.created_count ?? res.data?.processing?.created_count,
           skipped_count: res.data?.skipped_count,
           skipped: res.data?.skipped,
+          processing: res.data?.processing,
+          plan_recommendation: res.data?.plan_recommendation,
         },
       };
     },
-    async handleScopeCreateSuccess(res) {
+    applyManualProcessing(processing) {
+      const errors = Array.isArray(processing?.errors) ? processing.errors : [];
+      this.scopeLineErrors = errors;
+      this.scopeSubmitSummary = {
+        created: Number(processing?.created_count) || 0,
+        errors: Number(processing?.error_count) || errors.length || 0,
+        parsed: Number(processing?.total_parsed) || 0,
+      };
+    },
+    async routeAfterManualScope(rec, created) {
+      await this.loadSubscription();
+      const plan = rec?.recommended_plan || '';
+      const count = Number(rec?.total_scope_assets) || created || 0;
+      const breakdown = planRecommendationBreakdown(rec);
+
+      if (plan === 'premium') {
+        const alreadyPremium =
+          isActiveSubscription(this.subscription) && !isFreemiumPlan(this.subscription);
+        if (alreadyPremium) {
+          const authStore = useAuthStore();
+          const route = await authStore.getAdminOnboardingRoute();
+          this.$router.replace(route);
+          return;
+        }
+        const message = planRecommendationMessage(rec);
+        const escapeHtml = (value) =>
+          String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+        await Swal.fire({
+          icon: 'info',
+          title: 'Premium plan required',
+          html: breakdown && breakdown !== message
+            ? `<p>${escapeHtml(message)}</p><p><strong>${escapeHtml(breakdown)}</strong></p>`
+            : escapeHtml(message),
+          confirmButtonText: 'Continue with Premium',
+          confirmButtonColor: '#241447',
+          allowOutsideClick: false,
+        });
+        this.planSuggestResolved = true;
+        this.goToPricing('premium', count, true, { mode: 'testing' });
+        return;
+      }
+
+      if (!isActiveSubscription(this.subscription)) {
+        this.showPlanSuggestPrompt('scope-manual', count, plan || '', true);
+        return;
+      }
+      const authStore = useAuthStore();
+      const route = await authStore.getAdminOnboardingRoute();
+      this.$router.replace(route);
+    },
+    async handleScopeCreateSuccess(res, source = '') {
+      const src = source || (this.viewMode === 'scope-csv' ? 'scope-csv' : 'scope-manual');
       const scope = res.scope || res.data || {};
+      const processing = extractScopeProcessing(res);
       const created =
+        processing.created_count ||
         Number(res.data?.created_count) ||
         Number(scope?.entry_count) ||
         (Array.isArray(scope?.entries) ? scope.entries.length : 0) ||
@@ -1776,6 +1939,37 @@ export default {
         } catch (_) {
           /* ignore */
         }
+      }
+
+      if (src === 'scope-manual') {
+        this.applyManualProcessing(processing);
+        if (!created) {
+          this.uploadError = processing.errors.length
+            ? 'No valid targets were created. Fix the rejected lines and try again.'
+            : (res.message || 'No valid targets were created.');
+          await Swal.fire({
+            icon: 'warning',
+            title: 'No valid targets',
+            text: this.uploadError,
+            confirmButtonColor: '#241447',
+          });
+          return;
+        }
+        const rec = extractPlanRecommendation(res);
+        const breakdown = planRecommendationBreakdown(rec);
+        await Swal.fire({
+          icon: processing.error_count ? 'warning' : 'success',
+          title: 'Scope submitted',
+          text:
+            `${created} valid target(s) created` +
+            (processing.error_count ? ` · ${processing.error_count} rejected` : '') +
+            (skipped ? ` · ${skipped} skipped` : '') +
+            (breakdown ? ` · ${breakdown}` : ''),
+          confirmButtonColor: '#241447',
+        });
+        localStorage.removeItem('isNewProject');
+        await this.routeAfterManualScope(rec, created);
+        return;
       }
 
       if (skipped > 0 && created === 0) {
@@ -1817,8 +2011,8 @@ export default {
     },
     async submitScopeCsv() {
       if (!this.selectedFile || this.scopeSubmitting) return;
-      if (!this.isCsvFile(this.selectedFile)) {
-        this.uploadError = 'Please upload a .csv file for scope.';
+      if (!this.isScopeFile(this.selectedFile)) {
+        this.uploadError = SCOPE_FILE_ERROR;
         return;
       }
       if (!this.planSuggestResolved) {
@@ -1841,23 +2035,18 @@ export default {
         let res = await authStore.createScope(formData);
 
         if (!res.status) {
-          this.uploadError = res.message || 'Failed to create scope';
-          Swal.fire({
-            icon: 'error',
-            title: this.uploadError,
-            confirmButtonColor: '#241447',
-          });
+          this.showInvalidFileError(res.message);
           return;
         }
 
         const preferredName = String(this.selectedFile?.name || '')
-          .replace(/\.csv$/i, '')
+          .replace(/\.(csv|xlsx|xls|txt)$/i, '')
           .trim();
         res = await this.ensureScopeGetAfterCreate(res, preferredName);
         await this.handleScopeCreateSuccess(res);
       } catch (err) {
-        console.error('Scope CSV error:', err);
-        this.uploadError = 'Something went wrong while submitting scope CSV';
+        console.error('Scope file error:', err);
+        this.uploadError = 'Something went wrong while submitting scope file';
         Swal.fire('Scope failed', this.uploadError, 'error');
       } finally {
         this.scopeSubmitting = false;
@@ -1874,6 +2063,8 @@ export default {
 
       this.scopeSubmitting = true;
       this.uploadError = '';
+      this.scopeLineErrors = [];
+      this.scopeSubmitSummary = null;
       try {
         const formData = new FormData();
         formData.append('targets', this.manualTargets.join('\n'));
@@ -1882,17 +2073,24 @@ export default {
         let res = await authStore.createScope(formData);
 
         if (!res.status) {
-          this.uploadError = res.message || 'Failed to create scope';
+          const processing = extractScopeProcessing(res);
+          this.applyManualProcessing(processing);
+          if (processing.errors.length) {
+            this.uploadError = res.message || 'Some lines were rejected. Fix them and try again.';
+            return;
+          }
+          this.uploadError = res.message || 'Invalid scope. Check the targets and try again.';
           Swal.fire({
             icon: 'error',
-            title: this.uploadError,
+            title: 'Invalid scope',
+            text: this.uploadError,
             confirmButtonColor: '#241447',
           });
           return;
         }
 
         res = await this.ensureScopeGetAfterCreate(res);
-        await this.handleScopeCreateSuccess(res);
+        await this.handleScopeCreateSuccess(res, 'scope-manual');
       } catch (err) {
         console.error('Scope manual error:', err);
         this.uploadError = 'Something went wrong while submitting scope';
@@ -1911,9 +2109,13 @@ export default {
       if (!file) return false;
       return ALLOWED_EXTENSIONS.includes(this.getExtension(file.name));
     },
-    isCsvFile(file) {
+    isScopeFile(file) {
       if (!file) return false;
-      return this.getExtension(file.name) === '.csv';
+      return SCOPE_ALLOWED_EXTENSIONS.includes(this.getExtension(file.name));
+    },
+    isTextScopeFile(file) {
+      if (!file) return false;
+      return SCOPE_TEXT_EXTENSIONS.includes(this.getExtension(file.name));
     },
     formatFileSize(bytes) {
       const n = Number(bytes) || 0;
@@ -1960,9 +2162,9 @@ export default {
     setScopeCsvFile(file) {
       this.uploadError = '';
       if (!file) return;
-      if (!this.isCsvFile(file)) {
+      if (!this.isScopeFile(file)) {
         this.selectedFile = null;
-        this.uploadError = 'Please upload a .csv file for scope.';
+        this.uploadError = SCOPE_FILE_ERROR;
         Swal.fire('Unsupported file', this.uploadError, 'warning');
         return;
       }
@@ -2091,6 +2293,18 @@ export default {
           return true;
         }
 
+        const status = await authStore.getReportStatus();
+        const onboardingDone =
+          status?.state === 'ready' ||
+          status?.showDashboard === true ||
+          !!(status?.hasReport && status?.hasRiskCriteria);
+        if (onboardingDone) {
+          this.redirecting = true;
+          this.stopExternalReportWatch();
+          await this.$router.replace('/admindashboardonboarding');
+          return true;
+        }
+
         if (!isActiveSubscription(this.subscription)) {
           return false;
         }
@@ -2105,7 +2319,9 @@ export default {
           if (hasSlackFile) {
             this.redirecting = true;
             this.stopExternalReportWatch();
-            await this.$router.replace('/admindashboardonboarding');
+            await this.$router.replace(
+              status?.hasRiskCriteria ? '/admindashboardonboarding' : '/riskcriteria',
+            );
             return true;
           }
         } catch {
@@ -2116,7 +2332,9 @@ export default {
         if (this.hasExistingReport) {
           this.redirecting = true;
           this.stopExternalReportWatch();
-          await this.$router.replace('/admindashboardonboarding');
+          await this.$router.replace(
+            status?.hasRiskCriteria ? '/admindashboardonboarding' : '/riskcriteria',
+          );
           return true;
         }
       } finally {
@@ -2243,13 +2461,7 @@ export default {
         if (!res.status) {
           await this.loadSubscription();
           if (this.handleUploadPlanFailure(res)) return;
-          this.uploadError = res.message || 'Failed to upload report';
-          Swal.fire({
-            icon: 'error',
-            title: this.uploadError,
-            confirmButtonText: 'OK',
-            confirmButtonColor: '#241447',
-          });
+          this.showInvalidFileError(res.message);
           return;
         }
 
@@ -2269,14 +2481,30 @@ export default {
         console.error('Upload error:', err);
         // File already saved on the server — do not show a false failure over "Creating agents".
         if (uploadAccepted || this.generating || this.reportIds?.length) return;
-        this.uploadError = 'Something went wrong while uploading the report';
-        Swal.fire('Upload failed', this.uploadError, 'error');
+        const data = err?.response?.data;
+        const msg =
+          (typeof data?.error === 'string' && data.error) ||
+          (typeof data?.detail === 'string' && data.detail) ||
+          (typeof data?.message === 'string' && data.message) ||
+          err?.message ||
+          '';
+        this.showInvalidFileError(msg);
       } finally {
         this.uploading = false;
       }
     },
   },
   async mounted() {
+    const handoffError = consumeHandoffError();
+    if (handoffError) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'This link has expired',
+        text: handoffError,
+        confirmButtonText: 'OK',
+      });
+      return;
+    }
     this.applyRouteMode();
     await Promise.all([this.loadExistingScope(), this.loadExistingReport(), this.loadSubscription()]);
     if (await this.redirectIfReportReadyFromElsewhere()) return;
@@ -2287,6 +2515,12 @@ export default {
   watch: {
     '$route.query.mode'() {
       this.applyRouteMode();
+    },
+    manualScopeText() {
+      if (this.scopeLineErrors.length || this.scopeSubmitSummary) {
+        this.scopeLineErrors = [];
+        this.scopeSubmitSummary = null;
+      }
     },
   },
   beforeUnmount() {
@@ -3022,11 +3256,63 @@ export default {
   background: #fff;
 }
 
+.aur-textarea.has-errors {
+  border-color: #dc2626;
+  background: #fff8f8;
+}
+
 .aur-manual-meta {
   font-size: 0.8rem;
   font-weight: 600;
   color: #0f696e;
   margin-bottom: 0.65rem;
+}
+
+.aur-manual-meta-warn {
+  color: #c2410c;
+}
+
+.aur-submit-summary {
+  margin: 0 0 0.55rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #241447;
+}
+
+.aur-line-errors {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  max-height: 160px;
+  overflow: auto;
+}
+
+.aur-line-errors li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid #fecaca;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.aur-line-errors li:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.aur-line-errors strong {
+  color: #991b1b;
+  word-break: break-all;
+}
+
+.aur-line-errors span {
+  color: #b91c1c;
+  font-weight: 600;
 }
 
 .aur-progress-wrap {

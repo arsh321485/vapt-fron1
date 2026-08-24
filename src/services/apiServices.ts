@@ -57,6 +57,7 @@ const PUBLIC_URL_PATTERNS = [
   "/api/admin/users/user-login-platform/",
   "/api/admin/users/slack/member-login/",
   "/api/admin/users/teams/member-login/",
+  "/api/admin/users/slack/pricing-handoff/",
   "/api/admin/users/slack/oauth-url/",
   "/api/admin/users/microsoft-teams/oauth-url/",
   "/api/admin/upload_report/claim-invite/validate/",
@@ -133,6 +134,7 @@ const AUTH_ENDPOINTS = [
   "/api/admin/users/forgot-password/",
   "/api/admin/users/reset-password/",
   "/api/admin/users/token/refresh/", // refresh endpoint itself — infinite loop rokne ke liye
+  "/api/admin/users/slack/pricing-handoff/",
 ];
 
 // Token refresh queue — agar ek saath kai requests 401 paayein toh sab wait karein

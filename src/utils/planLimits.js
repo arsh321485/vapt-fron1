@@ -19,6 +19,23 @@ export function isFreemiumPlan(planOrSubscription) {
   return plan === "freemium" || plan.includes("freemium");
 }
 
+export function isInvalidScanFileMessage(text) {
+  return /invalid|unsupported|wrong file|could not parse|cannot parse|failed to parse|unrecognized|not a valid|not a (nessus|scan|xml|csv|report)|no host|no asset|empty file|corrupt|malformed|does not contain|unable to (read|parse|process)|unreadable|unknown format/i.test(
+    String(text || ""),
+  );
+}
+
+export function isPlanQuotaMessage(text) {
+  return /upgrade|asset.?limit|over.?limit|extra.?ip|plan.?limit|exceeds.{0,24}(ip|asset)|too many (ip|asset|host)/i.test(
+    String(text || ""),
+  );
+}
+
+export function isExistingSubscriptionMessage(text) {
+  return /already exists|already (have|has) an? active|active subscription already/i.test(
+    String(text || ""),
+  );
+}
 
 export function planAssetLimit(planOrSubscription) {
   const plan = String(

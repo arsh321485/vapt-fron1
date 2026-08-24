@@ -814,7 +814,24 @@ export default {
     },
     handleContinue() {
       this.authStore.markStepCompleted(1);
-      this.$router.push('/riskcriteria');
+      this.promptUploadReportIfNeeded().then((wentToUpload) => {
+        if (!wentToUpload) this.$router.push('/riskcriteria');
+      });
+    },
+    async promptUploadReportIfNeeded() {
+      const status = await this.authStore.getReportStatus();
+      if (status.hasReport) return false;
+      await Swal.fire({
+        icon: "info",
+        title: "Upload a report first",
+        text: "Risk criteria is applied to your scan report. Please upload a report or provide scope, then set risk criteria.",
+        confirmButtonText: "Upload Report",
+      });
+      await this.$router.replace({
+        path: "/admin-upload-report",
+        query: { mode: "upload", returnTo: "/communication" },
+      });
+      return true;
     },
   },
   async mounted() {
@@ -822,7 +839,10 @@ export default {
     try {
       if (this.returnTo) {
         if (!isClaimInviteFlow() && !(await this.authStore.hasPaidPlan())) {
-          await this.$router.replace("/admin-upload-report");
+          await this.$router.replace({
+            path: "/admin-upload-report",
+            query: { mode: "upload", returnTo: "/communication" },
+          });
           return;
         }
       } else {
@@ -845,6 +865,7 @@ export default {
       /* keep current session user */
     }
     await this.loadAddedUsers();
+    await this.promptUploadReportIfNeeded();
     if (this.hasTeamsIntegration) {
       await this.authStore.ensureTeamsChannelsCached();
     }

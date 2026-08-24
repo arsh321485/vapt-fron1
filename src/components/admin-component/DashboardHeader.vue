@@ -6,7 +6,7 @@
   <div class="d-flex align-items-center justify-content-between gap-4 py-2 px-4">
 
    <div class="browser-bar">
-    <router-link to="/admindashboardonboarding">
+    <router-link :to="logoPath">
         <img src="@/assets/images/vaptfix_white.png" alt="VaptFix">
         </router-link>
       </div>
@@ -74,6 +74,7 @@ import { useAuthStore } from "@/stores/authStore";
 import Swal from "sweetalert2";
 import router from "@/router";
 import NotificationPanel from "@/components/admin-component/NotificationPanel.vue";
+import { getAuthenticatedAppHome } from "@/utils/authenticatedHome";
 
 export default {
   name: 'DashboardHeader',
@@ -84,6 +85,11 @@ export default {
       userEmail: "",
       userInitial: "",
     };
+  },
+  computed: {
+    logoPath() {
+      return getAuthenticatedAppHome(this.$route?.path || '/admindashboardonboarding');
+    },
   },
   methods: {
     toggleDropdown() {

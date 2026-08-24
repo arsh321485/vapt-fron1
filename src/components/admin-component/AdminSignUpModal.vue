@@ -179,15 +179,17 @@
           </div>
           <hr class="form-divider" />
 
-          <div class="otp-inputs d-flex justify-content-center gap-2 mb-4">
+          <div class="otp-inputs d-flex justify-content-center gap-2 mb-3">
             <input
               v-for="(digit, index) in 6"
               :key="index"
               type="text"
               inputmode="numeric"
               class="otp-box text-center"
+              :class="{ 'otp-box-disabled': otpExpired }"
               maxlength="1"
               :value="otpDigits[index]"
+              :disabled="otpExpired || loading"
               @input="handleOtpInput($event, index)"
               @keydown="handleOtpKeydown($event, index)"
               @paste="handleOtpPaste($event, index)"
@@ -196,16 +198,35 @@
             />
           </div>
 
+          <p class="otp-timer-text mb-3">
+            <template v-if="!otpExpired">Resend available in {{ otpCountdownLabel }}</template>
+            <template v-else>OTP expired. Request a new one.</template>
+          </p>
+
           <div class="otp-note mb-4">
             <i class="bi bi-info-circle-fill otp-note-icon"></i>
             <p class="otp-note-text">
-              This OTP is valid for <strong>5 minutes</strong>. Please do not share this OTP with anyone for security reasons.
+              This OTP is valid for <strong>1 minute</strong>. Please do not share this OTP with anyone for security reasons.
             </p>
           </div>
 
-          <button class="submit-btn" @click="handleVerifyOtp" :disabled="loading || otp.length < 6">
+          <button
+            v-if="!otpExpired"
+            class="submit-btn"
+            @click="handleVerifyOtp"
+            :disabled="loading || otp.length < 6"
+          >
             <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
             Verify & Continue
+          </button>
+          <button
+            v-else
+            class="submit-btn"
+            @click="handleResendOtp"
+            :disabled="loading"
+          >
+            <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+            Resend OTP
           </button>
 
           <p class="footer-text" style="margin-top: 12px;">
@@ -232,6 +253,14 @@ import {
   setClaimInviteValid,
   storeClaimInviteToken,
 } from '@/utils/claimInvite';
+import {
+  extractTeamsDeepLink,
+  isBareTeamsHome,
+  persistTeamsDeepLink,
+  pickTeamsRedirectUrl,
+  readStoredTeamsDeepLink,
+  resolveTeamsAdminDashboardUrl,
+} from '@/utils/teamsDeepLink';
 
 export default {
   name: 'AdminSignUpModal',
@@ -264,9 +293,18 @@ export default {
       inviteValid: false,
       inviteReportCount: 0,
       inviteChecked: false,
+      otpSecondsLeft: 60,
+      otpTimerId: null,
     };
   },
   computed: {
+    otpExpired() {
+      return this.otpSent && this.otpSecondsLeft <= 0;
+    },
+    otpCountdownLabel() {
+      const secs = Math.max(0, this.otpSecondsLeft);
+      return `0:${String(secs).padStart(2, '0')}`;
+    },
     isSlackDisabled() {
       return this.teamsConnected && !this.slackConnected;
     },
@@ -380,9 +418,11 @@ export default {
       }
     },
     resetForm() {
+      this.clearOtpTimer();
       this.form = { email: '', password: '', confirm_password: '' };
       this.otpSent = false;
       this.otpDigits = ['', '', '', '', '', ''];
+      this.otpSecondsLeft = 60;
       this.recaptchaToken = '';
       this.showPassword = false;
       this.showConfirmPassword = false;
@@ -441,6 +481,7 @@ export default {
         if (result.status) {
           this.otpSent = true;
           this.otpDigits = ['', '', '', '', '', ''];
+          this.startOtpTimer();
           Swal.fire({ icon: 'success', title: 'OTP Sent!', text: 'Please check your email for the verification code.', timer: 2500, showConfirmButton: false });
           this.$nextTick(() => { if (this.otpRefs[0]) this.otpRefs[0].focus(); });
         } else {
@@ -455,6 +496,7 @@ export default {
       }
     },
     async handleVerifyOtp() {
+      if (this.otpExpired) return;
       if (this.otp.length < 6) {
         Swal.fire({ icon: 'warning', title: 'Incomplete OTP', text: 'Please enter the complete 6-digit OTP', confirmButtonColor: '#241447' });
         return;
@@ -480,6 +522,7 @@ export default {
       }
     },
     handleOtpInput(event, index) {
+      if (this.otpExpired) return;
       const value = event.target.value.replace(/\D/g, '');
       this.otpDigits.splice(index, 1, value ? value[0] : '');
       if (value && index < 5) {
@@ -507,8 +550,61 @@ export default {
       this.$nextTick(() => { if (this.otpRefs[nextFocus]) this.otpRefs[nextFocus].focus(); });
     },
     goBackToSignup() {
+      this.clearOtpTimer();
       this.otpSent = false;
       this.otpDigits = ['', '', '', '', '', ''];
+      this.otpSecondsLeft = 60;
+    },
+    startOtpTimer() {
+      this.clearOtpTimer();
+      this.otpSecondsLeft = 60;
+      this.otpTimerId = setInterval(() => {
+        if (this.otpSecondsLeft <= 1) {
+          this.otpSecondsLeft = 0;
+          this.clearOtpTimer();
+          this.otpDigits = ['', '', '', '', '', ''];
+          return;
+        }
+        this.otpSecondsLeft -= 1;
+      }, 1000);
+    },
+    clearOtpTimer() {
+      if (this.otpTimerId) {
+        clearInterval(this.otpTimerId);
+        this.otpTimerId = null;
+      }
+    },
+    async handleResendOtp() {
+      if (!this.otpExpired || this.loading) return;
+      if (!this.recaptchaToken) {
+        this.goBackToSignup();
+        this.resetRecaptcha();
+        Swal.fire({ icon: 'info', title: 'Complete reCAPTCHA', text: 'Please complete reCAPTCHA and send OTP again.', confirmButtonColor: '#241447' });
+        return;
+      }
+      this.loading = true;
+      try {
+        const authStore = useAuthStore();
+        const result = await authStore.signupSendOtp({
+          email: this.form.email,
+          password: this.form.password,
+          confirm_password: this.form.confirm_password,
+          recaptcha: this.recaptchaToken,
+        });
+        if (result.status) {
+          this.otpDigits = ['', '', '', '', '', ''];
+          this.startOtpTimer();
+          this.$nextTick(() => { if (this.otpRefs[0]) this.otpRefs[0].focus(); });
+          Swal.fire({ icon: 'success', title: 'OTP Sent!', text: 'A new OTP has been sent to your email.', timer: 2000, showConfirmButton: false });
+        } else {
+          Swal.fire({ icon: 'error', title: 'Error', text: result.message || 'Failed to resend OTP', confirmButtonColor: '#241447' });
+          this.resetRecaptcha();
+        }
+      } catch (error) {
+        Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'Something went wrong', confirmButtonColor: '#241447' });
+      } finally {
+        this.loading = false;
+      }
     },
     resetRecaptcha() {
       if (window.grecaptcha && this.recaptchaWidgetId !== null) {
@@ -572,9 +668,31 @@ export default {
       }
     },
   // —— Slack / Teams: same as LocationView (/communication) ——
+    async openStoredTeamsDashboard() {
+      const stored = pickTeamsRedirectUrl(readStoredTeamsDeepLink());
+      if (stored && !isBareTeamsHome(stored)) {
+        window.open(stored, '_blank', 'noopener');
+        return;
+      }
+      Swal.fire({
+        icon: 'info',
+        title: 'Setting up your workspace',
+        text: 'Opening the VAPTFIX admin dashboard channel as soon as it is ready.',
+        timer: 2200,
+        showConfirmButton: false,
+      });
+      const statusRes = await this.authStore.fetchMicrosoftTeamsLoginStatus();
+      const url = await resolveTeamsAdminDashboardUrl(statusRes.data || {}, async () => {
+        const next = await this.authStore.fetchMicrosoftTeamsLoginStatus();
+        return next.data || {};
+      });
+      if (url) {
+        window.open(url, '_blank', 'noopener');
+      }
+    },
     async startMicrosoftLogin() {
       if (this.teamsConnected) {
-        window.open('https://teams.microsoft.com/', '_blank');
+        await this.openStoredTeamsDashboard();
         return;
       }
       if (this.isTeamsDisabled && !this.teamsConnected) return;
@@ -626,10 +744,17 @@ export default {
       this.teamsConnected = true;
       this.slackConnected = false;
 
+      persistTeamsDeepLink(extractTeamsDeepLink(event.data));
+
       Swal.fire({
         icon: 'success',
-        title: 'Microsoft Teams connected successfully',
-        timer: 2000,
+        title: event.data?.status === 'provisioning'
+          ? 'Setting up your workspace'
+          : 'Microsoft Teams connected successfully',
+        text: event.data?.status === 'provisioning'
+          ? 'Your dashboard channel is being created. This can take a few seconds.'
+          : '',
+        timer: event.data?.status === 'provisioning' ? 2400 : 2000,
         showConfirmButton: false
       });
 
@@ -822,6 +947,7 @@ export default {
     }
   },
   beforeUnmount() {
+    this.clearOtpTimer();
     window.removeEventListener('message', this.onTeamsConnected);
     window.removeEventListener('message', this.handleSlackMessage);
     window.removeEventListener('storage', this.onStorageChange);
@@ -1177,11 +1303,18 @@ export default {
   transition: all 0.2s;
   color: #241447;
 }
-.otp-box:focus {
-  outline: none;
-  border-color: #241447;
-  background: #ededf8;
-  box-shadow: 0 0 0 2px rgba(36, 20, 71, 0.15);
+.otp-box:disabled,
+.otp-box-disabled {
+  background: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+.otp-timer-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: #241447;
+  margin: 0;
 }
 
 .otp-note {

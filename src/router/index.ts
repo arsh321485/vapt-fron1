@@ -97,7 +97,15 @@ import {
 } from "../utils/routeLock";
 import { extractClaimInviteToken, isClaimInviteFlow, storeClaimInviteToken } from "../utils/claimInvite";
 import { useAuthStore } from "../stores/authStore";
-import { getAuthenticatedAppHome, hasAuthSession } from "../utils/authenticatedHome";
+import { getAuthenticatedAppHome, hasAuthSession, hasCachedPaidPlan, isStoredTeamMember } from "../utils/authenticatedHome";
+import {
+  clearHandoffNavigation,
+  hasHandoffError,
+  isHandoffNavigation,
+  markHandoffNavigation,
+  readQueryAdminToken,
+  storeHandoffError,
+} from "../utils/adminHandoff";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -633,6 +641,28 @@ router.beforeEach(async (to, from, next) => {
     });
   }
 
+  // Slack / Teams signed admin_token → same JWT exchange as a normal login.
+  const adminToken = readQueryAdminToken(to.query as Record<string, unknown>);
+  if (adminToken) {
+    const strippedQuery = { ...(to.query as Record<string, any>) };
+    delete strippedQuery.admin_token;
+    const authStore = useAuthStore();
+    const result = await authStore.exchangePricingHandoff(adminToken);
+    if (!result.status) {
+      storeHandoffError(
+        result.message || "This link has expired. Go back to Teams and tap the button again.",
+      );
+    }
+    markHandoffNavigation(to.path);
+    markExternalDeepLink(to.path);
+    return next({
+      path: to.path,
+      query: strippedQuery,
+      hash: to.hash,
+      replace: true,
+    });
+  }
+
   // Logged-in users stay inside the app. Public /home only after logout.
   if (to.path === "/home" && !isRouteLockExempt(to) && hasAuthSession()) {
     const appHome = getAuthenticatedAppHome();
@@ -668,18 +698,22 @@ router.beforeEach(async (to, from, next) => {
   if (!to.meta.requiresAuth) return next();
 
   const token = sessionStorage.getItem("authorization") || localStorage.getItem("authorization");
+  const allowHandoffErrorPage =
+    hasHandoffError() &&
+    isHandoffNavigation(to.path) &&
+    (to.path === "/pricingplan" || to.path === "/admin-upload-report");
 
-  if (!token) {
+  if (!token && !allowHandoffErrorPage) {
     return next("/home");
   }
 
-  if (to.meta.requiresAdmin) {
+  if (to.meta.requiresAdmin && token) {
     try {
       const raw = sessionStorage.getItem("user") || localStorage.getItem("user");
       const user = raw ? JSON.parse(raw) : null;
       // Team-member accounts carry a Member_role array; admin accounts do not.
       if (user && Array.isArray(user.Member_role)) {
-        return next("/home");
+        return next({ path: "/userdashboard", replace: true });
       }
     } catch {
       // Unparseable user object — let the page's own API call surface the 401.
@@ -688,6 +722,12 @@ router.beforeEach(async (to, from, next) => {
 
   // Signup → upload → choose plan → pay. Never open dashboard onboarding unpaid.
   if (to.meta.requiresPaidPlan && !isClaimInviteFlow()) {
+    if (isStoredTeamMember()) {
+      return next({ path: "/userdashboard", replace: true });
+    }
+    if (hasCachedPaidPlan()) {
+      return next();
+    }
     try {
       const authStore = useAuthStore();
       const paid = await authStore.hasPaidPlan();
@@ -712,6 +752,7 @@ router.afterEach((to) => {
   if (!isAuthDeepLink(to)) {
     clearExternalDeepLink();
   }
+  clearHandoffNavigation();
   tryShowPostLoginSuccessAlert();
 });
 

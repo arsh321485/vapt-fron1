@@ -78,7 +78,7 @@
 
 
           <div class="header-cta d-flex align-items-center gap-3">
-            <template v-if="hasSession">
+            <template v-if="showProfileInHeader">
               <NotificationPanel :recipient-type="isTeamMember ? 'user' : 'admin'" />
               <div class="position-relative d-inline-block">
                 <div
@@ -218,6 +218,21 @@ import {
   readStoredSetPasswordDeepLink,
   storeAdminSetPasswordDeepLink,
 } from '@/utils/userSetPasswordDeepLink';
+import { getAuthenticatedAppHome } from '@/utils/authenticatedHome';
+
+function readStoredUser() {
+  try {
+    const raw = sessionStorage.getItem('user') || localStorage.getItem('user');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function hasAuthToken() {
+  const token = sessionStorage.getItem('authorization') || localStorage.getItem('authorization');
+  return !!(token && token !== 'null' && token !== 'undefined');
+}
 
 function readStoredUser() {
   try {
@@ -261,9 +276,16 @@ export default {
     isTeamMember() {
       return !!(this.user && Array.isArray(this.user.Member_role));
     },
+    isPublicHomePage() {
+      const path = this.$route?.path || '';
+      return path === '/' || path === '/home';
+    },
+    showProfileInHeader() {
+      return this.hasSession && !this.isPublicHomePage;
+    },
     appHomePath() {
-      if (!this.hasSession) return '/home';
-      return this.isTeamMember ? '/userdashboard' : '/admindashboardonboarding';
+      if (this.isPublicHomePage) return '/home';
+      return getAuthenticatedAppHome(this.$route?.path || '/home');
     },
   },
   watch: {

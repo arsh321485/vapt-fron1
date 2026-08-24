@@ -461,6 +461,13 @@ import {
   readStoredAdminSetPasswordDeepLink,
   readStoredSetPasswordDeepLink,
 } from '@/utils/userSetPasswordDeepLink';
+import {
+  clearPendingMemberFlow,
+  isStoredTeamMember,
+  markPendingMemberFlow,
+  readPendingMemberFlow,
+} from '@/utils/authenticatedHome';
+import { persistTeamsDeepLink, extractTeamsDeepLink } from '@/utils/teamsDeepLink';
 
 export default {
   name: 'SignUpModal',
@@ -1017,6 +1024,7 @@ export default {
         this.userTeamsConnected = false;
         this.userPlatform = 'slack';
         this.platformChecked = true;
+        clearPendingMemberFlow();
         this.redirectUserToDashboard('Signed in with Slack successfully.');
         return;
       }
@@ -1026,6 +1034,7 @@ export default {
         localStorage.setItem('member_teams_connected', 'true');
         sessionStorage.removeItem('member_slack_connected');
         localStorage.removeItem('member_slack_connected');
+        clearPendingMemberFlow();
         this.userTeamsConnected = true;
         this.userSlackConnected = false;
         this.userPlatform = 'microsoft_teams';
@@ -1034,7 +1043,7 @@ export default {
       }
     },
     onMemberStorageChange(event) {
-      if (event.key === 'microsoft_graph_token' && event.newValue && sessionStorage.getItem('pending_member_flow') === 'teams') {
+      if (event.key === 'microsoft_graph_token' && event.newValue && readPendingMemberFlow() === 'teams') {
         sessionStorage.setItem('member_teams_connected', 'true');
         sessionStorage.removeItem('member_slack_connected');
         this.userTeamsConnected = true;
@@ -1053,6 +1062,7 @@ export default {
         await this.finishAdminOAuthSignIn();
         return;
       }
+      clearPendingMemberFlow();
       this.adminOAuthLoading = 'slack';
       try {
         const authStore = useAuthStore();
@@ -1086,6 +1096,7 @@ export default {
         await this.finishAdminOAuthSignIn();
         return;
       }
+      clearPendingMemberFlow();
       this.adminOAuthLoading = 'teams';
       try {
         const authStore = useAuthStore();
@@ -1117,6 +1128,7 @@ export default {
     async handleAdminOAuthMessage(event) {
       const allowed = [window.location.origin, 'https://vaptbackend.secureitlab.com'];
       if (event.origin && !allowed.includes(event.origin)) return;
+      if (readPendingMemberFlow()) return;
       if (event.data?.type === 'SLACK_CONNECTED') {
         if (event.data.bot_token) localStorage.setItem('slack_bot_token', event.data.bot_token);
         if (event.data.slack_user_id) localStorage.setItem('slack_user_id', event.data.slack_user_id);
@@ -1151,6 +1163,7 @@ export default {
         if (event.data.django_access_token) localStorage.setItem('django_access_token', event.data.django_access_token);
         if (event.data.django_refresh_token) localStorage.setItem('django_refresh_token', event.data.django_refresh_token);
         if (event.data.user) localStorage.setItem('local_user', JSON.stringify(event.data.user));
+        persistTeamsDeepLink(extractTeamsDeepLink(event.data));
         localStorage.setItem('teams_connected', 'true');
         this.adminTeamsConnected = true;
         this.adminSlackConnected = false;
@@ -1171,6 +1184,7 @@ export default {
       }
     },
     async onAdminStorageChange(event) {
+      if (readPendingMemberFlow()) return;
       if (event.key === 'microsoft_graph_token' && event.newValue) {
         this.adminTeamsConnected = true;
         this.adminSlackConnected = false;
@@ -1209,8 +1223,7 @@ export default {
       }
 
       this.userOAuthLoading = 'slack';
-      sessionStorage.setItem('pending_member_email', email);
-      sessionStorage.setItem('pending_member_flow', 'slack');
+      markPendingMemberFlow('slack', email);
       try {
         const authStore = useAuthStore();
         const callbackBase = `${window.location.origin}/slack/callback?flow=member`;
@@ -1268,8 +1281,7 @@ export default {
       }
 
       this.userOAuthLoading = 'teams';
-      sessionStorage.setItem('pending_member_email', email);
-      sessionStorage.setItem('pending_member_flow', 'teams');
+      markPendingMemberFlow('teams', email);
       try {
         const authStore = useAuthStore();
         const redirectUri = `${window.location.origin}/microsoft/callback?flow=member`;
@@ -1304,8 +1316,7 @@ export default {
       this.userErrorMessage = '';
       this.adminErrorMessage = '';
       this.resetPlatformState();
-      sessionStorage.removeItem('pending_member_email');
-      sessionStorage.removeItem('pending_member_flow');
+      clearPendingMemberFlow();
       this.$emit('close');
     },
     goBack() {
@@ -1681,6 +1692,10 @@ export default {
       this.$emit('open-admin-signup');
     },
     async checkAndRedirectAdmin() {
+      if (isStoredTeamMember()) {
+        this.$router.replace('/userdashboard');
+        return;
+      }
       const authStore = useAuthStore();
       const loggedUser = authStore.user || JSON.parse(localStorage.getItem('user') || 'null') || {};
       const userType = String(loggedUser && (loggedUser.user_type || loggedUser.type || loggedUser.role) || '').toLowerCase();

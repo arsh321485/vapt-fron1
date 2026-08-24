@@ -49,7 +49,15 @@ export default {
   methods: {
     isMemberFlow() {
       const params = new URLSearchParams(window.location.search);
-      return params.get("flow") === "member";
+      if (params.get("flow") === "member") return true;
+      try {
+        return (
+          sessionStorage.getItem("pending_member_flow") === "slack" ||
+          localStorage.getItem("pending_member_flow") === "slack"
+        );
+      } catch {
+        return false;
+      }
     },
     notifyOpener(payload) {
       if (window.opener) {

@@ -10,7 +10,7 @@ export function normalizeAssetType(value: unknown): string;
 export function assetTypeFromFilterKey(filterKey: unknown): string;
 export function uiTypeFromAssetType(assetType: unknown): string;
 export function filterAssetsByType(assets: unknown, filterKey: unknown): unknown[];
-export function extractAssetRows(payload: unknown): unknown[];
+export function extractAssetRows(payload: unknown): any[];
 export function getAssetHostName(asset: unknown): string;
 export function inferAssetType(asset: unknown): string;
 export function resolveAssetType(asset: unknown): string;
