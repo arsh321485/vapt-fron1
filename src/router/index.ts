@@ -23,6 +23,8 @@ import UserMissingSecurityUpdatesView from "../views/user-views/UserMissingSecur
 import VulnerabilityCardView from "../views/admin-dashboard/VulnerabilityCardView.vue";
 import YourTeamView from "../views/admin-dashboard/YourTeamView.vue";
 import PricingplansView from "../views/admin-views/PricingplansView.vue";
+import BillingSuccessView from "../views/admin-views/BillingSuccessView.vue";
+import BillingCancelView from "../views/admin-views/BillingCancelView.vue";
 import PartnerView from "../views/admin-views/PartnerView.vue";
 import PartnerLeadPortalView from "../views/admin-views/PartnerLeadPortalView.vue";
 import PartnerLeadThankYouView from "../views/admin-views/PartnerLeadThankYouView.vue";
@@ -31,7 +33,6 @@ import WebinarFormView from "../views/admin-views/WebinarFormView.vue";
 import WebinarThankYouView from "../views/admin-views/WebinarThankYouView.vue";
 import PrivacyPolicyView from "../views/admin-views/PrivacyPolicyView.vue";
 import TermsOfServiceView from "../views/admin-views/TermsOfServiceView.vue";
-import SecurityStatementView from "../views/admin-views/SecurityStatementView.vue";
 import KnowledgeBaseView from "../views/admin-views/KnowledgeBaseView.vue";
 import HowVaptfixWorksView from "../views/admin-views/HowVaptfixWorksView.vue";
 import DataProcessingAgreementView from "../views/admin-views/DataProcessingAgreementView.vue";
@@ -43,7 +44,6 @@ import AdminManageAccountView from "../views/admin-dashboard/AdminManageAccountV
 import AdminSettingsView from "../views/admin-dashboard/AdminSettingsView.vue";
 import UserManageAccountView from "../views/user-views/UserManageAccountView.vue";
 import UserSettingsView from "../views/user-views/UserSettingsView.vue";
-import ResetPasswordView from "../views/admin-views/ResetPasswordView.vue";
 import NotificationPanel from "../components/admin-component/NotificationPanel.vue";
 
 // user import
@@ -79,9 +79,25 @@ import CalendarView from "../views/admin-dashboard/CalendarView.vue";
 import UserCalendarView from "../views/user-views/UserCalendarView.vue";
 import { tryShowPostLoginSuccessAlert } from "../utils/postLoginSuccess";
 import {
+  buildAdminSetPasswordHomeQuery,
   buildUserSetPasswordHomeQuery,
   normalizeUserSetPasswordRoute,
 } from "../utils/userSetPasswordDeepLink";
+import {
+  clearExternalDeepLink,
+  isAuthDeepLink,
+  isPublicHomeLock,
+  isRouteLockExempt,
+  lockedLocation,
+  markExternalDeepLink,
+  readLockedRoute,
+  sameLockedRoute,
+  seedLockFromWindow,
+  writeLockedRoute,
+} from "../utils/routeLock";
+import { extractClaimInviteToken, isClaimInviteFlow, storeClaimInviteToken } from "../utils/claimInvite";
+import { useAuthStore } from "../stores/authStore";
+import { hasAuthSession } from "../utils/authenticatedHome";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -111,11 +127,6 @@ const router = createRouter({
       path: "/terms",
       name: "terms",
       component: TermsOfServiceView,
-    },
-    {
-      path: "/security",
-      name: "security",
-      component: SecurityStatementView,
     },
     {
       path: "/knowledge-base",
@@ -150,6 +161,16 @@ const router = createRouter({
       path: "/pricingplan",
       name: "pricingplan",
       component: PricingplansView,
+    },
+    {
+      path: "/billing/success",
+      name: "billing-success",
+      component: BillingSuccessView,
+    },
+    {
+      path: "/billing/cancel",
+      name: "billing-cancel",
+      component: BillingCancelView,
     },
     {
       path: "/partner",
@@ -190,7 +211,7 @@ const router = createRouter({
       path: "/communication",
       name: "communication",
       component: LocationView,
-      meta: { requiresAuth: true, requiresAdmin: true },
+      meta: { requiresAuth: true, requiresAdmin: true, requiresPaidPlan: true },
     },
     {
       path: "/microsoft/callback",
@@ -201,7 +222,7 @@ const router = createRouter({
       path: "/riskcriteria",
       name: "riskcriteria",
       component: RiskCriteriaView,
-      meta: { requiresAuth: true, requiresAdmin: true },
+      meta: { requiresAuth: true, requiresAdmin: true, requiresPaidPlan: true },
     },
     // {
     //   path: '/uploadreport',
@@ -218,7 +239,7 @@ const router = createRouter({
       path: "/admindashboardonboarding",
       name: "admindashboardonboarding",
       component: AdminDashboardOnboardingView,
-      meta: { requiresAuth: true, requiresAdmin: true },
+      meta: { requiresAuth: true, requiresAdmin: true, requiresPaidPlan: true },
     },
     {
       path: "/scope",
@@ -380,7 +401,7 @@ const router = createRouter({
       path: "/admin-upload-report",
       name: "admin-upload-report",
       component: AdminUploadReportView,
-      meta: { requiresAuth: true, requiresAdmin: true },
+      meta: { requiresAuth: true, requiresAdmin: true, allowDeepLink: true },
     },
     {
       path: "/scoping-form",
@@ -425,7 +446,7 @@ const router = createRouter({
     {
       path: "/set-password/:uidb64/:token",
       name: "set-password",
-      component: ResetPasswordView,
+      component: HomeView,
     },
     {
       path: "/user-set-password/:uidb64/:token",
@@ -441,7 +462,7 @@ const router = createRouter({
     {
       path: "/reset-password/:uidb64/:token",
       name: "reset-password",
-      component: ResetPasswordView,
+      component: HomeView,
     },
     {
       path: "/notification",
@@ -592,10 +613,48 @@ const router = createRouter({
   },
 });
 
-router.beforeEach((to, _from, next) => {
+seedLockFromWindow();
+
+router.beforeEach(async (to, from, next) => {
   const normalized = normalizeUserSetPasswordRoute(to);
   if (normalized) {
     return next({ ...normalized, replace: true });
+  }
+
+  // Magic links like /signup?invite= must open Home → Get Started modal, not the full signup page.
+  const inviteToken = extractClaimInviteToken(to.query || {});
+  const inviteSignupPaths = new Set(["/signup", "/signin", "/auth", "/login", "/usersignup"]);
+  if (inviteToken && inviteSignupPaths.has(to.path)) {
+    storeClaimInviteToken(inviteToken);
+    return next({
+      path: "/home",
+      query: { ...to.query, invite: inviteToken },
+      replace: true,
+    });
+  }
+
+  // Public marketing pages must always render (Chrome leftover login used to
+  // bounce /home → dashboard → /home and leave a white screen).
+  const isPublicMarketing = to.path === "/" || to.path === "/home";
+
+  // Typed URL / refresh (no previous in-app route). Stay on the last real page.
+  // Deep links (Teams / Slack / email) skip this lock and use token auth only.
+  const isAddressBarEntry = !from.matched.length;
+  if (isAddressBarEntry && isAuthDeepLink(to)) {
+    markExternalDeepLink(to.path);
+  }
+  if (isAddressBarEntry && !isRouteLockExempt(to) && !isAuthDeepLink(to) && !isPublicMarketing) {
+    const locked = readLockedRoute();
+    if (locked && !sameLockedRoute(locked, to.fullPath)) {
+      // A leftover /home lock must not fight dashboard (or the other way around).
+      if (!(hasAuthSession() && isPublicHomeLock(locked))) {
+        return next(lockedLocation(locked));
+      }
+    }
+    // No lock yet (or HMR missed afterEach) — never open inner pages from the address bar.
+    if (!locked && to.meta.requiresAuth && to.path !== "/home") {
+      return next({ path: "/home", replace: true });
+    }
   }
 
   if (!to.meta.requiresAuth) return next();
@@ -619,10 +678,32 @@ router.beforeEach((to, _from, next) => {
     }
   }
 
+  // Signup → upload → choose plan → pay. Never open dashboard onboarding unpaid.
+  if (to.meta.requiresPaidPlan && !isClaimInviteFlow()) {
+    try {
+      const authStore = useAuthStore();
+      const paid = await authStore.hasPaidPlan();
+      if (!paid) {
+        return next({ path: "/admin-upload-report", replace: true });
+      }
+    } catch {
+      return next({ path: "/admin-upload-report", replace: true });
+    }
+  }
+
   return next();
 });
 
-router.afterEach(() => {
+router.afterEach((to) => {
+  if (!isRouteLockExempt(to)) {
+    // Don't pin public /home while a session exists — that recreates the white-screen bounce.
+    if (!(hasAuthSession() && isPublicHomeLock(to.fullPath))) {
+      writeLockedRoute(to.fullPath);
+    }
+  }
+  if (!isAuthDeepLink(to)) {
+    clearExternalDeepLink();
+  }
   tryShowPostLoginSuccessAlert();
 });
 

@@ -145,6 +145,7 @@ export default {
           local_user: localUser,
           bot_token: botToken,
           slack_user_id: validateRes?.data?.user?.id || "",
+          is_new_user: loginData.is_new_user === true,
           django_access_token:
             loginData.jwt_tokens?.access ||
             loginData.tokens?.access ||

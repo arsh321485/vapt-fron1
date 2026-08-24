@@ -98,6 +98,7 @@ export default {
         this.notifyOpener({
           type: "TEAMS_CONNECTED",
           success: true,
+          is_new_user: res.data?.is_new_user === true,
           django_access_token:
             res.data?.django_access_token || localStorage.getItem("access_token"),
           django_refresh_token:
