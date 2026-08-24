@@ -364,8 +364,6 @@ export function findVulnIndexInList(list, item) {
   return rows.findIndex((v) => rowNameCandidates(v).some((n) => itemNames.has(n)));
 }
 
-export const findVulnIndexInList = findVulnIndexInList;
-
 export function severityMatchesFilter(severity, activeFilters) {
   if (!activeFilters || activeFilters.includes('All')) return true;
   const sev = canonSeverity(severity);

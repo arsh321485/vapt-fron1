@@ -161,8 +161,6 @@ export function collectInvalidScopeLines(textOrLines) {
     .map((value) => ({ value, error: invalidScopeTargetMessage(value) }));
 }
 
-export const collectInvalidScopeLines = collectInvalidScopeLines;
-
 export function countValidScopeTargets(text) {
   return splitScopeLines(text).filter(isValidScopeTarget).length;
 }

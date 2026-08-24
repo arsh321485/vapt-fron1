@@ -109,9 +109,6 @@ export function consumeBillingReturnTo(fallback = "/admindashboardonboarding") {
   return fallback;
 }
 
-export const consumeBillingReturnTo = consumeBillingReturnTo;
-export const peekBillingReturnTo = peekBillingReturnTo;
-
 export function peekBillingReturnTo() {
   const path = sessionStorage.getItem(BILLING_RETURN_TO_KEY);
   if (typeof path === "string" && path.startsWith("/")) return path;
