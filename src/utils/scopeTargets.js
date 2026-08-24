@@ -140,6 +140,29 @@ export function isValidScopeTarget(raw) {
   return isValidHostname(value);
 }
 
+export function invalidScopeTargetMessage(raw) {
+  const value = String(raw || "").trim();
+  if (!value) return "Empty line";
+  if (looksLikeFilename(value)) {
+    return "Filenames are not valid targets. Enter a valid IP, CIDR, or URL.";
+  }
+  if (/^[a-zA-Z]+$/.test(value) || (!/\d/.test(value) && !value.includes("."))) {
+    return "Not a valid IP address. Enter a valid IP (for example 192.168.1.10).";
+  }
+  return "Not a valid IP, CIDR, or URL.";
+}
+
+export function collectInvalidScopeLines(textOrLines) {
+  const lines = Array.isArray(textOrLines)
+    ? textOrLines.map((line) => String(line || "").trim()).filter(Boolean)
+    : splitScopeLines(textOrLines);
+  return lines
+    .filter((line) => !isValidScopeTarget(line))
+    .map((value) => ({ value, error: invalidScopeTargetMessage(value) }));
+}
+
+export const collectInvalidScopeLines = collectInvalidScopeLines;
+
 export function countValidScopeTargets(text) {
   return splitScopeLines(text).filter(isValidScopeTarget).length;
 }

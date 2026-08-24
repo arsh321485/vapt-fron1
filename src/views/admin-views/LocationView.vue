@@ -821,6 +821,7 @@ export default {
     async promptUploadReportIfNeeded() {
       const status = await this.authStore.getReportStatus();
       if (status.hasReport) return false;
+      if (await this.authStore.hasSubmittedScope()) return false;
       await Swal.fire({
         icon: "info",
         title: "Upload a report first",

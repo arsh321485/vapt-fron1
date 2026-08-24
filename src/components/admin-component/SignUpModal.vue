@@ -613,13 +613,6 @@ export default {
       }
       return true;
     },
-    showUserPasswordField() {
-      if (!this.platformChecked) return true;
-      if (this.userPlatform === 'slack' || this.userPlatform === 'microsoft_teams') {
-        return this.userHasPassword === true;
-      }
-      return true;
-    },
     /** Set Password tab only when invite/email deep-link tokens exist. */
     isSetPasswordAllowed() {
       if (this.setPasswordUidb64 && this.setPasswordToken) return true;

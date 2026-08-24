@@ -234,6 +234,7 @@ import Swal from 'sweetalert2';
 import { MOCK_MANUAL_STEPS } from '@/constants/mockManualRemediationSteps';
 import { getTeamColor } from '@/utils/teamColors';
 import { useAuthStore } from '@/stores/authStore';
+import { FREEMIUM_RETEST_MESSAGE } from '@/utils/planLimits';
 
 export default {
   name: 'ManualRemediationStepsPanel',
@@ -1003,6 +1004,15 @@ export default {
         return;
       }
       if (!this.showSendForRetest) return;
+      if (this.authStore.automationPremiumRequired) {
+        Swal.fire({
+          icon: 'info',
+          title: 'Retest not allowed',
+          text: FREEMIUM_RETEST_MESSAGE,
+          confirmButtonColor: '#241447',
+        });
+        return;
+      }
       this.requestingRetest = true;
       try {
         const res = await this.authStore.sendUserFixVerification(this.fixVulnerabilityId);
@@ -1025,7 +1035,12 @@ export default {
             showConfirmButton: false,
           });
         } else {
-          Swal.fire({ icon: 'error', title: 'Failed', text: res.message || 'Failed to send for retest', timer: 2500, showConfirmButton: false });
+          Swal.fire({
+            icon: 'error',
+            title: 'Retest not allowed',
+            text: res.message || FREEMIUM_RETEST_MESSAGE,
+            confirmButtonColor: '#241447',
+          });
         }
       } catch {
         Swal.fire({ icon: 'error', title: 'Error', text: 'Network error — please try again.', timer: 2000, showConfirmButton: false });

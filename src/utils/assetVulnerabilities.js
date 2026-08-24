@@ -339,6 +339,33 @@ export function filterOpenAssetVulnerabilities(vulns, closedFixVulns = [], host 
   return normalizeAssetVulnerabilityList(vulns).filter((v) => !isVulnClosedOnHost(v, closedFixVulns, host));
 }
 
+function rowIdCandidates(row) {
+  return [row?.id, row?.fix_vulnerability_id, row?.vulnerability_id]
+    .map((v) => (v == null ? "" : String(v).trim()))
+    .filter(Boolean);
+}
+
+function rowNameCandidates(row) {
+  return [row?.vul_name, row?.vulnerability_name, row?.plugin_name]
+    .map((v) => String(v || "").trim().toLowerCase())
+    .filter(Boolean);
+}
+
+/** Match a Fixed Recently row to the on-page vulnerability accordion list. */
+export function findVulnIndexInList(list, item) {
+  const rows = Array.isArray(list) ? list : [];
+  const itemIds = new Set(rowIdCandidates(item));
+  if (itemIds.size) {
+    const byId = rows.findIndex((v) => rowIdCandidates(v).some((id) => itemIds.has(id)));
+    if (byId >= 0) return byId;
+  }
+  const itemNames = new Set(rowNameCandidates(item));
+  if (!itemNames.size) return -1;
+  return rows.findIndex((v) => rowNameCandidates(v).some((n) => itemNames.has(n)));
+}
+
+export const findVulnIndexInList = findVulnIndexInList;
+
 export function severityMatchesFilter(severity, activeFilters) {
   if (!activeFilters || activeFilters.includes('All')) return true;
   const sev = canonSeverity(severity);

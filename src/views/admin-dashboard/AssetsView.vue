@@ -614,6 +614,7 @@ import {
   isAutomationNotAvailable,
   isActiveVulnStatus,
   lookupFixVulnerabilityId,
+  findVulnIndexInList,
 } from "@/utils/assetVulnerabilities";
 import { useAuthStore } from "@/stores/authStore";
 import { resolveVulnPluginId as lookupVulnPluginId } from "@/utils/automationScriptDownload";
@@ -1633,29 +1634,19 @@ class TLSConfigurator:
       return `${fullText.slice(0, this.descriptionPreviewLimit).trimEnd()}...`;
     },
     viewFixDetail(item) {
+      this.activeTab = 'vulnerabilities';
       this.statusFilter = ['closed'];
       this.activeFilters = ['All'];
 
       this.$nextTick(() => {
-        const targetName = String(item.vulnerability_name || item.vul_name || '').trim().toLowerCase();
-        const targetId = item.id != null ? String(item.id) : '';
-
-        const idx = this.filteredVulnerabilities.findIndex(v => {
-          if (targetId && (v.id != null || v.vulnerability_id != null)) {
-            return String(v.id ?? v.vulnerability_id) === targetId;
-          }
-          const name = String(v.vul_name || v.vulnerability_name || '').trim().toLowerCase();
-          return targetName && name === targetName;
-        });
-
+        const idx = findVulnIndexInList(this.filteredVulnerabilities, item);
         if (idx < 0) return;
 
         this.expandedVulnIndex = idx;
         this.setVulnDetailTab('manual');
 
         this.$nextTick(() => {
-          const refKey = 'vuln-' + idx;
-          const element = this.$refs[refKey];
+          const element = this.$refs['vuln-' + idx];
           if (element && element[0]) {
             element[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
           }

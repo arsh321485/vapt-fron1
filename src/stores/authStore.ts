@@ -20,7 +20,7 @@ import { isClaimInviteFlow, clearClaimInvite } from "@/utils/claimInvite";
 import { clearLockedRoute } from "@/utils/routeLock";
 import { clearCachedPaidPlan, hasCachedPaidPlan, setCachedPaidPlan } from "@/utils/authenticatedHome";
 import { getMySubscription } from "@/services/billingApi";
-import { isActiveSubscription, isFreemiumPlan } from "@/utils/planLimits";
+import { isActiveSubscription, isFreemiumPlan, retestErrorMessage } from "@/utils/planLimits";
 import { extractTeamsDeepLink, persistTeamsDeepLink } from "@/utils/teamsDeepLink";
 
 const AUTOMATION_PREMIUM_LOCK_KEY = "vaptfix_automation_premium_lock";
@@ -4728,10 +4728,21 @@ export const useAuthStore = defineStore("auth", {
         };
       } catch (error) {
         const err = error as AxiosError<any>;
+        const body = err.response?.data || {};
+        const raw =
+          body.message ||
+          body.error ||
+          body.detail ||
+          (Array.isArray(body.non_field_errors) ? body.non_field_errors[0] : "") ||
+          "";
         return {
           status: false,
-          message: err.response?.data?.message || "Failed to send verification",
-          details: err.response?.data || null,
+          message: retestErrorMessage(raw, {
+            httpStatus: err.response?.status,
+            automationPremiumRequired: this.automationPremiumRequired,
+            fallback: "Failed to send verification",
+          }),
+          details: body || null,
         };
       }
     },

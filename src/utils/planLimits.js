@@ -37,6 +37,32 @@ export function isExistingSubscriptionMessage(text) {
   );
 }
 
+export const FREEMIUM_RETEST_MESSAGE = "Freemium plan does not allow retesting.";
+
+export function isRetestBlockedMessage(text) {
+  return /freemium|retest.{0,40}(not allowed|not available|not supported|disabled)|not allowed.{0,20}retest|no testing\/?retesting|upgrade.{0,40}(premium|plan)|plan.{0,40}(not allow|does not allow|retest)/i.test(
+    String(text || ""),
+  );
+}
+
+export function retestErrorMessage(apiMessage, extras = {}) {
+  const text = String(apiMessage || "").trim();
+  const fallback = String(extras.fallback || "").trim();
+  const combined = `${text} ${fallback}`;
+  const genericFail = /fail(ed)? to send (verification|retest)/i.test(combined);
+  if (
+    extras.isFreemium ||
+    extras.automationPremiumRequired ||
+    isRetestBlockedMessage(combined) ||
+    genericFail ||
+    extras.httpStatus === 403 ||
+    extras.httpStatus === 402
+  ) {
+    return FREEMIUM_RETEST_MESSAGE;
+  }
+  return text || fallback || "Failed to send for retest.";
+}
+
 export function planAssetLimit(planOrSubscription) {
   const plan = String(
     typeof planOrSubscription === "string"
@@ -82,6 +108,9 @@ export function consumeBillingReturnTo(fallback = "/admindashboardonboarding") {
   if (typeof path === "string" && path.startsWith("/")) return path;
   return fallback;
 }
+
+export const consumeBillingReturnTo = consumeBillingReturnTo;
+export const peekBillingReturnTo = peekBillingReturnTo;
 
 export function peekBillingReturnTo() {
   const path = sessionStorage.getItem(BILLING_RETURN_TO_KEY);

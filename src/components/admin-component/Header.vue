@@ -266,8 +266,21 @@ export default {
       const path = this.$route?.path || '';
       return path === '/' || path === '/home';
     },
+    isSetPasswordSurface() {
+      const path = this.$route?.path || '';
+      if (isAdminSetPasswordPath(path)) return true;
+      if (this.showSignUpModal && (this.signUpAdminInitialTab === 'setPassword' || this.signUpUserInitialTab === 'setPassword')) {
+        return true;
+      }
+      try {
+        return sessionStorage.getItem('isNewUser') === 'true' || localStorage.getItem('isNewUser') === 'true';
+      } catch {
+        return false;
+      }
+    },
     showProfileInHeader() {
-      return this.hasSession && !this.isPublicHomePage;
+      if (!this.hasSession || this.isPublicHomePage || this.isSetPasswordSurface) return false;
+      return true;
     },
     appHomePath() {
       if (this.isPublicHomePage) return '/home';

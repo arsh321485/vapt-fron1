@@ -1,5 +1,6 @@
 export const BILLING_RETURN_TO_KEY: string;
 export const UPLOAD_RETURN_PATH: string;
+export const FREEMIUM_RETEST_MESSAGE: string;
 
 export type PlanId = "freemium" | "premium" | "custom";
 
@@ -30,6 +31,16 @@ export function isFreemiumPlan(planOrSubscription: unknown): boolean;
 export function isInvalidScanFileMessage(text: unknown): boolean;
 export function isPlanQuotaMessage(text: unknown): boolean;
 export function isExistingSubscriptionMessage(text: unknown): boolean;
+export function isRetestBlockedMessage(text: unknown): boolean;
+export function retestErrorMessage(
+  apiMessage: unknown,
+  extras?: {
+    fallback?: unknown;
+    isFreemium?: boolean;
+    automationPremiumRequired?: boolean;
+    httpStatus?: number;
+  },
+): string;
 export function planAssetLimit(planOrSubscription: unknown): number;
 export function suggestedPlanFromAssetCount(count: unknown): PlanId;
 export function planDisplayName(planOrSubscription: unknown): string;

@@ -454,7 +454,14 @@ const router = createRouter({
     {
       path: "/set-password/:uidb64/:token",
       name: "set-password",
-      component: HomeView,
+      redirect: (to) => ({
+        path: "/home",
+        query: buildAdminSetPasswordHomeQuery(
+          String(to.params.uidb64 ?? ""),
+          String(to.params.token ?? ""),
+          typeof to.query.email === "string" ? to.query.email : "",
+        ),
+      }),
     },
     {
       path: "/user-set-password/:uidb64/:token",
@@ -670,7 +677,6 @@ router.beforeEach(async (to, from, next) => {
       return next({ path: appHome, replace: true });
     }
   }
-
 
   // Public marketing pages must always render (Chrome leftover login used to
   // bounce /home → dashboard → /home and leave a white screen).

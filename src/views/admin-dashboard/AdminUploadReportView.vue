@@ -765,7 +765,7 @@
               </li>
             </ul>
 
-            <p v-if="uploadError" class="aur-error">{{ uploadError }}</p>
+            <p v-if="uploadError && !scopeLineErrors.length" class="aur-error">{{ uploadError }}</p>
             <div v-if="uploadPlanOffer" class="aur-plan-offer">
               <p class="aur-plan-offer-copy">
                 <template v-if="uploadPlanOffer.count">
@@ -850,6 +850,7 @@ import {
   UPLOAD_RETURN_PATH,
 } from '@/utils/planLimits';
 import {
+  collectInvalidScopeLines,
   extractPlanRecommendation,
   extractScopeProcessing,
   isValidScopeTarget,
@@ -861,6 +862,8 @@ import { consumeHandoffError } from '@/utils/adminHandoff';
 import {
   clearPendingUpload,
   peekPendingUploadFiles,
+  peekPendingUploadFile,
+  stashPendingUpload,
 } from '@/utils/pendingUpload';
 
 const ALLOWED_EXTENSIONS = [
@@ -1129,6 +1132,18 @@ export default {
     },
   },
   methods: {
+    toastNotice(icon, title, text = '', ms = 2400) {
+      return Swal.fire({
+        toast: true,
+        position: 'top',
+        icon,
+        title,
+        text,
+        showConfirmButton: false,
+        timer: ms,
+        timerProgressBar: true,
+      });
+    },
     async loadSubscription() {
       try {
         const data = await getMySubscription();
@@ -1188,13 +1203,12 @@ export default {
         useAuthStore().lockAutomationScriptsForFreemium(
           'Automation scripts are not available on the Freemium plan. Upgrade to Premium to download scripts.',
         );
-        await Swal.fire({
-          icon: 'success',
-          title: 'Freemium started',
-          text: 'Your free plan is active. Continue to add your team.',
-          timer: 1600,
-          showConfirmButton: false,
-        });
+        await this.toastNotice(
+          'success',
+          'Freemium started',
+          'Your free plan is active. Continue to add your team.',
+          1800,
+        );
         await this.$router.replace(this.dashboardRoute());
       } catch (error) {
         const message = billingErrorMessage(error);
@@ -1943,54 +1957,40 @@ export default {
 
       if (src === 'scope-manual') {
         this.applyManualProcessing(processing);
-        if (!created) {
+        if (!created || processing.errors.length) {
           this.uploadError = processing.errors.length
-            ? 'No valid targets were created. Fix the rejected lines and try again.'
-            : (res.message || 'No valid targets were created.');
-          await Swal.fire({
-            icon: 'warning',
-            title: 'No valid targets',
-            text: this.uploadError,
-            confirmButtonColor: '#241447',
-          });
+            ? 'These entries are not valid IPs. Fix them and try again.'
+            : (res.message || 'No valid targets were created. Enter valid IPs and try again.');
+          await this.toastNotice('error', 'Invalid IP addresses', this.uploadError);
           return;
         }
         const rec = extractPlanRecommendation(res);
         const breakdown = planRecommendationBreakdown(rec);
-        await Swal.fire({
-          icon: processing.error_count ? 'warning' : 'success',
-          title: 'Scope submitted',
-          text:
-            `${created} valid target(s) created` +
+        await this.toastNotice(
+          processing.error_count ? 'warning' : 'success',
+          'Scope submitted',
+          `${created} valid target(s) created` +
             (processing.error_count ? ` · ${processing.error_count} rejected` : '') +
             (skipped ? ` · ${skipped} skipped` : '') +
             (breakdown ? ` · ${breakdown}` : ''),
-          confirmButtonColor: '#241447',
-        });
+          1800,
+        );
         localStorage.removeItem('isNewProject');
         await this.routeAfterManualScope(rec, created);
         return;
       }
 
       if (skipped > 0 && created === 0) {
-        await Swal.fire({
-          icon: 'warning',
-          title: 'Already exists',
-          text: `${skipped} target(s) skipped`,
-          confirmButtonColor: '#241447',
-        });
+        await this.toastNotice('warning', 'Already exists', `${skipped} target(s) skipped`, 1800);
       } else {
-        await Swal.fire({
-          icon: 'success',
-          title: 'Scope created',
-          text:
-            created > 0
-              ? `${created} target(s) created${skipped ? ` · ${skipped} skipped` : ''}`
-              : res.message || 'Scope submitted successfully',
-          confirmButtonColor: '#241447',
-          timer: 2200,
-          showConfirmButton: true,
-        });
+        await this.toastNotice(
+          'success',
+          'Scope created',
+          created > 0
+            ? `${created} target(s) created${skipped ? ` · ${skipped} skipped` : ''}`
+            : res.message || 'Scope submitted successfully',
+          1800,
+        );
       }
 
       localStorage.removeItem('isNewProject');
@@ -2061,10 +2061,23 @@ export default {
         return;
       }
 
-      this.scopeSubmitting = true;
       this.uploadError = '';
-      this.scopeLineErrors = [];
       this.scopeSubmitSummary = null;
+      const invalid = collectInvalidScopeLines(this.manualTargets);
+      if (invalid.length) {
+        this.scopeLineErrors = invalid;
+        this.scopeSubmitSummary = null;
+        this.uploadError = '';
+        const summary =
+          invalid.length === this.manualTargetCount
+            ? 'None of these are valid IPs. Enter valid IPs and try again.'
+            : `${invalid.length} ${invalid.length === 1 ? 'entry is' : 'entries are'} not valid IPs. Fix them and try again.`;
+        this.toastNotice('error', 'Invalid IP addresses', summary);
+        return;
+      }
+
+      this.scopeSubmitting = true;
+      this.scopeLineErrors = [];
       try {
         const formData = new FormData();
         formData.append('targets', this.manualTargets.join('\n'));
@@ -2080,12 +2093,7 @@ export default {
             return;
           }
           this.uploadError = res.message || 'Invalid scope. Check the targets and try again.';
-          Swal.fire({
-            icon: 'error',
-            title: 'Invalid scope',
-            text: this.uploadError,
-            confirmButtonColor: '#241447',
-          });
+          this.toastNotice('error', 'Invalid IP addresses', this.uploadError);
           return;
         }
 
@@ -2747,7 +2755,26 @@ export default {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  padding-right: 2px;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: #c4b8dc transparent;
+}
+
+.aur-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.aur-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.aur-panel::-webkit-scrollbar-thumb {
+  background: #c4b8dc;
+  border-radius: 99px;
+}
+
+.aur-panel::-webkit-scrollbar-button {
+  display: none;
 }
 
 .aur-scope-loading {
@@ -2860,8 +2887,23 @@ export default {
   border-radius: 10px;
   overflow: hidden;
   background: #fff;
-  max-height: 180px;
+  max-height: 140px;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #c4b8dc transparent;
+}
+
+.aur-scope-table-wrap::-webkit-scrollbar {
+  width: 6px;
+}
+
+.aur-scope-table-wrap::-webkit-scrollbar-thumb {
+  background: #c4b8dc;
+  border-radius: 99px;
+}
+
+.aur-scope-table-wrap::-webkit-scrollbar-button {
+  display: none;
 }
 
 .aur-scope-table {

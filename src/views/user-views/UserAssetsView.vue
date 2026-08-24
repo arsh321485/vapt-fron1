@@ -781,6 +781,7 @@ import {
   matchesVulnStatusFilter,
   severityMatchesFilter,
   isAutomationNotAvailable,
+  findVulnIndexInList,
 } from "@/utils/assetVulnerabilities";
 import { useAuthStore } from "@/stores/authStore";
 import {
@@ -1534,17 +1535,23 @@ class TLSConfigurator:
       URL.revokeObjectURL(url);
     },
     viewFixDetail(item) {
-      const reportId = this.authStore.userLatestReportId;
-      if (!reportId) return;
-      this.$router.push({
-        name: 'user-remediation-timeline',
-        params: { reportId, asset: item.host_name || this.activeIndex },
-        query: {
-          id: item.fix_vulnerability_id,
-          plugin_name: item.plugin_name,
-          risk_factor: item.risk_factor,
-          description: item.description || '',
-        }
+      this.activeTab = 'vulnerabilities';
+      this.statusFilter = ['closed'];
+      this.activeFilters = ['All'];
+
+      this.$nextTick(() => {
+        const idx = findVulnIndexInList(this.filteredVulnerabilities, item);
+        if (idx < 0) return;
+
+        this.expandedVulnIndex = idx;
+        this.setVulnDetailTab('manual');
+
+        this.$nextTick(() => {
+          const element = this.$refs['vuln-' + idx];
+          if (element && element[0]) {
+            element[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        });
       });
     },
     goToPage(page) {
