@@ -860,9 +860,7 @@ import { setCachedPaidPlan } from '@/utils/authenticatedHome';
 import { consumeHandoffError } from '@/utils/adminHandoff';
 import {
   clearPendingUpload,
-  peekPendingUploadFile,
   peekPendingUploadFiles,
-  stashPendingUpload,
 } from '@/utils/pendingUpload';
 
 const ALLOWED_EXTENSIONS = [
@@ -1044,7 +1042,13 @@ export default {
       return Number.isFinite(n) ? n : 0;
     },
     hasExistingReport() {
-      return this.existingUploadedFiles.length > 0;
+      return !!(
+        this.existingReport?.id ||
+        this.existingReport?.report_id ||
+        this.existingReport?.resolved_file_name ||
+        this.existingReport?.file_name ||
+        this.existingUploadedFiles.length
+      );
     },
     existingReportId() {
       return (
@@ -1137,7 +1141,7 @@ export default {
     goToPricing(planId = '', assetCount = 0, uploadDone = false, extras = {}) {
       if (!planId) return;
       const authStore = useAuthStore();
-      const nextAfterPay = '/communication';
+      const nextAfterPay = authStore.isSlackOrTeamsLogin() ? '/riskcriteria' : '/communication';
       const count = Number(assetCount)
         || this.planSuggestPrompt?.count
         || this.uploadPlanOffer?.count
@@ -1155,7 +1159,8 @@ export default {
       return planDisplayName(planId);
     },
     dashboardRoute() {
-      return '/communication';
+      const authStore = useAuthStore();
+      return authStore.isSlackOrTeamsLogin() ? '/riskcriteria' : '/communication';
     },
     showInvalidFileError(backendMessage) {
       const msg = String(backendMessage || '').trim() || 'Invalid file';
@@ -2049,6 +2054,12 @@ export default {
     },
     async submitScopeManual() {
       if (!this.manualTargetCount || this.scopeSubmitting) return;
+      if (!this.planSuggestResolved && this.showPlanSuggestPrompt('scope-manual', this.manualTargetCount)) {
+        return;
+      }
+      if (!this.planLimitResolved && isActiveSubscription(this.subscription) && this.showPlanLimitPrompt('scope-manual', this.manualTargetCount)) {
+        return;
+      }
 
       this.scopeSubmitting = true;
       this.uploadError = '';
@@ -2216,6 +2227,13 @@ export default {
     async resumeUnpaidScopePayment() {
       if (this.isReplacingUpload) return false;
       if (isClaimInviteFlow() || readClaimInviteToken()) {
+        const authStore = useAuthStore();
+        const route = await authStore.getAdminOnboardingRoute();
+        if (route && route !== '/admin-upload-report') {
+          this.redirecting = true;
+          await this.$router.replace(route);
+          return true;
+        }
         this.redirecting = true;
         await this.$router.replace('/communication');
         return true;
@@ -2267,6 +2285,14 @@ export default {
       this.externalReportWatching = true;
       try {
         const authStore = useAuthStore();
+        const route = await authStore.getAdminOnboardingRoute();
+        if (route && route !== '/admin-upload-report') {
+          this.redirecting = true;
+          this.stopExternalReportWatch();
+          await this.$router.replace(route);
+          return true;
+        }
+
         const status = await authStore.getReportStatus();
         const onboardingDone =
           status?.state === 'ready' ||
@@ -2453,6 +2479,7 @@ export default {
         }
       } catch (err) {
         console.error('Upload error:', err);
+        // File already saved on the server — do not show a false failure over "Creating agents".
         if (uploadAccepted || this.generating || this.reportIds?.length) return;
         const data = err?.response?.data;
         const msg =

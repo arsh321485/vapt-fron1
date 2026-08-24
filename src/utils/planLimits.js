@@ -102,7 +102,12 @@ export function parsePlanHintFromMessage(text) {
     s.match(/has\s+(\d+)\s+(?:internal\s+)?ips/i) ||
     s.match(/(\d+)\s+assets/i);
   const count = countMatch ? Number(countMatch[1]) : 0;
-  const suggested = count ? suggestedPlanFromAssetCount(count) : "";
+  let suggested = count ? suggestedPlanFromAssetCount(count) : "";
+  if (!suggested) {
+    if (/custom/i.test(s)) suggested = "custom";
+    else if (/premium/i.test(s)) suggested = "premium";
+    else if (/freemium/i.test(s)) suggested = "freemium";
+  }
   return { count, suggested };
 }
 

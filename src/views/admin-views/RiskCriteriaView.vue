@@ -373,15 +373,21 @@ export default {
 
       if (!(await auth.hasPaidPlan())) {
         this.redirecting = true;
-        await this.$router.replace({ path: "/communication" });
+        await this.$router.replace({ path: "/admin-upload-report" });
         return true;
       }
 
       const status = await auth.getReportStatus();
       if (status.hasReport) return false;
 
+      await Swal.fire({
+        icon: "info",
+        title: "Upload a report first",
+        text: "Risk criteria is applied to your scan report. Please upload a report or provide scope, then set risk criteria.",
+        confirmButtonText: "Upload Report",
+      });
       this.redirecting = true;
-      await this.$router.replace({ path: "/communication" });
+      await this.$router.replace({ path: "/admin-upload-report" });
       return true;
     },
     async ensureOnboardingGate() {

@@ -260,7 +260,7 @@ export default {
   },
   computed: {
     isTeamMember() {
-      return !!(this.user && (Array.isArray(this.user.Member_role) || Array.isArray(this.user.Member_role)));
+      return !!(this.user && Array.isArray(this.user.Member_role));
     },
     isPublicHomePage() {
       const path = this.$route?.path || '';

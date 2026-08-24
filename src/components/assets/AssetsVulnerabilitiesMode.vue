@@ -292,6 +292,7 @@
                   :title="automationDownloadLocked ? (authStore.automationPremiumMessage || 'Upgrade to Premium to download automation scripts') : 'Download fix'"
                 >
                 <button
+                  v-if="hasAutomationScript(v)"
                   type="button"
                   class="vuln-download-icon-btn"
                   :class="{ 'vuln-download-icon-btn--disabled': automationDownloadLocked }"

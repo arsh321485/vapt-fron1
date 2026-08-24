@@ -28,3 +28,4 @@ export function findAssetByQueryHost(
   host: unknown,
 ): Record<string, unknown> | null;
 export function tabKeyForAsset(asset: Record<string, unknown> | null | undefined): string;
+export function enrichAssetsWithVulnTypes(assets: unknown, registerRows: unknown): unknown[];
