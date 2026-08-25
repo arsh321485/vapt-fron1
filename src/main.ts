@@ -18,4 +18,21 @@ app.component("TeamNameText", TeamNameText);
 app.use(createPinia());
 app.use(router);
 
-app.mount("#app");
+try {
+  app.mount("#app");
+} catch (err) {
+  console.error("App boot failed", err);
+  try {
+    const flag = "vaptfix_boot_recovery";
+    if (!sessionStorage.getItem(flag)) {
+      sessionStorage.setItem(flag, "1");
+      sessionStorage.removeItem("user");
+      sessionStorage.removeItem("authenticated");
+      sessionStorage.removeItem("vaptfix_locked_route");
+      localStorage.removeItem("completedSteps");
+      window.location.replace("/home");
+    }
+  } catch {
+    /* ignore */
+  }
+}

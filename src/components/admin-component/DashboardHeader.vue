@@ -6,8 +6,8 @@
   <div class="d-flex align-items-center justify-content-between gap-4 py-2 px-4">
 
    <div class="browser-bar">
-    <router-link to="/home">
-        <img src="@/assets/images/vaptfix_white.png" alt="">
+    <router-link :to="logoPath">
+        <img src="@/assets/images/vaptfix_white.png" alt="VaptFix">
         </router-link>
       </div>
     <!-- Right Section -->
@@ -32,21 +32,6 @@
         <div class="mb-2 text-muted text-center">
           {{ userEmail }}
         </div>
-<!-- <router-link
-  :to="{ path: '/location', query: { returnTo: $route.fullPath } }"
-  class="btn btn-sm btn-outline-primary w-100 mb-2"
->
-  Add User
-</router-link> -->
-
-<router-link
-  :to="{ path: '/manage-account', query: { returnTo: $route.fullPath } }"
-  class="btn btn-sm btn-outline-secondary w-100 mb-2"
-  @click="showDropdown = false"
->
-  Manage Account
-</router-link>
-
 <router-link
   :to="{ path: '/admin-upload-report', query: { returnTo: $route.fullPath } }"
   class="btn btn-sm btn-outline-primary w-100 mb-2"
@@ -89,6 +74,7 @@ import { useAuthStore } from "@/stores/authStore";
 import Swal from "sweetalert2";
 import router from "@/router";
 import NotificationPanel from "@/components/admin-component/NotificationPanel.vue";
+import { getAuthenticatedAppHome } from "@/utils/authenticatedHome";
 
 export default {
   name: 'DashboardHeader',
@@ -99,6 +85,11 @@ export default {
       userEmail: "",
       userInitial: "",
     };
+  },
+  computed: {
+    logoPath() {
+      return getAuthenticatedAppHome(this.$route?.path || '/admindashboardonboarding');
+    },
   },
   methods: {
     toggleDropdown() {

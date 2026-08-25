@@ -216,6 +216,7 @@
 <script>
 import { useAuthStore } from '@/stores/authStore';
 import { markPostLoginSuccess } from '@/utils/postLoginSuccess';
+import { extractClaimInviteToken, readClaimInviteToken, setClaimInviteValid, storeClaimInviteToken } from '@/utils/claimInvite';
 import Swal from 'sweetalert2';
 
 export default {
@@ -269,6 +270,8 @@ export default {
   watch: {
     show(newVal) {
       if (newVal) {
+        const fromQuery = extractClaimInviteToken(this.$route?.query || {});
+        if (fromQuery) storeClaimInviteToken(fromQuery);
         this.activeTab = this.defaultTab;
         this.$nextTick(() => {
           if (this.activeTab === 'admin') {
@@ -414,10 +417,14 @@ export default {
       this.adminLoading = true;
       try {
         const authStore = useAuthStore();
+        const fromQuery = extractClaimInviteToken(this.$route?.query || {});
+        if (fromQuery) storeClaimInviteToken(fromQuery);
+        const inviteToken = fromQuery || readClaimInviteToken();
         const result = await authStore.login({
           email: this.adminForm.email,
           password: this.adminForm.password,
-          recaptcha: recaptchaResponse
+          recaptcha: recaptchaResponse,
+          ...(inviteToken ? { invite_token: inviteToken } : {}),
         });
 
         if (result.status) {
@@ -462,11 +469,15 @@ export default {
         return;
       }
 
+      if (readClaimInviteToken()) {
+        setClaimInviteValid(true);
+      }
+
       try {
         const route = await authStore.getAdminOnboardingRoute();
         this.$router.replace(route);
       } catch {
-        this.$router.replace('/admin-upload-report');
+        this.$router.replace(readClaimInviteToken() ? '/communication' : '/admin-upload-report');
       }
     },
     openForgotPassword(type) {

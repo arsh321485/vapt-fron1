@@ -909,6 +909,8 @@ export default {
 .stat-card.medium strong { color: #ca8a04; }
 .stat-card.low strong { color: #0f696e; }
 .stat-card.critical { border-bottom: 3px solid #b91c1c; }
+.stat-card.high { border-bottom: 3px solid #d97706; }
+.stat-card.medium { border-bottom: 3px solid #ca8a04; }
 .stat-card.low { border-bottom: 3px solid #0f696e; }
 
 .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
