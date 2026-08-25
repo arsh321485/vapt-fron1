@@ -893,6 +893,14 @@ export default {
       try {
         const data = await getMySubscription();
         this.currentSubscription = data?.subscription || null;
+        if (isActiveSubscription(this.currentSubscription)) {
+          setCachedPaidPlan(true);
+        }
+        if (isFreemiumPlan(this.currentSubscription)) {
+          useAuthStore().lockAutomationScriptsForFreemium(
+            'Automation scripts are not available on the Freemium plan. Upgrade to Premium to download scripts.',
+          );
+        }
       } catch {
         this.currentSubscription = null;
       }
@@ -1016,7 +1024,6 @@ export default {
       this.paymentMethod = method.id;
     },
     freemiumContinuePath() {
-      const authStore = useAuthStore();
       return '/communication';
     },
     selectPlan(planId, options = {}) {
@@ -1098,10 +1105,15 @@ export default {
           icon: 'success',
           title: 'Freemium started',
           text: 'Trial is active',
+          confirmButtonColor: '#241447',
           timer: 1800,
           showConfirmButton: false,
         });
-        this.$router.push(this.freemiumContinuePath());
+        if (this.comingFromUpload || this.billingReturnTo) {
+          this.goAfterBilling();
+        } else {
+          this.$router.push(this.freemiumContinuePath());
+        }
       } catch (error) {
         const message = billingErrorMessage(error);
         if (isBillingAuthError(error)) {
@@ -1111,7 +1123,11 @@ export default {
         if (isExistingSubscriptionMessage(message) || /already exists/i.test(message)) {
           setCachedPaidPlan(true);
           await this.loadCurrentSubscription();
-          this.$router.push(this.freemiumContinuePath());
+          if (this.comingFromUpload || this.billingReturnTo) {
+            this.goAfterBilling();
+          } else {
+            this.$router.push(this.freemiumContinuePath());
+          }
           return;
         }
         this.checkoutError = message;

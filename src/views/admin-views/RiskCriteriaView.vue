@@ -327,7 +327,8 @@ export default {
             showConfirmButton: false,
           });
 
-          await this.$router.push("/admindashboardonboarding");
+          const route = await auth.getAdminOnboardingRoute();
+          this.$router.push(route);
         } else {
           Swal.fire("Error", res.message || "Unable to save risk criteria.", "error");
         }

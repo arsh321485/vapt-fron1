@@ -6,6 +6,10 @@ export interface TeamsDeepLink {
   teams_url: string;
 }
 
+export interface TeamsRedirectOptions {
+  preferDesktop?: boolean;
+}
+
 export function extractTeamsDeepLink(payload?: unknown): TeamsDeepLink;
 export function persistTeamsDeepLink(links: unknown): void;
 export function readStoredTeamsDeepLink(): TeamsDeepLink;
@@ -16,7 +20,7 @@ export function pickTeamsTabUrl(links: unknown): string;
 export function pickTeamsWebUrl(links: unknown): string;
 export function pickTeamsRedirectUrl(
   links: unknown,
-  options?: { preferDesktop?: boolean },
+  options?: TeamsRedirectOptions,
 ): string;
 export function resolveTeamsAdminDashboardUrl(
   payload: unknown,

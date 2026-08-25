@@ -97,7 +97,7 @@ import {
 } from "../utils/routeLock";
 import { extractClaimInviteToken, isClaimInviteFlow, hasClaimInviteToken, storeClaimInviteToken } from "../utils/claimInvite";
 import { useAuthStore } from "../stores/authStore";
-import { hasAuthSession, hasCachedPaidPlan, isStoredTeamMember } from "../utils/authenticatedHome";
+import { getAuthenticatedAppHome, hasAuthSession, hasCachedPaidPlan, isStoredTeamMember } from "../utils/authenticatedHome";
 import {
   clearHandoffNavigation,
   hasHandoffError,
@@ -668,6 +668,14 @@ router.beforeEach(async (to, from, next) => {
       hash: to.hash,
       replace: true,
     });
+  }
+
+  // Logged-in users stay inside the app. Public /home only after logout.
+  if (to.path === "/home" && !isRouteLockExempt(to) && hasAuthSession()) {
+    const appHome = getAuthenticatedAppHome();
+    if (appHome !== "/home") {
+      return next({ path: appHome, replace: true });
+    }
   }
 
   // Public marketing pages must always render (Chrome leftover login used to

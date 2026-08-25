@@ -72,6 +72,7 @@
 
 <script>
 import { useAuthStore } from "@/stores/authStore";
+import { getAuthenticatedAppHome } from "@/utils/authenticatedHome";
 
 const REPORT_POLL_MS = 30000;
 const PROGRESS_POLL_MS = 2500;
@@ -98,6 +99,9 @@ export default {
     };
   },
   computed: {
+    logoPath() {
+      return getAuthenticatedAppHome();
+    },
     progressPercent() {
       const total = this.pollingData.cards_total || 0;
       if (!total) return 0;

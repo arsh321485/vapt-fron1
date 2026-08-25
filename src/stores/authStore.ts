@@ -11,6 +11,7 @@ import {
   normalizeAssetVulnerabilityList,
 } from "@/utils/assetVulnerabilities";
 import {
+  enrichAssetsWithVulnTypes,
   extractAssetRows,
   getAssetHostName,
   resolveAssetType,
@@ -4092,8 +4093,16 @@ export const useAuthStore = defineStore("auth", {
       this._lockAutomationPremium(message);
     },
 
+    applyUserAssetTypeHints() {
+      this.cachedUserAssets = enrichAssetsWithVulnTypes(
+        this.cachedUserAssets,
+        this.cachedUserVulnRegister,
+      );
+    },
+
     async fetchUserAssets(force = false) {
       if (!force && this.cachedUserAssets.length > 0) {
+        this.applyUserAssetTypeHints();
         return { status: true, data: this.cachedUserAssets, total: this.cachedUserAssetTotal };
       }
       try {
@@ -4112,9 +4121,7 @@ export const useAuthStore = defineStore("auth", {
               held: false,
               isInternal: a.member_type === "internal",
               host_information: a.host_information || {},
-              severity_counts:
-                a.severity_counts ||
-                a.severity_counts || { critical: 0, high: 0, medium: 0, low: 0 },
+              severity_counts: a.severity_counts || { critical: 0, high: 0, medium: 0, low: 0 },
             };
           })
           .filter(Boolean);
@@ -4122,6 +4129,7 @@ export const useAuthStore = defineStore("auth", {
         const total = payload.total_assets ?? normalized.length;
         this.cachedUserAssets = normalized;
         this.cachedUserAssetTotal = total;
+        this.applyUserAssetTypeHints();
         return { status: true, data: this.cachedUserAssets, total };
       } catch (error: any) {
         return {
@@ -4423,6 +4431,7 @@ export const useAuthStore = defineStore("auth", {
         this.userLatestReportId = res.data?.report_id || null;
         this.cachedUserVulnRegister = Array.isArray(rows) ? rows : [];
         this.userVulnRegisterFetched = true;
+        this.applyUserAssetTypeHints();
         return { status: true, data: this.cachedUserVulnRegister };
       } catch (error: any) {
         return {
@@ -7115,6 +7124,7 @@ export const useAuthStore = defineStore("auth", {
       sessionStorage.removeItem("isNewUser");
       sessionStorage.removeItem("admin_slack_connected");
       sessionStorage.removeItem("admin_teams_connected");
+      clearClaimInvite();
       clearLockedRoute();
       this.user = null;
       this.accessToken = null;
@@ -7466,10 +7476,13 @@ export const useAuthStore = defineStore("auth", {
         return "/admin-upload-report";
       }
 
-      if (res.state === "needs_risk_criteria" || res.hasReport) {
+      if (res.state === "needs_risk_criteria" || res.hasReport || (await this.hasSubmittedScope())) {
         if (res.hasRiskCriteria) {
           this._markOnboardingComplete();
           return "/admindashboardonboarding";
+        }
+        if (!res.hasReport) {
+          return "/communication";
         }
         if (!this.isSlackOrTeamsLogin() && !this.completedSteps.includes(1)) {
           return "/communication";

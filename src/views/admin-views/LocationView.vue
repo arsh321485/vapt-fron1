@@ -623,7 +623,7 @@ export default {
         }
 
         Swal.fire({
-          icon: "success",
+          icon: platformSync.status === false ? "warning" : "success",
           title: "User Added",
           text: successText,
           timer: 2500,
@@ -814,13 +814,39 @@ export default {
     },
     handleContinue() {
       this.authStore.markStepCompleted(1);
-      this.$router.push("/riskcriteria");
+      this.promptUploadReportIfNeeded().then((wentToUpload) => {
+        if (!wentToUpload) this.$router.push('/riskcriteria');
+      });
+    },
+    async promptUploadReportIfNeeded() {
+      const status = await this.authStore.getReportStatus();
+      if (status.hasReport) return false;
+      if (await this.authStore.hasSubmittedScope()) return false;
+      await Swal.fire({
+        icon: "info",
+        title: "Upload a report first",
+        text: "Risk criteria is applied to your scan report. Please upload a report or provide scope, then set risk criteria.",
+        confirmButtonText: "Upload Report",
+      });
+      await this.$router.replace({
+        path: "/admin-upload-report",
+        query: { mode: "upload", returnTo: "/communication" },
+      });
+      return true;
     },
   },
   async mounted() {
     document.addEventListener("click", this.closeOnOutside);
     try {
-      if (isClaimInviteFlow()) {
+      if (this.returnTo) {
+        if (!isClaimInviteFlow() && !(await this.authStore.hasPaidPlan())) {
+          await this.$router.replace({
+            path: "/admin-upload-report",
+            query: { mode: "upload", returnTo: "/communication" },
+          });
+          return;
+        }
+      } else if (isClaimInviteFlow()) {
         this.authStore.initCompletedSteps();
         if (this.authStore.completedSteps.includes(1)) {
           const route = await this.authStore.getAdminOnboardingRoute();
@@ -849,6 +875,7 @@ export default {
       /* keep current session user */
     }
     await this.loadAddedUsers();
+    await this.promptUploadReportIfNeeded();
     if (this.hasTeamsIntegration) {
       await this.authStore.ensureTeamsChannelsCached();
     }

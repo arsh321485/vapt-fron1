@@ -335,6 +335,7 @@
                               :title="automationDownloadLocked ? (authStore.automationPremiumMessage || 'Upgrade to Premium to download automation scripts') : 'Download fix'"
                             >
                             <button
+                              v-if="hasAutomationScript(vuln)"
                               type="button"
                               class="vuln-download-icon-btn"
                               :class="{ 'vuln-download-icon-btn--disabled': automationDownloadLocked }"
@@ -1382,6 +1383,7 @@ class TLSConfigurator:
       this.loading = true;
       const result = await this.authStore.fetchUserAssets(force);
       await this.authStore.fetchUserVulnerabilityRegister(force);
+      this.authStore.applyUserAssetTypeHints();
       if (result.status) {
         this.assets = this.authStore.cachedUserAssets;
         this.selectFirstNonEmptyAssetTab();
@@ -1400,6 +1402,7 @@ class TLSConfigurator:
       this.loading = true;
       const result = await this.authStore.fetchUserAssets(true);
       await this.authStore.fetchUserVulnerabilityRegister(true);
+      this.authStore.applyUserAssetTypeHints();
       if (result.status) {
         this.assets = this.authStore.cachedUserAssets;
         this.selectFirstNonEmptyAssetTab();
