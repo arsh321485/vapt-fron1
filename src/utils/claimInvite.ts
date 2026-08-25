@@ -24,6 +24,16 @@ function truthyFlag(value: unknown): boolean {
   return raw === "true" || raw === "1" || raw === "yes" || raw === "valid";
 }
 
+function unwrapInvitePayload(data: unknown): Record<string, unknown> {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return {};
+  const root = data as Record<string, unknown>;
+  const nested = root.data || root.invite || root.result || root.payload;
+  if (nested && typeof nested === "object" && !Array.isArray(nested)) {
+    return { ...root, ...(nested as Record<string, unknown>) };
+  }
+  return root;
+}
+
 function falsyFlag(value: unknown): boolean {
   if (value === false || value === 0) return true;
   const raw = String(value || "").trim().toLowerCase();
@@ -31,23 +41,31 @@ function falsyFlag(value: unknown): boolean {
 }
 
 /** Backend said this token is expired/invalid — not a network/404 miss. */
-export function isExplicitInviteExpired(data: Record<string, unknown> | null | undefined, httpStatus?: number): boolean {
-  const payload = data && typeof data === "object" ? data : {};
+export function isExplicitInviteExpired(data: unknown, httpStatus?: number): boolean {
+  const payload = unwrapInvitePayload(data);
+  if (payload.expired === false || payload.is_expired === false) return false;
+  if (String(payload.expired || "").toLowerCase() === "false") return false;
+  if (String(payload.is_expired || "").toLowerCase() === "false") return false;
   if (httpStatus === 410) return true;
-  if (payload.expired === true || payload.is_expired === true) return true;
+  if (truthyFlag(payload.expired) || truthyFlag(payload.is_expired)) return true;
   if (falsyFlag(payload.valid) || falsyFlag(payload.is_valid)) return true;
   const msg = String(payload.message || payload.detail || payload.error || "").toLowerCase();
   return /invite.{0,24}expir|link.{0,24}expir|token.{0,24}expir|expired invite/.test(msg);
 }
 
-export function isInvitePayloadValid(data: Record<string, unknown> | null | undefined): boolean {
-  const payload = data && typeof data === "object" ? data : {};
-  if (isExplicitInviteExpired(payload)) return false;
+export function isInvitePayloadValid(data: unknown, httpStatus?: number): boolean {
+  const payload = unwrapInvitePayload(data);
+  if (isExplicitInviteExpired(payload, httpStatus)) return false;
   if (truthyFlag(payload.valid) || truthyFlag(payload.is_valid)) return true;
   if (payload.success === true || payload.status === true) return true;
   if (Number(payload.report_count ?? payload.reports_count ?? payload.count) > 0) return true;
   // HTTP 200 without an explicit expiry means the magic link is still usable.
-  return true;
+  return httpStatus == null || (httpStatus >= 200 && httpStatus < 300);
+}
+
+export function readInviteReportCount(data: unknown): number {
+  const payload = unwrapInvitePayload(data);
+  return Number(payload.report_count ?? payload.reports_count ?? payload.count) || 0;
 }
 
 function writeStorage(key: string, value: string) {

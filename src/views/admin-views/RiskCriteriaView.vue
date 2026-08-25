@@ -178,6 +178,7 @@ import DashboardHeader from '@/components/admin-component/DashboardHeader.vue';
 import { useAuthStore } from "@/stores/authStore";
 import { isClaimInviteFlow, hasClaimInviteToken, hasClaimInviteReport, clearClaimInvite } from "@/utils/claimInvite";
 import { isScopeAwaitingScan, markScopeAwaitingScan } from "@/utils/scopeScanGate";
+import { dismissUploadReportModal } from "@/utils/suppressUploadReportModal";
 import { setCachedPaidPlan } from "@/utils/authenticatedHome";
 import Swal from "sweetalert2";
 import { Tooltip } from 'bootstrap'
@@ -466,6 +467,7 @@ export default {
     },
   },
   async mounted() {
+    dismissUploadReportModal();
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
     tooltipTriggerList.forEach(el => new Tooltip(el))
 

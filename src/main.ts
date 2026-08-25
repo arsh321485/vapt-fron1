@@ -1,5 +1,6 @@
 import "./assets/main.css";
 import "./assets/responsive.css";
+import "./utils/suppressUploadReportModal";
 
 // Bootstrap dropdowns/collapse require the JS bundle (includes Popper).
 import "bootstrap/dist/js/bootstrap.bundle.min.js";

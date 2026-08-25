@@ -678,6 +678,7 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
+
   // Public marketing pages must always render (Chrome leftover login used to
   // bounce /home → dashboard → /home and leave a white screen).
   const isPublicMarketing = to.path === "/" || to.path === "/home";

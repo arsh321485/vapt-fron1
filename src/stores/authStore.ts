@@ -16,7 +16,7 @@ import {
   getAssetHostName,
   resolveAssetType,
 } from "@/utils/assetDummyData";
-import { isClaimInviteFlow, clearClaimInvite, hasClaimInviteToken, isExplicitInviteExpired, isInvitePayloadValid } from "@/utils/claimInvite";
+import { isClaimInviteFlow, clearClaimInvite, hasClaimInviteToken, isExplicitInviteExpired, isInvitePayloadValid, readInviteReportCount } from "@/utils/claimInvite";
 import { clearLockedRoute } from "@/utils/routeLock";
 import { clearCachedPaidPlan, hasCachedPaidPlan, setCachedPaidPlan } from "@/utils/authenticatedHome";
 import { getMySubscription } from "@/services/billingApi";
@@ -548,12 +548,12 @@ export const useAuthStore = defineStore("auth", {
         });
         const data = res.data || {};
         const expired = isExplicitInviteExpired(data, res.status);
-        const valid = !expired && isInvitePayloadValid(data);
+        const valid = !expired && isInvitePayloadValid(data, res.status);
         return {
           status: true,
           valid,
           expired,
-          report_count: Number(data.report_count ?? data.reports_count ?? data.count) || 0,
+          report_count: readInviteReportCount(data),
           data,
         };
       } catch (error: any) {
@@ -564,7 +564,7 @@ export const useAuthStore = defineStore("auth", {
           status: false,
           valid: !expired,
           expired,
-          report_count: Number(data.report_count) || 0,
+          report_count: readInviteReportCount(data),
           data,
         };
       }

@@ -254,6 +254,7 @@ import DashboardHeader from "@/components/admin-component/DashboardHeader.vue";
 import RoleAssignmentDrawer from "@/components/admin-component/RoleAssignmentDrawer.vue";
 import { useAuthStore } from "@/stores/authStore";
 import { isClaimInviteFlow } from "@/utils/claimInvite";
+import { dismissUploadReportModal } from "@/utils/suppressUploadReportModal";
 import Swal from "sweetalert2";
 import {
   createEmptyRoleAssignments,
@@ -813,6 +814,7 @@ export default {
       }
     },
     handleContinue() {
+      dismissUploadReportModal();
       this.authStore.markStepCompleted(1);
       this.promptUploadReportIfNeeded().then((wentToUpload) => {
         if (!wentToUpload) this.$router.push('/riskcriteria');
@@ -836,6 +838,7 @@ export default {
     },
   },
   async mounted() {
+    dismissUploadReportModal();
     document.addEventListener("click", this.closeOnOutside);
     try {
       if (this.returnTo) {
