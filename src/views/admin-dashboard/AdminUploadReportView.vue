@@ -1494,7 +1494,6 @@ export default {
         this.planSuggestBusy = false;
       }
     },
-    },
     backToPlanChoices() {
       this.planLimitPrompt = null;
       this.planLimitBusy = false;
