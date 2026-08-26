@@ -11,8 +11,18 @@ import { createPinia } from "pinia";
 import App from "./App.vue";
 import router from "./router";
 import TeamNameText from "./components/common/TeamNameText.vue";
+import { livePageSyncMixin } from "./utils/livePageSync";
+
+if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    regs.forEach((reg) => {
+      void reg.unregister();
+    });
+  }).catch(() => {});
+}
 
 const app = createApp(App);
+app.mixin(livePageSyncMixin);
 
 app.component("TeamNameText", TeamNameText);
 

@@ -51,6 +51,7 @@ import Header from '@/components/admin-component/Header.vue';
 import Footer from '@/components/admin-component/Footer.vue';
 import { formatUsd, getMySubscription } from '@/services/billingApi';
 import { consumeBillingReturnTo, peekBillingReturnTo, UPLOAD_RETURN_PATH } from '@/utils/planLimits';
+import { setCachedPaidPlan } from '@/utils/authenticatedHome';
 import { useAuthStore } from '@/stores/authStore';
 
 const MAX_POLLS = 20;
@@ -122,6 +123,7 @@ export default {
         if (this.isActive) {
           this.polling = false;
           this.stopPolling();
+          setCachedPaidPlan(true);
           const stored = consumeBillingReturnTo('');
           const backToUpload =
             stored.startsWith(UPLOAD_RETURN_PATH) || stored.startsWith('/admin-upload-report');

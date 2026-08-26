@@ -248,8 +248,11 @@ import Swal from 'sweetalert2';
 import teamsIcon from '@/assets/images/teams.png';
 import slackIcon from '@/assets/images/slack.png';
 import {
-  extractClaimInviteToken,
+  clearClaimInvite,
+  isClaimInviteFlow,
+  markClaimInviteSignup,
   readClaimInviteToken,
+  readLiveMagicInvite,
   setClaimInviteValid,
   setClaimInviteReportCount,
   storeClaimInviteToken,
@@ -334,20 +337,22 @@ export default {
       return this.otpDigits.join('');
     },
     activeInviteToken() {
-      return this.inviteToken && !this.inviteExpired ? this.inviteToken : '';
+      return readLiveMagicInvite(this.$route?.query || {});
+    },
+    signupInviteToken() {
+      return (this.inviteToken || this.activeInviteToken || '').trim();
     },
     invitePending() {
-      return !!this.inviteToken && !this.inviteChecked;
+      return !!this.activeInviteToken && !this.inviteChecked;
     },
     inviteBannerText() {
-      if (!this.inviteToken) return '';
+      // Never show claiming/expired on a normal Get Started — only a live magic link.
+      // Expired is driven only by { valid: false } from the validate endpoint.
+      if (!this.activeInviteToken) return '';
       if (!this.inviteChecked) return 'Checking invite…';
       if (this.inviteExpired) return 'This invite link has expired.';
-      if (this.inviteValid) {
-        const count = this.inviteReportCount || 1;
-        return `Super admin shared ${count} report${count === 1 ? '' : 's'}. Sign up to continue.`;
-      }
-      return '';
+      const count = this.inviteReportCount || 1;
+      return `You're claiming ${count} report${count === 1 ? '' : 's'} — sign up below to receive them.`;
     },
     inviteBannerClass() {
       if (this.invitePending) return 'invite-banner-pending';
@@ -361,15 +366,24 @@ export default {
     }
   },
   watch: {
-    show(newVal) {
-      if (newVal) {
-        this.syncClaimInvite();
-        this.$nextTick(() => {
-          this.renderRecaptcha();
-          this.syncPlatformConnectionState();
-        });
-      }
-    }
+    show: {
+      immediate: true,
+      handler(newVal) {
+        if (newVal) {
+          this.syncClaimInvite();
+          this.$nextTick(() => {
+            this.renderRecaptcha();
+            this.syncPlatformConnectionState();
+          });
+        }
+      },
+    },
+    '$route.query.invite'() {
+      if (this.show) this.syncClaimInvite();
+    },
+    '$route.query.token'() {
+      if (this.show) this.syncClaimInvite();
+    },
   },
   mounted() {
     this.loadRecaptchaScript();
@@ -377,6 +391,7 @@ export default {
     window.addEventListener('message', this.handleSlackMessage);
     window.addEventListener('storage', this.onStorageChange);
     if (this.show) {
+      this.syncClaimInvite();
       this.$nextTick(() => this.renderRecaptcha());
     }
   },
@@ -386,25 +401,36 @@ export default {
       this.$emit('close');
     },
     syncClaimInvite() {
-      const fromQuery = extractClaimInviteToken(this.$route?.query || {});
-      const stored = readClaimInviteToken();
-      const token = fromQuery || stored;
-      if (fromQuery) storeClaimInviteToken(fromQuery);
-      this.inviteToken = token;
+      const live = readLiveMagicInvite(this.$route?.query || {});
+      if (!live) {
+        clearClaimInvite();
+        this.inviteToken = '';
+        this.inviteChecked = true;
+        this.inviteValid = false;
+        this.inviteExpired = false;
+        this.inviteReportCount = 0;
+        return;
+      }
+      storeClaimInviteToken(live);
+      this.inviteToken = live;
       this.inviteChecked = false;
       this.inviteValid = false;
       this.inviteExpired = false;
       this.inviteReportCount = 0;
-      if (token) this.validateInvite();
+      this.validateInvite();
     },
     async validateInvite() {
-      if (!this.inviteToken) return;
+      if (!this.inviteToken) {
+        this.inviteChecked = true;
+        this.inviteExpired = false;
+        return;
+      }
       try {
         const res = await this.authStore.validateClaimInvite(this.inviteToken);
-        this.inviteExpired = res.expired === true;
-        this.inviteValid = !this.inviteExpired;
-        this.inviteReportCount = this.inviteExpired ? 0 : (res.report_count || 1);
-        setClaimInviteValid(!this.inviteExpired);
+        this.inviteExpired = res.expired === true && res.valid === false;
+        this.inviteValid = res.valid === true && !this.inviteExpired;
+        this.inviteReportCount = this.inviteValid ? (res.report_count || 1) : 0;
+        setClaimInviteValid(this.inviteValid);
         setClaimInviteReportCount(this.inviteReportCount);
       } catch {
         this.inviteValid = true;
@@ -418,7 +444,7 @@ export default {
     },
     async redirectAfterSignup() {
       const authStore = useAuthStore();
-      if (readClaimInviteToken()) {
+      if (readClaimInviteToken() || isClaimInviteFlow()) {
         setClaimInviteValid(true);
         if (this.inviteReportCount) setClaimInviteReportCount(this.inviteReportCount);
         // New magic-link admin always lands on Add Users when super admin already attached a file.
@@ -524,7 +550,7 @@ export default {
       try {
         const authStore = useAuthStore();
         const verifyPayload = { email: this.form.email, otp: this.otp };
-        const inviteToken = this.activeInviteToken || readClaimInviteToken();
+        const inviteToken = this.signupInviteToken || readClaimInviteToken();
         if (inviteToken && !this.inviteExpired) verifyPayload.invite_token = inviteToken;
         const result = await authStore.signupVerifyOtp(verifyPayload);
         if (result.status) {
@@ -718,8 +744,9 @@ export default {
       if (this.isTeamsDisabled && !this.teamsConnected) return;
       try {
         const redirectUri = `${window.location.origin}/microsoft/callback`;
-        const adminId = this.getAdminId();
-        const res = await this.authStore.getMicrosoftOAuthUrl(redirectUri, adminId, this.activeInviteToken || null);
+        const inviteToken = this.signupInviteToken || null;
+        const adminId = inviteToken ? null : this.getAdminId();
+        const res = await this.authStore.getMicrosoftOAuthUrl(redirectUri, adminId, inviteToken);
         if (res.status && res.data.auth_url) {
           window.open(res.data.auth_url, '_blank');
         } else {
@@ -824,8 +851,9 @@ export default {
       }
       if (this.isSlackDisabled && !this.slackConnected) return;
       try {
-        const adminId = this.getAdminId();
-        const res = await this.authStore.getSlackOAuthUrl(this.backendBase, adminId, this.activeInviteToken || null);
+        const inviteToken = this.signupInviteToken || null;
+        const adminId = inviteToken ? null : this.getAdminId();
+        const res = await this.authStore.getSlackOAuthUrl(this.backendBase, adminId, inviteToken);
 
         if (res.status && res.data?.auth_url) {
           const width = 1000;
@@ -962,6 +990,12 @@ export default {
       }
 
       sessionStorage.setItem('isNewUser', 'true');
+      if (this.signupInviteToken) {
+        markClaimInviteSignup();
+        storeClaimInviteToken(this.signupInviteToken);
+      } else {
+        clearClaimInvite();
+      }
       this.resetForm();
       this.$emit('close');
       this.redirectAfterSignup();

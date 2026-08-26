@@ -170,20 +170,20 @@
                           <select class="ext-popup-select ext-has-icon" v-model="extPopupExtension">
                             <option value="">— Select Extension —</option>
                             <optgroup label="Days">
-                              <option value="1 Day">1 Day</option>
-                              <option value="2 Days">2 Days</option>
-                              <option value="3 Days">3 Days</option>
-                              <option value="4 Days">4 Days</option>
-                              <option value="5 Days">5 Days</option>
-                              <option value="6 Days">6 Days</option>
+                              <option
+                                v-for="opt in extDeadlineDayOptions"
+                                :key="opt"
+                                :value="opt"
+                                :disabled="isExtDeadlineDisabled(opt)"
+                              >{{ opt }}</option>
                             </optgroup>
                             <optgroup label="Weeks">
-                              <option value="1 Week">1 Week</option>
-                              <option value="2 Weeks">2 Weeks</option>
-                              <option value="3 Weeks">3 Weeks</option>
-                              <option value="4 Weeks">4 Weeks</option>
-                              <option value="5 Weeks">5 Weeks</option>
-                              <option value="6 Weeks">6 Weeks</option>
+                              <option
+                                v-for="opt in extDeadlineWeekOptions"
+                                :key="opt"
+                                :value="opt"
+                                :disabled="isExtDeadlineDisabled(opt)"
+                              >{{ opt }}</option>
                             </optgroup>
                           </select>
                         </div>
@@ -199,7 +199,7 @@
                   </div>
                   <div class="ext-popup-footer">
                     <button type="button" class="mte-btn-secondary" @click="closeExtPopup">Cancel</button>
-                    <button type="button" class="mte-btn-primary ext-submit-btn" @click="submitExtPopup" :disabled="!extPopupAsset || !extPopupVulName || !extPopupExtension || !extPopupReason.trim()">
+                    <button type="button" class="mte-btn-primary ext-submit-btn" @click="submitExtPopup" :disabled="!extPopupAsset || !extPopupVulName || !extPopupExtension || !extPopupReason.trim() || isExtDeadlineDisabled(extPopupExtension)">
                       <i class="bi bi-send-fill"></i> <span style="color:#fff;">Submit Request</span>
                     </button>
                   </div>
@@ -638,6 +638,9 @@ import { useAuthStore } from '@/stores/authStore';
 import { getTeamChipClass, getTeamTextClass } from '@/utils/teamColors';
 import Swal from 'sweetalert2';
 
+const EXT_DEADLINE_DAY_OPTIONS = ["1 Day", "2 Days", "3 Days", "4 Days", "5 Days", "6 Days"];
+const EXT_DEADLINE_WEEK_OPTIONS = ["1 Week", "2 Weeks", "3 Weeks", "4 Weeks", "5 Weeks", "6 Weeks"];
+
 export default {
   name: 'UserRemediationTimelineView',
   components: { DashboardMenu, DashboardHeader },
@@ -764,6 +767,12 @@ export default {
         return `${this.extPopupOriginalDeadlineDays} Days`;
       }
       return "—";
+    },
+    extDeadlineDayOptions() {
+      return EXT_DEADLINE_DAY_OPTIONS;
+    },
+    extDeadlineWeekOptions() {
+      return EXT_DEADLINE_WEEK_OPTIONS;
     },
   },
 
@@ -967,6 +976,17 @@ export default {
       const n = Number(m[1]);
       return m[2].startsWith("week") ? n * 7 : n;
     },
+    isExtDeadlineDisabled(label) {
+      const original = Number(this.extPopupOriginalDeadlineDays);
+      if (!Number.isFinite(original) || original <= 0) return false;
+      const days = this.parseExtensionDays(label);
+      return Number.isFinite(days) && days <= original;
+    },
+    clearInvalidExtDeadline() {
+      if (this.extPopupExtension && this.isExtDeadlineDisabled(this.extPopupExtension)) {
+        this.extPopupExtension = "";
+      }
+    },
     async fetchExtPopupOptions(severity, asset) {
       this.extPopupOptionsLoading = true;
       const res = await this.authStore.fetchUserMitigationTimelineExtensionOptions(
@@ -981,6 +1001,7 @@ export default {
         this.extPopupAssetListApi = res.data.assets || [];
         this.extPopupVulListApi = res.data.vulnerabilities || [];
         this.extPopupOriginalDeadlineDays = res.data.original_deadline_days ?? null;
+        this.clearInvalidExtDeadline();
       } else {
         this.extPopupAssetListApi = [];
         this.extPopupVulListApi = [];
@@ -1029,6 +1050,7 @@ export default {
       if (!this.extPopupAsset || !this.extPopupVulName || !this.extPopupExtension || !this.extPopupReason.trim()) return;
       const requestedDays = this.parseExtensionDays(this.extPopupExtension);
       if (!Number.isFinite(requestedDays) || requestedDays <= 0) return;
+      if (this.isExtDeadlineDisabled(this.extPopupExtension)) return;
       const payload = {
         severity: this.extPopupSeverity,
         asset: this.extPopupAsset,
@@ -1228,6 +1250,11 @@ export default {
       if (icon === 'check') return '#16a34a';
       if (icon === 'arrow') return '#0f696e';
       return '#94a3b8';
+    },
+    async liveRefreshPage() {
+      const fixVulId = this.currentVuln?.id || this.$route.query.fix_vul_id;
+      if (!fixVulId) return;
+      await this.fetchTimeline(String(fixVulId), true);
     },
     async fetchTimeline(fixVulId, silent = false) {
       if (!silent) this.timelineLoading = true;
@@ -1639,6 +1666,7 @@ export default {
 .ext-popup-select.ext-has-icon { padding-left: 32px; }
 .ext-popup-select,.ext-popup-textarea { border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 9px 12px; font-size: 13px; color: #1e293b; background: #f8fafc; outline: none; width: 100%; }
 .ext-popup-select:disabled { appearance: none; -webkit-appearance: none; -moz-appearance: none; cursor: default; }
+.ext-popup-select option:disabled { color: #94a3b8; background: #f1f5f9; }
 .ext-popup-textarea { resize: vertical; min-height: 90px; }
 .ext-deadline-chip { display: flex; align-items: center; gap: 7px; border-radius: 8px; padding: 9px 14px; font-size: 13px; font-weight: 600; border: 1.5px solid #e2e8f0; }
 .ext-deadline-original { background: #f1f5f9; color: #475569; }

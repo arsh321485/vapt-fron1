@@ -96,6 +96,12 @@ export default {
         });
     },
     methods: {
+        async liveRefreshPage() {
+            const reportId = this.authStore.userLatestReportId;
+            if (!reportId) return;
+            const res = await this.authStore.fetchUserOpenTickets(reportId, true);
+            if (res.status) this.tickets = res.data;
+        },
         async loadTickets() {
             await this.authStore.fetchUserVulnerabilityRegister();
             const reportId = this.authStore.userLatestReportId;

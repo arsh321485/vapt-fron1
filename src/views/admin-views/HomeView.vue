@@ -384,6 +384,7 @@ import AnimatedDashboard from '@/components/home-components/AnimatedDashboard.vu
 import { extractClaimInviteToken, storeClaimInviteToken } from '@/utils/claimInvite';
 import { writeLockedRoute } from '@/utils/routeLock';
 import { hasAuthSession } from '@/utils/authenticatedHome';
+import { useAuthStore } from '@/stores/authStore';
 
 export default {
   name: 'HomeView',
@@ -549,6 +550,9 @@ export default {
     '$route.query.invite'() {
       this.applyClaimInviteFromRoute();
     },
+    '$route.query.token'() {
+      this.applyClaimInviteFromRoute();
+    },
   },
   beforeUnmount() {
     window.removeEventListener('resize', this.onHighlightResize);
@@ -558,11 +562,14 @@ export default {
   methods: {
     applyClaimInviteFromRoute() {
       const invite = extractClaimInviteToken(this.$route?.query || {});
-      if (!invite) return false;
+      if (!invite) {
+        return false;
+      }
       storeClaimInviteToken(invite);
       this.showWebinarPopup = false;
       this.clearWebinarPopupTimer();
       this.showAdminSignUpModal = true;
+      useAuthStore().validateClaimInvite(invite);
       return true;
     },
     scheduleWebinarPopup() {

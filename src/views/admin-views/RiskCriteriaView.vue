@@ -274,8 +274,12 @@ export default {
         try {
           auth.markStepCompleted(2);
           auth._markOnboardingComplete();
-          setCachedPaidPlan(true);
           clearClaimInvite();
+          if (!(await auth.hasPaidPlan())) {
+            await this.$router.push("/pricingplan");
+            return;
+          }
+          setCachedPaidPlan(true);
           await this.$router.push("/admindashboardonboarding");
         } finally {
           this.loading = false;
@@ -317,7 +321,6 @@ export default {
         if (res.status) {
           auth.markStepCompleted(2);
           auth._markOnboardingComplete();
-          setCachedPaidPlan(true);
           clearClaimInvite();
 
           await Swal.fire({
@@ -328,6 +331,11 @@ export default {
             showConfirmButton: false,
           });
 
+          if (!(await auth.hasPaidPlan())) {
+            await this.$router.push("/pricingplan");
+            return;
+          }
+          setCachedPaidPlan(true);
           const route = await auth.getAdminOnboardingRoute();
           this.$router.push(route);
         } else {
@@ -439,7 +447,8 @@ export default {
           auth.markStepCompleted(2);
           this.redirecting = true;
           this.stopSlackWatch();
-          await this.$router.replace("/admindashboardonboarding");
+          const next = await auth.getAdminOnboardingRoute();
+          await this.$router.replace(next);
           return true;
         }
       } finally {

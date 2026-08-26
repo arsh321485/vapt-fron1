@@ -345,8 +345,13 @@
                     <!-- <span class="info-tooltip" data-tooltip="Displays the remaining remediation time for vulnerabilities based on the defined risk criteria."><i class="bi bi-info-circle dash-info-icon"></i></span> -->
                   </div>
 
+                  <div v-if="mitigationGaugesLoading" class="d-flex flex-column align-items-center justify-content-center py-3">
+                    <div class="spinner-border spinner-border-sm text-secondary" role="status"></div>
+                    <span style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:8px;">Loading timeline...</span>
+                  </div>
+
                   <!-- No-data state -->
-                  <div v-if="!authStore.mitigationTimeline" class="d-flex flex-column align-items-center justify-content-center py-2" style="opacity:0.55;">
+                  <div v-else-if="!hasMitigationGaugeData" class="d-flex flex-column align-items-center justify-content-center py-2" style="opacity:0.55;">
                     <i class="bi bi-clock-history" style="font-size:2rem;color:#cbd5e1;margin-bottom:8px;"></i>
                     <span style="font-size:11px;color:#94a3b8;font-weight:600;">Awaiting timeline data</span>
                   </div>
@@ -1433,6 +1438,7 @@ import DashboardMenu from '@/components/admin-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/admin-component/DashboardHeader.vue';
 import AdminProjectField from '@/components/admin-component/AdminProjectField.vue';
 import { useAuthStore } from "@/stores/authStore";
+import { resolveMitigationDays, resolveMitigationLabel } from "@/utils/mitigationTimeline";
 import Swal from "sweetalert2";
 import Chart from 'chart.js/auto';
 
@@ -1534,6 +1540,7 @@ export default {
       vulFixedMedium: 0,
       vulFixedLow: 0,
       dashboardLoadToken: 0,
+      summaryCardsLoading: false,
       mitigationLoading: false,
       mitigationByTeamData: null,
       vulnAssetCountData: null,
@@ -1575,6 +1582,15 @@ export default {
   computed: {
     authStore() {
       return useAuthStore();
+    },
+    hasMitigationGaugeData() {
+      return ["critical", "high", "medium", "low"].some((sev) => {
+        const label = this.getMitigationLabel(sev);
+        return label && label !== "--";
+      });
+    },
+    mitigationGaugesLoading() {
+      return this.summaryCardsLoading && !this.hasMitigationGaugeData;
     },
     mteDropdownTeams() {
       return (this.adminMteTeams || [])
@@ -2267,30 +2283,10 @@ export default {
     },
     getMitigationLabel(sev) {
       const sevData = this.getMitigationSevData(sev);
-      if (sevData && typeof sevData === 'object') {
-        // 1st: remaining_label (e.g. "Overdue")
-        if (sevData.remaining_label) return sevData.remaining_label;
-        // 2nd: status field fallback
-        if (String(sevData.status || '').toLowerCase() === 'overdue') return 'Overdue';
-        // 3rd: remaining_days formatted
-        if (sevData.remaining_days != null) return this.formatTimeline({ days: sevData.remaining_days });
-        // 4th: configured days formatted
-        return this.formatTimeline({ days: sevData.days });
-      }
-      return this.formatTimeline(this.getMitigationValue(sev));
+      return resolveMitigationLabel(sevData, this.getMitigationDays(sev), (value) => this.formatTimeline(value));
     },
     getMitigationDays(sev) {
-      const sevData = this.getMitigationSevData(sev);
-      if (typeof sevData === 'number') return sevData;
-      if (typeof sevData === 'string') {
-        const p = Number(sevData);
-        return Number.isFinite(p) ? p : null;
-      }
-      if (sevData && typeof sevData === 'object') {
-        const r = sevData.remaining_days;
-        return (r !== null && r !== undefined) ? r : (sevData.days ?? null);
-      }
-      return null;
+      return resolveMitigationDays(this.getMitigationSevData(sev), this.riskCriteria?.[sev]);
     },
     getMitigationValue(sev) {
       const days = this.getMitigationDays(sev);
@@ -2694,12 +2690,16 @@ export default {
         }
       }
     },
+    liveRefreshPage() {
+      this.loadDashboardData();
+    },
     loadDashboardData() {
       const token = Date.now();
       this.dashboardLoadToken = token;
       // Only show loading on first load (no existing data)
       const isFirstLoad = !this.mitigationByTeamData;
       if (isFirstLoad) this.mitigationLoading = true;
+      if (!this.hasMitigationGaugeData) this.summaryCardsLoading = true;
 
       // Single parallel batch: avoids waiting for mitigation/vuln helpers to finish before KPI Promise.all starts.
       Promise.allSettled([
@@ -2736,9 +2736,9 @@ export default {
           console.error("❌ Dashboard API error", err);
         })
         .finally(() => {
-          if (this.dashboardLoadToken === token && isFirstLoad) {
-            this.mitigationLoading = false;
-          }
+          if (this.dashboardLoadToken !== token) return;
+          if (isFirstLoad) this.mitigationLoading = false;
+          this.summaryCardsLoading = false;
         });
     },
 
@@ -2864,12 +2864,15 @@ export default {
         this.$router.replace(route);
         return;
       }
+      const stepsDone =
+        this.authStore.completedSteps.includes(1) && this.authStore.completedSteps.includes(2);
 
       const res = this.authStore.reportStatus;
-      this.hasReport = true;
+      this.hasReport = !!(res.hasReport || stepsDone);
       this.currentReportId = res.reportId || this.authStore.reportStatus.reportId;
       this.reportStatusChecking = false;
       this.removeReportStatusOverlay();
+      if (this.hasReport) this.loadDashboardData();
     },
     startLiveDashboardSync() {
       if (this._liveDashboardTimer) return;
@@ -2899,8 +2902,6 @@ mounted() {
   // Fire dashboard APIs immediately; report-status check runs in parallel (no duplicate loadDashboardData).
   this.loadDashboardData();
   void this.initReportStatusCheck();
-  this.startLiveDashboardSync();
-  document.addEventListener("visibilitychange", this.handleLiveDashboardVisibility);
 
   queueMicrotask(() => {
     this.initTestingOverlay();
@@ -2929,7 +2930,6 @@ mounted() {
     void this.initReportStatusCheck();
     // Refresh every time dashboard is shown again (keep-alive includes vulns-fixed + in-process inside loadDashboardData).
     this.loadDashboardData();
-    this.startLiveDashboardSync();
     this._lastDashboardLoad = Date.now();
   },
 };

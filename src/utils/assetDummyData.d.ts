@@ -6,26 +6,18 @@ export interface AssetTypeFilter {
 
 export const ASSET_TYPE_FILTERS: AssetTypeFilter[];
 
-export function normalizeAssetType(value: unknown): string;
-export function assetTypeFromFilterKey(filterKey: unknown): string;
-export function uiTypeFromAssetType(assetType: unknown): string;
-export function filterAssetsByType<T = Record<string, unknown>>(
-  assets: T[] | null | undefined,
-  filterKey: unknown,
-): T[];
-export function extractAssetRows(payload: unknown): Record<string, any>[];
-export function getAssetHostName(asset: Record<string, any> | null | undefined): string;
-export function inferAssetType(asset: Record<string, any> | null | undefined): string;
-export function resolveAssetType(asset: Record<string, any> | null | undefined): string;
-export function getAssetOs(asset: Record<string, any> | null | undefined): string;
-export function getAssetResolvedIp(asset: Record<string, any> | null | undefined): string;
-export function assetMatchesQueryHost(
-  asset: Record<string, any> | null | undefined,
-  host: unknown,
-): boolean;
-export function findAssetByQueryHost(
-  assets: Record<string, any>[] | null | undefined,
-  host: unknown,
-): Record<string, any> | null;
-export function tabKeyForAsset(asset: Record<string, any> | null | undefined): string;
-export function enrichAssetsWithVulnTypes(assets: unknown, registerRows: unknown): unknown[];
+export function normalizeAssetType(value?: any): string;
+export function assetTypeFromFilterKey(filterKey?: any): string;
+export function uiTypeFromAssetType(assetType?: any): string;
+export function filterAssetsByType(assets?: any, filterKey?: any): any[];
+export function extractAssetRows(payload?: any): any[];
+export function getAssetHostName(asset?: any): string;
+export function inferAssetType(asset?: any): string;
+export function resolveAssetType(asset?: any): string;
+export function getAssetOs(asset?: any): string;
+export function getAssetResolvedIp(asset?: any): string;
+export function assetMatchesQueryHost(asset?: any, host?: any): boolean;
+export function findAssetByQueryHost(assets?: any, host?: any): any;
+export function tabKeyForAsset(asset?: any): string;
+export function enrichAssetsWithVulnTypes(assets?: any, registerRows?: any): any[];
+export function resolveHostAssetType(hostName?: any, catalog?: any, extra?: any): string;

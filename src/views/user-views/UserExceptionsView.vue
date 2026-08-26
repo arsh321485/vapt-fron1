@@ -280,6 +280,12 @@ export default {
                 [...tooltipEls].forEach((el) => new bootstrap.Tooltip(el));
             });
         },
+        async liveRefreshPage() {
+            const reportId = this.authStore.userLatestReportId;
+            if (!reportId) return;
+            const res = await this.authStore.fetchUserSupportRequestsByReport(reportId, true);
+            if (res.status) this.supportRequests = res.data;
+        },
         async loadSupportRequests() {
             await this.authStore.fetchUserVulnerabilityRegister();
             const reportId = this.authStore.userLatestReportId;

@@ -837,6 +837,7 @@ import {
   isInvalidScanFileMessage,
   isNetworkOrTransportError,
   isPlanQuotaMessage,
+  markFreemiumActiveNotice,
   otherPlans,
   parsePlanHintFromMessage,
   planAssetLimit,
@@ -1026,6 +1027,12 @@ export default {
     isReplacingUpload() {
       return this.replacingFile || String(this.$route?.query?.replace || '') === '1';
     },
+    /** Profile "Upload Scope" / replace-file: stay here so they can add a new report. */
+    isExplicitScopeVisit() {
+      const returnTo = this.$route?.query?.returnTo;
+      if (typeof returnTo === 'string' && returnTo.startsWith('/')) return true;
+      return this.isReplacingUpload;
+    },
     canContinueWithExistingFile() {
       if (this.activePlanFitNotice) return false;
       if (this.viewMode === 'upload') return this.hasExistingReport;
@@ -1160,16 +1167,21 @@ export default {
     },
     goToPricing(planId = '', assetCount = 0, uploadDone = false, extras = {}) {
       if (!planId) return;
-      const authStore = useAuthStore();
       const nextAfterPay = '/communication';
       const count = Number(assetCount)
         || this.planSuggestPrompt?.count
         || this.uploadPlanOffer?.count
         || this.planLimitPrompt?.count
         || 0;
-      const returnTo = uploadDone ? nextAfterPay : `${UPLOAD_RETURN_PATH}?resume=1`;
-      setBillingReturnTo(returnTo);
-      const query = { returnTo, plan: planId };
+      const query = { plan: planId };
+      if (uploadDone) {
+        query.returnTo = nextAfterPay;
+        setBillingReturnTo(nextAfterPay);
+      } else {
+        query.returnTo = UPLOAD_RETURN_PATH;
+        query.resume = '1';
+        setBillingReturnTo(`${UPLOAD_RETURN_PATH}?resume=1`);
+      }
       if (count) query.assets = String(count);
       const mode = String(extras.mode || '').toLowerCase();
       if (mode === 'testing' || mode === 'management_testing') query.mode = 'testing';
@@ -1224,12 +1236,14 @@ export default {
       try {
         if (isActiveSubscription(this.subscription) && isFreemiumPlan(this.subscription)) {
           setCachedPaidPlan(true);
+          markFreemiumActiveNotice();
           await this.$router.replace(this.dashboardRoute());
           return;
         }
         const data = await checkoutFreemium(false);
         this.subscription = data?.subscription || this.subscription;
         setCachedPaidPlan(true);
+        markFreemiumActiveNotice();
         useAuthStore().lockAutomationScriptsForFreemium(
           'Automation scripts are not available on the Freemium plan. Upgrade to Premium to download scripts.',
         );
@@ -1244,6 +1258,7 @@ export default {
         const message = billingErrorMessage(error);
         if (isExistingSubscriptionMessage(message)) {
           setCachedPaidPlan(true);
+          markFreemiumActiveNotice();
           await this.loadSubscription();
           await this.$router.replace(this.dashboardRoute());
           return;
@@ -1422,7 +1437,8 @@ export default {
       const query = { ...this.$route.query, replace: '1', mode };
       this.$router.replace({ path: '/admin-upload-report', query }).catch(() => {});
     },
-    continueWithExistingFile() {
+    async continueWithExistingFile() {
+      if (this.uploading || this.planSuggestBusy || this.redirecting) return;
       this.replacingFile = false;
       this.planSuggestResolved = false;
       this.planFitNotice = null;
@@ -1433,13 +1449,51 @@ export default {
       delete query.replace;
       delete query.mode;
       this.$router.replace({ path: '/admin-upload-report', query }).catch(() => {});
-      const count = Number(this.existingReportIpCount || this.existingEntryCount || 0);
-      const source = this.viewMode === 'scope-csv'
-        ? 'scope-csv'
-        : this.viewMode === 'scope-manual'
-          ? 'scope-manual'
-          : 'upload';
-      this.showPlanSuggestPrompt(source, count, '', true);
+      this.planSuggestBusy = true;
+      try {
+        await this.loadSubscription();
+        const returnTo = this.$route?.query?.returnTo;
+        const safeReturn =
+          typeof returnTo === 'string' && returnTo.startsWith('/') && !returnTo.startsWith('//')
+            ? returnTo
+            : '';
+
+        if (isClaimInviteFlow() || isActiveSubscription(this.subscription)) {
+          this.redirecting = true;
+          if (isFreemiumPlan(this.subscription)) {
+            markFreemiumActiveNotice();
+          }
+          if (safeReturn) {
+            await this.$router.replace(safeReturn);
+            return;
+          }
+          await this.goAfterUploadReady();
+          return;
+        }
+
+        let count = Number(this.existingReportIpCount || this.existingEntryCount || 0);
+        if (!count) {
+          try {
+            const authStore = useAuthStore();
+            await authStore.fetchAssets(true);
+            count = Number(authStore.assetCount) || (authStore.assetRows || []).length || 0;
+          } catch {
+            /* still continue to pricing */
+          }
+        }
+        this.planSuggestResolved = false;
+        const source = this.viewMode === 'scope-csv'
+          ? 'scope-csv'
+          : this.viewMode === 'scope-manual'
+            ? 'scope-manual'
+            : 'upload';
+        if (this.showPlanSuggestPrompt(source, count, '', true)) return;
+        const planId = suggestedPlanFromAssetCount(count) || 'premium';
+        this.goToPricing(planId, count, true);
+      } finally {
+        this.planSuggestBusy = false;
+      }
+    },
     },
     backToPlanChoices() {
       this.planLimitPrompt = null;
@@ -1512,11 +1566,15 @@ export default {
         || this.planSuggestPrompt?.count
         || this.planLimitPrompt?.count
         || this.planFitNotice?.count
+        || this.existingReportIpCount
+        || this.existingEntryCount
         || 0;
       const files = this.selectedFiles.length
         ? this.selectedFiles
         : (this.selectedFile ? [this.selectedFile] : []);
-      const alreadyUploaded = !files.length && (this.hasExistingReport || this.hasExistingScope);
+      const alreadyUploaded = !files.length && (
+        this.hasExistingReport || this.hasExistingScope || this.uploadResult || this.existingReportId
+      );
       const fromScope =
         this.viewMode === 'scope-csv' ||
         this.viewMode === 'scope-manual' ||
@@ -1635,6 +1693,7 @@ export default {
     },
     async resumePendingUploadIfNeeded() {
       if (String(this.$route.query.resume || '') !== '1') return;
+      if (String(this.$route.query.replace || '') === '1') return;
       const files = await peekPendingUploadFiles();
       if (!files.length) return;
       this.viewMode = 'upload';
@@ -2272,10 +2331,19 @@ export default {
     },
     async goAfterUploadReady() {
       const authStore = useAuthStore();
+      const returnTo = this.$route?.query?.returnTo;
+      const safeReturn =
+        typeof returnTo === 'string' && returnTo.startsWith('/') && !returnTo.startsWith('//')
+          ? returnTo
+          : '';
       // Magic link OR scope-add: after the scan file is in, open Add Users — not risk criteria.
       if (isClaimInviteFlow() || readClaimInviteToken() || isScopeAwaitingScan()) {
         authStore.unmarkStepCompleted(1);
-        await this.$router.replace('/communication');
+        await this.$router.replace(safeReturn || '/communication');
+        return;
+      }
+      if (safeReturn && isActiveSubscription(this.subscription)) {
+        await this.$router.replace(safeReturn);
         return;
       }
       const route = await authStore.getAdminOnboardingRoute();
@@ -2319,8 +2387,7 @@ export default {
       return false;
     },
     isOnboardingScopeGate() {
-      const returnTo = this.$route?.query?.returnTo;
-      if (typeof returnTo === 'string' && returnTo.startsWith('/')) return false;
+      if (this.isExplicitScopeVisit) return false;
       if (String(this.$route?.query?.resume || '') === '1') return false;
       // Teams / Slack / typed URL: this page is the destination, not a wizard step.
       if (isExternalDeepLink('/admin-upload-report')) return false;
@@ -2559,7 +2626,9 @@ export default {
     await Promise.all([this.loadExistingScope(), this.loadExistingReport(), this.loadSubscription()]);
     const authStore = useAuthStore();
     const status = await authStore.getReportStatus();
-    if (status?.hasReport) {
+    // Dashboard "Upload Scope" must stay on this page so they can upload a new file.
+    // First-time onboarding still skips this screen once a report already exists.
+    if (status?.hasReport && !this.isExplicitScopeVisit) {
       this.redirecting = true;
       await this.$router.replace(await authStore.getAdminOnboardingRoute());
       return;

@@ -293,7 +293,10 @@ export default {
       ? words.slice(0, 4).join(" ") + "..."
       : desc;
   },
-  async fetchSupportRequests(silent = false) {
+    async liveRefreshPage() {
+      await this.fetchSupportRequests(true);
+    },
+    async fetchSupportRequests(silent = false) {
     const reportId = await this.authStore.resolveReportId();
     if (!reportId) {
       console.error('❌ reportId missing for support requests');

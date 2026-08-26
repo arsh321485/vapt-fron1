@@ -23,6 +23,10 @@
       <div class="loc-page-header">
         <h1 class="loc-title">Setup Organization</h1>
         <p class="loc-subtitle">Add team members to your organization. They will receive an email to set their password and access the dashboard.</p>
+        <div v-if="showFreemiumBanner" class="loc-plan-banner">
+          <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
+          <span>Freemium plan is active</span>
+        </div>
       </div>
 
       <!-- MAIN LAYOUT: form + users sidebar (aligned) -->
@@ -254,8 +258,11 @@ import DashboardHeader from "@/components/admin-component/DashboardHeader.vue";
 import RoleAssignmentDrawer from "@/components/admin-component/RoleAssignmentDrawer.vue";
 import { useAuthStore } from "@/stores/authStore";
 import { isClaimInviteFlow } from "@/utils/claimInvite";
+import { isScopeAwaitingScan } from "@/utils/scopeScanGate";
 import { dismissUploadReportModal } from "@/utils/suppressUploadReportModal";
 import Swal from "sweetalert2";
+import { getMySubscription } from "@/services/billingApi";
+import { consumeFreemiumActiveNotice, isActiveSubscription, isFreemiumPlan } from "@/utils/planLimits";
 import {
   createEmptyRoleAssignments,
   getAssignmentSummaryText,
@@ -297,6 +304,7 @@ export default {
       roleAssignmentCatalog: { PM: { assets: [], vulnerabilities: [] }, CM: { assets: [], vulnerabilities: [] }, NS: { assets: [], vulnerabilities: [] }, AF: { assets: [], vulnerabilities: [] } },
       vulnIdToData: {},
       catalogLoading: false,
+      showFreemiumBanner: false,
     };
   },
   computed: {
@@ -411,6 +419,10 @@ export default {
 
       this.catalogLoading = true;
       try {
+        const status = await this.authStore.getReportStatus();
+        if (status?.reportId) {
+          localStorage.setItem('reportId', status.reportId);
+        }
         const res = await this.authStore.fetchReportAssetVulnsByRole(roleFullMap[roleShort]);
         if (!res.status || !res.data) {
           this.roleAssignmentCatalog = {
@@ -817,7 +829,12 @@ export default {
       dismissUploadReportModal();
       this.authStore.markStepCompleted(1);
       this.promptUploadReportIfNeeded().then((wentToUpload) => {
-        if (!wentToUpload) this.$router.push('/riskcriteria');
+        if (wentToUpload) return;
+        this.authStore.getAdminOnboardingRoute().then((route) => {
+          this.$router.push(route === "/communication" ? "/riskcriteria" : route);
+        }).catch(() => {
+          this.$router.push("/riskcriteria");
+        });
       });
     },
     async promptUploadReportIfNeeded() {
@@ -835,6 +852,25 @@ export default {
         query: { mode: "upload", returnTo: "/communication" },
       });
       return true;
+    },
+    async maybeShowFreemiumNotice() {
+      try {
+        const data = await getMySubscription();
+        const sub = data?.subscription || null;
+        this.showFreemiumBanner = !!(isActiveSubscription(sub) && isFreemiumPlan(sub));
+      } catch {
+        this.showFreemiumBanner = false;
+      }
+      const justActivated = consumeFreemiumActiveNotice();
+      if (!justActivated) return;
+      this.showFreemiumBanner = true;
+      await Swal.fire({
+        icon: 'success',
+        title: 'Freemium plan active',
+        text: 'Your free plan is active. Add your team, then set risk criteria.',
+        timer: 2400,
+        showConfirmButton: false,
+      });
     },
   },
   async mounted() {
@@ -859,6 +895,15 @@ export default {
           }
         }
       } else {
+        const status = await this.authStore.getReportStatus();
+        if (
+          !status?.hasReport &&
+          !isScopeAwaitingScan() &&
+          !(await this.authStore.hasSubmittedScope())
+        ) {
+          await this.$router.replace("/admin-upload-report");
+          return;
+        }
         const route = await this.authStore.getAdminOnboardingRoute();
         if (route !== "/communication") {
           await this.$router.replace(route);
@@ -891,6 +936,7 @@ export default {
         }
       }
     }
+    await this.maybeShowFreemiumNotice();
   },
   beforeUnmount() {
     document.removeEventListener("click", this.closeOnOutside);
@@ -946,6 +992,19 @@ export default {
 
 /* Content */
 .loc-page-header { margin-bottom: 24px; }
+.loc-plan-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #047857;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
 .loc-title { font-size: 1.6rem; font-weight: 800; color: #1e293b; margin: 0 0 6px; }
 .loc-subtitle { font-size: 0.875rem; color: #64748b; margin: 0; line-height: 1.5; }
 

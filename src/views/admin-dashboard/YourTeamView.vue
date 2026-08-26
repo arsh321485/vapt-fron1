@@ -1078,6 +1078,10 @@ async deleteRoleFromUser(user, roleToRemove) {
         });
       }
     },
+    async liveRefreshPage() {
+      const res = await this.authStore.fetchUsersByAdmin(true);
+      if (res.status) this.users = res.data;
+    },
   },
   async mounted() {
     document.addEventListener("click", this.onClickOutside);

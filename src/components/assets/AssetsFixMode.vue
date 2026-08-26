@@ -182,8 +182,10 @@
                 <button
                   type="button"
                   class="av-dtab"
-                  :class="{ active: fixMethodTab === 'auto' }"
-                  @click="fixMethodTab = 'auto'"
+                  :class="{ active: fixMethodTab === 'auto', 'av-dtab--disabled': automationDownloadLocked }"
+                  :disabled="automationDownloadLocked"
+                  :title="automationDownloadLocked ? (authStore.automationPremiumMessage || 'Upgrade to Premium to use automated fixes') : ''"
+                  @click="setFixMethodTab('auto')"
                 >
                   <span class="av-dtab-emoji" aria-hidden="true">🤖</span>
                   Automated Fix
@@ -200,7 +202,7 @@
               </div>
 
               <div class="av-detail-tab-content">
-                <div v-if="fixMethodTab === 'auto'" class="av-auto-tab">
+                <div v-if="fixMethodTab === 'auto' && !automationDownloadLocked" class="av-auto-tab">
                   <AutomationNotSafeBanner v-if="isAutomationNotSafe" />
                   <AutomatedFixPanel
                     v-else
@@ -372,6 +374,9 @@ if __name__ == "__main__":
     };
   },
   computed: {
+    automationDownloadLocked() {
+      return !!this.authStore.automationPremiumRequired;
+    },
     reportId() {
       return this.isUser ? this.authStore.userLatestReportId : this.authStore.latestReportId;
     },
@@ -479,11 +484,25 @@ if __name__ == "__main__":
         this.selectCommonVuln(list[0]);
       }
     },
+    automationDownloadLocked: {
+      handler(locked) {
+        if (locked && this.fixMethodTab === 'auto') this.setFixMethodTab('manual');
+      },
+      immediate: true,
+    },
   },
   async mounted() {
+    await this.authStore.refreshAutomationPremiumLock(this.isUser);
     await this.loadCommonVulnerabilities();
   },
   methods: {
+    defaultFixTab() {
+      return this.automationDownloadLocked ? 'manual' : 'auto';
+    },
+    setFixMethodTab(tab) {
+      if (tab === 'auto' && this.automationDownloadLocked) return;
+      this.fixMethodTab = tab;
+    },
     async loadCommonVulnerabilities() {
       this.loading = true;
       if (this.isUser) {
@@ -568,7 +587,7 @@ if __name__ == "__main__":
       this.selectedOsKeys = osGroups.map(g => g.osKey);
       this.expandedOsKeys = osGroups.length ? [osGroups[0].osKey] : [];
       this.selectAllOs = true;
-      this.fixMethodTab = 'auto';
+      this.fixMethodTab = this.defaultFixTab();
     },
     toggleOsGroup(osKey) {
       const idx = this.selectedOsKeys.indexOf(osKey);
@@ -1016,13 +1035,24 @@ if __name__ == "__main__":
   transition: all 0.2s;
 }
 
-.av-dtab:hover {
+.av-dtab:hover:not(.av-dtab--disabled):not(:disabled) {
   color: #000000;
 }
 
 .av-dtab.active {
   color: #000000;
   border-bottom-color: #000000;
+}
+
+.av-dtab--disabled,
+.av-dtab:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.av-dtab--disabled:hover,
+.av-dtab:disabled:hover {
+  color: #64748b;
 }
 
 .av-detail-tab-content {

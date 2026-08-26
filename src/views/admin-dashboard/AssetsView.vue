@@ -397,7 +397,9 @@
                               <button
                                 type="button"
                                 class="av-dtab"
-                                :class="{ active: currentVulnTab === 'auto' }"
+                                :class="{ active: currentVulnTab === 'auto', 'av-dtab--disabled': automationDownloadLocked }"
+                                :disabled="automationDownloadLocked"
+                                :title="automationDownloadLocked ? (authStore.automationPremiumMessage || 'Upgrade to Premium to use automated fixes') : ''"
                                 @click="setVulnDetailTab('auto')"
                               >
                                 <span class="av-dtab-emoji" aria-hidden="true">🤖</span>
@@ -416,7 +418,7 @@
 
                             <!-- Tab Content -->
                             <div class="av-detail-tab-content">
-                              <div v-show="currentVulnTab === 'auto'" class="av-auto-tab">
+                              <div v-show="currentVulnTab === 'auto' && !automationDownloadLocked" class="av-auto-tab">
                                 <AutomatedFixPanel
                                   :key="v.vul_name + '-' + i"
                                   :severity="v.severity"
@@ -430,7 +432,7 @@
                                 />
                               </div>
 
-                              <div v-show="currentVulnTab === 'manual'" class="av-manual-tab">
+                              <div v-show="currentVulnTab === 'manual' || automationDownloadLocked" class="av-manual-tab">
                                 <div v-if="manualPanelMountedIndex === i" class="av-asset-section">
                                   <div v-if="v.operating_system" class="av-asset-label">
                                     <span class="av-asset-os-lbl">{{ v.operating_system }}</span>
@@ -548,6 +550,7 @@
                 @close-python-alert="showPythonInstallAlert = false"
                 @close-verified-alert="showVaptfixVerifiedAlert = false"
                 @vuln-assets-deleted="onVulnAssetsDeleted"
+                @held-changed="loadHeldAssets"
               />
             </div>
 
@@ -929,6 +932,12 @@ class TLSConfigurator:
     activeFilters() {
       this.expandedVulnIndex = null;
     },
+    automationDownloadLocked: {
+      handler(locked) {
+        if (locked && this.currentVulnTab === 'auto') this.setVulnDetailTab('manual');
+      },
+      immediate: true,
+    },
     pagedAssets: {
       handler(list) {
         if (this.$route.query?.asset) return;
@@ -1029,7 +1038,7 @@ class TLSConfigurator:
 
       if (!isOpening || prevIndex !== index) {
         this.manualPanelMountedIndex = null;
-        this.currentVulnTab = 'auto';
+        this.setVulnDetailTab(this.defaultFixTab());
       }
 
       if (isOpening) {
@@ -1115,6 +1124,19 @@ class TLSConfigurator:
         });
       });
     },
+    async liveRefreshPage() {
+      await this.authStore.fetchVulnerabilityRegister(true);
+      await this.authStore.fetchAssets(true);
+      await this.loadHeldAssets();
+      if (!this.activeIndex) return;
+      const inFixUi = this.currentVulnTab === 'automated' || this.currentVulnTab === 'manual';
+      if (inFixUi) return;
+      const requestSeq = ++this.assetFetchSeq;
+      await this.authStore.fetchSingleAssetVulnerabilities(this.activeIndex);
+      if (requestSeq === this.assetFetchSeq) {
+        this.refreshSupportRequestsForHost(this.activeIndex, requestSeq);
+      }
+    },
     async reloadAssetsAndHeld() {
       await this.authStore.fetchAssets(true);
       await this.loadHeldAssets();
@@ -1130,6 +1152,7 @@ class TLSConfigurator:
     async syncAssetsAfterVulnTab() {
       const activeAsset = this.activeIndex;
       await this.authStore.fetchAssets(true);
+      await this.loadHeldAssets();
       if (activeAsset && this.authStore.assetRows.some(a => a.asset === activeAsset)) {
         const requestSeq = ++this.assetFetchSeq;
         await this.authStore.fetchSingleAssetVulnerabilities(activeAsset);
@@ -1521,7 +1544,7 @@ class TLSConfigurator:
       this.resetActions();
     },
     async loadHeldAssets() {
-      const res = await this.authStore.fetchHeldAssets();
+      const res = await this.authStore.fetchMergedHeldAssets(false);
       if (res.status && res.assets.length) {
         this.heldAssets = res.assets.map(a => ({
           asset: a.asset,
@@ -1664,7 +1687,11 @@ class TLSConfigurator:
         this.selectedAssetIp,
       );
     },
+    defaultFixTab() {
+      return this.automationDownloadLocked ? 'manual' : 'auto';
+    },
     setVulnDetailTab(tab) {
+      if (tab === 'auto' && this.automationDownloadLocked) return;
       this.currentVulnTab = tab;
       if (tab === 'manual' && this.expandedVulnIndex != null) {
         this.manualPanelMountedIndex = this.expandedVulnIndex;
@@ -1771,7 +1798,7 @@ class TLSConfigurator:
           this.expandVulnFromQuery(pluginName, vulnId);
         }
         if (q.fix_tab === 'manual' || q.fix_tab === 'auto') {
-          if (q.fix_tab === 'manual') {
+          if (q.fix_tab === 'manual' || this.automationDownloadLocked) {
             this.setVulnDetailTab('manual');
           } else {
             this.currentVulnTab = q.fix_tab;
@@ -2952,7 +2979,7 @@ class TLSConfigurator:
   transition: all 0.2s;
 }
 
-.av-dtab:hover {
+.av-dtab:hover:not(.av-dtab--disabled):not(:disabled) {
   color: #000000;
 }
 

@@ -24,6 +24,9 @@
           <p class="otp-verify-sub">
             Your One-Time Password (OTP) for VAPTFIX Admin Signup is:
           </p>
+          <div v-if="inviteBannerText" class="invite-banner" :class="inviteBannerClass">
+            {{ inviteBannerText }}
+          </div>
 
           <div class="otp-inputs d-flex justify-content-center gap-2 mb-3">
             <input
@@ -89,6 +92,9 @@
       <div v-else>
         <h2 class="signup-title">Get started</h2>
         <p class="signup-sub mb-4">Create your VaptFix account to begin your security engagement</p>
+        <div v-if="inviteBannerText" class="invite-banner" :class="inviteBannerClass">
+          {{ inviteBannerText }}
+        </div>
 
         <form @submit.prevent="handleSignup" autocomplete="off">
           <!-- Email -->
@@ -195,6 +201,12 @@
 
 <script>
 import { useAuthStore } from '@/stores/authStore'
+import {
+  extractClaimInviteToken,
+  setClaimInviteReportCount,
+  setClaimInviteValid,
+  storeClaimInviteToken,
+} from '@/utils/claimInvite'
 import Swal from 'sweetalert2'
 
 export default {
@@ -216,9 +228,25 @@ export default {
       recaptchaWidgetId: null,
       otpSecondsLeft: 60,
       otpTimerId: null,
+      inviteToken: '',
+      inviteChecked: false,
+      inviteExpired: false,
+      inviteReportCount: 0,
     }
   },
   computed: {
+    inviteBannerText() {
+      if (!this.inviteToken) return ''
+      if (!this.inviteChecked) return 'Checking invite…'
+      if (this.inviteExpired) return 'This invite link has expired.'
+      const count = this.inviteReportCount || 1
+      return `You're claiming ${count} report${count === 1 ? '' : 's'} — sign up below to receive them.`
+    },
+    inviteBannerClass() {
+      if (!this.inviteChecked) return 'invite-banner-pending'
+      if (this.inviteExpired) return 'invite-banner-expired'
+      return 'invite-banner-ok'
+    },
     otpExpired() {
       return this.otpSent && this.otpSecondsLeft <= 0
     },
@@ -297,9 +325,11 @@ export default {
       this.loading = true
       try {
         const authStore = useAuthStore()
+        const inviteToken = this.inviteToken
         const result = await authStore.signupVerifyOtp({
           email: this.form.email,
-          otp: this.otp
+          otp: this.otp,
+          ...(inviteToken ? { invite_token: inviteToken } : {}),
         })
 
         if (result.status) {
@@ -421,13 +451,60 @@ export default {
       } finally {
         this.loading = false
       }
+    },
+    syncClaimInvite() {
+      const fromQuery = extractClaimInviteToken(this.$route?.query || {})
+      if (!fromQuery) {
+        this.inviteToken = ''
+        this.inviteChecked = true
+        this.inviteExpired = false
+        this.inviteReportCount = 0
+        return
+      }
+      storeClaimInviteToken(fromQuery)
+      this.inviteToken = fromQuery
+      this.inviteChecked = false
+      this.inviteExpired = false
+      this.inviteReportCount = 0
+      this.validateInvite()
+    },
+    async validateInvite() {
+      if (!this.inviteToken) {
+        this.inviteChecked = true
+        this.inviteExpired = false
+        return
+      }
+      try {
+        const authStore = useAuthStore()
+        const res = await authStore.validateClaimInvite(this.inviteToken)
+        this.inviteExpired = res.valid === false
+        this.inviteReportCount = this.inviteExpired ? 0 : (res.report_count || 1)
+        setClaimInviteValid(!this.inviteExpired)
+        setClaimInviteReportCount(this.inviteReportCount)
+      } catch {
+        this.inviteExpired = false
+        this.inviteReportCount = this.inviteReportCount || 1
+        setClaimInviteValid(true)
+        setClaimInviteReportCount(this.inviteReportCount)
+      } finally {
+        this.inviteChecked = true
+      }
     }
   },
   beforeUnmount() {
     this.clearOtpTimer()
   },
 
+  watch: {
+    '$route.query.invite'() {
+      this.syncClaimInvite()
+    },
+    '$route.query.token'() {
+      this.syncClaimInvite()
+    },
+  },
   mounted() {
+    this.syncClaimInvite()
     // Clear any stale auth token so it doesn't get sent with signup/OTP requests
     // A leftover expired token would cause the interceptor to catch a 401 and redirect to /signin
     localStorage.removeItem('authorization')
@@ -743,5 +820,28 @@ export default {
 .otp-box::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+
+.invite-banner {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.invite-banner-pending {
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  color: #3730a3;
+}
+.invite-banner-ok {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+}
+.invite-banner-expired {
+  background: #fef3c7;
+  border: 1px solid #fde047;
+  color: #92400e;
 }
 </style>

@@ -3,6 +3,7 @@
 const CLAIM_INVITE_TOKEN_KEY = "vaptfix_claim_invite_token";
 const CLAIM_INVITE_VALID_KEY = "vaptfix_claim_invite_valid";
 const CLAIM_INVITE_REPORT_COUNT_KEY = "vaptfix_claim_invite_report_count";
+const CLAIM_INVITE_SIGNED_UP_KEY = "vaptfix_claim_invite_signed_up";
 
 function pickQueryValue(value: unknown): string {
   if (value === undefined || value === null) return "";
@@ -15,7 +16,7 @@ function pickQueryValue(value: unknown): string {
 }
 
 export function extractClaimInviteToken(query: Record<string, unknown> = {}): string {
-  return pickQueryValue(query.invite);
+  return pickQueryValue(query.invite) || pickQueryValue(query.token);
 }
 
 function truthyFlag(value: unknown): boolean {
@@ -38,6 +39,34 @@ function falsyFlag(value: unknown): boolean {
   if (value === false || value === 0) return true;
   const raw = String(value || "").trim().toLowerCase();
   return raw === "false" || raw === "0" || raw === "no" || raw === "invalid" || raw === "expired";
+}
+
+function readRawValidFlag(payload: Record<string, unknown>): boolean | null {
+  const raw = payload.valid ?? payload.is_valid ?? payload.isValid;
+  if (raw === false || raw === 0) return false;
+  if (typeof raw === "string" && raw.trim().toLowerCase() === "false") return false;
+  if (raw === true || raw === 1) return true;
+  if (typeof raw === "string" && ["true", "1", "yes", "valid"].includes(raw.trim().toLowerCase())) {
+    return true;
+  }
+  return null;
+}
+
+/** Backend: { valid: true, report_count: N } | { valid: false }. Nested `data` is also accepted. */
+export function parseClaimInviteValidate(data: unknown): {
+  valid: boolean;
+  expired: boolean;
+  report_count: number;
+} {
+  const payload = unwrapInvitePayload(data);
+  const flag = readRawValidFlag(payload);
+  const report_count = Number(payload.report_count ?? payload.reports_count ?? payload.count) || 0;
+
+  // Only an explicit valid:false is expired. Missing `valid` must not show the banner.
+  if (flag === false) {
+    return { valid: false, expired: true, report_count: 0 };
+  }
+  return { valid: true, expired: false, report_count: report_count || 1 };
 }
 
 /** Backend said this token is expired/invalid — not a network/404 miss. */
@@ -108,6 +137,26 @@ function removeStorage(key: string) {
   }
 }
 
+/** Invite is active only when the address bar actually has ?invite= or ?token=. */
+export function readLiveMagicInvite(query: Record<string, unknown> = {}): string {
+  let fromWindow = "";
+  if (typeof window !== "undefined") {
+    try {
+      const search = new URLSearchParams(window.location.search);
+      fromWindow = (search.get("invite") || search.get("token") || "").trim();
+    } catch {
+      fromWindow = "";
+    }
+  }
+  if (fromWindow) return fromWindow;
+  return extractClaimInviteToken(query);
+}
+
+/** Live URL first, then the token stored after validate (needed if the query is stripped). */
+export function resolveClaimInviteToken(query: Record<string, unknown> = {}): string {
+  return readLiveMagicInvite(query) || readClaimInviteToken();
+}
+
 export function storeClaimInviteToken(token: string) {
   const value = String(token || "").trim();
   if (!value) return;
@@ -144,8 +193,22 @@ export function hasClaimInviteToken(): boolean {
   return !!readClaimInviteToken();
 }
 
-/** True while a super-admin magic link is in progress (report already uploaded). */
+/** Set only after a successful signup that used a live magic-link invite_token. */
+export function markClaimInviteSignup() {
+  writeStorage(CLAIM_INVITE_SIGNED_UP_KEY, "1");
+}
+
+export function didClaimInviteSignup(): boolean {
+  return readStorage(CLAIM_INVITE_SIGNED_UP_KEY) === "1";
+}
+
+/**
+ * Skip file upload only for a live magic link or after signup with that invite.
+ * Leftover tokens from an earlier visit must not skip Provide Scope.
+ */
 export function isClaimInviteFlow(): boolean {
+  if (didClaimInviteSignup()) return true;
+  if (readLiveMagicInvite()) return true;
   if (!hasClaimInviteToken()) return false;
   return readStorage(CLAIM_INVITE_VALID_KEY) !== "false";
 }
@@ -154,6 +217,7 @@ export function clearClaimInvite() {
   removeStorage(CLAIM_INVITE_TOKEN_KEY);
   removeStorage(CLAIM_INVITE_VALID_KEY);
   removeStorage(CLAIM_INVITE_REPORT_COUNT_KEY);
+  removeStorage(CLAIM_INVITE_SIGNED_UP_KEY);
 }
 
 /**

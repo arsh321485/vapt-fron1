@@ -121,6 +121,26 @@ export function peekBillingReturnTo() {
   return "";
 }
 
+const FREEMIUM_ACTIVE_NOTICE_KEY = "vaptfix_freemium_active_notice";
+
+export function markFreemiumActiveNotice() {
+  try {
+    sessionStorage.setItem(FREEMIUM_ACTIVE_NOTICE_KEY, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
+export function consumeFreemiumActiveNotice() {
+  try {
+    const show = sessionStorage.getItem(FREEMIUM_ACTIVE_NOTICE_KEY) === "1";
+    sessionStorage.removeItem(FREEMIUM_ACTIVE_NOTICE_KEY);
+    return show;
+  } catch {
+    return false;
+  }
+}
+
 export function extraIpCount(total, limit) {
   const count = Number(total) || 0;
   if (!Number.isFinite(limit)) return 0;

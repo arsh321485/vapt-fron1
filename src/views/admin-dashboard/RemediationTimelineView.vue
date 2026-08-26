@@ -729,6 +729,11 @@ export default {
       if (icon === 'arrow') return '#0f696e';
       return '#94a3b8';
     },
+    async liveRefreshPage() {
+      const fixVulId = this.currentVuln?.id || this.$route.query.fix_vul_id;
+      if (!fixVulId) return;
+      await this.fetchTimeline(String(fixVulId));
+    },
     async fetchTimeline(fixVulId) {
       this.timelineLoading = true;
       const res = await this.authStore.fetchVulnerabilityTimeline(fixVulId);

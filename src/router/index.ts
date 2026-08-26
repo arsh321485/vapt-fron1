@@ -95,7 +95,7 @@ import {
   seedLockFromWindow,
   writeLockedRoute,
 } from "../utils/routeLock";
-import { extractClaimInviteToken, isClaimInviteFlow, hasClaimInviteToken, storeClaimInviteToken } from "../utils/claimInvite";
+import { extractClaimInviteToken, isClaimInviteFlow, hasClaimInviteToken, storeClaimInviteToken, setClaimInviteValid, setClaimInviteReportCount } from "../utils/claimInvite";
 import { useAuthStore } from "../stores/authStore";
 import { getAuthenticatedAppHome, hasAuthSession, hasCachedPaidPlan, isStoredTeamMember } from "../utils/authenticatedHome";
 import {
@@ -636,16 +636,46 @@ router.beforeEach(async (to, from, next) => {
     return next({ ...normalized, replace: true });
   }
 
-  // Magic links like /signup?invite= must open Home → Get Started modal, not the full signup page.
+  // Magic links like /signup?invite= (or ?token=) must open Home → Get Started modal.
   const inviteToken = extractClaimInviteToken(to.query || {});
-  if (inviteToken) storeClaimInviteToken(inviteToken);
-  const inviteSignupPaths = new Set(["/signup", "/signin", "/auth", "/login", "/usersignup"]);
-  if (inviteToken && inviteSignupPaths.has(to.path)) {
-    return next({
-      path: "/home",
-      query: { ...to.query, invite: inviteToken },
-      replace: true,
-    });
+  if (inviteToken) {
+    storeClaimInviteToken(inviteToken);
+    try {
+      const authStore = useAuthStore();
+      void authStore.validateClaimInvite(inviteToken).then((res) => {
+        setClaimInviteValid(!res.expired);
+        if (!res.expired) setClaimInviteReportCount(res.report_count || 1);
+      });
+    } catch {
+      /* Pinia may not be ready on the very first tick */
+    }
+  }
+  const inviteSignupPaths = new Set([
+    "/signup",
+    "/signin",
+    "/auth",
+    "/login",
+    "/usersignup",
+    "/how-vaptfix-works",
+  ]);
+  if (inviteToken) {
+    const query: Record<string, any> = { ...to.query, invite: inviteToken };
+    delete query.token;
+    if (inviteSignupPaths.has(to.path)) {
+      return next({
+        path: "/home",
+        query,
+        replace: true,
+      });
+    }
+    if (!to.query.invite && to.query.token) {
+      return next({
+        path: to.path,
+        query,
+        hash: to.hash,
+        replace: true,
+      });
+    }
   }
 
   // Slack / Teams signed admin_token → same JWT exchange as a normal login.
@@ -677,7 +707,6 @@ router.beforeEach(async (to, from, next) => {
       return next({ path: appHome, replace: true });
     }
   }
-
 
   // Public marketing pages must always render (Chrome leftover login used to
   // bounce /home → dashboard → /home and leave a white screen).
@@ -729,6 +758,7 @@ router.beforeEach(async (to, from, next) => {
   }
 
   // Signup → upload → choose plan → pay. Magic-link / already-claimed report skips this.
+  // A leftover token must not skip Provide Scope; unpaid admins continue to the right step.
   if (to.meta.requiresPaidPlan && !isClaimInviteFlow() && !hasClaimInviteToken()) {
     if (isStoredTeamMember()) {
       return next({ path: "/userdashboard", replace: true });
@@ -738,18 +768,15 @@ router.beforeEach(async (to, from, next) => {
     }
     try {
       const authStore = useAuthStore();
-      if (authStore.reportStatus.hasReport) {
-        return next();
-      }
       const paid = await authStore.hasPaidPlan();
       if (paid) {
         return next();
       }
-      const status = await authStore.getReportStatus();
-      if (status?.hasReport) {
+      const dest = await authStore.unpaidAdminContinuePath();
+      if (to.path === dest) {
         return next();
       }
-      return next({ path: "/admin-upload-report", replace: true });
+      return next({ path: dest, replace: true });
     } catch {
       return next({ path: "/admin-upload-report", replace: true });
     }

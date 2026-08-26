@@ -10,7 +10,8 @@
             <DashboardMenu />
           </div>
           <div class="col vr-content px-0">
-            <div class="report-page" ref="reportContent">
+            <div class="report-page-shell">
+              <div class="report-page" ref="reportContent">
               <div class="report-watermark-layer" :style="watermarkLayerStyle" aria-hidden="true"></div>
               <div class="meta-header">
                 <div class="meta-left">
@@ -116,7 +117,7 @@
               </div>
 
               <div class="chart-grid">
-                <div class="card">
+                <div class="card chart-card">
                   <h3>Severity Distribution</h3>
                   <p class="mini-meta">Total Findings: {{ totalVulnerabilities }}</p>
                   <div class="severity-visual">
@@ -137,18 +138,46 @@
                     </div>
                   </div>
                 </div>
-                <div class="card">
+                <div class="card chart-card">
                   <h3>Findings by Team</h3>
-                  <canvas id="rTeamDistributionChart"></canvas>
+                  <div class="chart-canvas-box">
+                    <canvas id="rTeamDistributionChart"></canvas>
+                  </div>
                 </div>
               </div>
 
               <div class="card">
                 <div class="table-head">
                   <h3>Detailed Vulnerability Log</h3>
-                  <div class="filters">
-                    <button class="filter-btn" type="button">Filter</button>
-                    <button class="filter-btn" type="button">Sort by Severity</button>
+                  <div class="filters no-export" ref="logFilters">
+                    <div class="filter-dropdown">
+                      <button
+                        class="filter-btn"
+                        type="button"
+                        :class="{ active: severityFilter !== 'all' || teamFilter !== 'all' || statusFilter !== 'all' }"
+                        @click.stop="toggleFilterMenu"
+                      >
+                        Filter{{ activeFilterLabel }}
+                      </button>
+                      <div v-show="filterMenuOpen" class="filter-menu" role="menu">
+                        <p class="filter-menu-label">Severity</p>
+                        <button type="button" role="menuitem" :class="{ selected: severityFilter === 'all' }" @click="setSeverityFilter('all')">All</button>
+                        <button type="button" role="menuitem" :class="{ selected: severityFilter === 'critical' }" @click="setSeverityFilter('critical')">Critical</button>
+                        <button type="button" role="menuitem" :class="{ selected: severityFilter === 'high' }" @click="setSeverityFilter('high')">High</button>
+                        <button type="button" role="menuitem" :class="{ selected: severityFilter === 'medium' }" @click="setSeverityFilter('medium')">Medium</button>
+                        <button type="button" role="menuitem" :class="{ selected: severityFilter === 'low' }" @click="setSeverityFilter('low')">Low</button>
+                      </div>
+                    </div>
+                    <button
+                      class="filter-btn"
+                      type="button"
+                      :class="{ active: !!severitySort }"
+                      @click="toggleSeveritySort"
+                    >
+                      Sort by Severity
+                      <span v-if="severitySort === 'desc'"> ↓</span>
+                      <span v-else-if="severitySort === 'asc'"> ↑</span>
+                    </button>
                   </div>
                 </div>
 
@@ -203,6 +232,7 @@
               </div>
 
             </div>
+            </div>
           </div>
         </div>
       </div>
@@ -245,6 +275,8 @@ export default {
       tableLoading: false,
       tableData: [],
       exportMenuOpen: false,
+      filterMenuOpen: false,
+      severitySort: null,
       pdfExporting: false,
       reportMetaLoading: false,
       reportMeta: {
@@ -291,11 +323,23 @@ export default {
 
   computed: {
     filteredData() {
-      return this.tableData.filter(row =>
+      const rank = { critical: 4, high: 3, medium: 2, low: 1 };
+      const rows = this.tableData.filter((row) =>
         (this.teamFilter === 'all' || row.team === this.teamFilter) &&
-        (this.severityFilter === 'all' || row.severity === this.severityFilter) &&
-        (this.statusFilter === 'all' || row.status === this.statusFilter)
+        (this.severityFilter === 'all' || String(row.severity).toLowerCase() === this.severityFilter) &&
+        (this.statusFilter === 'all' || String(row.status).toLowerCase() === this.statusFilter)
       );
+      if (!this.severitySort) return rows;
+      return [...rows].sort((a, b) => {
+        const da = rank[String(a.severity || '').toLowerCase()] || 0;
+        const db = rank[String(b.severity || '').toLowerCase()] || 0;
+        return this.severitySort === 'desc' ? db - da : da - db;
+      });
+    },
+    activeFilterLabel() {
+      if (this.severityFilter === 'all') return '';
+      const label = this.severityFilter.charAt(0).toUpperCase() + this.severityFilter.slice(1);
+      return `: ${label}`;
     },
     totalVulnerabilities() {
       const { critical, high, medium, low } = this.vulnStats;
@@ -373,8 +417,10 @@ export default {
 
   async mounted() {
     this._onDocClick = (e) => {
-      const el = this.$refs.exportDropdown;
-      if (el && !el.contains(e.target)) this.exportMenuOpen = false;
+      const exportEl = this.$refs.exportDropdown;
+      if (exportEl && !exportEl.contains(e.target)) this.exportMenuOpen = false;
+      const filterEl = this.$refs.logFilters;
+      if (filterEl && !filterEl.contains(e.target)) this.filterMenuOpen = false;
     };
     document.addEventListener('click', this._onDocClick);
     await this.loadReportData();
@@ -588,7 +634,7 @@ export default {
           })(),
           options: {
             responsive: true,
-            maintainAspectRatio: true,
+            maintainAspectRatio: false,
             animation: false,
             events: [],
             plugins: {
@@ -615,6 +661,18 @@ export default {
     toggleExportMenu(e) {
       e.stopPropagation();
       this.exportMenuOpen = !this.exportMenuOpen;
+      this.filterMenuOpen = false;
+    },
+    toggleFilterMenu() {
+      this.filterMenuOpen = !this.filterMenuOpen;
+      this.exportMenuOpen = false;
+    },
+    setSeverityFilter(severity) {
+      this.severityFilter = severity;
+      this.filterMenuOpen = false;
+    },
+    toggleSeveritySort() {
+      this.severitySort = this.severitySort === 'desc' ? 'asc' : 'desc';
     },
 
     getWatermarkBackgroundImage() {
@@ -655,13 +713,57 @@ export default {
     }`;
     },
 
+    getExportLayoutCss() {
+      return `
+    html, body { margin: 0; padding: 0; background: #f5f6fa; }
+    body { font-family: Inter, Arial, Helvetica, sans-serif; color: #20293a; }
+    .report-page {
+      position: relative;
+      width: 1100px;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 32px 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow: visible;
+      box-sizing: border-box;
+    }
+    .report-page *, .report-page *::before, .report-page *::after { box-sizing: border-box; }
+    .no-export { display: none !important; }
+    .table-wrap { max-height: none !important; overflow: visible !important; height: auto !important; }
+    .chart-canvas-box { height: 240px !important; }
+    .severity-static-donut { width: 220px !important; height: 220px !important; }
+    .top-grid, .chart-grid { grid-template-columns: 1.6fr 1fr !important; }
+    .severity-stats-grid { grid-template-columns: repeat(4, 1fr) !important; }
+    .meta-items { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+    .scope-mini-grid { grid-template-columns: repeat(3, 1fr) !important; }
+    .severity-visual { grid-template-columns: 240px 1fr !important; min-height: 240px !important; }
+    img { max-width: 100%; height: auto; }`;
+    },
+
+    collectDocumentStyles() {
+      return Array.from(document.querySelectorAll('style'))
+        .map((node) => node.textContent || '')
+        .join('\n');
+    },
+
     buildReportClone() {
       const reportContent = this.$refs.reportContent;
       if (!reportContent) return null;
 
       const clone = reportContent.cloneNode(true);
       clone.querySelectorAll('.no-export').forEach((el) => el.remove());
-      clone.style.padding = '0';
+      clone.style.width = '1100px';
+      clone.style.maxWidth = '1100px';
+      clone.style.margin = '0 auto';
+      clone.style.padding = '28px 32px 48px';
+      clone.style.overflow = 'visible';
+      clone.querySelectorAll('.table-wrap').forEach((el) => {
+        el.style.maxHeight = 'none';
+        el.style.overflow = 'visible';
+        el.style.height = 'auto';
+      });
 
       const liveCanvases = reportContent.querySelectorAll('canvas');
       const clonedCanvases = clone.querySelectorAll('canvas');
@@ -708,6 +810,35 @@ export default {
 
     async downloadReportAsHtml() {
       this.exportMenuOpen = false;
+      const clone = this.buildReportClone();
+      if (clone) {
+        const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vulnerability Management Report</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+${this.collectDocumentStyles()}
+${this.getWatermarkCssBlock()}
+${this.getExportLayoutCss()}
+  </style>
+</head>
+<body>
+  <div class="report-download-wrapper">${clone.outerHTML}</div>
+</body>
+</html>`;
+        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'vulnerability-management-report.html';
+        a.click();
+        URL.revokeObjectURL(url);
+        return;
+      }
+
       const store = useAuthStore();
       try {
         const result = await store.downloadReportHtml();
@@ -738,33 +869,66 @@ export default {
         hiddenEls.push({ el, display: el.style.display });
         el.style.display = 'none';
       });
+      const EXPORT_WIDTH = 1100;
       try {
+        await this.$nextTick();
+        this.charts.forEach((chart) => {
+          try { chart.resize(); } catch { /* ignore */ }
+        });
+        await new Promise((resolve) => setTimeout(resolve, 160));
+
         const canvas = await html2canvas(reportContent, {
           scale: 2,
           useCORS: true,
           logging: false,
           backgroundColor: '#f5f6fa',
-          windowWidth: reportContent.scrollWidth,
-          scrollY: -window.scrollY,
+          width: EXPORT_WIDTH,
+          windowWidth: EXPORT_WIDTH,
+          height: reportContent.scrollHeight,
+          windowHeight: reportContent.scrollHeight,
+          onclone: (clonedDoc) => {
+            const page = clonedDoc.querySelector('.report-page');
+            if (page) {
+              page.style.width = `${EXPORT_WIDTH}px`;
+              page.style.maxWidth = `${EXPORT_WIDTH}px`;
+              page.style.overflow = 'visible';
+              page.style.padding = '28px 32px 40px';
+              page.style.margin = '0 auto';
+            }
+            clonedDoc.querySelectorAll('.no-export').forEach((el) => el.remove());
+            clonedDoc.querySelectorAll('.table-wrap').forEach((el) => {
+              el.style.maxHeight = 'none';
+              el.style.overflow = 'visible';
+              el.style.height = 'auto';
+            });
+            clonedDoc.querySelectorAll('.chart-canvas-box').forEach((el) => {
+              el.style.height = '240px';
+            });
+            clonedDoc.querySelectorAll('.severity-static-donut').forEach((el) => {
+              el.style.width = '220px';
+              el.style.height = '220px';
+            });
+          },
         });
 
         const imgData = canvas.toDataURL('image/png');
         const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
         const pageWidth = pdf.internal.pageSize.getWidth();
         const pageHeight = pdf.internal.pageSize.getHeight();
-        const imgWidth = pageWidth;
+        const margin = 8;
+        const imgWidth = pageWidth - margin * 2;
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
         let heightLeft = imgHeight;
-        let position = 0;
+        let position = margin;
 
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+        pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+        heightLeft -= (pageHeight - margin * 2);
 
-        while (heightLeft > 0) {
-          position = heightLeft - imgHeight;
+        while (heightLeft > 2) {
+          position = margin - (imgHeight - heightLeft);
           pdf.addPage();
-          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-          heightLeft -= pageHeight;
+          pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+          heightLeft -= (pageHeight - margin * 2);
         }
 
         pdf.save('security-intelligence-report.pdf');
@@ -782,18 +946,34 @@ export default {
 
 <style scoped>
 * { box-sizing: border-box; }
-.vr-content { min-height: 100vh; background: #f5f6fa; overflow-y: scroll; scrollbar-gutter: stable; }
+.vr-layout-row {
+  min-height: calc(100vh - 72px);
+  align-items: stretch;
+}
+.vr-content {
+  min-width: 0;
+  width: 100%;
+  height: calc(100vh - 72px);
+  background: #f5f6fa;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.report-page-shell {
+  width: 100%;
+  min-height: 100%;
+  padding: 84px 24px 40px;
+}
 .report-page {
   position: relative;
   width: 100%;
-  max-width: none;
-  margin: 0;
-  padding: 20px 10px 40px;
+  max-width: 1180px;
+  min-height: calc(100vh - 156px);
+  margin: 0 auto;
+  padding: 8px 8px 32px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding-top: 84px;
-  overflow: hidden;
+  gap: 16px;
+  overflow: visible;
 }
 .report-watermark-layer {
   position: absolute;
@@ -804,10 +984,10 @@ export default {
 }
 .meta-header { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
 .eyebrow { margin: 0; color: #0f696e; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
-.page-title { margin: 2px 0 10px; color: #241447; font-size: 44px; font-weight: 800; letter-spacing: -.02em; line-height: 1.05; }
+.page-title { margin: 2px 0 10px; color: #241447; font-size: 28px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
 .meta-items { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .meta-item strong.meta-file-name {
-  word-break: break-all;
+  word-break: break-word;
   font-size: 13px;
   line-height: 1.35;
 }
@@ -844,28 +1024,34 @@ export default {
 }
 .export-menu button:hover { background: #f4f5f8; }
 
-.top-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; }
-.card { background: #fff; border: 1px solid #e8e8ef; border-radius: 18px; padding: 18px; }
-.card h3 { margin: 0 0 10px; color: #222848; font-size: 34px; font-weight: 700; }
-.icon-mark { color: #0f696e; font-size: 18px; margin-right: 8px; vertical-align: middle; }
+.top-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
+  gap: 14px;
+  align-items: stretch;
+}
+.card { background: #fff; border: 1px solid #e8e8ef; border-radius: 18px; padding: 18px; min-width: 0; }
+.card h3 { margin: 0 0 10px; color: #222848; font-size: 18px; font-weight: 700; }
+.icon-mark { color: #0f696e; font-size: 16px; margin-right: 8px; vertical-align: middle; }
+.executive-card { display: flex; flex-direction: column; }
 .executive-card p { margin: 0 0 10px; color: #5a6477; line-height: 1.58; font-size: 14px; }
 .executive-card em { color: #b72323; font-style: italic; font-weight: 700; }
 .score-grid { margin-top: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .score-box { background: #f4f5f8; border-radius: 10px; padding: 12px; }
 .score-box span { display: block; font-size: 11px; color: #8b95a7; text-transform: uppercase; font-weight: 700; letter-spacing: .06em; }
-.score-box strong { font-size: 26px; color: #1f2a42; line-height: 1.15; }
+.score-box strong { font-size: 22px; color: #1f2a42; line-height: 1.15; }
 
 .dark-card { background: #25124d; color: #fff; }
-.dark-card h3 { color: #fff; font-size: 28px; }
-.progress-card { text-align: center; display: flex; flex-direction: column; gap: 10px; justify-content: center; }
+.dark-card h3 { color: #fff; font-size: 18px; }
+.progress-card { text-align: center; display: flex; flex-direction: column; gap: 10px; justify-content: center; min-height: 280px; }
 .progress-ring { margin: 8px auto; width: 150px; height: 150px; border-radius: 50%; background: conic-gradient(#0f696e calc(var(--p, 0) * 1%), rgba(255,255,255,.2) 0); display: flex; align-items: center; justify-content: center; position: relative; }
 .progress-ring::before { content: ''; width: 112px; height: 112px; border-radius: 50%; background: #25124d; }
-.progress-text { position: absolute; font-size: 44px; font-weight: 800; color: #fff; }
+.progress-text { position: absolute; font-size: 32px; font-weight: 800; color: #fff; }
 .progress-meta { color: #d6d3e8; font-size: 13px; display: flex; justify-content: space-between; gap: 10px; }
 
-.scope-mini-section { margin-top: 12px; }
+.scope-mini-section { margin-top: auto; padding-top: 12px; }
 .scope-mini-heading { margin: 0 0 8px; font-size: 10px; color: #8b95a7; text-transform: uppercase; letter-spacing: .08em; font-weight: 800; }
-.scope-mini-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.scope-mini-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .scope-mini-card {
   background: #fff;
   border: 1px solid #ececf2;
@@ -886,16 +1072,16 @@ export default {
   letter-spacing: .06em;
   line-height: 1.3;
 }
-.scope-mini-card strong { font-size: 28px; line-height: 1; font-weight: 800; color: #0f696e; }
+.scope-mini-card strong { font-size: 24px; line-height: 1; font-weight: 800; color: #0f696e; }
 .scope-mini-card small { color: #8b95a7; font-size: 10px; line-height: 1.3; }
 .scope-ico { color: #0f696e; margin-right: 4px; font-size: 10px; }
 
-.severity-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.severity-stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 
-.stat-card { background: #fff; border: 1px solid #ececf2; border-radius: 18px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; min-height: 160px; box-shadow: 0 1px 4px rgba(36,20,71,.08); }
+.stat-card { background: #fff; border: 1px solid #ececf2; border-radius: 18px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; min-height: 110px; box-shadow: 0 1px 4px rgba(36,20,71,.08); }
 .stat-card--compact {
-  min-height: 118px;
-  padding: 10px 12px;
+  min-height: 102px;
+  padding: 12px 14px;
   border-radius: 14px;
 }
 .stat-card--compact span { font-size: 10px; }
@@ -913,39 +1099,50 @@ export default {
 .stat-card.medium { border-bottom: 3px solid #ca8a04; }
 .stat-card.low { border-bottom: 3px solid #0f696e; }
 
-.chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.chart-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: stretch; }
+.chart-card { display: flex; flex-direction: column; min-height: 320px; }
 .mini-meta { margin: -4px 0 10px; font-size: 11px; color: #8b95a7; }
-.chart-grid canvas { max-height: 260px; max-width: 100%; }
-.severity-visual {
-  display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(180px, 0.9fr);
-  align-items: center;
-  gap: 12px;
-  min-height: 240px;
-}
-.severity-canvas-wrap {
-  min-height: 220px;
+.chart-canvas-box {
+  height: 240px;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
+  flex: 1;
 }
-.severity-canvas-wrap canvas {
-  width: min(100%, 320px) !important;
-  height: auto !important;
+.chart-canvas-box canvas {
+  max-height: 240px !important;
+  max-width: 100% !important;
+  width: auto !important;
+}
+.severity-visual {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  min-height: 240px;
+  flex: 1;
+}
+.severity-canvas-wrap {
+  height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 220px;
 }
 .severity-static-donut {
-  width: min(100%, 320px);
-  aspect-ratio: 1 / 1;
+  width: 220px;
+  height: 220px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   pointer-events: none;
+  flex-shrink: 0;
 }
 .severity-donut-center {
   width: 66%;
-  aspect-ratio: 1 / 1;
+  height: 66%;
   border-radius: 50%;
   background: #ffffff;
   display: flex;
@@ -955,34 +1152,84 @@ export default {
   box-shadow: inset 0 0 0 1px #e5e7eb;
 }
 .severity-donut-center strong {
-  font-size: 48px;
+  font-size: 32px;
   line-height: 1;
   color: #1f2a42;
 }
 .severity-donut-center span {
-  font-size: 12px;
+  font-size: 11px;
   letter-spacing: .08em;
   color: #8b95a7;
   font-weight: 700;
 }
 .severity-legend { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .severity-legend-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #2e3648; min-width: 0; }
-.legend-color { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.legend-color { width: 10px; height: 10px; border-radius: 3px; display: inline-block; flex-shrink: 0; }
 .legend-label { flex: 1; min-width: 0; }
-.legend-pct { font-size: 18px; color: #273247; }
+.legend-pct { font-size: 16px; color: #273247; }
 
 .table-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.filters { display: flex; gap: 8px; }
-.filter-btn { border: 1px solid #d9dce6; border-radius: 999px; background: #fff; padding: 6px 14px; color: #3d4558; font-size: 12px; font-weight: 600; }
+.filters { display: flex; gap: 8px; flex-shrink: 0; position: relative; }
+.filter-dropdown { position: relative; }
+.filter-btn {
+  border: 1px solid #d9dce6;
+  border-radius: 999px;
+  background: #fff;
+  padding: 6px 14px;
+  color: #3d4558;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.filter-btn.active {
+  border-color: #0f696e;
+  color: #0f696e;
+  background: #e6f7f8;
+}
+.filter-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 168px;
+  background: #fff;
+  border: 1px solid #e7e8ef;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(36, 20, 71, .12);
+  padding: 6px;
+  z-index: 20;
+}
+.filter-menu-label {
+  margin: 0;
+  padding: 6px 12px 4px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #8b95a7;
+}
+.filter-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #242c40;
+  cursor: pointer;
+}
+.filter-menu button:hover { background: #f4f5f8; }
+.filter-menu button.selected { background: #e6f7f8; color: #0f696e; }
 .table-wrap {
   margin-top: 10px;
   overflow-x: auto;
-  overflow-y: scroll;
+  overflow-y: auto;
   max-height: 420px;
-  scrollbar-gutter: stable;
-  contain: layout paint;
+  width: 100%;
 }
-.simple-table { width: 100%; border-collapse: collapse; table-layout: auto; }
+.simple-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .simple-table th {
   background: #f4f5f8;
   font-size: 10px;
@@ -1015,6 +1262,12 @@ export default {
 .vuln-name-cell {
   font-weight: 600;
   color: #1f2a42;
+  white-space: normal;
+  word-break: break-word;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 .sev-pill { font-size: 10px; font-weight: 800; border-radius: 6px; padding: 4px 8px; text-transform: uppercase; }
 .sev-pill.critical { background: #fee2e2; color: #b91c1c; }
@@ -1024,7 +1277,7 @@ export default {
 .status-pill { font-size: 12px; font-weight: 700; }
 .status-pill.open { color: #b91c1c; }
 .status-pill.closed { color: #0f766e; }
-.team-pill { font-size: 12px; font-weight: 700; border-radius: 999px; padding: 4px 10px; border: 1px solid transparent; display: inline-block; }
+.team-pill { font-size: 12px; font-weight: 700; border-radius: 999px; padding: 4px 10px; border: 1px solid transparent; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .team-pill-network { color: #0f696e; background: #e6f7f8; border-color: #8dd9dd; }
 .team-pill-patch { color: #8a4f00; background: #fff3dd; border-color: #ffd089; }
 .team-pill-configuration { color: #0f696e; background: #e6f7f8; border-color: #8dd9dd; }
@@ -1047,17 +1300,25 @@ export default {
 .btn-export:disabled { opacity: .7; cursor: wait; }
 
 @media (max-width: 1200px) {
+  .report-page-shell { padding: 80px 16px 32px; }
   .top-grid, .chart-grid { grid-template-columns: 1fr; }
-  .scope-mini-grid { grid-template-columns: 1fr; }
+  .scope-mini-grid { grid-template-columns: 1fr 1fr; }
   .severity-stats-grid { grid-template-columns: 1fr 1fr; }
   .meta-items { grid-template-columns: 1fr; }
-  .severity-visual { grid-template-columns: 1fr; }
+  .severity-visual { grid-template-columns: 1fr; justify-items: center; }
+  .severity-canvas-wrap { width: 100%; }
+  .progress-card { min-height: 240px; }
+  .chart-card { min-height: 280px; }
 }
 @media (max-width: 768px) {
-  .report-page { padding: 14px 8px 24px; }
-  .page-title { font-size: 30px; }
-  .severity-stats-grid { grid-template-columns: 1fr; }
-  .scope-mini-grid { grid-template-columns: 1fr; }
+  .vr-content { height: auto; min-height: calc(100vh - 72px); }
+  .report-page-shell { padding: 76px 12px 24px; }
+  .page-title { font-size: 24px; }
+  .severity-stats-grid,
+  .scope-mini-grid,
   .score-grid { grid-template-columns: 1fr; }
+  .meta-header { flex-direction: column; }
+  .meta-right-col { align-items: flex-start; width: 100%; }
+  .table-head { flex-direction: column; align-items: flex-start; }
 }
 </style>

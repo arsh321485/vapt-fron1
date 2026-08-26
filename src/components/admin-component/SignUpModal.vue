@@ -443,7 +443,7 @@
 
 <script>
 import { useAuthStore } from '@/stores/authStore';
-import { extractClaimInviteToken, readClaimInviteToken, setClaimInviteValid, storeClaimInviteToken } from '@/utils/claimInvite';
+import { extractClaimInviteToken, isClaimInviteFlow, readClaimInviteToken, setClaimInviteValid, storeClaimInviteToken } from '@/utils/claimInvite';
 import { markAdminSetPasswordEmailIfNew, markPostLoginSuccess } from '@/utils/postLoginSuccess';
 import router from '@/router';
 import Swal from 'sweetalert2';
@@ -1685,7 +1685,7 @@ export default {
         this.$router.replace('/userdashboard');
         return;
       }
-      if (readClaimInviteToken()) {
+      if (isClaimInviteFlow()) {
         setClaimInviteValid(true);
         if (sessionStorage.getItem('isNewUser') === 'true') {
           authStore.unmarkStepCompleted(1);
@@ -1702,7 +1702,7 @@ export default {
         const route = await authStore.getAdminOnboardingRoute();
         this.$router.replace(route);
       } catch {
-        this.$router.replace(readClaimInviteToken() ? '/communication' : '/admin-upload-report');
+        this.$router.replace(isClaimInviteFlow() ? '/communication' : '/admin-upload-report');
       }
     },
     openForgotPassword(type) {

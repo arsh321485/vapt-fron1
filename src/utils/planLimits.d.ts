@@ -33,26 +33,24 @@ export interface RetestErrorExtras {
   httpStatus?: unknown;
 }
 
-export function isActiveSubscription(subscription: unknown): boolean;
-export function isFreemiumPlan(planOrSubscription: unknown): boolean;
-export function isInvalidScanFileMessage(text: unknown): boolean;
-export function isNetworkOrTransportError(text: unknown): boolean;
-export function isPlanQuotaMessage(text: unknown): boolean;
-export function isExistingSubscriptionMessage(text: unknown): boolean;
-export function isRetestBlockedMessage(text: unknown): boolean;
-export function retestErrorMessage(apiMessage: unknown, extras?: RetestErrorExtras): string;
-export function planAssetLimit(planOrSubscription: unknown): number;
-export function suggestedPlanFromAssetCount(count: unknown): PlanId;
-export function planDisplayName(planOrSubscription: unknown): string;
-export function otherPlans(suggested: unknown): PlanId[];
-export function setBillingReturnTo(path: unknown): void;
+export function isActiveSubscription(subscription?: any): boolean;
+export function isFreemiumPlan(planOrSubscription?: any): boolean;
+export function isInvalidScanFileMessage(text?: any): boolean;
+export function isNetworkOrTransportError(text?: any): boolean;
+export function isPlanQuotaMessage(text?: any): boolean;
+export function isExistingSubscriptionMessage(text?: any): boolean;
+export function isRetestBlockedMessage(text?: any): boolean;
+export function retestErrorMessage(apiMessage?: any, extras?: any): string;
+export function planAssetLimit(planOrSubscription?: any): number;
+export function suggestedPlanFromAssetCount(count?: any): string;
+export function planDisplayName(planOrSubscription?: any): string;
+export function otherPlans(suggested?: any): string[];
+export function setBillingReturnTo(path?: any): void;
 export function consumeBillingReturnTo(fallback?: string): string;
 export function peekBillingReturnTo(): string;
-export function extraIpCount(total: unknown, limit: number): number;
-export function parsePlanHintFromMessage(text: unknown): PlanHintFromMessage;
-export function plansThatCoverCount(count: unknown): PlanId[];
-export function localPremiumEstimate(
-  assetCount: unknown,
-  mode?: string,
-  billingCycle?: string,
-): PremiumEstimate | null;
+export function markFreemiumActiveNotice(): void;
+export function consumeFreemiumActiveNotice(): boolean;
+export function extraIpCount(total?: any, limit?: any): number;
+export function parsePlanHintFromMessage(text?: any): { count: number; suggested: string };
+export function plansThatCoverCount(count?: any): string[];
+export function localPremiumEstimate(assetCount?: any, mode?: any, billingCycle?: any): any;

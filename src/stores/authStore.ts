@@ -16,12 +16,29 @@ import {
   getAssetHostName,
   resolveAssetType,
 } from "@/utils/assetDummyData";
-import { isClaimInviteFlow, clearClaimInvite, hasClaimInviteToken, isExplicitInviteExpired, isInvitePayloadValid, readInviteReportCount } from "@/utils/claimInvite";
+import {
+  isClaimInviteFlow,
+  clearClaimInvite,
+  hasClaimInviteToken,
+  isExplicitInviteExpired,
+  isInvitePayloadValid,
+  readInviteReportCount,
+  markClaimInviteSignup,
+  parseClaimInviteValidate,
+} from "@/utils/claimInvite";
 import { clearLockedRoute } from "@/utils/routeLock";
 import { clearCachedPaidPlan, hasCachedPaidPlan, setCachedPaidPlan } from "@/utils/authenticatedHome";
 import { getMySubscription } from "@/services/billingApi";
 import { isActiveSubscription, isFreemiumPlan, retestErrorMessage } from "@/utils/planLimits";
 import { extractTeamsDeepLink, persistTeamsDeepLink } from "@/utils/teamsDeepLink";
+import {
+  extractMitigationTimeline,
+  extractRiskCriteriaRecord,
+  timelineHasValues,
+  unwrapSummaryPayload,
+} from "@/utils/mitigationTimeline";
+
+const waitMs = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const AUTOMATION_PREMIUM_LOCK_KEY = "vaptfix_automation_premium_lock";
 const AUTOMATION_PREMIUM_FALLBACK =
@@ -239,7 +256,9 @@ export const useAuthStore = defineStore("auth", {
     assetSearchCount: 0,
     selectedAssetDetail: null as any,
     selectedAssetVulnerabilities: [] as any[],
-    mitigationTimeline: null,
+    mitigationTimeline: null as any,
+    dashboardSummarySeq: 0,
+    userDashboardSummarySeq: 0,
     meanTimeToRemediate: null as null | {
       mean_time_to_remediate_days: number;
       mean_time_to_remediate_hours: number;
@@ -542,29 +561,38 @@ export const useAuthStore = defineStore("auth", {
     },
 
     async validateClaimInvite(token: string) {
+      const invite = String(token || "").trim();
+      if (!invite) {
+        return { status: false, valid: false, expired: false, report_count: 0, data: {} };
+      }
       try {
         const res = await endpoint.get("/api/admin/upload_report/claim-invite/validate/", {
-          params: { token },
+          params: { invite, token: invite },
         });
         const data = res.data || {};
-        const expired = isExplicitInviteExpired(data, res.status);
-        const valid = !expired && isInvitePayloadValid(data, res.status);
+        const parsed = parseClaimInviteValidate(data);
+        const expired = parsed.expired || isExplicitInviteExpired(data, res.status);
+        const valid = !expired && (parsed.valid || isInvitePayloadValid(data, res.status));
         return {
           status: true,
           valid,
           expired,
-          report_count: readInviteReportCount(data),
+          report_count: parsed.report_count || readInviteReportCount(data),
           data,
         };
       } catch (error: any) {
         const status = error?.response?.status;
         const data = error?.response?.data || {};
-        const expired = isExplicitInviteExpired(data, status);
+        const parsed = parseClaimInviteValidate(data);
+        const expired = parsed.expired || isExplicitInviteExpired(data, status);
+        if (expired) {
+          return { status: false, valid: false, expired: true, report_count: 0, data };
+        }
         return {
           status: false,
-          valid: !expired,
-          expired,
-          report_count: readInviteReportCount(data),
+          valid: true,
+          expired: false,
+          report_count: parsed.report_count || readInviteReportCount(data) || 1,
           data,
         };
       }
@@ -593,6 +621,11 @@ export const useAuthStore = defineStore("auth", {
 
           sessionStorage.setItem("authenticated", "true");
           sessionStorage.setItem("isNewUser", "true");
+          if (payload.invite_token) {
+            markClaimInviteSignup();
+          } else {
+            clearClaimInvite();
+          }
         }
 
         return { status: true, data, message: data.message };
@@ -619,6 +652,7 @@ export const useAuthStore = defineStore("auth", {
       try {
         // Clear any stale token and cached data so it doesn't get attached to the login request
         clearAllAuthTokens();
+        clearClaimInvite();
         localStorage.removeItem("reportId");
         this.reportStatus.state = null;
         this.reportStatus.hasReport = false;
@@ -627,14 +661,15 @@ export const useAuthStore = defineStore("auth", {
         this.reportStatus.reportId = null;
         this.reportStatus.checked = false;
 
+        const { invite_token: _ignoredInvite, ...loginBody } = payload;
         let res;
         try {
-          res = await endpoint.post("/api/admin/users/login/", payload);
+          res = await endpoint.post("/api/admin/users/login/", loginBody);
         } catch (primaryError: any) {
           // Some backend environments still expose user-login instead of login.
           const status = primaryError?.response?.status;
           if (status === 404 || status === 405) {
-            res = await endpoint.post("/api/admin/users/user-login/", payload);
+            res = await endpoint.post("/api/admin/users/user-login/", loginBody);
           } else {
             throw primaryError;
           }
@@ -1282,10 +1317,8 @@ export const useAuthStore = defineStore("auth", {
     async fetchUserRiskCriteria() {
       try {
         const res = await endpoint.get(`/api/user/risk_criteria/risks/`);
-        const list = res.data?.risk_criteria;
-        if (Array.isArray(list) && list.length > 0) {
-          return { status: true, data: list[0] };
-        }
+        const record = extractRiskCriteriaRecord(res.data);
+        if (record) return { status: true, data: record };
         return { status: false, message: "No risk criteria found" };
       } catch (error: any) {
         return {
@@ -1361,15 +1394,14 @@ export const useAuthStore = defineStore("auth", {
     async fetchAdminRiskCriteria() {
       try {
         const res = await endpoint.get(`/api/admin/risk_criteria/risks/`);
-        const list = res.data?.risk_criteria;
-        if (Array.isArray(list) && list.length > 0) {
-          const data = list[0];
-          if (data?._id) {
-            localStorage.setItem("riskCriteriaId", data._id);
-            localStorage.setItem("riskId", data._id);
+        const record = extractRiskCriteriaRecord(res.data);
+        if (record) {
+          if (record?._id) {
+            localStorage.setItem("riskCriteriaId", record._id);
+            localStorage.setItem("riskId", record._id);
           }
-          if (data?.admin_id) localStorage.setItem("adminId", data.admin_id);
-          return { status: true, data };
+          if (record?.admin_id) localStorage.setItem("adminId", record.admin_id);
+          return { status: true, data: record };
         }
         return { status: false, message: "No risk criteria found" };
       } catch (error: any) {
@@ -1553,14 +1585,14 @@ export const useAuthStore = defineStore("auth", {
       inviteToken?: string | null,
     ) {
       try {
-        let url = `/api/admin/users/microsoft-teams/oauth-url/?redirect_uri=${encodeURIComponent(redirectUri)}`;
+        const params: Record<string, string> = { redirect_uri: redirectUri };
         if (adminId) {
-          url += `&admin_id=${encodeURIComponent(adminId)}`;
+          params.admin_id = String(adminId);
         }
         if (inviteToken) {
-          url += `&invite_token=${encodeURIComponent(inviteToken)}`;
+          params.invite_token = String(inviteToken).trim();
         }
-        const res = await endpoint.get(url);
+        const res = await endpoint.get("/api/admin/users/microsoft-teams/oauth-url/", { params });
 
         if (res.data?.auth_url) {
           return { status: true, data: res.data };
@@ -2334,10 +2366,11 @@ export const useAuthStore = defineStore("auth", {
         base_url: baseUrl,
       };
       if (adminId) {
-        payload.admin_id = adminId;
+        payload.admin_id = String(adminId);
       }
-      if (inviteToken) {
-        payload.invite_token = inviteToken;
+      const invite = String(inviteToken || "").trim();
+      if (invite) {
+        payload.invite_token = invite;
       }
       const res = await endpoint.post("/api/admin/users/slack/oauth-url/", payload);
       console.log("Slack OAuth URL response:", res.data);
@@ -3274,39 +3307,73 @@ export const useAuthStore = defineStore("auth", {
     },
 
     // ✅ Dashboard summary (single endpoint for top cards)
-    async fetchDashboardSummary() {
-      try {
-        const res = await endpoint.get("/api/admin/admindashboard/dashboard/summary/");
-        const data = res.data || {};
+    _applyDashboardSummaryPayload(raw: any, isLatest: boolean) {
+      const data = unwrapSummaryPayload(raw);
+      const nextTimeline = extractMitigationTimeline(data);
+      const incomingHasTimeline = timelineHasValues(nextTimeline);
+      const currentHasTimeline = timelineHasValues(this.mitigationTimeline);
 
-        this.totalAssets = data?.total_assets?.total_assets ?? data?.total_assets ?? 0;
-        this.avgScore = data?.avg_score?.avg_score ?? data?.avg_score ?? 0;
-
-        const vuln = data?.vulnerabilities || {};
-        this.vulnerabilities = {
-          critical: vuln.critical ?? 0,
-          high: vuln.high ?? 0,
-          medium: vuln.medium ?? 0,
-          low: vuln.low ?? 0,
-        };
-
-        // Keep existing shape used by dashboard UI.
-        this.mitigationTimeline = data?.mitigation_timeline || null;
-        this.meanTimeToRemediate = data?.mean_time_remediate || null;
-
-        return { status: true, data };
-      } catch (error: any) {
-        this.totalAssets = 0;
-        this.avgScore = 0;
-        this.vulnerabilities = { critical: 0, high: 0, medium: 0, low: 0 };
+      if (incomingHasTimeline) {
+        this.mitigationTimeline = nextTimeline;
+      } else if (isLatest && !currentHasTimeline) {
+        // Empty `{}` is truthy and paints "--" in gauges — keep null until real values arrive.
         this.mitigationTimeline = null;
-        this.meanTimeToRemediate = null;
-        return {
-          status: false,
-          message: error.response?.data?.message || "Failed to fetch dashboard summary",
-          details: error.response?.data || null,
+      }
+
+      const assets =
+        data?.total_assets?.total_assets ??
+        (typeof data?.total_assets === "number" ? data.total_assets : undefined);
+      if (assets !== undefined) this.totalAssets = assets;
+
+      const score = data?.avg_score?.avg_score ?? data?.avg_score;
+      if (typeof score === "number") this.avgScore = score;
+
+      const vuln = data?.vulnerabilities;
+      if (vuln && typeof vuln === "object") {
+        this.vulnerabilities = {
+          critical: vuln.critical ?? this.vulnerabilities.critical,
+          high: vuln.high ?? this.vulnerabilities.high,
+          medium: vuln.medium ?? this.vulnerabilities.medium,
+          low: vuln.low ?? this.vulnerabilities.low,
         };
       }
+
+      if (data?.mean_time_remediate) {
+        this.meanTimeToRemediate = data.mean_time_remediate;
+      }
+
+      return data;
+    },
+
+    async fetchDashboardSummary() {
+      this.dashboardSummarySeq += 1;
+      const seq = this.dashboardSummarySeq;
+      const attempts = timelineHasValues(this.mitigationTimeline) ? 1 : 3;
+      let lastData: any = null;
+      let lastError: any = null;
+
+      for (let i = 0; i < attempts; i++) {
+        try {
+          const res = await endpoint.get("/api/admin/admindashboard/dashboard/summary/", {
+            timeout: 12000,
+          });
+          const data = this._applyDashboardSummaryPayload(res.data || {}, seq === this.dashboardSummarySeq);
+          lastData = data;
+          if (timelineHasValues(this.mitigationTimeline) || timelineHasValues(extractMitigationTimeline(data))) {
+            return { status: true, data };
+          }
+        } catch (error: any) {
+          lastError = error;
+        }
+        if (i < attempts - 1) await waitMs(400 * (i + 1));
+      }
+
+      if (lastData) return { status: true, data: lastData };
+      return {
+        status: false,
+        message: lastError?.response?.data?.message || "Failed to fetch dashboard summary",
+        details: lastError?.response?.data || null,
+      };
     },
 
     // 🔹 DETAILED VULNERABILITIES
@@ -3817,45 +3884,56 @@ export const useAuthStore = defineStore("auth", {
           : "";
       const key = effectiveTeam || "__all__";
       if (!force && this.cachedUserTotalAssets[key]?.__summary) {
-        return { status: true, data: this.cachedUserTotalAssets[key].__summary };
+        const cached = this.cachedUserTotalAssets[key].__summary;
+        if (timelineHasValues(extractMitigationTimeline(cached))) {
+          this._applyDashboardSummaryPayload(cached, true);
+          return { status: true, data: cached };
+        }
       }
-      try {
-        const params = effectiveTeam ? { team: effectiveTeam } : {};
-        const res = await endpoint.get("/api/user/dashboard/summary/", { params });
-        const data = res.data || {};
 
-        // Keep existing store state in sync with cards.
-        this.totalAssets = data?.total_assets?.total_assets ?? 0;
-        this.avgScore = data?.avg_score?.avg_score ?? 0;
-        this.vulnerabilities = {
-          critical: data?.vulnerabilities?.critical ?? 0,
-          high: data?.vulnerabilities?.high ?? 0,
-          medium: data?.vulnerabilities?.medium ?? 0,
-          low: data?.vulnerabilities?.low ?? 0,
-        };
-        this.mitigationTimeline = data?.mitigation_timeline || null;
-        this.meanTimeToRemediate = data?.mean_time_remediate || null;
+      this.userDashboardSummarySeq += 1;
+      const seq = this.userDashboardSummarySeq;
+      const attempts = timelineHasValues(this.mitigationTimeline) ? 1 : 3;
+      let lastData: any = null;
+      let lastError: any = null;
 
-        // Reuse existing cache buckets so old keys remain valid.
-        this.cachedUserTotalAssets[key] = {
-          ...this.cachedUserTotalAssets[key],
-          __summary: data,
-          total_assets: data?.total_assets?.total_assets ?? 0,
-        };
-        this.cachedUserVulnerabilities[key] = data?.vulnerabilities || {};
-        this.cachedUserVulnerabilitiesFixed[key] = data?.vulnerabilities_fixed || {};
-        this.cachedMitigationTimeline[key] = data?.mitigation_timeline || null;
-        this.cachedMeanTime[key] = data?.mean_time_remediate || null;
-        this.cachedSupportRequests[key] = data?.support_requests || {};
+      for (let i = 0; i < attempts; i++) {
+        try {
+          const params = effectiveTeam ? { team: effectiveTeam } : {};
+          const res = await endpoint.get("/api/user/dashboard/summary/", {
+            params,
+            timeout: 12000,
+          });
+          const data = this._applyDashboardSummaryPayload(res.data || {}, seq === this.userDashboardSummarySeq);
+          lastData = data;
 
-        return { status: true, data };
-      } catch (error: any) {
-        return {
-          status: false,
-          message: error.response?.data?.message || "Failed to fetch user dashboard summary",
-          details: error.response?.data || null,
-        };
+          this.cachedUserTotalAssets[key] = {
+            ...this.cachedUserTotalAssets[key],
+            __summary: data,
+            total_assets: data?.total_assets?.total_assets ?? this.totalAssets,
+          };
+          this.cachedUserVulnerabilities[key] = data?.vulnerabilities || this.cachedUserVulnerabilities[key] || {};
+          this.cachedUserVulnerabilitiesFixed[key] = data?.vulnerabilities_fixed || this.cachedUserVulnerabilitiesFixed[key] || {};
+          const timeline = extractMitigationTimeline(data);
+          this.cachedMitigationTimeline[key] = timelineHasValues(timeline) ? timeline : this.cachedMitigationTimeline[key] || null;
+          this.cachedMeanTime[key] = data?.mean_time_remediate || this.cachedMeanTime[key] || null;
+          this.cachedSupportRequests[key] = data?.support_requests || this.cachedSupportRequests[key] || {};
+
+          if (timelineHasValues(this.mitigationTimeline) || timelineHasValues(timeline)) {
+            return { status: true, data };
+          }
+        } catch (error: any) {
+          lastError = error;
+        }
+        if (i < attempts - 1) await waitMs(400 * (i + 1));
       }
+
+      if (lastData) return { status: true, data: lastData };
+      return {
+        status: false,
+        message: lastError?.response?.data?.message || "Failed to fetch user dashboard summary",
+        details: lastError?.response?.data || null,
+      };
     },
 
     // 🔹 Fetch asset vuln plugin_ids WITHOUT modifying global state
@@ -6833,6 +6911,46 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    /** All Assets + All Vulnerabilities hold lists, unique by host. */
+    async fetchMergedHeldAssets(isUser = false) {
+      const assetRes = isUser
+        ? await this.fetchUserHeldAssets(true)
+        : await this.fetchHeldAssets();
+      const vulnRes = isUser
+        ? await this.fetchUserHeldVulnerabilityAssets(true)
+        : await this.fetchHeldVulnerabilityAssets(true);
+
+      const map = new Map<string, any>();
+      const add = (row: any) => {
+        const ip = String(row?.asset || row?.ip || row?.host_name || "").trim();
+        if (!ip) return;
+        const sev = String(row?.severity || "").toLowerCase();
+        const prev = map.get(ip);
+        const severity_counts = row?.severity_counts || prev?.severity_counts || {
+          critical: sev === "critical" ? 1 : 0,
+          high: sev === "high" ? 1 : 0,
+          medium: sev === "medium" ? 1 : 0,
+          low: sev === "low" ? 1 : 0,
+        };
+        map.set(ip, {
+          ...(prev || {}),
+          ...row,
+          asset: ip,
+          ip,
+          member_type: row?.member_type || prev?.member_type || "",
+          severity_counts,
+          host_information: row?.host_information || prev?.host_information || {},
+          selected: false,
+          held: true,
+        });
+      };
+      (assetRes.assets || []).forEach(add);
+      (vulnRes.data || []).forEach(add);
+
+      const assets = [...map.values()];
+      return { status: true, assets, count: assets.length };
+    },
+
     // UNHOLD asset (UPDATED – matches new API)
     async unholdAsset(assetIp: string) {
       try {
@@ -7120,11 +7238,11 @@ export const useAuthStore = defineStore("auth", {
 
       // Clear local session immediately so signout feels instant.
       clearAllAuthTokens();
+      clearClaimInvite();
       sessionStorage.removeItem("google_id_token");
       sessionStorage.removeItem("isNewUser");
       sessionStorage.removeItem("admin_slack_connected");
       sessionStorage.removeItem("admin_teams_connected");
-      clearClaimInvite();
       clearLockedRoute();
       this.user = null;
       this.accessToken = null;
@@ -7419,6 +7537,17 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    /** Unpaid admin: finish plan/payment. Report on file is not a paid plan. */
+    async unpaidAdminContinuePath(): Promise<string> {
+      const status = this.reportStatus?.hasReport
+        ? this.reportStatus
+        : await this.getReportStatus();
+      if (status?.hasReport || (await this.hasSubmittedScope())) {
+        return "/pricingplan";
+      }
+      return "/admin-upload-report";
+    },
+
     async hasSubmittedScope(): Promise<boolean> {
       try {
         const stored = String(localStorage.getItem("activeScopeId") || "").trim();
@@ -7438,13 +7567,19 @@ export const useAuthStore = defineStore("auth", {
       this.initCompletedSteps();
 
       const claimed = isClaimInviteFlow() || hasClaimInviteToken();
-      const resEarly = await this.getReportStatus();
+      const res = await this.getReportStatus();
 
-      // Super-admin magic link, or backend already attached the claimed report.
-      if (claimed || resEarly.hasReport) {
+      // Super-admin magic link (file already attached) skips payment + upload.
+      if (claimed) {
         if (!this.completedSteps.includes(1)) return "/communication";
-        if (this._isOnboardingComplete(resEarly) || resEarly.hasRiskCriteria) {
-          if (claimed) clearClaimInvite();
+        if (
+          this._isOnboardingComplete(res) ||
+          res.hasRiskCriteria ||
+          this.completedSteps.includes(2)
+        ) {
+          if (res.hasReport || this.completedSteps.includes(2) || claimed) {
+            clearClaimInvite();
+          }
           this._markOnboardingComplete();
           return "/admindashboardonboarding";
         }
@@ -7452,45 +7587,32 @@ export const useAuthStore = defineStore("auth", {
       }
 
       if (!(await this.hasPaidPlan())) {
-        if (await this.hasSubmittedScope()) {
-          if (!this.completedSteps.includes(1)) return "/communication";
-          return "/riskcriteria";
-        }
-        return "/admin-upload-report";
+        return this.unpaidAdminContinuePath();
       }
 
-      const res = resEarly;
-
-      // Report + risk criteria already done → dashboard on every later login.
       if (this._isOnboardingComplete(res)) {
         this._markOnboardingComplete();
         return "/admindashboardonboarding";
       }
 
-      // File upload or submitted scope → add users. No "upload first" gate.
       if (!res.hasReport) {
         if (await this.hasSubmittedScope()) {
-          if (!this.completedSteps.includes(1)) return "/communication";
+          if (!this.isSlackOrTeamsLogin() && !this.completedSteps.includes(1)) {
+            return "/communication";
+          }
           return "/riskcriteria";
         }
         return "/admin-upload-report";
       }
 
-      if (res.state === "needs_risk_criteria" || res.hasReport || (await this.hasSubmittedScope())) {
-        if (res.hasRiskCriteria) {
-          this._markOnboardingComplete();
-          return "/admindashboardonboarding";
-        }
-        if (!res.hasReport) {
-          return "/communication";
-        }
-        if (!this.isSlackOrTeamsLogin() && !this.completedSteps.includes(1)) {
-          return "/communication";
-        }
-        return "/riskcriteria";
+      if (res.hasRiskCriteria) {
+        this._markOnboardingComplete();
+        return "/admindashboardonboarding";
       }
-
-      return "/admin-upload-report";
+      if (!this.isSlackOrTeamsLogin() && !this.completedSteps.includes(1)) {
+        return "/communication";
+      }
+      return "/riskcriteria";
     },
 
     // Get all closed vulnerabilities for a report + asset

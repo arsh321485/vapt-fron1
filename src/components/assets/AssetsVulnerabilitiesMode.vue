@@ -7,6 +7,22 @@
           <h2 class="av-left-title assets-title">All Vulnerabilities</h2>
           <span class="av-count-badge assets-count-badge">{{ filteredVulns.length }} Vulns</span>
         </div>
+        <div class="asset-type-filters mb-3">
+          <button
+            v-for="filter in assetTypeFilters"
+            :key="filter.key"
+            type="button"
+            class="asset-type-filter-btn"
+            :class="[
+              'asset-type-filter-btn-' + filter.key,
+              { 'asset-type-filter-btn-active': assetTypeFilter === filter.key },
+            ]"
+            @click="setAssetTypeFilter(filter.key)"
+          >
+            {{ filter.label }}
+            <span class="asset-type-filter-count">{{ assetTypeTabCount(filter.key) }}</span>
+          </button>
+        </div>
         <div class="d-flex gap-3 mb-3">
           <i
             class="bi bi-trash action-icon"
@@ -89,7 +105,7 @@
       </div>
 
       <!-- Mitigation on Hold (same APIs as All Assets) -->
-      <div v-if="showHeld && heldAssets.length" class="mitigation-hold-section">
+      <div v-if="showHeld && heldAssetsForType.length" class="mitigation-hold-section">
         <div class="d-flex align-items-center justify-content-between mb-3">
           <h3 class="hold-title">Mitigation on hold</h3>
           <i
@@ -100,7 +116,7 @@
             @click="toggleUnholdMode"
           ></i>
         </div>
-        <div v-for="(held, i) in heldAssets" :key="held.asset || i" class="hold-item">
+        <div v-for="(held, i) in heldAssetsForType" :key="held.asset || i" class="hold-item">
           <div>
             <div class="d-flex align-items-center gap-2">
               <input
@@ -334,7 +350,9 @@
                   <button
                     type="button"
                     class="av-dtab"
-                    :class="{ active: currentVulnTab === 'auto' }"
+                    :class="{ active: currentVulnTab === 'auto', 'av-dtab--disabled': automationDownloadLocked }"
+                    :disabled="automationDownloadLocked"
+                    :title="automationDownloadLocked ? (authStore.automationPremiumMessage || 'Upgrade to Premium to use automated fixes') : ''"
                     @click="setVulnDetailTab('auto')"
                   >
                     <span class="av-dtab-emoji" aria-hidden="true">🤖</span>
@@ -354,7 +372,7 @@
                 <div class="av-detail-tab-content">
                   <!-- Affected Assets content hidden -->
 
-                  <div v-if="currentVulnTab === 'auto'" class="av-auto-tab">
+                  <div v-if="currentVulnTab === 'auto' && !automationDownloadLocked" class="av-auto-tab">
                     <AutomatedFixPanel
                       :key="v._key + '-' + i + '-' + panelAssetKey"
                       :severity="v.severity"
@@ -371,7 +389,7 @@
                     />
                   </div>
 
-                  <div v-else-if="currentVulnTab === 'manual'" class="av-manual-tab">
+                  <div v-else class="av-manual-tab">
                     <div v-for="asset in (selectedPanelAsset ? [selectedPanelAsset] : v.assets)" :key="asset" class="av-asset-section">
                       <div class="av-asset-label">
                         <span class="av-asset-os-lbl">{{ assetMetaFor(v, asset).os }}</span>
@@ -630,6 +648,11 @@ import FixAvailableIndicator from '@/components/assets/FixAvailableIndicator.vue
 import AutomationNotSafeBanner from '@/components/assets/AutomationNotSafeBanner.vue';
 import FixPanelHeaderAlerts from '@/components/assets/FixPanelHeaderAlerts.vue';
 import { isAutomationNotAvailable, matchesVulnStatusFilter } from '@/utils/assetVulnerabilities';
+import {
+  ASSET_TYPE_FILTERS,
+  assetTypeFromFilterKey,
+  resolveHostAssetType,
+} from '@/utils/assetDummyData';
 import { filterSupportRequestsByVuln, mapSupportRequestsByStep } from '@/utils/supportRequests';
 import { resolveVulnPluginId as lookupVulnPluginId } from '@/utils/automationScriptDownload';
 import {
@@ -668,12 +691,14 @@ export default {
       default: false,
     },
   },
-  emits: ['close-python-alert', 'close-verified-alert'],
+  emits: ['close-python-alert', 'close-verified-alert', 'vuln-assets-deleted', 'held-changed'],
   data() {
     return {
       authStore: useAuthStore(),
       loading: false,
       vulnQuery: '',
+      assetTypeFilter: 'assets',
+      assetTypeFilters: ASSET_TYPE_FILTERS,
       activeFilters: ['All'],
       statusFilter: [],
       selectedKey: null,
@@ -772,6 +797,10 @@ export default {
     reportId() {
       return this.isUser ? this.authStore.userLatestReportId : this.authStore.latestReportId;
     },
+    assetCatalog() {
+      if (this.isUser) return this.authStore.cachedUserAssets || [];
+      return this.authStore.assetRows || [];
+    },
     groupedVulns() {
       const map = new Map();
       const sevCounters = { critical: 0, high: 0, medium: 0, low: 0 };
@@ -822,8 +851,17 @@ export default {
       });
       return Array.from(map.values());
     },
+    vulnsForCurrentType() {
+      return this.vulnsGroupedByType(this.assetTypeFilter);
+    },
+    heldAssetsForType() {
+      const wanted = assetTypeFromFilterKey(this.assetTypeFilter);
+      return (this.heldAssets || []).filter((held) => {
+        return resolveHostAssetType(held.asset || held.ip, this.assetCatalog, held) === wanted;
+      });
+    },
     vulnsAfterSearch() {
-      let list = [...this.groupedVulns];
+      let list = [...this.vulnsForCurrentType];
       const q = this.vulnQuery.trim().toLowerCase();
       if (q) {
         list = list.filter(v =>
@@ -912,12 +950,52 @@ export default {
     vulnSrAsset() {
       this.loadVulnSrRequests();
     },
+    automationDownloadLocked: {
+      handler(locked) {
+        if (locked && this.currentVulnTab === 'auto') this.setVulnDetailTab('manual');
+      },
+      immediate: true,
+    },
   },
   async mounted() {
+    if (this.isUser) {
+      await this.authStore.fetchUserAssets(false);
+    } else {
+      await this.authStore.fetchAssets(false);
+    }
     await Promise.all([this.loadVulnerabilities(), this.loadHeldAssets()]);
     await this.authStore.refreshAutomationPremiumLock(this.isUser);
   },
   methods: {
+    vulnsGroupedByType(filterKey) {
+      const wanted = assetTypeFromFilterKey(filterKey);
+      return this.groupedVulns
+        .map((v) => {
+          const assets = (v.assets || []).filter((ip) => this.hostAssetType(ip, v) === wanted);
+          return { ...v, assets };
+        })
+        .filter((v) => v.assets.length > 0);
+    },
+    hostAssetType(ip, vuln) {
+      const target = String(ip || '').trim().toLowerCase();
+      const row = (vuln?.rows || []).find((r) =>
+        String(r.asset || r.host_name || '').trim().toLowerCase() === target,
+      );
+      return resolveHostAssetType(ip, this.assetCatalog, row);
+    },
+    assetTypeTabCount(type) {
+      return this.vulnsGroupedByType(type).length;
+    },
+    setAssetTypeFilter(type) {
+      if (this.assetTypeFilter === type) return;
+      this.assetTypeFilter = type;
+      this.expandedVulnAssets = null;
+    },
+    selectFirstNonEmptyType() {
+      if (this.assetTypeTabCount(this.assetTypeFilter)) return;
+      const first = this.assetTypeFilters.find((filter) => this.assetTypeTabCount(filter.key) > 0);
+      if (first) this.assetTypeFilter = first.key;
+    },
     getHeldPrioritySeverity(held) {
       const s = held?.severity_counts || {};
       if ((s.critical ?? 0) > 0) return 'Critical';
@@ -1083,9 +1161,7 @@ export default {
       this.heldAssets.forEach(a => { a.selected = false; });
     },
     async loadHeldAssets() {
-      const res = this.isUser
-        ? await this.authStore.fetchUserHeldAssets(true)
-        : await this.authStore.fetchHeldAssets();
+      const res = await this.authStore.fetchMergedHeldAssets(this.isUser);
       if (res.status && res.assets?.length) {
         this.heldAssets = res.assets.map(a => ({
           asset: a.asset,
@@ -1115,6 +1191,16 @@ export default {
       }
       await this.loadVulnerabilities();
       await this.loadHeldAssets();
+      this.$emit('held-changed');
+    },
+    async liveRefreshPage() {
+      if (this.isUser) {
+        await this.authStore.fetchUserVulnerabilityRegister(true);
+        await this.authStore.fetchUserAssets(true);
+      } else {
+        await this.authStore.fetchVulnerabilityRegister(true);
+        await this.authStore.fetchAssets(true);
+      }
     },
     async loadVulnerabilities() {
       this.loading = true;
@@ -1125,6 +1211,7 @@ export default {
       }
       this.loading = false;
       await this.loadAutomationScripts();
+      this.selectFirstNonEmptyType();
       if (this.filteredVulns.length) {
         this.selectVulnFromList(this.filteredVulns[0]);
       }
@@ -1177,7 +1264,7 @@ export default {
       this.selectedKey = item._key;
       this.selectedPanelAsset = assetIp; // set directly — null means show all
       this.expandedVulnIndex = assetIp ? 0 : null;
-      this.currentVulnTab = 'auto';
+      this.currentVulnTab = this.defaultFixTab();
       this.activeDetailTab = 'vulnerabilities';
       this.supportRequestsForVuln = [];
       this.supportRequestCount = 0;
@@ -1320,6 +1407,7 @@ export default {
         this.selectedKey = item._key;
       }
       if (isOpening && item) {
+        this.currentVulnTab = this.defaultFixTab();
         this.$nextTick(() => this.scrollToAccordion(item._key));
         const already = this.getAutomationForVuln(item);
         if (already) return;
@@ -1358,7 +1446,11 @@ export default {
         el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
     },
+    defaultFixTab() {
+      return this.automationDownloadLocked ? 'manual' : 'auto';
+    },
     setVulnDetailTab(tab) {
+      if (tab === 'auto' && this.automationDownloadLocked) return;
       this.currentVulnTab = tab;
     },
     getStatusLabel(status) {
@@ -1380,7 +1472,7 @@ export default {
       if (this.selectedKey === item._key) {
         this.selectedPanelAsset = assetIp;
         this.expandedVulnIndex = 0;
-        this.currentVulnTab = 'auto';
+        this.currentVulnTab = this.defaultFixTab();
       } else {
         this.selectVulnFromList(item, assetIp);
       }
@@ -1620,6 +1712,60 @@ export default {
   border-radius: 20px;
   padding: 2px 10px;
   color: #475569;
+}
+
+.av-left .asset-type-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.av-left .asset-type-filter-btn {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.av-left .asset-type-filter-count {
+  font-size: 0.62rem;
+  font-weight: 700;
+  opacity: 0.85;
+}
+
+.av-left .asset-type-filter-btn:hover {
+  color: #1e293b;
+  border-color: #cbd5e1;
+}
+
+.av-left .asset-type-filter-btn-active.asset-type-filter-btn-assets,
+.av-left .asset-type-filter-btn-active.asset-type-filter-btn-webapp {
+  background: #0f696e;
+  border-color: #0f696e;
+  color: #fff;
+  font-weight: 700;
+}
+
+.av-left .asset-type-filter-btn-active.asset-type-filter-btn-firewall {
+  background: #fff8f0;
+  border-color: #e65100;
+  color: #c45c00;
+  font-weight: 700;
+}
+
+.av-left .asset-type-filter-btn-active.asset-type-filter-btn-server {
+  background: #ede7f6;
+  border-color: #9575cd;
+  color: #5e35b1;
+  font-weight: 700;
 }
 
 .av-left .action-icon {
@@ -2104,9 +2250,21 @@ export default {
   border-bottom-color: #0f172a;
 }
 
-.av-dtab:hover:not(.active) {
+.av-dtab:hover:not(.active):not(.av-dtab--disabled):not(:disabled) {
   color: #1e293b;
   background: #f8fafc;
+}
+
+.av-dtab--disabled,
+.av-dtab:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.av-dtab--disabled:hover,
+.av-dtab:disabled:hover {
+  color: #64748b;
+  background: transparent;
 }
 
 .av-detail-tab-content {

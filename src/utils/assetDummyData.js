@@ -244,3 +244,19 @@ export function enrichAssetsWithVulnTypes(assets, registerRows) {
     return { ...asset, asset_type: inferred || current };
   });
 }
+
+/** Classify a host using the assets API row first, then register/vuln extras, then hostname inference. */
+export function resolveHostAssetType(hostName, catalog = [], extra = null) {
+  const ip = String(hostName || "").trim().toLowerCase();
+  if (!ip) return "other";
+  const match = (catalog || []).find((asset) =>
+    [getAssetHostName(asset), asset?.asset, asset?.ip, asset?.host_name, getAssetResolvedIp(asset)].some(
+      (value) => String(value || "").trim().toLowerCase() === ip,
+    ),
+  );
+  if (match) return resolveAssetType(match);
+  if (extra && typeof extra === "object") {
+    return resolveAssetType({ ...extra, asset: hostName || extra.asset });
+  }
+  return resolveAssetType({ asset: hostName });
+}

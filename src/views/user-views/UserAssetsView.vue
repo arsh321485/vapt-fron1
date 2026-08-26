@@ -380,7 +380,9 @@
                               <button
                                 type="button"
                                 class="av-dtab"
-                                :class="{ active: currentVulnTab === 'auto' }"
+                                :class="{ active: currentVulnTab === 'auto', 'av-dtab--disabled': automationDownloadLocked }"
+                                :disabled="automationDownloadLocked"
+                                :title="automationDownloadLocked ? (authStore.automationPremiumMessage || 'Upgrade to Premium to use automated fixes') : ''"
                                 @click="setVulnDetailTab('auto')"
                               >
                                 <span class="av-dtab-emoji" aria-hidden="true">🤖</span>
@@ -400,9 +402,9 @@
                             <!-- Tab Content -->
                             <div
                               class="av-detail-tab-content"
-                              :class="{ 'av-detail-tab-content--manual': currentVulnTab === 'manual' }"
+                              :class="{ 'av-detail-tab-content--manual': currentVulnTab === 'manual' || automationDownloadLocked }"
                             >
-                              <div v-if="currentVulnTab === 'auto'" class="av-auto-tab">
+                              <div v-if="currentVulnTab === 'auto' && !automationDownloadLocked" class="av-auto-tab">
                                 <AutomatedFixPanel
                                   :key="vuln.vul_name + '-' + idx"
                                   :severity="vuln.severity"
@@ -416,7 +418,7 @@
                                 />
                               </div>
 
-                              <div v-else-if="currentVulnTab === 'manual'" class="av-manual-tab">
+                              <div v-else class="av-manual-tab">
                                 <div class="av-asset-section">
                                   <ManualRemediationStepsPanel
                                     :is-user="true"
@@ -610,20 +612,20 @@
                             <select class="ext-popup-select ext-has-icon" v-model="extPopupExtension">
                               <option value="">— Select Extension —</option>
                               <optgroup label="Days">
-                                <option value="1 Day">1 Day</option>
-                                <option value="2 Days">2 Days</option>
-                                <option value="3 Days">3 Days</option>
-                                <option value="4 Days">4 Days</option>
-                                <option value="5 Days">5 Days</option>
-                                <option value="6 Days">6 Days</option>
+                                <option
+                                  v-for="opt in extDeadlineDayOptions"
+                                  :key="opt"
+                                  :value="opt"
+                                  :disabled="isExtDeadlineDisabled(opt)"
+                                >{{ opt }}</option>
                               </optgroup>
                               <optgroup label="Weeks">
-                                <option value="1 Week">1 Week</option>
-                                <option value="2 Weeks">2 Weeks</option>
-                                <option value="3 Weeks">3 Weeks</option>
-                                <option value="4 Weeks">4 Weeks</option>
-                                <option value="5 Weeks">5 Weeks</option>
-                                <option value="6 Weeks">6 Weeks</option>
+                                <option
+                                  v-for="opt in extDeadlineWeekOptions"
+                                  :key="opt"
+                                  :value="opt"
+                                  :disabled="isExtDeadlineDisabled(opt)"
+                                >{{ opt }}</option>
                               </optgroup>
                             </select>
                           </div>
@@ -639,7 +641,7 @@
                     </div>
                     <div class="ext-popup-footer">
                       <button type="button" class="mte-btn-secondary" @click="closeExtPopup">Cancel</button>
-                      <button type="button" class="mte-btn-primary ext-submit-btn" @click="submitExtPopup" :disabled="!extPopupAsset || !extPopupVulName || !extPopupExtension || !extPopupReason.trim()">
+                      <button type="button" class="mte-btn-primary ext-submit-btn" @click="submitExtPopup" :disabled="!extPopupAsset || !extPopupVulName || !extPopupExtension || !extPopupReason.trim() || isExtDeadlineDisabled(extPopupExtension)">
                         <i class="bi bi-send-fill"></i> <span style="color:#fff;">Submit Request</span>
                       </button>
                     </div>
@@ -656,6 +658,7 @@
                 :show-verified-alert="showVaptfixVerifiedAlert"
                 @close-python-alert="showPythonInstallAlert = false"
                 @close-verified-alert="showVaptfixVerifiedAlert = false"
+                @held-changed="loadHeldAssets"
               />
             </div>
 
@@ -803,6 +806,9 @@ import {
   getMatchedAutomation,
   isPositiveAutomationMatch,
 } from "@/utils/automationScriptMatch";
+
+const EXT_DEADLINE_DAY_OPTIONS = ["1 Day", "2 Days", "3 Days", "4 Days", "5 Days", "6 Days"];
+const EXT_DEADLINE_WEEK_OPTIONS = ["1 Week", "2 Weeks", "3 Weeks", "4 Weeks", "5 Weeks", "6 Weeks"];
 
 export default {
   name: "UserAssetsView",
@@ -1053,6 +1059,12 @@ class TLSConfigurator:
       }
       return "—";
     },
+    extDeadlineDayOptions() {
+      return EXT_DEADLINE_DAY_OPTIONS;
+    },
+    extDeadlineWeekOptions() {
+      return EXT_DEADLINE_WEEK_OPTIONS;
+    },
   },
   methods: {
     openPythonGuide(vuln) {
@@ -1080,6 +1092,7 @@ class TLSConfigurator:
       this.expandedVulnIndex = this.expandedVulnIndex === index ? null : index;
 
       if (isOpening) {
+        this.currentVulnTab = this.defaultFixTab();
         this.$nextTick(() => {
           const refKey = 'vuln-' + index;
           const element = this.$refs[refKey];
@@ -1379,6 +1392,16 @@ class TLSConfigurator:
       if (!dateStr) return '';
       return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' });
     },
+    async liveRefreshPage() {
+      const result = await this.authStore.fetchUserAssets(true);
+      await this.authStore.fetchUserVulnerabilityRegister(true);
+      if (result.status) this.assets = this.authStore.cachedUserAssets;
+      await this.loadHeldAssets();
+      this.syncTotalAssets();
+      if (this.activeIndex) {
+        await this.authStore.fetchUserSingleAssetVulnerabilities(this.activeIndex);
+      }
+    },
     async loadAssets(force = false) {
       this.loading = true;
       const result = await this.authStore.fetchUserAssets(force);
@@ -1419,7 +1442,7 @@ class TLSConfigurator:
       this.loading = false;
     },
     async loadHeldAssets() {
-      const res = await this.authStore.fetchUserHeldAssets();
+      const res = await this.authStore.fetchMergedHeldAssets(true);
       if (res.status && res.assets.length) {
         this.heldAssets = res.assets.map(a => ({
           asset: a.asset,
@@ -1676,6 +1699,17 @@ class TLSConfigurator:
       const unit = m[2];
       return unit.startsWith("week") ? n * 7 : n;
     },
+    isExtDeadlineDisabled(label) {
+      const original = Number(this.extPopupOriginalDeadlineDays);
+      if (!Number.isFinite(original) || original <= 0) return false;
+      const days = this.parseExtensionDays(label);
+      return Number.isFinite(days) && days <= original;
+    },
+    clearInvalidExtDeadline() {
+      if (this.extPopupExtension && this.isExtDeadlineDisabled(this.extPopupExtension)) {
+        this.extPopupExtension = "";
+      }
+    },
     async fetchExtPopupOptions(severity, asset) {
       this.extPopupOptionsLoading = true;
       const team = (this.selectedAsset?.assigned_teams && this.selectedAsset.assigned_teams[0]) || undefined;
@@ -1685,6 +1719,7 @@ class TLSConfigurator:
         this.extPopupAssetListApi = res.data.assets || [];
         this.extPopupVulListApi = res.data.vulnerabilities || [];
         this.extPopupOriginalDeadlineDays = res.data.original_deadline_days ?? null;
+        this.clearInvalidExtDeadline();
       } else {
         this.extPopupAssetListApi = [];
         this.extPopupVulListApi = [];
@@ -1727,7 +1762,11 @@ class TLSConfigurator:
       if (!this.activeIndex) return [];
       return [this.activeIndex];
     },
+    defaultFixTab() {
+      return this.automationDownloadLocked ? 'manual' : 'auto';
+    },
     setVulnDetailTab(tab) {
+      if (tab === 'auto' && this.automationDownloadLocked) return;
       this.currentVulnTab = tab;
     },
     findAssetPage(assetIp) {
@@ -1796,6 +1835,7 @@ class TLSConfigurator:
       if (!this.extPopupAsset || !this.extPopupVulName || !this.extPopupExtension || !this.extPopupReason.trim()) return;
       const requestedDays = this.parseExtensionDays(this.extPopupExtension);
       if (!Number.isFinite(requestedDays) || requestedDays <= 0) return;
+      if (this.isExtDeadlineDisabled(this.extPopupExtension)) return;
 
       const payload = {
         severity: this.extPopupSeverity,
@@ -1844,6 +1884,15 @@ class TLSConfigurator:
       if (val === 'vulnerabilities' && oldVal !== 'vulnerabilities') {
         this.openFixPanelAlerts();
       }
+      if (val === 'assets' && oldVal === 'vulnerabilities') {
+        this.reloadAssetsAndHeld();
+      }
+    },
+    automationDownloadLocked: {
+      handler(locked) {
+        if (locked && this.currentVulnTab === 'auto') this.setVulnDetailTab('manual');
+      },
+      immediate: true,
     },
     searchQuery() {
       this.currentPage = 1;
@@ -2944,6 +2993,10 @@ class TLSConfigurator:
   -moz-appearance: none;
   cursor: default;
 }
+.ext-popup-select option:disabled {
+  color: #94a3b8;
+  background: #f1f5f9;
+}
 .ext-popup-textarea { resize: vertical; min-height: 90px; }
 .ext-popup-footer {
   display: flex; justify-content: flex-end; gap: 10px;
@@ -3089,9 +3142,21 @@ class TLSConfigurator:
   border-bottom-color: #000000;
 }
 
-.av-dtab:hover:not(.active) {
+.av-dtab:hover:not(.active):not(.av-dtab--disabled):not(:disabled) {
   color: #000000;
   background: #f8fafc;
+}
+
+.av-dtab--disabled,
+.av-dtab:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.av-dtab--disabled:hover,
+.av-dtab:disabled:hover {
+  color: #64748b;
+  background: transparent;
 }
 
 .av-detail-tab-content {

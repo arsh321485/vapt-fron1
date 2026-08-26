@@ -20,6 +20,10 @@
                 <div v-else-if="comingFromUpload" class="pricing-return-banner mb-4">
                   Select a plan and complete payment. You will return to upload your report under that plan’s limits.
                 </div>
+                <p v-if="freemiumTooSmallForReport" class="text-center text-muted mb-0" style="font-size:0.9rem;">
+                  Freemium allows up to {{ planAssetLimitLabel }} IPs — this report has {{ pendingAssetCount }}.
+                  Choose Premium, or upload a smaller file.
+                </p>
               </div>
             </div>
 
@@ -562,17 +566,20 @@ import {
 } from '@/services/billingApi';
 import {
   consumeBillingReturnTo,
+  extraIpCount,
   isActiveSubscription,
   isExistingSubscriptionMessage,
   isFreemiumPlan,
   localPremiumEstimate,
+  markFreemiumActiveNotice,
+  planAssetLimit,
   planDisplayName,
   setBillingReturnTo,
   UPLOAD_RETURN_PATH,
 } from '@/utils/planLimits';
 import { setCachedPaidPlan } from '@/utils/authenticatedHome';
 import { consumeHandoffError } from '@/utils/adminHandoff';
-import { peekPendingUploadMeta } from '@/utils/pendingUpload';
+import { clearPendingUpload, peekPendingUploadMeta } from '@/utils/pendingUpload';
 import { useAuthStore } from '@/stores/authStore';
 
 const STRIPE_PK = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '';
@@ -731,6 +738,14 @@ export default {
       const fromMeta = peekPendingUploadMeta()?.count || 0;
       return fromQuery || fromMeta || this.autoSelectedFromAssets || 0;
     },
+    freemiumTooSmallForReport() {
+      const count = Number(this.pendingAssetCount) || 0;
+      if (!count) return false;
+      return extraIpCount(count, planAssetLimit('freemium')) > 0;
+    },
+    planAssetLimitLabel() {
+      return planAssetLimit('freemium');
+    },
     autoSelectNotice() {
       if (!this.autoSelectedFromAssets || !this.autoSelectedPlan) return '';
       const name = planDisplayName(this.autoSelectedPlan);
@@ -853,8 +868,12 @@ export default {
     }
     const returnTo = this.$route.query.returnTo;
     if (typeof returnTo === 'string' && returnTo.startsWith('/')) {
-      this.billingReturnTo = returnTo;
-      setBillingReturnTo(returnTo);
+      const resume = String(this.$route.query.resume || '') === '1';
+      const dest = resume && !returnTo.includes('resume=')
+        ? `${returnTo}${returnTo.includes('?') ? '&' : '?'}resume=1`
+        : returnTo;
+      this.billingReturnTo = dest;
+      setBillingReturnTo(dest);
     } else {
       this.billingReturnTo = '';
     }
@@ -886,6 +905,7 @@ export default {
       return !!plan.featured;
     },
     planButtonLabel(plan) {
+      if (plan.id === 'freemium' && this.freemiumTooSmallForReport) return 'Doesn’t fit this file';
       if (this.isCurrentPlan(plan.id)) return 'Continue with this plan';
       return plan.cta;
     },
@@ -1026,8 +1046,43 @@ export default {
     freemiumContinuePath() {
       return '/communication';
     },
+    async rejectOversizedFreemium() {
+      const count = Number(this.pendingAssetCount) || 0;
+      const limit = planAssetLimit('freemium');
+      const result = await Swal.fire({
+        icon: 'warning',
+        title: 'Freemium cannot use this file',
+        html: `This report has <b>${count} IPs</b>. Freemium allows up to <b>${limit}</b>. Stay on Premium, or upload a file with ${limit} IPs or fewer.`,
+        showCancelButton: true,
+        confirmButtonText: 'Continue with Premium',
+        cancelButtonText: 'Upload a smaller file',
+        confirmButtonColor: '#241447',
+        cancelButtonColor: '#64748b',
+        reverseButtons: true,
+        allowOutsideClick: true,
+      });
+      if (result.isConfirmed) {
+        this.selectPlan('premium');
+        return;
+      }
+      if (result.dismiss === Swal.DismissReason.cancel) {
+        try {
+          await clearPendingUpload();
+        } catch {
+          /* ignore */
+        }
+        this.$router.push({
+          path: '/admin-upload-report',
+          query: { replace: '1', mode: 'upload' },
+        });
+      }
+    },
     selectPlan(planId, options = {}) {
       if (planId === 'freemium') {
+        if (this.freemiumTooSmallForReport) {
+          this.rejectOversizedFreemium();
+          return;
+        }
         this.selectedPlan = planId;
         this.startFreemium();
         return;
@@ -1093,6 +1148,10 @@ export default {
       }
     },
     async startFreemium() {
+      if (this.freemiumTooSmallForReport) {
+        await this.rejectOversizedFreemium();
+        return;
+      }
       this.checkoutLoading = true;
       try {
         const data = await checkoutFreemium(false);
@@ -1101,6 +1160,7 @@ export default {
           'Automation scripts are not available on the Freemium plan. Upgrade to Premium to download scripts.',
         );
         setCachedPaidPlan(true);
+        markFreemiumActiveNotice();
         await Swal.fire({
           icon: 'success',
           title: 'Freemium started',
@@ -1122,6 +1182,7 @@ export default {
         }
         if (isExistingSubscriptionMessage(message) || /already exists/i.test(message)) {
           setCachedPaidPlan(true);
+          markFreemiumActiveNotice();
           await this.loadCurrentSubscription();
           if (this.comingFromUpload || this.billingReturnTo) {
             this.goAfterBilling();
