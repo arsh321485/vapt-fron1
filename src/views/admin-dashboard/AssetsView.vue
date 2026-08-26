@@ -397,7 +397,9 @@
                               <button
                                 type="button"
                                 class="av-dtab"
-                                :class="{ active: currentVulnTab === 'auto' }"
+                                :class="{ active: currentVulnTab === 'auto', 'av-dtab--disabled': automationDownloadLocked }"
+                                :disabled="automationDownloadLocked"
+                                :title="automationDownloadLocked ? (authStore.automationPremiumMessage || 'Upgrade to Premium to use automated fixes') : ''"
                                 @click="setVulnDetailTab('auto')"
                               >
                                 <span class="av-dtab-emoji" aria-hidden="true">🤖</span>
@@ -430,7 +432,7 @@
                                 />
                               </div>
 
-                              <div v-show="currentVulnTab === 'manual'" class="av-manual-tab">
+                              <div v-show="currentVulnTab === 'manual' || automationDownloadLocked" class="av-manual-tab">
                                 <div v-if="manualPanelMountedIndex === i" class="av-asset-section">
                                   <div v-if="v.operating_system" class="av-asset-label">
                                     <span class="av-asset-os-lbl">{{ v.operating_system }}</span>
@@ -931,6 +933,12 @@ class TLSConfigurator:
     },
     activeFilters() {
       this.expandedVulnIndex = null;
+    },
+    automationDownloadLocked: {
+      handler(locked) {
+        if (locked && this.currentVulnTab === 'auto') this.setVulnDetailTab('manual');
+      },
+      immediate: true,
     },
     pagedAssets: {
       handler(list) {
@@ -1685,6 +1693,7 @@ class TLSConfigurator:
       return 'auto';
     },
     setVulnDetailTab(tab) {
+      if (tab === 'auto' && this.automationDownloadLocked) return;
       this.currentVulnTab = tab;
       if (tab === 'manual' && this.expandedVulnIndex != null) {
         this.manualPanelMountedIndex = this.expandedVulnIndex;

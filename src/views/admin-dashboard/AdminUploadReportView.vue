@@ -1067,6 +1067,10 @@ export default {
         fullReportAssetCount(this.uploadResult),
         peekBillableAssetCount(),
       );
+      return Number.isFinite(n) ? n : 0;
+    },
+    hasExistingReport() {
+      return this.existingUploadedFiles.length > 0;
     },
     hasExistingReport() {
       return this.existingUploadedFiles.length > 0;

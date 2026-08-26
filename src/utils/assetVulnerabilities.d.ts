@@ -106,6 +106,7 @@ export function filterOpenAssetVulnerabilities(
   closedFixVulns?: unknown,
   host?: string,
 ): NormalizedAssetVulnerability[];
+export function findVulnIndexInList(list: unknown, item: unknown): number;
 export function severityMatchesFilter(
   severity: unknown,
   activeFilters: string[] | null | undefined,

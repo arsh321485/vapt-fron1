@@ -335,6 +335,7 @@
                               :title="automationDownloadLocked ? (authStore.automationPremiumMessage || 'Automation scripts are not available on the Freemium plan. Upgrade to Premium.') : 'Download fix'"
                             >
                             <button
+                              v-if="hasAutomationScript(vuln)"
                               type="button"
                               class="vuln-download-icon-btn"
                               :class="{ 'vuln-download-icon-btn--disabled': automationDownloadLocked }"
@@ -379,7 +380,9 @@
                               <button
                                 type="button"
                                 class="av-dtab"
-                                :class="{ active: currentVulnTab === 'auto' }"
+                                :class="{ active: currentVulnTab === 'auto', 'av-dtab--disabled': automationDownloadLocked }"
+                                :disabled="automationDownloadLocked"
+                                :title="automationDownloadLocked ? (authStore.automationPremiumMessage || 'Upgrade to Premium to use automated fixes') : ''"
                                 @click="setVulnDetailTab('auto')"
                               >
                                 <span class="av-dtab-emoji" aria-hidden="true">🤖</span>
@@ -399,7 +402,7 @@
                             <!-- Tab Content -->
                             <div
                               class="av-detail-tab-content"
-                              :class="{ 'av-detail-tab-content--manual': currentVulnTab === 'manual' }"
+                              :class="{ 'av-detail-tab-content--manual': currentVulnTab === 'manual' || automationDownloadLocked }"
                             >
                               <div v-if="currentVulnTab === 'auto'" class="av-auto-tab">
                                 <AutomatedFixPanel
@@ -1405,6 +1408,7 @@ class TLSConfigurator:
       this.loading = true;
       const result = await this.authStore.fetchUserAssets(force);
       await this.authStore.fetchUserVulnerabilityRegister(force);
+      this.authStore.applyUserAssetTypeHints();
       if (result.status) {
         this.assets = this.authStore.cachedUserAssets;
         this.selectFirstNonEmptyAssetTab();
@@ -1763,6 +1767,7 @@ class TLSConfigurator:
       return 'auto';
     },
     setVulnDetailTab(tab) {
+      if (tab === 'auto' && this.automationDownloadLocked) return;
       this.currentVulnTab = tab;
     },
     findAssetPage(assetIp) {

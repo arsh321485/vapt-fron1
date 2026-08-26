@@ -4184,6 +4184,7 @@ export const useAuthStore = defineStore("auth", {
 
     async fetchUserAssets(force = false) {
       if (!force && this.cachedUserAssets.length > 0) {
+        this.applyUserAssetTypeHints();
         return { status: true, data: this.cachedUserAssets, total: this.cachedUserAssetTotal };
       }
       try {
@@ -4512,6 +4513,7 @@ export const useAuthStore = defineStore("auth", {
         this.userLatestReportId = res.data?.report_id || null;
         this.cachedUserVulnRegister = filterPlatformLabelVulnRows(Array.isArray(rows) ? rows : []);
         this.userVulnRegisterFetched = true;
+        this.applyUserAssetTypeHints();
         return { status: true, data: this.cachedUserVulnRegister };
       } catch (error: any) {
         return {
@@ -6202,6 +6204,42 @@ export const useAuthStore = defineStore("auth", {
           status: false,
           results: [],
           message: error.response?.data?.detail || error.response?.data?.message || "Failed to match automation scripts by name",
+        };
+      }
+    },
+
+    // POST /api/user/automation-scripts/match/by-name/
+    async fetchAutomationScriptsByName(names: string[], os?: string | null) {
+      const vulnerability_names = (names || []).map((n) => String(n || "").trim()).filter(Boolean);
+      if (!vulnerability_names.length) return { status: true, results: [] };
+      try {
+        const payload: Record<string, any> = { vulnerability_names };
+        if (os) payload.os = os;
+        const res = await endpoint.post("/api/user/automation-scripts/match/by-name/", payload);
+        return { status: true, results: res.data?.results || [] };
+      } catch (error: any) {
+        return {
+          status: false,
+          results: [],
+          message: error.response?.data?.detail || "Failed to match automation scripts by name",
+        };
+      }
+    },
+
+    // POST /api/admin/automation-scripts/match/by-name/
+    async fetchAutomationScriptsByNameAdmin(names: string[], os?: string | null) {
+      const vulnerability_names = (names || []).map((n) => String(n || "").trim()).filter(Boolean);
+      if (!vulnerability_names.length) return { status: true, results: [] };
+      try {
+        const payload: Record<string, any> = { vulnerability_names };
+        if (os) payload.os = os;
+        const res = await endpoint.post("/api/admin/automation-scripts/match/by-name/", payload);
+        return { status: true, results: res.data?.results || [] };
+      } catch (error: any) {
+        return {
+          status: false,
+          results: [],
+          message: error.response?.data?.detail || "Failed to match automation scripts by name",
         };
       }
     },
