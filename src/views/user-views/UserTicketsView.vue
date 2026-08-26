@@ -199,6 +199,12 @@ export default {
         toggleSort() {
             this.sortOrder = this.sortOrder === 'desc' ? 'asc' : 'desc';
         },
+        async liveRefreshPage() {
+            const reportId = this.authStore.userLatestReportId;
+            if (!reportId) return;
+            const res = await this.authStore.fetchUserAllTickets(reportId, true);
+            if (res.status) this.tickets = res.data;
+        },
         async loadTickets() {
             await this.authStore.fetchUserVulnerabilityRegister();
             const reportId = this.authStore.userLatestReportId;

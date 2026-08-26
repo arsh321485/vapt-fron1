@@ -156,7 +156,9 @@
 
 <script>
 import { useAuthStore } from '@/stores/authStore'
-import { markPostLoginSuccess } from '@/utils/postLoginSuccess'
+import { markAdminSetPasswordEmailIfNew, markPostLoginSuccess } from '@/utils/postLoginSuccess'
+import { extractTeamsDeepLink, persistTeamsDeepLink, redirectToTeamsTabUrl } from '@/utils/teamsDeepLink'
+import { extractClaimInviteToken, readClaimInviteToken, setClaimInviteValid, storeClaimInviteToken } from '@/utils/claimInvite'
 import Swal from 'sweetalert2'
 import teamsIcon from '@/assets/images/teams.png'
 import slackIcon from '@/assets/images/slack.png'
@@ -265,6 +267,7 @@ export default {
         try {
           useAuthStore().setAdminLoginMethod('teams')
         } catch (_) { /* ignore */ }
+        if (redirectToTeamsTabUrl()) return
         await this.finishOAuthSignIn()
         return
       }
@@ -310,6 +313,7 @@ export default {
         try {
           useAuthStore().setAdminLoginMethod('slack')
         } catch (_) { /* ignore */ }
+        markAdminSetPasswordEmailIfNew(event.data.is_new_user === true)
         await this.finishOAuthSignIn()
         return
       }
@@ -322,6 +326,7 @@ export default {
         if (event.data.django_access_token) localStorage.setItem('django_access_token', event.data.django_access_token)
         if (event.data.django_refresh_token) localStorage.setItem('django_refresh_token', event.data.django_refresh_token)
         if (event.data.user) localStorage.setItem('local_user', JSON.stringify(event.data.user))
+        persistTeamsDeepLink(extractTeamsDeepLink(event.data))
         localStorage.setItem('teams_connected', 'true')
         this.teamsConnected = true
         this.slackConnected = false
@@ -329,6 +334,8 @@ export default {
         try {
           useAuthStore().setAdminLoginMethod('teams')
         } catch (_) { /* ignore */ }
+        markAdminSetPasswordEmailIfNew(event.data.is_new_user === true)
+        if (redirectToTeamsTabUrl(event.data)) return
         await this.finishOAuthSignIn()
       }
     },
@@ -432,6 +439,10 @@ export default {
         return
       }
 
+      if (readClaimInviteToken()) {
+        setClaimInviteValid(true)
+      }
+
       try {
         const route = await authStore.getAdminOnboardingRoute()
         this.$router.replace(route)
@@ -442,6 +453,9 @@ export default {
   },
 
   mounted() {
+    const fromQuery = extractClaimInviteToken(this.$route?.query || {})
+    if (fromQuery) storeClaimInviteToken(fromQuery)
+
     this.syncConnectionState()
     window.addEventListener('message', this.handleAdminOAuthMessage)
     window.addEventListener('storage', this.onOAuthStorageChange)

@@ -203,6 +203,14 @@ export default {
       const d = new Date(dateStr);
       return isNaN(d) ? dateStr : d.toLocaleDateString('en-GB');
     },
+    async liveRefreshPage() {
+      const store = useAuthStore();
+      const result = await store.fetchUserClosedVulns(true);
+      if (result.status) {
+        this.allRows = result.data.closed_vulnerabilities || [];
+        this.reportId = result.data.report_id;
+      }
+    },
     async loadData() {
       const store = useAuthStore();
       this.loading = true;

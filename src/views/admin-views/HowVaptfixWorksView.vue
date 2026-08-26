@@ -49,7 +49,7 @@
     <section class="hvw-section" id="journey1">
       <div class="hvw-container">
         <h2 class="hvw-section-title">From Sign-Up to Full Access</h2>
-        <p class="hvw-section-sub">Admin signs up directly on the VaptFix website using their company email address and a password. Five clear steps from registration to full dashboard access.</p>
+        <p class="hvw-section-sub">Admin signs up directly on the VaptFix website using their company email address and a password. Five clear steps take the admin from registration to full dashboard access.</p>
 
         <div class="hvw-timeline">
           <!-- Step 1 -->
@@ -62,7 +62,7 @@
               <div class="hvw-tl-icon">🔑</div>
               <div class="hvw-tl-body">
                 <div class="hvw-tl-title">Sign-Up &amp; Sign-In</div>
-                <div class="hvw-tl-desc">Admin arrives at the VAPTFIX website and clicks "Get Started." Enters company email, sets a password and confirms it, then signs in. Admin lands on the Upload Report page on a Freemium account by default.</div>
+                <div class="hvw-tl-desc">Admin arrives at the VAPTFIX website and clicks "Get Started." Enters company email, sets a password and confirms it, then signs in. At this stage also, the admin can choose a plan based on their requirements before proceeding to the Upload Report page.</div>
               </div>
             </div>
           </div>
@@ -81,7 +81,7 @@
                 <div class="hvw-tl-paths">
                   <div class="hvw-path-block path-a">
                     <div class="hvw-path-label">Path A — Upload Existing Report</div>
-                    <div class="hvw-path-desc">Upload a VA report (Nessus, AWS, or custom file). Custom files are processed via OpenAI. The report is pushed into the backend automatically or manually by Super-Admin.</div>
+                    <div class="hvw-path-desc">Admin uploads an existing VA report, such as Nessus, AWS, or a custom file. The system identifies the total number of IPs/assets from the uploaded report and determines the applicable plan based on the asset count.</div>
                     <div class="hvw-tl-tags">
                       <span class="hvw-tag-pill">Nessus</span>
                       <span class="hvw-tag-pill">AWS</span>
@@ -91,7 +91,7 @@
                   <div class="hvw-path-divider">OR</div>
                   <div class="hvw-path-block path-b">
                     <div class="hvw-path-label">Path B — Provide Scope</div>
-                    <div class="hvw-path-desc">Admin provides IP ranges/assets. Assets are segregated by category — Internal IP, External IP, Web App, Mobile App — then run through Nessus or equivalent tools, report uploaded into the backend. Freemium Gate evaluates total count.</div>
+                    <div class="hvw-path-desc">Admin provides the required scope by entering the IP ranges/assets, and they are then assessed using Nessus or equivalent tools. The generated report is uploaded into the backend. The applicable plan is determined based on the total number of IPs/assets provided in the scope.</div>
                     <div class="hvw-tl-tags">
                       <span class="hvw-tag-pill">Internal IP</span>
                       <span class="hvw-tag-pill">External IP</span>
@@ -114,7 +114,13 @@
               <div class="hvw-tl-icon">👥</div>
               <div class="hvw-tl-body">
                 <div class="hvw-tl-title">Add Users</div>
-                <div class="hvw-tl-desc">Admin lands on the Add Users page and adds users to the workspace. Which teams are available depends on the admin's final plan after the Freemium Gate.</div>
+                <div class="hvw-tl-desc">Admin lands on the Add Users page and adds users to the workspace. The teams visible are based on the selected plan. On Freemium, only the team with the maximum number of assets is visible; Premium and Enterprise provide access to all four teams.</div>
+                <div class="hvw-tl-tags">
+                  <span class="hvw-tag-pill">Network Security</span>
+                  <span class="hvw-tag-pill">Configuration Management</span>
+                  <span class="hvw-tag-pill">Architecture Flaw</span>
+                  <span class="hvw-tag-pill">Patch Management</span>
+                </div>
               </div>
             </div>
           </div>
@@ -129,7 +135,7 @@
               <div class="hvw-tl-icon">⚠️</div>
               <div class="hvw-tl-body">
                 <div class="hvw-tl-title">Risk Criteria</div>
-                <div class="hvw-tl-desc">Admin lands on the Risk Criteria page and fills in the four severity tiers: Critical, High, Medium, and Low. This is a one-time setup that defines your organisation's risk thresholds.</div>
+                <div class="hvw-tl-desc">Admin lands on the Risk Criteria page and completes a one-time setup defining four risk criteria: Critical, High, Medium, and Low.</div>
                 <div class="hvw-tl-tags">
                   <span class="hvw-tag-pill critical-tag">Critical</span>
                   <span class="hvw-tag-pill high-tag">High</span>
@@ -149,7 +155,7 @@
               <div class="hvw-tl-icon">🎉</div>
               <div class="hvw-tl-body">
                 <div class="hvw-tl-title">Onboarding Complete</div>
-                <div class="hvw-tl-desc">Once risk criteria is submitted, the admin is fully onboarded and can begin using VAPTFIX — dashboard, vulnerability tracking, fix management, and team collaboration are all live.</div>
+                <div class="hvw-tl-desc">Once risk criteria are submitted, the admin is fully onboarded and can begin using VAPTFIX — dashboard, vulnerability tracking, fix management, and team collaboration are all live.</div>
                 <button class="hvw-tl-action-btn email-action-btn" @click="openEmailLogin">Get Started with Email →</button>
               </div>
             </div>
@@ -164,7 +170,7 @@
     <section class="hvw-section hvw-section-alt" id="journey2">
       <div class="hvw-container">
         <h2 class="hvw-section-title">Slack Onboarding Flow</h2>
-        <p class="hvw-section-sub">The Slack journey mirrors the email journey step for step, delivered as interactive Slack cards inside your workspace.</p>
+        <p class="hvw-section-sub">The Slack journey follows the same onboarding logic, delivered through interactive Slack cards within the workspace.</p>
 
         <div class="hvw-timeline">
           <!-- Step 1 -->
@@ -177,7 +183,7 @@
               <div class="hvw-tl-icon">👋</div>
               <div class="hvw-tl-body">
                 <div class="hvw-tl-title">Welcome Card</div>
-                <div class="hvw-tl-desc">VaptFix bot posts a Welcome Card in your Slack workspace confirming your Admin role. You're prompted to begin onboarding by uploading a VA report or providing scope.</div>
+                <div class="hvw-tl-desc">VaptFix posts a Welcome Card in the Slack workspace confirming the Admin role. The admin is then prompted to begin onboarding by uploading a VA report or providing the required scope.</div>
               </div>
             </div>
           </div>
@@ -192,11 +198,11 @@
               <div class="hvw-tl-icon">📄</div>
               <div class="hvw-tl-body">
                 <div class="hvw-tl-title">Report Submission</div>
-                <div class="hvw-tl-desc">Admin chooses one of two paths via Slack cards:</div>
+                <div class="hvw-tl-desc">Admin chooses one of two paths through Slack cards:</div>
                 <div class="hvw-tl-paths">
                   <div class="hvw-path-block path-a">
                     <div class="hvw-path-label">Path A — Upload Report Card</div>
-                    <div class="hvw-path-desc">Upload an existing VA report directly in Slack. Supported: Nessus file, AWS Security Hub export, or custom file processed via OpenAI.</div>
+                    <div class="hvw-path-desc">Admin uploads an existing VA report directly in Slack. Supported formats include Nessus files, AWS Security Hub exports, or custom files processed through OpenAI.</div>
                     <div class="hvw-tl-tags">
                       <span class="hvw-tag-pill">Nessus</span>
                       <span class="hvw-tag-pill">AWS</span>
@@ -206,7 +212,7 @@
                   <div class="hvw-path-divider">OR</div>
                   <div class="hvw-path-block path-b">
                     <div class="hvw-path-label">Path B — Provide Scope Card</div>
-                    <div class="hvw-path-desc">Enter Internal IPs, External IPs, Web Apps, and Mobile Apps directly in the Slack card. VaptFix runs the scans and uploads the report to the backend.</div>
+                    <div class="hvw-path-desc">Enter Internal assets, External assets, Web Apps, and Mobile Apps directly in the Slack card. VaptFix runs the scans and uploads the report to the backend.</div>
                     <div class="hvw-tl-tags">
                       <span class="hvw-tag-pill">Internal IP</span>
                       <span class="hvw-tag-pill">External IP</span>
@@ -229,7 +235,7 @@
               <div class="hvw-tl-icon">⚡</div>
               <div class="hvw-tl-body">
                 <div class="hvw-tl-title">Plan Limit Check <span class="hvw-tl-conditional">Conditional</span></div>
-                <div class="hvw-tl-desc">If total assets exceed 10, a Plan Limit Card appears automatically in Slack. Admin can either upgrade to Premium / Enterprise (redirects to website) or edit scope to stay on Freemium.</div>
+                <div class="hvw-tl-desc">If the selected plan's limits are exceeded, the Plan Limit Card will appear automatically in Slack. The Admin can either upgrade to Premium/Enterprise, which redirects to the VAPTFIX website, or adjust the scope to remain within the selected plan's limits.</div>
               </div>
             </div>
           </div>
@@ -244,7 +250,13 @@
               <div class="hvw-tl-icon">👥</div>
               <div class="hvw-tl-body">
                 <div class="hvw-tl-title">Add Users Card</div>
-                <div class="hvw-tl-desc">Admin adds team members directly from Slack. Available teams depend on the final plan. Freemium unlocks Network Security and one additional team; Premium and Enterprise unlock all four.</div>
+                <div class="hvw-tl-desc">Admin adds team members directly from Slack. The teams visible are based on the selected plan. On Freemium, only the team with the maximum number of assets is visible; Premium and Enterprise provide access to all four teams.</div>
+                <div class="hvw-tl-tags">
+                  <span class="hvw-tag-pill">Network Security</span>
+                  <span class="hvw-tag-pill">Configuration Management</span>
+                  <span class="hvw-tag-pill">Architecture Flaw</span>
+                  <span class="hvw-tag-pill">Patch Management</span>
+                </div>
               </div>
             </div>
           </div>
@@ -259,7 +271,7 @@
               <div class="hvw-tl-icon">⚠️</div>
               <div class="hvw-tl-body">
                 <div class="hvw-tl-title">Risk Criteria Form</div>
-                <div class="hvw-tl-desc">A one-time fillable form opens to set severity thresholds for Critical, High, Medium, and Low risks. This defines your organisation's vulnerability scoring baseline.</div>
+                <div class="hvw-tl-desc">A one-time fillable form opens to define four risk criteria: Critical, High, Medium, and Low. These criteria establish the organisation’s vulnerability scoring baseline.</div>
                 <div class="hvw-tl-tags">
                   <span class="hvw-tag-pill critical-tag">Critical</span>
                   <span class="hvw-tag-pill high-tag">High</span>
@@ -274,6 +286,21 @@
           <div class="hvw-tl-item">
             <div class="hvw-tl-left">
               <div class="hvw-tl-num">06</div>
+              <div class="hvw-tl-line"></div>
+            </div>
+            <div class="hvw-tl-card">
+              <div class="hvw-tl-icon">✅</div>
+              <div class="hvw-tl-body">
+                <div class="hvw-tl-title">Workspace Set Up</div>
+                <div class="hvw-tl-desc">Once the risk criteria are submitted, the workspace is fully set up. A final Slack card confirms onboarding is complete and provides a link to the live VaptFix dashboard.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 7 -->
+          <div class="hvw-tl-item">
+            <div class="hvw-tl-left">
+              <div class="hvw-tl-num">07</div>
             </div>
             <div class="hvw-tl-card hvw-tl-card-final">
               <div class="hvw-tl-icon">🎉</div>
@@ -372,7 +399,7 @@
               <div class="hvw-tl-icon">⚠️</div>
               <div class="hvw-tl-body">
                 <div class="hvw-tl-title">Plan Limit Check <span class="hvw-step-badge">Conditional</span></div>
-                <div class="hvw-tl-desc">If total assets exceed 10, the Plan Limit Adaptive Card appears in Teams. You can upgrade to Premium/Enterprise (redirects to VaptFix website) or edit scope to stay on Freemium.</div>
+                <div class="hvw-tl-desc">If the selected plan's limits are exceeded, the Plan Limit Adaptive Card will appear automatically in Teams. The Admin can choose one of the following options: Upgrade Plan — upgrade to Premium/Enterprise and continue via the VAPTFIX website; or Edit Scope — adjust the assessment scope to remain within the limits of the selected plan.</div>
                 <div class="hvw-tl-tags">
                   <span class="hvw-tag-pill">Upgrade Plan</span>
                   <span class="hvw-tag-pill">Edit Scope</span>
@@ -391,7 +418,13 @@
               <div class="hvw-tl-icon">👥</div>
               <div class="hvw-tl-body">
                 <div class="hvw-tl-title">Add Users</div>
-                <div class="hvw-tl-desc">The Add Users Card or Teams Tab appears. Admin adds team members into the teams unlocked by their final plan, directly within Microsoft Teams.</div>
+                <div class="hvw-tl-desc">The Add Users Card or Teams Tab appears. The teams visible are based on the selected plan. On Freemium, only the team with the maximum number of assets is visible; Premium and Enterprise provide access to all four teams.</div>
+                <div class="hvw-tl-tags">
+                  <span class="hvw-tag-pill">Network Security</span>
+                  <span class="hvw-tag-pill">Configuration Management</span>
+                  <span class="hvw-tag-pill">Architecture Flaw</span>
+                  <span class="hvw-tag-pill">Patch Management</span>
+                </div>
               </div>
             </div>
           </div>
@@ -406,7 +439,7 @@
               <div class="hvw-tl-icon">🎚️</div>
               <div class="hvw-tl-body">
                 <div class="hvw-tl-title">Risk Criteria</div>
-                <div class="hvw-tl-desc">A one-time fillable form opens in Teams to set Critical, High, Medium, and Low severity thresholds. Consistent with the Slack journey — same form, same thresholds.</div>
+                <div class="hvw-tl-desc">A one-time fillable form opens in Teams to define four risk criteria: Critical, High, Medium, and Low. Consistent with the Slack journey, the same four criteria are used.</div>
                 <div class="hvw-tl-tags">
                   <span class="hvw-tag-pill critical-tag">Critical</span>
                   <span class="hvw-tag-pill high-tag">High</span>

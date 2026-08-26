@@ -6,8 +6,8 @@
   <div class="d-flex align-items-center justify-content-between gap-4 py-2 px-4">
 
    <div class="browser-bar">
-    <router-link to="/home">
-        <img src="@/assets/images/vaptfix_white.png" alt="">
+    <router-link :to="logoPath">
+        <img src="@/assets/images/vaptfix_white.png" alt="VaptFix">
         </router-link>
       </div>
     <!-- Right Section -->
@@ -32,22 +32,17 @@
         <div class="mb-2 text-muted text-center">
           {{ userEmail }}
         </div>
-<!-- <router-link
-  :to="{ path: '/location', query: { returnTo: $route.fullPath } }"
-  class="btn btn-sm btn-outline-primary w-100 mb-2"
+<button
+  v-if="uploadScopeLocked"
+  type="button"
+  class="btn btn-sm w-100 mb-2 header-upload-scope--disabled"
+  disabled
+  title="Upgrade to Premium to upload a new scope"
 >
-  Add User
-</router-link> -->
-
+  Upload Scope
+</button>
 <router-link
-  :to="{ path: '/manage-account', query: { returnTo: $route.fullPath } }"
-  class="btn btn-sm btn-outline-secondary w-100 mb-2"
-  @click="showDropdown = false"
->
-  Manage Account
-</router-link>
-
-<router-link
+  v-else
   :to="{ path: '/admin-upload-report', query: { returnTo: $route.fullPath } }"
   class="btn btn-sm btn-outline-primary w-100 mb-2"
   @click="showDropdown = false"
@@ -64,7 +59,11 @@
 </router-link>
 
         <!-- Upgrade -->
-        <router-link to="/pricingplan" class="btn btn-sm btn-outline-dark w-100 mb-2">
+        <router-link
+          :to="{ path: '/pricingplan', query: { returnTo: $route.fullPath } }"
+          class="btn btn-sm btn-outline-dark w-100 mb-2"
+          @click="showDropdown = false"
+        >
           Upgrade Plan
         </router-link>
 
@@ -89,6 +88,9 @@ import { useAuthStore } from "@/stores/authStore";
 import Swal from "sweetalert2";
 import router from "@/router";
 import NotificationPanel from "@/components/admin-component/NotificationPanel.vue";
+import { getAuthenticatedAppHome } from "@/utils/authenticatedHome";
+import { getMySubscription } from "@/services/billingApi";
+import { freemiumLocksUploadScope } from "@/utils/planLimits";
 
 export default {
   name: 'DashboardHeader',
@@ -98,11 +100,30 @@ export default {
       showDropdown: false,
       userEmail: "",
       userInitial: "",
+      billingSubscription: null,
     };
+  },
+  computed: {
+    logoPath() {
+      return getAuthenticatedAppHome(this.$route?.path || '/admindashboardonboarding');
+    },
+    uploadScopeLocked() {
+      if (freemiumLocksUploadScope(this.billingSubscription)) return true;
+      return !!useAuthStore().automationPremiumRequired && !this.billingSubscription;
+    },
   },
   methods: {
     toggleDropdown() {
       this.showDropdown = !this.showDropdown;
+      if (this.showDropdown) this.refreshBillingPlan();
+    },
+    async refreshBillingPlan() {
+      try {
+        const billing = await getMySubscription();
+        this.billingSubscription = billing?.subscription || null;
+      } catch {
+        /* keep last known plan */
+      }
     },
     setUserData(user) {
       if (!user) return;
@@ -136,6 +157,13 @@ export default {
       if (response.status && response.data && response.data.user) {
         const freshUser = response.data.user;
         this.setUserData(freshUser);
+      }
+
+      try {
+        const billing = await getMySubscription();
+        this.billingSubscription = billing?.subscription || null;
+      } catch {
+        this.billingSubscription = null;
       }
     },
     async fetchUserProfile() {
@@ -209,6 +237,14 @@ export default {
   background: #fff;
   min-width: 220px;
   z-index: 1000;
+}
+.header-upload-scope--disabled {
+  background: #e2e8f0 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #94a3b8 !important;
+  cursor: not-allowed;
+  pointer-events: none;
+  box-shadow: none;
 }
 .browser-header {
   position: fixed; /* Fix at top */

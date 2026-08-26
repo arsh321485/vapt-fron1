@@ -1,0 +1,40 @@
+export const ASSET_TYPE_FILTERS: Array<{ key: string; label: string; assetType: string }>;
+export const ASSET_TYPE_DISPLAY: Array<{
+  type: string;
+  ui: string;
+  code: string;
+  label: string;
+  emoji: string;
+}>;
+
+export function normalizeAssetType(value: any): string;
+export function assetTypeFromFilterKey(filterKey: any): string;
+export function uiTypeFromAssetType(assetType: any): string;
+export function filterAssetsByType(assets: any, filterKey: any): any[];
+export function extractAssetRows(payload: any): any[];
+export function getAssetHostName(asset: any): string;
+export function getRowScanHost(row: any): string;
+export function isPlatformLabelHost(name: any): boolean;
+export function isRealScanHost(name: any): boolean;
+export function collectScanHosts(row: any): string[];
+export function filterPlatformLabelAssetRows(rows: any): any[];
+export function filterPlatformLabelVulnRows(rows: any): any[];
+export function sanitizeTeamHostPayload(data: any): any;
+export function inferAssetType(asset: any): string;
+export function resolveAssetType(asset: any): string;
+export function getAssetOs(asset: any): string;
+export function getAssetResolvedIp(asset: any): string;
+export function assetMatchesQueryHost(asset: any, host: any): boolean;
+export function findAssetByQueryHost(assets: any, host: any): any;
+export function tabKeyForAsset(asset: any): string;
+export function normalizeAssetTypeCounts(raw: any): {
+  server: number;
+  web_app: number;
+  firewall: number;
+  other: number;
+};
+export function hasAssetTypeCounts(raw: any): boolean;
+export function assetTypeCountChips(raw: any): any[];
+export function assetTypeCountForFilter(raw: any, filterKey: any): number;
+export function assetTypeBadgeMeta(assetType: any): any;
+export function resolveHostAssetType(hostName: any, catalog?: any, extra?: any): string;

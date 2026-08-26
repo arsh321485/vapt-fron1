@@ -1,6 +1,7 @@
 import axios from "axios";
 import router from "../router";
 import Swal from "sweetalert2";
+import { notifyLiveData } from "../utils/livePageSync";
 
 // In dev we rely on Vite's proxy (vite.config.*) for `/api` requests,
 // otherwise browsers block cross-origin calls (CORS).
@@ -57,21 +58,19 @@ const PUBLIC_URL_PATTERNS = [
   "/api/admin/users/user-login-platform/",
   "/api/admin/users/slack/member-login/",
   "/api/admin/users/teams/member-login/",
+  "/api/admin/users/slack/pricing-handoff/",
   "/api/admin/users/slack/oauth-url/",
   "/api/admin/users/microsoft-teams/oauth-url/",
+  "/api/admin/upload_report/claim-invite/validate/",
   "/api/webinar/form-options/",
   "/api/webinar/register/",
   "/api/partners/form-options/",
   "/api/partners/apply/",
 ];
-const REALTIME_ENDPOINT_PATTERNS = ["/api/notifications/"];
-
 endpoint.interceptors.request.use(
   (config) => {
     const token = sessionStorage.getItem("authorization") || localStorage.getItem("authorization");
-    const requestUrl = String(config.url || "");
     const isPublic = PUBLIC_URL_PATTERNS.some((p) => config.url?.includes(p));
-    const isRealtime = REALTIME_ENDPOINT_PATTERNS.some((p) => requestUrl.includes(p));
     const method = String(config.method || "get").toLowerCase();
 
     // FormData must use multipart with browser-set boundary.
@@ -92,13 +91,10 @@ endpoint.interceptors.request.use(
       config.headers["Authorization"] = `Bearer ${token}`;
     }
 
-    // Do not set Cache-Control / Pragma / Expires on notification calls: they are
-    // non-simple headers and widen CORS preflight; if the API does not list them
-    // in Access-Control-Allow-Headers, the browser fails with HeaderDisallowedByPreflightResponse.
-    // Cache busting for these routes is handled via _ts below.
-
-    // Add cache-buster only for realtime GET requests unless already provided.
-    if (method === "get" && isRealtime) {
+    // Do not set Cache-Control / Pragma / Expires request headers: they are
+    // non-simple headers and widen CORS preflight. Bust Chrome disk-cache with
+    // a query param instead (same-origin + cross-origin safe).
+    if (method === "get") {
       const params = config.params ?? {};
       if (params instanceof URLSearchParams) {
         if (!params.has("_ts")) {
@@ -132,6 +128,8 @@ const AUTH_ENDPOINTS = [
   "/api/admin/users/forgot-password/",
   "/api/admin/users/reset-password/",
   "/api/admin/users/token/refresh/", // refresh endpoint itself — infinite loop rokne ke liye
+  "/api/admin/users/slack/pricing-handoff/",
+  "/api/admin/upload_report/claim-invite/validate/",
 ];
 
 // Token refresh queue — agar ek saath kai requests 401 paayein toh sab wait karein
@@ -163,7 +161,15 @@ function clearAllSessionTokens() {
 }
 
 endpoint.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const method = String(response.config?.method || "get").toLowerCase();
+    const requestUrl = String(response.config?.url || "");
+    const isAuthEndpoint = AUTH_ENDPOINTS.some((ep) => requestUrl.includes(ep));
+    if (["post", "put", "patch", "delete"].includes(method) && !isAuthEndpoint) {
+      notifyLiveData(method);
+    }
+    return response;
+  },
   async (error) => {
     const requestUrl = error.config?.url || "";
     const isAuthEndpoint = AUTH_ENDPOINTS.some((ep) => requestUrl.includes(ep));
@@ -176,6 +182,8 @@ endpoint.interceptors.response.use(
 
     const noRedirect401Paths = new Set([
       "/pricingplan",
+      "/billing/success",
+      "/billing/cancel",
       "/partner",
       "/partner-lead-portal",
       "/partner-lead-thankyou",
