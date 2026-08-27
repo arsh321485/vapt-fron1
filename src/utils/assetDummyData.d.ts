@@ -38,3 +38,4 @@ export function assetTypeCountChips(raw: any): any[];
 export function assetTypeCountForFilter(raw: any, filterKey: any): number;
 export function assetTypeBadgeMeta(assetType: any): any;
 export function resolveHostAssetType(hostName: any, catalog?: any, extra?: any): string;
+export function enrichAssetsWithVulnTypes(assets: any, registerRows: any): any[];
