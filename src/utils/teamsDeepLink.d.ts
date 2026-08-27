@@ -20,7 +20,7 @@ export function pickTeamsRedirectUrl(
 ): string;
 export function resolveTeamsAdminDashboardUrl(
   payload: unknown,
-  fetchStatus?: () => Promise<unknown>,
+  fetchStatus?: () => unknown | Promise<unknown>,
 ): Promise<string>;
 export function openTeamsAdminDashboard(url: unknown): boolean;
 export function redirectToTeamsTabUrl(payload: unknown): boolean;

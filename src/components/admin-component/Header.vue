@@ -415,6 +415,7 @@ export default {
       this.setPasswordToken = '';
       this.setPasswordEmail = '';
       clearStoredSetPasswordDeepLink();
+      clearStoredAdminSetPasswordDeepLink();
     },
     openAdminSignUpModal() {
       this.showAdminSignUpModal = true;

@@ -14,7 +14,6 @@ export function parseDurationToDays(value) {
   return n;
 }
 
-/** @returns {any} */
 export function unwrapSummaryPayload(raw) {
   if (!raw || typeof raw !== "object") return {};
   const nested = raw.data;
@@ -42,7 +41,6 @@ function fromArrayTimeline(rows) {
   return Object.keys(out).length ? out : null;
 }
 
-/** @returns {any} */
 export function extractMitigationTimeline(payload) {
   const p = unwrapSummaryPayload(payload);
   const raw =
@@ -116,7 +114,6 @@ export function resolveMitigationLabel(sevData, days, formatTimeline) {
   return formatTimeline({ days });
 }
 
-/** @returns {any} */
 export function extractRiskCriteriaRecord(payload) {
   if (!payload || typeof payload !== "object") return null;
   if (Array.isArray(payload) && payload.length) return payload[0];

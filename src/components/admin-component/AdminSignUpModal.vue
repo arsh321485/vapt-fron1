@@ -424,7 +424,7 @@ export default {
       }
       try {
         const res = await this.authStore.validateClaimInvite(this.inviteToken);
-        this.inviteExpired = res.valid === false;
+        this.inviteExpired = res.expired === true;
         this.inviteValid = !this.inviteExpired;
         this.inviteReportCount = this.inviteExpired ? 0 : (res.report_count || 1);
         setClaimInviteValid(this.inviteValid);

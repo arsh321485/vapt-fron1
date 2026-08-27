@@ -95,7 +95,7 @@ import {
   seedLockFromWindow,
   writeLockedRoute,
 } from "../utils/routeLock";
-import { extractClaimInviteToken, isClaimInviteFlow, storeClaimInviteToken } from "../utils/claimInvite";
+import { extractClaimInviteToken, isClaimInviteFlow, storeClaimInviteToken, setClaimInviteValid, setClaimInviteReportCount } from "../utils/claimInvite";
 import { useAuthStore } from "../stores/authStore";
 import { hasAuthSession, isStoredTeamMember } from "../utils/authenticatedHome";
 import {
@@ -638,10 +638,18 @@ router.beforeEach(async (to, from, next) => {
 
   // Magic link is ?invite= only. Never rewrite ?token= (User/Admin set-password).
   // Stay on /signup?invite= so SignupView can GET claim-invite/validate on load.
-  // Do not bounce /signup → /home (that skipped the signup page and often skipped the API).
   const inviteToken = extractClaimInviteToken(to.query || {});
   if (inviteToken) {
     storeClaimInviteToken(inviteToken);
+    try {
+      const authStore = useAuthStore();
+      void authStore.validateClaimInvite(inviteToken).then((res) => {
+        setClaimInviteValid(!res.expired);
+        if (!res.expired) setClaimInviteReportCount(res.report_count || 1);
+      });
+    } catch {
+      /* Pinia may not be ready on the very first tick */
+    }
   }
   const inviteHomePaths = new Set([
     "/signin",

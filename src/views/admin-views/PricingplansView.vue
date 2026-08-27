@@ -744,8 +744,9 @@ export default {
       if (fromEstimate) return fromEstimate;
       const fromSub = detectedFileAssetCount(this.currentSubscription);
       if (fromSub) return fromSub;
+      const fromQuery = Number(this.$route.query.assets) || 0;
       const fromMeta = peekPendingUploadMeta()?.count || 0;
-      return fromMeta || Number(this.autoSelectedFromAssets) || 0;
+      return fromQuery || fromMeta || Number(this.autoSelectedFromAssets) || 0;
     },
     billingBreakdown() {
       const fromEstimate = billingAssetBreakdown(this.estimate);
@@ -1084,13 +1085,14 @@ export default {
         detectedFileAssetCount(this.estimate) ||
         detectedFileAssetCount(this.currentSubscription) ||
         this.billedAssetCount;
-      if (billable) {
+      if (billable && !(this.selectedPlan === 'premium' && this.premiumMode === 'testing')) {
         payload.asset_count = billable;
       }
       return payload;
     },
     applyLocalEstimate() {
       if (this.selectedPlan !== 'premium' || !this.pendingAssetCount) return false;
+      if (this.premiumMode === 'testing') return false;
       const local = localPremiumEstimate(this.pendingAssetCount, this.premiumMode, this.billingCycle);
       if (!local) return false;
       this.estimate = local;

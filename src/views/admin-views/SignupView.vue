@@ -519,8 +519,7 @@ export default {
       try {
         const authStore = useAuthStore()
         const res = await authStore.validateClaimInvite(this.inviteToken)
-        // Expired banner only when GET claim-invite/validate returns { valid: false }.
-        this.inviteExpired = res.valid === false
+        this.inviteExpired = res.expired === true
         this.inviteReportCount = this.inviteExpired ? 0 : (res.report_count || 1)
         setClaimInviteValid(!this.inviteExpired)
         setClaimInviteReportCount(this.inviteReportCount)

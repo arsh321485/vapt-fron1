@@ -11,6 +11,7 @@ import {
   normalizeAssetVulnerabilityList,
 } from "@/utils/assetVulnerabilities";
 import {
+  enrichAssetsWithVulnTypes,
   extractAssetRows,
   getAssetHostName,
   resolveAssetType,
@@ -589,10 +590,10 @@ export const useAuthStore = defineStore("auth", {
       } catch (error: any) {
         const data = error?.response?.data || {};
         const parsed = parseClaimInviteValidate(data, error?.response?.status);
-        if (parsed.valid === false) {
+        // Banner only for a real 15-minute expiry. Network/valid:false/404 must not show it.
+        if (parsed.expired) {
           return { status: false, valid: false, expired: true, report_count: 0, data };
         }
-        // Network / CORS / no body: do not show the expired banner.
         return {
           status: false,
           valid: true,
@@ -4196,8 +4197,16 @@ export const useAuthStore = defineStore("auth", {
       this._lockAutomationPremium(message);
     },
 
+    applyUserAssetTypeHints() {
+      this.cachedUserAssets = enrichAssetsWithVulnTypes(
+        this.cachedUserAssets,
+        this.cachedUserVulnRegister,
+      );
+    },
+
     async fetchUserAssets(force = false) {
       if (!force && this.cachedUserAssets.length > 0) {
+        this.applyUserAssetTypeHints();
         return { status: true, data: this.cachedUserAssets, total: this.cachedUserAssetTotal };
       }
       try {
@@ -4225,6 +4234,7 @@ export const useAuthStore = defineStore("auth", {
         if (payload.report_id) this.userLatestReportId = payload.report_id;
         this.cachedUserAssets = normalized;
         this.cachedUserAssetTotal = normalized.length;
+        this.applyUserAssetTypeHints();
         return { status: true, data: this.cachedUserAssets, total: this.cachedUserAssetTotal };
       } catch (error: any) {
         return {
@@ -4526,6 +4536,7 @@ export const useAuthStore = defineStore("auth", {
         this.userLatestReportId = res.data?.report_id || null;
         this.cachedUserVulnRegister = filterPlatformLabelVulnRows(Array.isArray(rows) ? rows : []);
         this.userVulnRegisterFetched = true;
+        this.applyUserAssetTypeHints();
         return { status: true, data: this.cachedUserVulnRegister };
       } catch (error: any) {
         return {
@@ -7618,6 +7629,9 @@ export const useAuthStore = defineStore("auth", {
           res.hasRiskCriteria ||
           this.completedSteps.includes(2)
         ) {
+          if (res.hasReport || this.completedSteps.includes(2)) {
+            clearClaimInvite();
+          }
           this._markOnboardingComplete();
           return "/admindashboardonboarding";
         }
