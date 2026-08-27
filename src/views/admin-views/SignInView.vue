@@ -360,10 +360,14 @@ export default {
       this.loading = true
       try {
         const authStore = useAuthStore()
+        const fromQuery = extractClaimInviteToken(this.$route?.query || {})
+        if (fromQuery) storeClaimInviteToken(fromQuery)
+        const inviteToken = fromQuery || readClaimInviteToken()
         const result = await authStore.login({
           email: this.form.email,
           password: this.form.password,
           recaptcha: recaptchaResponse,
+          ...(inviteToken ? { invite_token: inviteToken } : {}),
         })
 
         if (result.status) {
@@ -447,7 +451,7 @@ export default {
         const route = await authStore.getAdminOnboardingRoute()
         this.$router.replace(route)
       } catch {
-        this.$router.replace('/admin-upload-report')
+        this.$router.replace(readClaimInviteToken() ? '/communication' : '/admin-upload-report')
       }
     }
   },

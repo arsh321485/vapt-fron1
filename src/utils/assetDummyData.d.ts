@@ -48,3 +48,4 @@ export function assetTypeCountChips(raw: unknown): Array<AssetTypeDisplay & { co
 export function assetTypeCountForFilter(raw: unknown, filterKey: unknown): number;
 export function assetTypeBadgeMeta(assetType: unknown): AssetTypeDisplay | null;
 export function resolveHostAssetType(hostName: unknown, catalog?: unknown, extra?: unknown): string;
+export function enrichAssetsWithVulnTypes(assets: unknown, registerRows: unknown): any[];
