@@ -381,14 +381,27 @@ export default {
 </script>
 
 <style scoped>
-/* Dashboard palette: purple #241447, teal #0f696e, canvas ~#f4f7fe */
+/* Dashboard palette: purple #241447, teal #0f696e, canvas #f4f7fe */
+.notification-panel {
+  background: #241447;
+}
+
 .notif-drawer {
-  background: #fff;
+  background: #f4f7fe;
+  background-color: #f4f7fe;
+  border: none;
+  border-radius: 0;
+  --bs-card-bg: #f4f7fe;
+  --bs-card-cap-bg: #241447;
+  --bs-card-border-color: transparent;
 }
 
 .notif-drawer-header {
-  background: linear-gradient(135deg, #241447 0%, #1a0f38 100%);
-  padding: 15px;
+  background: #241447;
+  background-color: #241447;
+  padding: 15px 16px;
+  border-radius: 0;
+  margin: 0;
 }
 
 .notif-drawer-title {
@@ -416,7 +429,7 @@ export default {
 }
 
 .notif-drawer-footer {
-  background: #fff;
+  background: #f4f7fe;
   padding: 0.85rem 1rem;
   box-shadow: 0 -4px 20px rgba(36, 20, 71, 0.06);
 }

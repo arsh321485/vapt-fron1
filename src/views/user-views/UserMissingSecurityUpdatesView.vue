@@ -148,6 +148,14 @@ export default {
     teamTextClass(team) {
       return getTeamTextClass(team);
     },
+    async liveRefreshPage() {
+      const store = useAuthStore();
+      const result = await store.fetchUserMitigationByTeam(true);
+      if (result.status) {
+        this.mitigationData = result.data;
+        this.reportId = result.data.report_id;
+      }
+    },
     async loadData() {
       const store = useAuthStore();
       this.loading = true;

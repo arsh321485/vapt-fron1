@@ -5,7 +5,7 @@
         <div class="container-fluid py-4">
             <div class="row">
                 <div class="col-lg-5 col-md-6 text-white">
-                     <router-link to="/home">
+                     <router-link :to="appHomePath">
                        <img src="@/assets/images/vaptfix_white.png" alt="logo" style="cursor: pointer; height: 38px;">
                      </router-link>
                     <p class="mt-4">Eliminate Vulnerabilities Before They<br> Become Threats.</p>
@@ -54,9 +54,6 @@
                                 <router-link to="/terms" class="footer-legal-link text-decoration-none">Terms</router-link>
                             </li>
                             <li>
-                                <router-link to="/security" class="footer-legal-link text-decoration-none">Security</router-link>
-                            </li>
-                            <li>
                                 <router-link to="/support" class="footer-legal-link text-decoration-none">Support</router-link>
                             </li>
                             <li>
@@ -73,8 +70,15 @@
 </template>
 
 <script>
+import { getAuthenticatedAppHome } from "@/utils/authenticatedHome";
+
 export default {
   name: 'Footer',
+  computed: {
+    appHomePath() {
+      return getAuthenticatedAppHome(this.$route?.path || '/home');
+    },
+  },
 };
 </script>
 
