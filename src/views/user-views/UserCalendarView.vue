@@ -610,6 +610,21 @@ export default {
       });
     },
 
+    async liveRefreshPage() {
+      const store = useAuthStore();
+      const team     = this.teamsFilter       !== 'All Units' ? this.teamsFilter                          : undefined;
+      const severity = this.criticalityFilter !== 'All Types' ? this.criticalityFilter.toLowerCase() : undefined;
+      const res = await store.fetchUserRiskCriteriaCalendarWithFilters(
+        this.currentYear, this.currentMonth, team, severity,
+      );
+      if (res.status && res.data) {
+        this.apiCalendarData = res.data;
+        const evts = [];
+        this.pushEventsFromCalendarApiData(res.data, this.currentYear, this.currentMonth, evts);
+        this.events = evts;
+      }
+    },
+
     // ── Month view ─────────────────────────────────────────────────────────────
     async loadCalendarData() {
       this.calendarLoading = true;

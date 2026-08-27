@@ -156,7 +156,10 @@
 
 <script>
 import { useAuthStore } from '@/stores/authStore'
-import { markPostLoginSuccess } from '@/utils/postLoginSuccess'
+import { markAdminSetPasswordEmailIfNew, markPostLoginSuccess } from '@/utils/postLoginSuccess'
+import { extractTeamsDeepLink, persistTeamsDeepLink, redirectToTeamsTabUrl } from '@/utils/teamsDeepLink'
+import { extractClaimInviteToken, readClaimInviteToken, setClaimInviteValid, storeClaimInviteToken } from '@/utils/claimInvite'
+import { consumeAdminPlatformOAuthError } from '@/utils/platformOAuthMessage'
 import Swal from 'sweetalert2'
 import teamsIcon from '@/assets/images/teams.png'
 import slackIcon from '@/assets/images/slack.png'
@@ -265,6 +268,7 @@ export default {
         try {
           useAuthStore().setAdminLoginMethod('teams')
         } catch (_) { /* ignore */ }
+        if (redirectToTeamsTabUrl()) return
         await this.finishOAuthSignIn()
         return
       }
@@ -299,6 +303,17 @@ export default {
     async handleAdminOAuthMessage(event) {
       const allowed = [window.location.origin, 'https://vaptbackend.secureitlab.com']
       if (event.origin && !allowed.includes(event.origin)) return
+      const platformError = consumeAdminPlatformOAuthError(event.data)
+      if (platformError) {
+        this.oauthLoading = false
+        Swal.fire({
+          icon: 'error',
+          title: 'Cannot connect',
+          text: platformError,
+          confirmButtonColor: '#241447',
+        })
+        return
+      }
       if (event.data?.type === 'SLACK_CONNECTED') {
         if (event.data.bot_token) localStorage.setItem('slack_bot_token', event.data.bot_token)
         if (event.data.slack_user_id) localStorage.setItem('slack_user_id', event.data.slack_user_id)
@@ -310,10 +325,11 @@ export default {
         try {
           useAuthStore().setAdminLoginMethod('slack')
         } catch (_) { /* ignore */ }
+        markAdminSetPasswordEmailIfNew(event.data.is_new_user === true)
         await this.finishOAuthSignIn()
         return
       }
-      if (event.data?.type === 'TEAMS_CONNECTED' && event.data?.success) {
+      if (event.data?.type === 'TEAMS_CONNECTED' && event.data?.success !== false) {
         const graphToken = event.data.tokens?.access_token
         const tenantId = event.data.tokens?.tenant_id
         if (graphToken) localStorage.setItem('microsoft_graph_token', graphToken)
@@ -322,6 +338,7 @@ export default {
         if (event.data.django_access_token) localStorage.setItem('django_access_token', event.data.django_access_token)
         if (event.data.django_refresh_token) localStorage.setItem('django_refresh_token', event.data.django_refresh_token)
         if (event.data.user) localStorage.setItem('local_user', JSON.stringify(event.data.user))
+        persistTeamsDeepLink(extractTeamsDeepLink(event.data))
         localStorage.setItem('teams_connected', 'true')
         this.teamsConnected = true
         this.slackConnected = false
@@ -329,6 +346,8 @@ export default {
         try {
           useAuthStore().setAdminLoginMethod('teams')
         } catch (_) { /* ignore */ }
+        markAdminSetPasswordEmailIfNew(event.data.is_new_user === true)
+        if (redirectToTeamsTabUrl(event.data)) return
         await this.finishOAuthSignIn()
       }
     },
@@ -432,6 +451,10 @@ export default {
         return
       }
 
+      if (readClaimInviteToken()) {
+        setClaimInviteValid(true)
+      }
+
       try {
         const route = await authStore.getAdminOnboardingRoute()
         this.$router.replace(route)
@@ -442,6 +465,9 @@ export default {
   },
 
   mounted() {
+    const fromQuery = extractClaimInviteToken(this.$route?.query || {})
+    if (fromQuery) storeClaimInviteToken(fromQuery)
+
     this.syncConnectionState()
     window.addEventListener('message', this.handleAdminOAuthMessage)
     window.addEventListener('storage', this.onOAuthStorageChange)
