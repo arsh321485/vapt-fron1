@@ -23,6 +23,10 @@
       <div class="loc-page-header">
         <h1 class="loc-title">Setup Organization</h1>
         <p class="loc-subtitle">Add team members to your organization. They will receive an email to set their password and access the dashboard.</p>
+        <div v-if="showFreemiumBanner" class="loc-plan-banner">
+          <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
+          <span>Freemium plan is active</span>
+        </div>
       </div>
 
       <!-- MAIN LAYOUT: form + users sidebar (aligned) -->
@@ -124,9 +128,10 @@
                 </div>
               </div>
 
-              <button type="submit" class="loc-submit-btn">
-                <i class="bi bi-person-plus me-2"></i>
-                Save User
+              <button type="submit" class="loc-submit-btn" :disabled="savingUser">
+                <span v-if="savingUser" class="spinner-border spinner-border-sm me-2"></span>
+                <i v-else class="bi bi-person-plus me-2"></i>
+                {{ savingUser ? "Saving..." : "Save User" }}
               </button>
             </form>
           </div>
@@ -252,7 +257,13 @@
 import DashboardHeader from "@/components/admin-component/DashboardHeader.vue";
 import RoleAssignmentDrawer from "@/components/admin-component/RoleAssignmentDrawer.vue";
 import { useAuthStore } from "@/stores/authStore";
+import { isRealScanHost } from "@/utils/assetDummyData";
+import { isClaimInviteFlow } from "@/utils/claimInvite";
+import { isScopeAwaitingScan } from "@/utils/scopeScanGate";
+import { dismissUploadReportModal } from "@/utils/suppressUploadReportModal";
 import Swal from "sweetalert2";
+import { getMySubscription } from "@/services/billingApi";
+import { consumeFreemiumActiveNotice, isActiveSubscription, isFreemiumPlan, isFreemiumTeamLimitMessage } from "@/utils/planLimits";
 import {
   createEmptyRoleAssignments,
   getAssignmentSummaryText,
@@ -273,6 +284,7 @@ export default {
       selectedRoles: [],
       isRoleOpen: false,
       addedUsers: [],
+      savingUser: false,
       platformImportEmail: "",
       platformImportLoading: false,
       form: {
@@ -293,6 +305,7 @@ export default {
       roleAssignmentCatalog: { PM: { assets: [], vulnerabilities: [] }, CM: { assets: [], vulnerabilities: [] }, NS: { assets: [], vulnerabilities: [] }, AF: { assets: [], vulnerabilities: [] } },
       vulnIdToData: {},
       catalogLoading: false,
+      showFreemiumBanner: false,
     };
   },
   computed: {
@@ -406,43 +419,61 @@ export default {
       };
 
       this.catalogLoading = true;
-      const res = await this.authStore.fetchReportAssetVulnsByRole(roleFullMap[roleShort]);
-      this.catalogLoading = false;
+      try {
+        const status = await this.authStore.getReportStatus();
+        if (status?.reportId) {
+          localStorage.setItem('reportId', status.reportId);
+        }
+        const res = await this.authStore.fetchReportAssetVulnsByRole(roleFullMap[roleShort]);
+        if (!res.status || !res.data) {
+          this.roleAssignmentCatalog = {
+            ...this.roleAssignmentCatalog,
+            [roleShort]: { assets: [], vulnerabilities: [] },
+          };
+          return;
+        }
 
-      if (!res.status || !res.data) return;
+        const apiAssets = Array.isArray(res.data.assets) ? res.data.assets : [];
 
-      const apiAssets = res.data.assets || [];
+        const topSeverity = (vulns) => {
+          const order = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+          return vulns.reduce((top, v) => {
+            const s = v.severity || '';
+            return (order[s] ?? 9) < (order[top] ?? 9) ? s : top;
+          }, '');
+        };
 
-      const topSeverity = (vulns) => {
-        const order = { Critical: 0, High: 1, Medium: 2, Low: 3 };
-        return vulns.reduce((top, v) => {
-          const s = v.severity || '';
-          return (order[s] ?? 9) < (order[top] ?? 9) ? s : top;
-        }, '');
-      };
+        const catalogAssets = apiAssets.map(a => {
+          const name = String(a.host_name || a.hostname || a.ip || a.name || a.asset || '').trim();
+          return {
+            id: name,
+            name,
+            os: a.os || '',
+            severity: topSeverity(a.vulnerabilities || a.vulns || []),
+          };
+        }).filter(a => a.id && isRealScanHost(a.id));
 
-      const catalogAssets = apiAssets.map(a => ({
-        id: String(a.host_name || '').trim(),
-        name: String(a.host_name || '').trim(),
-        os: a.os || '',
-        severity: topSeverity(a.vulnerabilities || []),
-      })).filter(a => a.id);
-
-      if (!this.vulnIdToData[roleShort]) this.vulnIdToData[roleShort] = {};
-      let vulnIndex = 0;
-      const catalogVulns = [];
-      apiAssets.forEach(a => {
-        const hostName = String(a.host_name || '').trim();
-        (a.vulnerabilities || []).forEach(v => {
-          const pluginName = String(v.plugin_name || '').trim();
-          if (!pluginName || !hostName) return;
-          const id = `${roleShort}-v-${vulnIndex++}`;
-          this.vulnIdToData[roleShort][id] = { plugin_name: pluginName, host_name: hostName };
-          catalogVulns.push({ id, name: pluginName, asset: hostName, severity: v.severity || '' });
+        if (!this.vulnIdToData[roleShort]) this.vulnIdToData[roleShort] = {};
+        let vulnIndex = 0;
+        const catalogVulns = [];
+        apiAssets.forEach(a => {
+          const hostName = String(a.host_name || a.hostname || a.ip || a.name || a.asset || '').trim();
+          (a.vulnerabilities || a.vulns || []).forEach(v => {
+            const pluginName = String(v.plugin_name || v.name || v.vul_name || '').trim();
+            if (!pluginName || !hostName || !isRealScanHost(hostName)) return;
+            const id = `${roleShort}-v-${vulnIndex++}`;
+            this.vulnIdToData[roleShort][id] = { plugin_name: pluginName, host_name: hostName };
+            catalogVulns.push({ id, name: pluginName, asset: hostName, severity: v.severity || '' });
+          });
         });
-      });
 
-      this.roleAssignmentCatalog[roleShort] = { assets: catalogAssets, vulnerabilities: catalogVulns };
+        this.roleAssignmentCatalog = {
+          ...this.roleAssignmentCatalog,
+          [roleShort]: { assets: catalogAssets, vulnerabilities: catalogVulns },
+        };
+      } finally {
+        this.catalogLoading = false;
+      }
     },
     closeAssignmentModal() {
       this.showAssignmentModal = false;
@@ -505,127 +536,148 @@ export default {
       }
     },
     async addUser() {
-      // Validate required fields
-      if (!this.form.first_name?.trim()) {
-        Swal.fire("Missing Field", "Please enter the First Name.", "warning");
-        return;
-      }
-      if (!this.form.last_name?.trim()) {
-        Swal.fire("Missing Field", "Please enter the Last Name.", "warning");
-        return;
-      }
-      if (!this.form.email?.trim()) {
-        Swal.fire("Missing Field", "Please enter the Email Address.", "warning");
-        return;
-      }
-      if (!this.form.user_type) {
-        Swal.fire("Missing Field", "Please select a User Type.", "warning");
-        return;
-      }
-      if (!this.selectedRoles || this.selectedRoles.length === 0) {
-        Swal.fire("Missing Field", "Please select at least one Role.", "warning");
-        return;
-      }
+      try {
+        if (!this.form.first_name?.trim()) {
+          Swal.fire("Missing Field", "Please enter the First Name.", "warning");
+          return;
+        }
+        if (!this.form.last_name?.trim()) {
+          Swal.fire("Missing Field", "Please enter the Last Name.", "warning");
+          return;
+        }
+        if (!this.form.email?.trim()) {
+          Swal.fire("Missing Field", "Please enter the Email Address.", "warning");
+          return;
+        }
+        if (!this.form.user_type) {
+          Swal.fire("Missing Field", "Please select a User Type.", "warning");
+          return;
+        }
+        if (!this.selectedRoles || this.selectedRoles.length === 0) {
+          Swal.fire("Missing Field", "Please select at least one Role.", "warning");
+          return;
+        }
 
-      const adminId = this.authStore.resolveAdminId();
-      if (!adminId) {
-        Swal.fire("Error", "Admin account not found. Please sign in again (email or Slack/Teams).", "error");
-        return;
-      }
+        const adminId = this.authStore.resolveAdminId();
+        if (!adminId) {
+          Swal.fire("Error", "Admin not found. Please sign in again (email or Slack/Teams).", "error");
+          return;
+        }
 
-      const platform = this.authStore.detectAdminCommunicationPlatform();
-
-      const roleFullMap = {
-        PM: 'Patch Management', CM: 'Configuration Management',
-        NS: 'Network Security', AF: 'Architectural Flaws',
-      };
-      const role_assignments = {};
-      this.selectedRoles.forEach(roleShort => {
-        const fullName = roleFullMap[roleShort];
-        const ra = this.roleAssignments[roleShort];
-        if (!ra) return;
-        const assets = [...(ra.assets || [])];
-        const vulns = (ra.vulnerabilities || [])
-          .map(id => this.vulnIdToData[roleShort]?.[id])
+        const roleFullMap = {
+          PM: "Patch Management",
+          CM: "Configuration Management",
+          NS: "Network Security",
+          AF: "Architectural Flaws",
+        };
+        const memberRoles = this.selectedRoles
+          .map((short) => roleFullMap[short])
           .filter(Boolean);
-        if (assets.length || vulns.length) role_assignments[fullName] = { assets, vulns };
-      });
+        if (!memberRoles.length) {
+          Swal.fire("Missing Field", "Please select at least one Role.", "warning");
+          return;
+        }
 
-      const payload = {
-        admin_id: adminId,
-        first_name: this.form.first_name,
-        last_name: this.form.last_name,
-        email: this.form.email,
-        user_type: this.form.user_type,
-        Member_role: this.selectedRoles.map(
-          r => this.roleOptions.find(o => o.short === r)?.full
-        ),
-        ...(Object.keys(role_assignments).length && { role_assignments }),
-      };
+        const platform = this.authStore.detectAdminCommunicationPlatform();
+        const role_assignments = {};
+        this.selectedRoles.forEach((roleShort) => {
+          const fullName = roleFullMap[roleShort];
+          const ra = this.roleAssignments[roleShort];
+          if (!ra || !fullName) return;
+          const assets = [...(ra.assets || [])];
+          const vulns = (ra.vulnerabilities || [])
+            .map((id) => this.vulnIdToData[roleShort]?.[id])
+            .filter(Boolean);
+          if (assets.length || vulns.length) {
+            role_assignments[fullName] = { assets, vulns };
+          }
+        });
 
-      // DB via add-user-detail; Slack/Teams invite runs after (per role channels).
-      // Do not pass slack_bot_token on create — it caused Slack-only sync without DB row.
-
-      const res = await this.authStore.addTeamMemberWithPlatformSync(payload);
-
-      if (res.status) {
-        const platformSync = res.platformSync || { status: true, skipped: true };
-
-        this.addedUsers.unshift({
-          _id: res.data?._id || res.data?.id || null,
+        const payload = {
+          admin_id: adminId,
+          user_type: this.form.user_type,
           first_name: this.form.first_name.trim(),
           last_name: this.form.last_name.trim(),
           email: this.form.email.trim(),
-        });
+          Member_role: memberRoles,
+          ...(Object.keys(role_assignments).length && { role_assignments }),
+        };
 
+        this.savingUser = true;
+        const res = await this.authStore.addTeamMemberWithPlatformSync(payload);
+
+        if (!res.status) {
+          const errorMessage = res.message || "Could not add user";
+          const isDuplicate = /already exists/i.test(errorMessage);
+          const isTeamLimit = isFreemiumTeamLimitMessage(errorMessage)
+            || isFreemiumTeamLimitMessage(res.details?.error)
+            || res.httpStatus === 403 && isFreemiumTeamLimitMessage(JSON.stringify(res.details || {}));
+          Swal.fire({
+            icon: isDuplicate ? "warning" : "error",
+            title: isTeamLimit ? undefined : (isDuplicate ? "User already exists" : "Error"),
+            text: errorMessage,
+            confirmButtonColor: "#5a44ff",
+          });
+          return;
+        }
+
+        const platformSync = res.platformSync || { status: true, skipped: true };
         const slackSync = res.slack_sync || res.data?.slack_sync;
-        let msg = "User added successfully";
+        let successText = res.message || "User added successfully";
 
         if (platform === "teams") {
-          msg = platformSync.status
+          successText = platformSync.status
             ? "User added and added to Microsoft Teams"
             : `User created in VaptFix, but Teams sync failed: ${platformSync.message || "unknown"}`;
         } else if (slackSync?.status === "success") {
-          msg = "User added and invited to Slack channels";
+          successText = "User added and invited to Slack channels";
         } else if (slackSync?.status === "pending_workspace_join") {
-          msg = "User created. Slack workspace invite sent; channel mapping pending.";
+          successText = "User created. Slack workspace invite sent; channel mapping pending.";
+        } else if (platform === "slack" && platformSync.status && !platformSync.skipped) {
+          successText = "User added and invited to Slack channel";
         } else if (slackSync?.status === "failed") {
-          msg = `User created, Slack sync failed: ${slackSync.error || "unknown"}`;
-        } else if (slackSync?.status === "skipped") {
-          msg = `User created, Slack sync skipped: ${slackSync.error || "config missing"}`;
+          successText = `User created, Slack sync failed: ${slackSync.error || "unknown"}`;
         }
 
         Swal.fire({
-          icon: platform === "teams" && !platformSync.status ? "warning" : "success",
-          title: msg,
+          icon: "success",
+          title: "User Added",
+          text: successText,
           timer: 2500,
           showConfirmButton: false,
-          allowOutsideClick: false
         });
 
-        // Refresh user list from source of truth
-        await this.loadAddedUsers();
-
-        // Reset form
-        this.form.first_name = "";
-        this.form.last_name = "";
-        this.form.email = "";
-        this.form.user_type = "";
+        this.form = {
+          first_name: "",
+          last_name: "",
+          user_type: "",
+          email: "",
+        };
         this.selectedRoles = [];
         this.isRoleOpen = false;
         this.resetRoleAssignments();
 
-      } else {
-        let errorMessage = "User detail with this email already exists";
-        if (res.message && !res.message.includes("500")) {
-          errorMessage = res.message;
+        this.authStore.cachedUsersByAdmin = [];
+        this.authStore.usersByAdminFetched = false;
+        await this.loadAddedUsers();
+
+        if (platform === "teams") {
+          const teamId = localStorage.getItem("vaptfix_team")
+            ? JSON.parse(localStorage.getItem("vaptfix_team") || "{}")?.id
+            : undefined;
+          this.authStore.syncTeamsMembers(teamId).then(() => {
+            setTimeout(async () => {
+              this.authStore.cachedUsersByAdmin = [];
+              this.authStore.usersByAdminFetched = false;
+              await this.loadAddedUsers();
+            }, 3000);
+          });
         }
-        Swal.fire({
-          icon: "warning",
-          title: "User already exists",
-          text: errorMessage,
-          confirmButtonColor: "#5a44ff"
-        });
+      } catch (err) {
+        console.error("❌ Add user failed:", err);
+        Swal.fire("Error", "Something went wrong", "error");
+      } finally {
+        this.savingUser = false;
       }
     },
   //   async addUser() {
@@ -778,19 +830,83 @@ export default {
       }
     },
     handleContinue() {
+      dismissUploadReportModal();
       this.authStore.markStepCompleted(1);
-      this.$router.push('/riskcriteria');
+      this.authStore.getAdminOnboardingRoute().then((route) => {
+        this.$router.push(route === "/communication" ? "/riskcriteria" : route);
+      }).catch(() => {
+        this.$router.push("/riskcriteria");
+      });
+    },
+    async maybeShowFreemiumNotice() {
+      try {
+        const data = await getMySubscription();
+        const sub = data?.subscription || null;
+        this.showFreemiumBanner = !!(isActiveSubscription(sub) && isFreemiumPlan(sub));
+      } catch {
+        this.showFreemiumBanner = false;
+      }
+      const justActivated = consumeFreemiumActiveNotice();
+      if (!justActivated) return;
+      this.showFreemiumBanner = true;
+      await Swal.fire({
+        icon: 'success',
+        title: 'Freemium plan active',
+        text: 'Your free plan is active. Add your team, then set risk criteria.',
+        timer: 2400,
+        showConfirmButton: false,
+      });
     },
   },
   async mounted() {
+    dismissUploadReportModal();
     document.addEventListener("click", this.closeOnOutside);
-    const user =
-      this.authStore.user ||
-      JSON.parse(localStorage.getItem("user") || "null");
-    if (user) {
-      this.authStore.user = user;
-      this.loadAddedUsers();
+    try {
+      if (isClaimInviteFlow()) {
+        this.authStore.initCompletedSteps();
+        if (this.authStore.completedSteps.includes(1)) {
+          const route = await this.authStore.getAdminOnboardingRoute();
+          if (route !== "/communication") {
+            await this.$router.replace(route);
+            return;
+          }
+        }
+      } else {
+        const status = await this.authStore.getReportStatus();
+        if (
+          !status?.hasReport &&
+          !isScopeAwaitingScan() &&
+          !(await this.authStore.hasSubmittedScope())
+        ) {
+          await this.$router.replace("/admin-upload-report");
+          return;
+        }
+        if (status?.hasReport && status?.hasRiskCriteria) {
+          await this.$router.replace("/admindashboardonboarding");
+          return;
+        }
+        // Stay on Add Users unless this admin signed in via Slack/Teams (workspace already has members).
+        if (this.authStore.isSlackOrTeamsLogin()) {
+          const route = await this.authStore.getAdminOnboardingRoute();
+          if (route !== "/communication") {
+            await this.$router.replace(route);
+            return;
+          }
+        }
+      }
+    } catch {
+      /* stay on page if the gate check fails */
     }
+    // Prefer Django admin (local_user) — never overwrite with Slack/Teams profile ids.
+    try {
+      const localUser = JSON.parse(localStorage.getItem("local_user") || "null");
+      if (localUser && typeof localUser === "object" && (localUser._id || localUser.pk || localUser.user_id)) {
+        this.authStore.user = localUser;
+      }
+    } catch {
+      /* keep current session user */
+    }
+    await this.loadAddedUsers();
     if (this.hasTeamsIntegration) {
       await this.authStore.ensureTeamsChannelsCached();
     }
@@ -803,6 +919,7 @@ export default {
         }
       }
     }
+    await this.maybeShowFreemiumNotice();
   },
   beforeUnmount() {
     document.removeEventListener("click", this.closeOnOutside);
@@ -858,6 +975,19 @@ export default {
 
 /* Content */
 .loc-page-header { margin-bottom: 24px; }
+.loc-plan-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #047857;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
 .loc-title { font-size: 1.6rem; font-weight: 800; color: #1e293b; margin: 0 0 6px; }
 .loc-subtitle { font-size: 0.875rem; color: #64748b; margin: 0; line-height: 1.5; }
 
@@ -1040,6 +1170,11 @@ export default {
   transition: background 0.15s;
 }
 .loc-submit-btn:hover { background: #1a0f38; }
+.loc-submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  pointer-events: none;
+}
 
 /* Users sidebar panel */
 .loc-users-panel {

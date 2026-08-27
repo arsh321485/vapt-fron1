@@ -413,6 +413,24 @@ export default {
       }
       this.loading = false;
     },
+    async liveRefreshPage() {
+      const store = useAuthStore();
+      let result = await store.fetchAdminMitigationVulnAssetCount();
+      if (result.status && result.data) {
+        const data = result.data;
+        this.teamsData = data.teams || data;
+        this.mitigationData = data;
+        await this.loadRiskCriteria();
+        return;
+      }
+      result = await store.fetchMitigationByTeam(true);
+      if (result.status && result.data) {
+        const data = result.data;
+        this.teamsData = data.teams || data;
+        this.mitigationData = data;
+      }
+      await this.loadRiskCriteria();
+    },
   },
 
   async mounted() {

@@ -216,6 +216,7 @@
 <script>
 import { useAuthStore } from '@/stores/authStore';
 import { markPostLoginSuccess } from '@/utils/postLoginSuccess';
+import { extractClaimInviteToken, readClaimInviteToken, setClaimInviteValid, storeClaimInviteToken } from '@/utils/claimInvite';
 import Swal from 'sweetalert2';
 
 export default {
@@ -269,6 +270,8 @@ export default {
   watch: {
     show(newVal) {
       if (newVal) {
+        const fromQuery = extractClaimInviteToken(this.$route?.query || {});
+        if (fromQuery) storeClaimInviteToken(fromQuery);
         this.activeTab = this.defaultTab;
         this.$nextTick(() => {
           if (this.activeTab === 'admin') {
@@ -417,7 +420,7 @@ export default {
         const result = await authStore.login({
           email: this.adminForm.email,
           password: this.adminForm.password,
-          recaptcha: recaptchaResponse
+          recaptcha: recaptchaResponse,
         });
 
         if (result.status) {
@@ -460,6 +463,10 @@ export default {
       if (userType === 'user' || userType === 'member' || userType === 'internal' || userType === 'external') {
         this.$router.replace('/userdashboard');
         return;
+      }
+
+      if (readClaimInviteToken()) {
+        setClaimInviteValid(true);
       }
 
       try {

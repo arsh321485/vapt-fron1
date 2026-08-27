@@ -14,6 +14,15 @@
                 <p class="vuln-exp-subhead mb-4 mb-md-5 px-sm-2">
                   Freemium, Premium &amp; Custom — choose the plan that fits your asset scope and how you run VAPT.
                 </p>
+                <div v-if="autoSelectNotice" class="pricing-return-banner mb-4">
+                  {{ autoSelectNotice }}
+                </div>
+                <div v-else-if="comingFromUpload" class="pricing-return-banner mb-4">
+                  Select a plan to continue. Freemium can keep this file — extra assets stay locked until you upgrade.
+                </div>
+                <p v-if="freemiumLockedExtrasNotice" class="text-center text-muted mb-0" style="font-size:0.9rem;">
+                  {{ freemiumLockedExtrasNotice }}
+                </p>
               </div>
             </div>
 
@@ -25,9 +34,14 @@
               >
                 <div
                   class="card text-start shadow h-100 pricing-card"
-                  :class="{ 'pricing-card--featured': plan.featured }"
+                  :class="{
+                    'pricing-card--featured': isHighlightedPlan(plan),
+                    'pricing-card--current': isCurrentPlan(plan.id),
+                  }"
                 >
-                  <div v-if="plan.featured" class="pricing-popular-badge">MOST POPULAR</div>
+                  <div v-if="isCurrentPlan(plan.id)" class="pricing-popular-badge">YOUR PLAN</div>
+                  <div v-else-if="autoSelectedPlan === plan.id" class="pricing-popular-badge">RECOMMENDED</div>
+                  <div v-else-if="plan.featured && !currentPlanId && !autoSelectedPlan" class="pricing-popular-badge">MOST POPULAR</div>
                   <div class="card-body d-flex flex-column">
                     <h2 class="card-title pricing-tier-title">{{ plan.name }}</h2>
                     <p
@@ -40,10 +54,13 @@
                     <button
                       type="button"
                       class="btn text-light rounded-pill w-100 pricing-cta"
-                      :class="{ 'pricing-cta--featured': plan.featured }"
+                      :class="{
+                        'pricing-cta--featured': isHighlightedPlan(plan) && !isCurrentPlan(plan.id),
+                        'pricing-cta--current': isCurrentPlan(plan.id),
+                      }"
                       @click="selectPlan(plan.id)"
                     >
-                      {{ plan.cta }}
+                      {{ planButtonLabel(plan) }}
                       <i class="bi bi-arrow-right-circle-fill" aria-hidden="true"></i>
                     </button>
                     <hr />
@@ -83,6 +100,9 @@
                 <span class="pricing-progress-dot"></span>
               </div>
               <p class="pricing-progress-label">Step 2 of 3 — Review plan</p>
+              <div v-if="autoSelectNotice" class="pricing-return-banner mb-3">
+                {{ autoSelectNotice }}
+              </div>
 
               <div class="pricing-detail-shell">
                 <div class="pricing-detail-hero">
@@ -92,8 +112,30 @@
                     <p class="pricing-detail-note">{{ detailPriceNote }}</p>
                   </div>
                   <div class="pricing-detail-price-box">
+                    <span v-if="estimateLoading" class="spinner-border spinner-border-sm" role="status"></span>
                     <span class="pricing-detail-price">{{ detailPriceLabel }}</span>
+                    <small v-if="estimateAssetLabel" class="pricing-detail-assets">{{ estimateAssetLabel }}</small>
                   </div>
+                </div>
+
+                <div v-if="estimateError" class="pricing-alert pricing-alert--error">{{ estimateError }}</div>
+                <div v-if="lockedUpgradeNotice" class="pricing-alert pricing-alert--warn">
+                  {{ lockedUpgradeNotice }}
+                </div>
+                <div v-if="estimate?.over_ceiling" class="pricing-alert pricing-alert--warn">
+                  {{ estimate.message || '250+ assets — this account must use the Custom plan.' }}
+                </div>
+                <div v-else-if="!lockedUpgradeNotice && estimate?.over_limit" class="pricing-alert pricing-alert--warn">
+                  Freemium shows {{ estimate.visible_asset_count || estimate.asset_limit || 5 }} IPs now.
+                  Extra assets stay locked and unlock automatically when you upgrade — no re-upload needed.
+                </div>
+                <div v-else-if="needsScope" class="pricing-alert pricing-alert--warn">
+                  {{ scopeNoticeText }}
+                  <router-link :to="scopeEntryLink" class="pricing-alert-link">Upload report or enter scope</router-link>
+                </div>
+                <div v-else-if="needsReportUpload && !pendingAssetCount && !isTestingMode" class="pricing-alert pricing-alert--warn">
+                  Upload a report first — no assets found to bill for.
+                  <router-link to="/admin-upload-report" class="pricing-alert-link">Upload report</router-link>
                 </div>
 
                 <div class="pricing-detail-body">
@@ -266,7 +308,7 @@
                   <button
                     type="button"
                     class="btn text-light rounded-pill pricing-cta pricing-cta--featured pricing-cta--wide"
-                    :disabled="activePlan.id === 'custom' && !canContinueCustom"
+                    :disabled="detailsContinueDisabled"
                     @click="goToPayment"
                   >
                     {{ detailsContinueLabel }}
@@ -311,104 +353,47 @@
                       <div class="pricing-contact-row"><span>Company</span><strong>{{ leadForm.company }}</strong></div>
                       <div class="pricing-contact-row"><span>Assets</span><strong>{{ leadForm.assets }}</strong></div>
                     </div>
+                    <p v-if="checkoutError" class="pricing-alert pricing-alert--error mt-3">{{ checkoutError }}</p>
                     <button
                       type="button"
                       class="btn text-light rounded-pill w-100 pricing-cta pricing-cta--featured mt-4"
+                      :disabled="checkoutLoading"
                       @click="submitCustomRequest"
                     >
-                      Submit request
+                      <span v-if="checkoutLoading" class="spinner-border spinner-border-sm me-2"></span>
+                      {{ checkoutLoading ? 'Submitting…' : 'Submit request' }}
                       <i class="bi bi-arrow-right-circle-fill" aria-hidden="true"></i>
                     </button>
                   </template>
 
                   <template v-else>
-                    <div class="pricing-pay-tabs" role="tablist">
-                      <button
-                        v-for="method in paymentMethods"
-                        :key="method.id"
-                        type="button"
-                        role="tab"
-                        class="pricing-pay-tab"
-                        :class="{ active: paymentMethod === method.id }"
-                        :aria-selected="paymentMethod === method.id"
-                        @click="paymentMethod = method.id"
-                      >
-                        <i :class="method.icon" aria-hidden="true"></i>
-                        <span>{{ method.shortLabel || method.label }}</span>
-                      </button>
-                    </div>
-
-                    <div class="pricing-pay-panel">
-                      <div v-if="paymentMethod === 'card'" class="pricing-card-form">
-                        <div class="mb-3">
-                          <label class="pricing-field-label" for="card-name">Name on card</label>
-                          <input
-                            id="card-name"
-                            v-model.trim="cardForm.name"
-                            type="text"
-                            class="form-control pricing-input"
-                            placeholder="Full name"
-                            autocomplete="cc-name"
-                          />
-                        </div>
-                        <div class="mb-3">
-                          <label class="pricing-field-label" for="card-number">Card number</label>
-                          <input
-                            id="card-number"
-                            v-model.trim="cardForm.number"
-                            type="text"
-                            class="form-control pricing-input"
-                            placeholder="XXXX XXXX XXXX XXXX"
-                            inputmode="numeric"
-                            autocomplete="cc-number"
-                          />
-                        </div>
-                        <div class="row g-3">
-                          <div class="col-6">
-                            <label class="pricing-field-label" for="card-expiry">Expiry</label>
-                            <input
-                              id="card-expiry"
-                              v-model.trim="cardForm.expiry"
-                              type="text"
-                              class="form-control pricing-input"
-                              placeholder="MM/YY"
-                              autocomplete="cc-exp"
-                            />
-                          </div>
-                          <div class="col-6">
-                            <label class="pricing-field-label" for="card-cvv">CVV</label>
-                            <input
-                              id="card-cvv"
-                              v-model.trim="cardForm.cvv"
-                              type="password"
-                              class="form-control pricing-input"
-                              placeholder="•••"
-                              autocomplete="cc-csc"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div v-else class="pricing-pay-placeholder">
-                        <i class="bi bi-info-circle" aria-hidden="true"></i>
+                    <p class="pricing-mechanics-copy mb-3">
+                      Payment is completed on Stripe Checkout. Card, UPI, and Net Banking details are not collected on this page.
+                    </p>
+                    <div class="pricing-stripe-redirect">
+                      <i class="bi bi-shield-lock" aria-hidden="true"></i>
+                      <div>
+                        <strong>Secure Stripe Checkout</strong>
                         <p class="mb-0">
-                          {{ paymentMethod === 'upi'
-                            ? 'UPI checkout will be connected by backend. Continue to proceed for now.'
-                            : 'Net banking checkout will be connected by backend. Continue to proceed for now.' }}
+                          Continue to Stripe to pay for
+                          <strong>{{ billedAssetCount || 'your' }} {{ billedAssetCount === 1 ? 'IP' : 'IPs' }}</strong>.
+                          After payment you will return here automatically.
                         </p>
                       </div>
                     </div>
-
+                    <p v-if="checkoutError" class="pricing-alert pricing-alert--error mt-3">{{ checkoutError }}</p>
                     <button
                       type="button"
                       class="btn text-light rounded-pill w-100 pricing-cta pricing-cta--featured mt-3"
+                      :disabled="checkoutLoading || (activePlan.id === 'premium' && ((needsReportUpload && !pendingAssetCount && !isTestingMode) || estimate?.over_ceiling || needsScope))"
                       @click="completeCheckout"
                     >
-                      {{ activePlan.id === 'freemium' ? 'Start free trial' : 'Pay & continue' }}
+                      <span v-if="checkoutLoading" class="spinner-border spinner-border-sm me-2"></span>
+                      {{ checkoutButtonLabel }}
                       <i class="bi bi-arrow-right-circle-fill" aria-hidden="true"></i>
                     </button>
                     <p class="pricing-pay-disclaimer mt-2 mb-0">
-                      No charge is processed on this screen yet — billing backend will handle payments.
+                      You will be redirected to Stripe. Do not enter card details on this screen.
                     </p>
                   </template>
                 </div>
@@ -505,6 +490,42 @@
 import Header from '@/components/admin-component/Header.vue';
 import Footer from '@/components/admin-component/Footer.vue';
 import AdminSignUpModal from '@/components/admin-component/AdminSignUpModal.vue';
+import Swal from 'sweetalert2';
+import {
+  billingErrorMessage,
+  checkoutFreemium,
+  checkoutPremium,
+  estimatePlan,
+  formatUsd,
+  getMySubscription,
+  isBillingAuthError,
+  submitCustomLead,
+} from '@/services/billingApi';
+import {
+  billingAssetBreakdown,
+  billableAssetCount,
+  clearBillingReturnTo,
+  consumeBillingReturnTo,
+  extraIpCount,
+  formatLockedUpgradeNotice,
+  isActiveSubscription,
+  isExistingSubscriptionMessage,
+  isFreemiumPlan,
+  localPremiumEstimate,
+  markFreemiumActiveNotice,
+  peekBillingReturnTo,
+  planAssetLimit,
+  planDisplayName,
+  rememberFullAssetCount,
+  setBillingReturnTo,
+  UPLOAD_RETURN_PATH,
+} from '@/utils/planLimits';
+import { setCachedPaidPlan } from '@/utils/authenticatedHome';
+import { consumeHandoffError } from '@/utils/adminHandoff';
+import { peekPendingUploadMeta } from '@/utils/pendingUpload';
+import { useAuthStore } from '@/stores/authStore';
+
+const STRIPE_PK = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '';
 
 const PLAN_CONFIG = {
   freemium: {
@@ -516,9 +537,9 @@ const PLAN_CONFIG = {
     featured: false,
     featuresHeading: "What's included:",
     features: [
-      { text: 'Upto 5 Internal IPs', included: true },
-      { text: 'Report upload – 1 time', included: true },
-      { text: 'Max 10 vulnerabilities', included: true },
+      { text: '5 visible Internal IPs (extra assets lock until upgrade)', included: true },
+      { text: 'Report upload – extras unlock on Premium, no re-upload', included: true },
+      { text: 'Up to 3 team members', included: true },
       { text: '1 team enabled', included: true },
       { text: 'No testing/retesting', included: false },
       { text: 'No automation scripts', included: false },
@@ -579,8 +600,8 @@ export default {
       ],
       paymentMethods: [
         { id: 'card', label: 'Credit / Debit Card', shortLabel: 'Card', icon: 'bi bi-credit-card-2-front' },
-        { id: 'upi', label: 'UPI', shortLabel: 'UPI', icon: 'bi bi-phone' },
-        { id: 'netbanking', label: 'Net Banking', shortLabel: 'Net Banking', icon: 'bi bi-bank' },
+        { id: 'upi', label: 'UPI', shortLabel: 'UPI', icon: 'bi bi-phone', comingSoon: true },
+        { id: 'netbanking', label: 'Net Banking', shortLabel: 'Net Banking', icon: 'bi bi-bank', comingSoon: true },
       ],
       leadForm: {
         name: '',
@@ -594,19 +615,119 @@ export default {
         expiry: '',
         cvv: '',
       },
+      collectCard: true,
+      estimate: null,
+      estimateLoading: false,
+      estimateError: '',
+      needsReportUpload: false,
+      checkoutLoading: false,
+      checkoutError: '',
+      currentSubscription: null,
+      stripe: null,
+      cardElement: null,
+      billingReturnTo: '',
+      autoSelectedPlan: '',
+      autoSelectedFromAssets: 0,
     };
   },
   computed: {
+    hasStripeKey() {
+      return !!STRIPE_PK;
+    },
+    isAuthenticated() {
+      const token = sessionStorage.getItem('authorization') || localStorage.getItem('authorization');
+      return !!(token && token !== 'null' && token !== 'undefined');
+    },
     planList() {
       return [PLAN_CONFIG.freemium, PLAN_CONFIG.premium, PLAN_CONFIG.custom];
     },
     activePlan() {
       return this.selectedPlan ? PLAN_CONFIG[this.selectedPlan] : null;
     },
+    apiPremiumMode() {
+      return this.premiumMode === 'testing' ? 'management_testing' : 'management';
+    },
+    isTestingMode() {
+      return this.selectedPlan === 'premium' && this.premiumMode === 'testing';
+    },
+    needsScope() {
+      if (this.selectedPlan === 'custom') return false;
+      return this.estimate?.needs_scope === true;
+    },
+    scopeNoticeText() {
+      return (
+        this.estimate?.message ||
+        "No report or scope found yet — pricing can't be calculated until you upload a report or provide your target IPs/URLs."
+      );
+    },
+    scopeEntryLink() {
+      return { path: '/admin-upload-report', query: { returnTo: '/pricingplan' } };
+    },
+    apiBillingCycle() {
+      if (this.billingCycle === 'semi') return 'semi_annual';
+      return this.billingCycle;
+    },
+    currentPlanId() {
+      const plan = String(this.currentSubscription?.plan || '').toLowerCase();
+      if (plan === 'freemium' || plan === 'premium' || plan === 'custom') return plan;
+      return '';
+    },
+    comingFromUpload() {
+      return this.billingReturnTo === UPLOAD_RETURN_PATH
+        || this.billingReturnTo.startsWith('/admin-upload-report');
+    },
+    pendingAssetCount() {
+      const fromQuery = Number(this.$route.query.assets) || 0;
+      const fromMeta = peekPendingUploadMeta()?.count || 0;
+      const fromEstimate = billableAssetCount(this.estimate);
+      const fromSub = billableAssetCount(this.currentSubscription);
+      return fromEstimate || fromQuery || fromMeta || fromSub || this.autoSelectedFromAssets || 0;
+    },
+    billingBreakdown() {
+      const fromEstimate = billingAssetBreakdown(this.estimate);
+      if (fromEstimate.billable_asset_count || fromEstimate.locked_asset_count) return fromEstimate;
+      return billingAssetBreakdown(this.currentSubscription);
+    },
+    billedAssetCount() {
+      return this.billingBreakdown.billable_asset_count || this.pendingAssetCount || 0;
+    },
+    lockedUpgradeNotice() {
+      if (this.selectedPlan !== 'premium') return '';
+      return formatLockedUpgradeNotice(this.estimate || this.currentSubscription);
+    },
+    freemiumLockedExtrasNotice() {
+      const count = Number(this.pendingAssetCount) || 0;
+      if (!count) return '';
+      const extra = extraIpCount(count, planAssetLimit('freemium'));
+      if (extra <= 0) return '';
+      return `This report has ${count} IPs. Freemium shows 5 now — ${extra} stay locked until you upgrade (no re-upload).`;
+    },
+    autoSelectNotice() {
+      if (!this.autoSelectedFromAssets || !this.autoSelectedPlan) return '';
+      const name = planDisplayName(this.autoSelectedPlan);
+      return `Your report has ${this.autoSelectedFromAssets} IPs — ${name} is auto-selected.`;
+    },
     detailsContinueLabel() {
+      if (this.needsScope) return 'Provide scope first';
+      if (this.estimate?.over_ceiling) return 'Switch to Custom';
       if (this.selectedPlan === 'premium') return 'Continue to payment';
       if (this.selectedPlan === 'custom') return 'Continue to contact';
       return 'Continue';
+    },
+    checkoutButtonLabel() {
+      if (this.checkoutLoading) {
+        if (this.selectedPlan === 'freemium') return 'Starting trial…';
+        return 'Redirecting to Stripe…';
+      }
+      return this.selectedPlan === 'freemium' ? 'Start free trial' : 'Continue to Stripe Checkout';
+    },
+    detailsContinueDisabled() {
+      if (this.estimateLoading || this.checkoutLoading) return true;
+      if (this.needsScope) return true;
+      if (this.selectedPlan === 'custom' && !this.canContinueCustom) return true;
+      if (this.selectedPlan === 'premium' && this.needsReportUpload && !this.pendingAssetCount && !this.isTestingMode) return true;
+      if (this.isTestingMode && this.isAuthenticated && !(this.billedAssetCount > 0)) return true;
+      return false;
     },
     canContinueCustom() {
       return !!(
@@ -625,12 +746,31 @@ export default {
     premiumModeLabel() {
       return this.premiumMode === 'testing' ? 'Management + Testing' : 'Management';
     },
+    estimateAssetLabel() {
+      if (this.needsScope) return '';
+      const count = this.billedAssetCount;
+      if (!count) return '';
+      return `Based on ${count} assets`;
+    },
+    liveAmountLabel() {
+      if (this.needsScope) return '';
+      if (this.estimate?.amount_due == null) return '';
+      return formatUsd(this.estimate.amount_due, this.estimate.currency || 'usd');
+    },
     detailPriceLabel() {
+      if (this.needsScope) return '—';
+      if (this.estimate?.over_ceiling) return 'Custom required';
+      if (this.liveAmountLabel) return this.liveAmountLabel;
+      if (this.selectedPlan === 'freemium') return this.activePlan?.priceLabel || '$0';
       if (this.selectedPlan !== 'premium') return this.activePlan?.priceLabel || '';
       if (this.premiumMode === 'testing') return '$20';
       return this.selectedCycle?.rate?.replace(' / IP', '') || 'From $1.25';
     },
     detailPriceNote() {
+      if (this.needsScope) {
+        return this.scopeNoticeText;
+      }
+      if (this.estimate?.over_ceiling) return this.estimate.message || this.activePlan?.priceNote || '';
       if (this.selectedPlan !== 'premium') return this.activePlan?.priceNote || '';
       if (this.premiumMode === 'testing') {
         return 'per IP/year · Management + Testing (annual only)';
@@ -646,6 +786,8 @@ export default {
       return 'Custom quote';
     },
     summaryTotal() {
+      if (this.needsScope) return 'Pending';
+      if (this.liveAmountLabel) return this.liveAmountLabel;
       if (this.selectedPlan === 'freemium') return '$0';
       if (this.selectedPlan === 'premium') {
         if (this.premiumMode === 'testing') return '$20 / IP / year';
@@ -658,58 +800,518 @@ export default {
   },
   watch: {
     premiumMode(mode) {
-      if (mode === 'testing') {
-        this.billingCycle = 'annual';
+      if (mode === 'testing') this.billingCycle = 'annual';
+      if (this.step === 'details' || this.step === 'payment') this.fetchEstimate();
+    },
+    billingCycle() {
+      if (this.selectedPlan === 'premium' && (this.step === 'details' || this.step === 'payment')) {
+        this.fetchEstimate();
       }
+    },
+    step(next) {
+      if (next === 'details') this.fetchEstimate();
     },
   },
+  async mounted() {
+    const handoffError = consumeHandoffError();
+    if (handoffError) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'This link has expired',
+        text: handoffError,
+        confirmButtonText: 'OK',
+      });
+      return;
+    }
+    const returnTo = this.$route.query.returnTo;
+    if (typeof returnTo === 'string' && returnTo.startsWith('/')) {
+      const resume = String(this.$route.query.resume || '') === '1';
+      const dest = resume && !returnTo.includes('resume=')
+        ? `${returnTo}${returnTo.includes('?') ? '&' : '?'}resume=1`
+        : returnTo;
+      this.billingReturnTo = dest;
+      setBillingReturnTo(dest);
+    } else {
+      this.billingReturnTo = '';
+    }
+    if (this.isAuthenticated) {
+      await this.loadCurrentSubscription();
+    }
+    const requestedPlan = String(this.$route.query.plan || '').toLowerCase();
+    const requestedAssets = Number(this.$route.query.assets) || 0;
+    const requestedMode = String(this.$route.query.mode || '').toLowerCase();
+    if (requestedPlan === 'freemium' || requestedPlan === 'premium' || requestedPlan === 'custom') {
+      this.autoSelectedPlan = requestedPlan;
+      this.autoSelectedFromAssets = requestedAssets;
+      if (requestedPlan === 'custom' && requestedAssets && !this.leadForm.assets) {
+        this.leadForm.assets = String(requestedAssets);
+      }
+      this.selectPlan(requestedPlan, { premiumMode: requestedMode });
+    }
+  },
+  beforeUnmount() {
+    this.teardownStripeCard();
+  },
   methods: {
-    selectPlan(planId) {
+    isCurrentPlan(planId) {
+      return !!this.currentPlanId && this.currentPlanId === planId;
+    },
+    isHighlightedPlan(plan) {
+      if (this.autoSelectedPlan) return plan.id === this.autoSelectedPlan;
+      if (this.currentPlanId) return plan.id === this.currentPlanId;
+      return !!plan.featured;
+    },
+    planButtonLabel(plan) {
+      if (this.isCurrentPlan(plan.id)) return 'Continue with this plan';
+      return plan.cta;
+    },
+    async loadCurrentSubscription() {
+      try {
+        const data = await getMySubscription();
+        this.currentSubscription = data?.subscription || null;
+        rememberFullAssetCount(this.currentSubscription || data);
+      } catch {
+        this.currentSubscription = null;
+      }
+    },
+    buildEstimatePayload() {
+      const payload = { plan: this.selectedPlan };
+      if (this.selectedPlan === 'premium') {
+        payload.mode = this.apiPremiumMode;
+        if (this.apiPremiumMode === 'management') {
+          payload.billing_cycle = this.apiBillingCycle;
+        }
+      }
+      const billable = this.billedAssetCount;
+      if (billable && !(this.selectedPlan === 'premium' && this.premiumMode === 'testing')) {
+        payload.asset_count = billable;
+      }
+      return payload;
+    },
+    applyLocalEstimate() {
+      if (this.selectedPlan !== 'premium' || !this.pendingAssetCount) return false;
+      if (this.premiumMode === 'testing') return false;
+      const local = localPremiumEstimate(this.pendingAssetCount, this.premiumMode, this.billingCycle);
+      if (!local) return false;
+      this.estimate = local;
+      this.needsReportUpload = false;
+      this.estimateError = '';
+      return true;
+    },
+    async fetchEstimate() {
+      if (!this.selectedPlan) return;
+      if (!this.isAuthenticated) {
+        this.estimate = null;
+        this.estimateError = '';
+        this.needsReportUpload = false;
+        this.applyLocalEstimate();
+        return;
+      }
+      this.estimateLoading = true;
+      this.estimateError = '';
+      this.needsReportUpload = false;
+      try {
+        const data = await estimatePlan(this.buildEstimatePayload());
+        this.estimate = data || null;
+        rememberFullAssetCount(data, this.pendingAssetCount);
+        if (data?.needs_scope) {
+          this.estimateError = '';
+          return;
+        }
+        if (data?.over_ceiling && this.selectedPlan === 'premium') {
+          this.estimateError = '';
+        }
+      } catch (error) {
+        this.estimate = null;
+        const message = billingErrorMessage(error);
+        if (isBillingAuthError(error)) {
+          this.estimateError = 'Sign in to see your priced amount.';
+          return;
+        }
+        const missingScope = /no scope|needs_scope|provide your target|target ips/i.test(message);
+        const missingAssets = /upload a report|no assets/i.test(message);
+        if (this.isTestingMode && (missingScope || missingAssets)) {
+          this.estimate = {
+            plan: 'premium',
+            mode: 'management_testing',
+            billing_cycle: 'annual',
+            asset_count: 0,
+            amount_due: '0.00',
+            currency: 'usd',
+            needs_scope: true,
+            message:
+              message ||
+              "No report or scope found yet — pricing can't be calculated until you upload a report or provide your target IPs/URLs.",
+          };
+          this.estimateError = '';
+          return;
+        }
+        if (this.selectedPlan === 'freemium' && missingScope) {
+          this.estimate = {
+            plan: 'freemium',
+            asset_count: 0,
+            amount_due: '0.00',
+            currency: 'usd',
+            needs_scope: true,
+            message,
+          };
+          this.estimateError = '';
+          return;
+        }
+        if (missingAssets) {
+          if (this.applyLocalEstimate()) return;
+          this.needsReportUpload = true;
+          this.estimateError = '';
+          return;
+        }
+        this.estimateError = message;
+      } finally {
+        this.estimateLoading = false;
+      }
+    },
+    promptAuth() {
+      return Swal.fire({
+        icon: 'info',
+        title: 'Sign in required',
+        text: 'Log in as an admin to estimate pricing and complete checkout.',
+        showCancelButton: true,
+        confirmButtonText: 'Sign in',
+        cancelButtonText: 'Create account',
+        confirmButtonColor: '#241447',
+      }).then((result) => {
+        if (result.isConfirmed) {
+          this.$router.push('/signin');
+        } else if (result.dismiss === Swal.DismissReason.cancel) {
+          this.openAdminSignUpModal();
+        }
+        return false;
+      });
+    },
+    selectPaymentMethod(method) {
+      if (!method || method.comingSoon) return;
+      this.paymentMethod = method.id;
+    },
+    freemiumContinuePath() {
+      return '/admindashboardonboarding';
+    },
+    isOnboardingOnlyPath(path) {
+      const p = String(path || '').split('?')[0];
+      return (
+        p === '/communication' ||
+        p === '/riskcriteria' ||
+        p === '/admin-upload-report'
+      );
+    },
+    async resolveAfterPlanPath() {
+      const fromQuery = String(this.$route.query.returnTo || '');
+      const stored = this.billingReturnTo || peekBillingReturnTo() || '';
+      const preferred = (fromQuery.startsWith('/') && !fromQuery.startsWith('//'))
+        ? fromQuery
+        : (stored.startsWith('/') && !stored.startsWith('//') ? stored : '');
+
+      if (preferred && !this.isOnboardingOnlyPath(preferred)) {
+        consumeBillingReturnTo();
+        return preferred;
+      }
+
+      let next = '/admindashboardonboarding';
+      try {
+        next = (await useAuthStore().getAdminOnboardingRoute()) || next;
+      } catch {
+        /* stay on dashboard */
+      }
+
+      if (next === '/admindashboardonboarding') {
+        clearBillingReturnTo();
+        return '/admindashboardonboarding';
+      }
+
+      if (preferred) {
+        consumeBillingReturnTo();
+        return preferred;
+      }
+      return next;
+    },
+    async selectPlan(planId, options = {}) {
+      if (planId === 'freemium') {
+        this.selectedPlan = planId;
+        if (this.isCurrentPlan('freemium')) {
+          this.$router.push(await this.resolveAfterPlanPath());
+          return;
+        }
+        this.startFreemium();
+        return;
+      }
       this.selectedPlan = planId;
-      this.step = 'details';
+      this.estimate = null;
+      this.estimateError = '';
+      this.needsReportUpload = false;
+      this.checkoutError = '';
       this.paymentMethod = 'card';
       if (planId === 'premium') {
-        this.premiumMode = 'management';
+        const mode = String(options.premiumMode || '').toLowerCase();
+        this.premiumMode = (mode === 'testing' || mode === 'management_testing')
+          ? 'testing'
+          : 'management';
         this.billingCycle = 'annual';
       }
+      this.step = 'details';
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
-    goToPayment() {
+    async goToPayment() {
+      if (this.estimate?.over_ceiling) {
+        this.selectPlan('custom');
+        return;
+      }
+      if (this.selectedPlan === 'freemium') {
+        await this.startFreemium();
+        return;
+      }
+      if (this.needsScope || this.detailsContinueDisabled) return;
       if (this.selectedPlan === 'custom' && !this.canContinueCustom) return;
+      if (!this.isAuthenticated) {
+        await this.promptAuth();
+        return;
+      }
+      this.checkoutError = '';
+      this.paymentMethod = 'card';
       this.step = 'payment';
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
     goBack() {
+      this.checkoutError = '';
       if (this.step === 'payment') {
+        this.teardownStripeCard();
         this.step = 'details';
       } else if (this.step === 'details') {
         this.step = 'plans';
         this.selectedPlan = null;
+        this.estimate = null;
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
-    completeCheckout() {
-      this.openAdminSignUpModal();
+    async completeCheckout() {
+      if (!this.isAuthenticated) {
+        await this.promptAuth();
+        return;
+      }
+      this.checkoutError = '';
+      if (this.selectedPlan === 'freemium') {
+        await this.startFreemium();
+      } else if (this.selectedPlan === 'premium') {
+        await this.startPremium();
+      }
     },
-    submitCustomRequest() {
-      const subject = encodeURIComponent('VAPTFix Custom Plan Inquiry');
-      const body = encodeURIComponent(
-        [
-          'Custom plan inquiry',
-          '',
-          `Name: ${this.leadForm.name}`,
-          `Email: ${this.leadForm.email}`,
-          `Company: ${this.leadForm.company}`,
-          `Estimated assets: ${this.leadForm.assets}`,
-        ].join('\n'),
-      );
-      window.location.href = `mailto:enterprise@vaptfix.ai?subject=${subject}&body=${body}`;
+    async startFreemium() {
+      this.checkoutLoading = true;
+      try {
+        const data = await checkoutFreemium(false);
+        this.currentSubscription = data?.subscription || this.currentSubscription;
+        useAuthStore().lockAutomationScriptsForFreemium(
+          'Automation scripts are not available on the Freemium plan. Upgrade to Premium to download scripts.',
+        );
+        setCachedPaidPlan(true);
+        const dest = await this.resolveAfterPlanPath();
+        if (String(dest).startsWith('/communication')) {
+          useAuthStore().unmarkStepCompleted(1);
+        }
+        if (this.isOnboardingOnlyPath(dest)) markFreemiumActiveNotice();
+        await Swal.fire({
+          icon: 'success',
+          title: 'Freemium started',
+          text: 'Trial is active',
+          timer: 1800,
+          showConfirmButton: false,
+        });
+        this.$router.push(dest);
+      } catch (error) {
+        const message = billingErrorMessage(error);
+        if (isBillingAuthError(error)) {
+          await this.promptAuth();
+          return;
+        }
+        if (isExistingSubscriptionMessage(message) || /already exists/i.test(message)) {
+          setCachedPaidPlan(true);
+          const dest = await this.resolveAfterPlanPath();
+          if (String(dest).startsWith('/communication')) {
+            useAuthStore().unmarkStepCompleted(1);
+          }
+          if (this.isOnboardingOnlyPath(dest)) markFreemiumActiveNotice();
+          this.$router.push(dest);
+          return;
+        }
+        this.checkoutError = message;
+        await Swal.fire({ icon: 'error', title: 'Could not start Freemium', text: message, confirmButtonColor: '#241447' });
+      } finally {
+        this.checkoutLoading = false;
+      }
+    },
+    async startPremium() {
+      if (this.estimate?.over_ceiling) {
+        this.selectPlan('custom');
+        return;
+      }
+      if (this.needsScope || (this.isTestingMode && !(this.billedAssetCount > 0))) {
+        this.step = 'details';
+        this.checkoutError = 'Upload a report or enter scope first so we can calculate the amount due.';
+        return;
+      }
+      this.checkoutLoading = true;
+      try {
+        const payload = { mode: this.apiPremiumMode };
+        if (this.apiPremiumMode === 'management') {
+          payload.billing_cycle = this.apiBillingCycle;
+        }
+        const billable = this.billedAssetCount;
+        if (billable) payload.asset_count = billable;
+        const data = await checkoutPremium(payload);
+        if (!data?.checkout_url) {
+          throw new Error('Stripe checkout URL was not returned.');
+        }
+        window.location.href = data.checkout_url;
+      } catch (error) {
+        const message = billingErrorMessage(error);
+        if (isBillingAuthError(error)) {
+          await this.promptAuth();
+          return;
+        }
+        if (/250\+|custom plan/i.test(message)) {
+          this.checkoutError = message;
+          this.selectPlan('custom');
+          return;
+        }
+        if (/no scope|needs_scope|provide your target|upload a report|no assets/i.test(message)) {
+          if (this.isTestingMode) {
+            this.estimate = {
+              ...(this.estimate || {}),
+              plan: 'premium',
+              mode: 'management_testing',
+              asset_count: this.estimate?.asset_count || 0,
+              amount_due: this.estimate?.amount_due || '0.00',
+              currency: this.estimate?.currency || 'usd',
+              needs_scope: true,
+              message,
+            };
+            this.step = 'details';
+            this.checkoutError = '';
+            return;
+          }
+          if (this.applyLocalEstimate()) {
+            this.checkoutError = message;
+            this.step = 'details';
+            return;
+          }
+          this.needsReportUpload = true;
+          this.step = 'details';
+          return;
+        }
+        this.checkoutError = message;
+        await Swal.fire({ icon: 'error', title: 'Checkout failed', text: message, confirmButtonColor: '#241447' });
+      } finally {
+        this.checkoutLoading = false;
+      }
+    },
+    async submitCustomRequest() {
+      if (!this.canContinueCustom) return;
+      if (!this.isAuthenticated) {
+        await this.promptAuth();
+        return;
+      }
+      this.checkoutLoading = true;
+      this.checkoutError = '';
+      try {
+        const data = await submitCustomLead({
+          full_name: this.leadForm.name,
+          work_email: this.leadForm.email,
+          company: this.leadForm.company,
+          estimated_assets: this.leadForm.assets,
+        });
+        await Swal.fire({
+          icon: 'success',
+          title: 'Request submitted',
+          text: data?.detail || 'Our sales team will reach out.',
+          confirmButtonColor: '#241447',
+        });
+        if (this.comingFromUpload) {
+          this.goAfterBilling();
+        } else {
+          this.step = 'plans';
+          this.selectedPlan = null;
+        }
+      } catch (error) {
+        const message = billingErrorMessage(error);
+        if (isBillingAuthError(error)) {
+          await this.promptAuth();
+          return;
+        }
+        this.checkoutError = message;
+        await Swal.fire({ icon: 'error', title: 'Could not submit request', text: message, confirmButtonColor: '#241447' });
+      } finally {
+        this.checkoutLoading = false;
+      }
+    },
+    loadStripeJs() {
+      return new Promise((resolve, reject) => {
+        if (window.Stripe) {
+          resolve(window.Stripe);
+          return;
+        }
+        const existing = document.querySelector('script[data-vaptfix-stripe]');
+        if (existing) {
+          existing.addEventListener('load', () => resolve(window.Stripe));
+          existing.addEventListener('error', () => reject(new Error('Failed to load Stripe.js')));
+          return;
+        }
+        const script = document.createElement('script');
+        script.src = 'https://js.stripe.com/v3/';
+        script.async = true;
+        script.dataset.vaptfixStripe = '1';
+        script.onload = () => resolve(window.Stripe);
+        script.onerror = () => reject(new Error('Failed to load Stripe.js'));
+        document.head.appendChild(script);
+      });
+    },
+    async mountStripeCard() {
+      if (!this.hasStripeKey || this.cardElement) return;
+      try {
+        const StripeCtor = await this.loadStripeJs();
+        this.stripe = StripeCtor(STRIPE_PK);
+        const elements = this.stripe.elements();
+        this.cardElement = elements.create('card');
+        const mountEl = document.getElementById('freemium-card-element');
+        if (mountEl) this.cardElement.mount(mountEl);
+      } catch (error) {
+        this.checkoutError = 'Card form could not be loaded. You can still start Freemium without saving a card.';
+        this.collectCard = false;
+      }
+    },
+    teardownStripeCard() {
+      if (this.cardElement) {
+        try { this.cardElement.unmount(); } catch { /* ignore */ }
+        this.cardElement = null;
+      }
+    },
+    async confirmSavedCard(clientSecret) {
+      if (!this.stripe || !this.cardElement) return;
+      const result = await this.stripe.confirmCardSetup(clientSecret, {
+        payment_method: {
+          card: this.cardElement,
+          billing_details: { name: this.cardForm.name || undefined },
+        },
+      });
+      if (result.error) {
+        throw new Error(result.error.message || 'Could not save the card.');
+      }
+    },
+    async goAfterBilling() {
+      this.$router.push(await this.resolveAfterPlanPath());
     },
     openAdminSignUpModal() {
       this.showAdminSignUpModal = true;
     },
     closeAdminSignUpModal() {
       this.showAdminSignUpModal = false;
+      if (this.isAuthenticated) this.loadCurrentSubscription();
     },
   },
 };
@@ -734,6 +1336,15 @@ export default {
 
 .pricing-card--featured {
   border: 2px solid #241447;
+}
+
+.pricing-card--current {
+  border: 2px solid #0f696e;
+  box-shadow: 0 12px 28px rgba(15, 105, 110, 0.16);
+}
+
+.pricing-card--current .pricing-popular-badge {
+  background: #0f696e;
 }
 
 .pricing-popular-badge {
@@ -787,6 +1398,10 @@ export default {
 
 .pricing-cta--featured {
   background-color: #241447;
+}
+
+.pricing-cta--current {
+  background-color: #0f696e;
 }
 
 .pricing-cta:disabled {
@@ -1263,6 +1878,29 @@ export default {
   box-shadow: inset 0 0 0 1px #241447;
 }
 
+.pricing-pay-tab--soon {
+  opacity: 0.62;
+  cursor: not-allowed;
+  background: #f6f6f8;
+}
+
+.pricing-pay-tab--soon i {
+  color: #94a3b8;
+}
+
+.pricing-pay-soon {
+  display: inline-block;
+  margin-top: 0.1rem;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  background: #ece9f4;
+  color: #241447;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
 .pricing-pay-panel {
   border: 1px solid rgba(36, 20, 71, 0.08);
   border-radius: 12px;
@@ -1294,6 +1932,31 @@ export default {
   text-align: center;
   margin-top: auto;
   padding-top: 0.75rem;
+}
+
+.pricing-stripe-redirect {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+.pricing-stripe-redirect i {
+  font-size: 1.35rem;
+  color: #0f696e;
+  margin-top: 2px;
+}
+.pricing-stripe-redirect strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #241447;
+}
+.pricing-stripe-redirect p {
+  font-size: 0.9rem;
+  color: #475569;
+  line-height: 1.45;
 }
 
 .pricing-checkout-summary {
@@ -1473,5 +2136,61 @@ export default {
 .start-fixing-img {
   max-width: min(100%, 320px);
   height: auto;
+}
+
+.pricing-return-banner {
+  display: inline-block;
+  background: #eef8f8;
+  color: #0f696e;
+  border: 1px solid rgba(15, 105, 110, 0.18);
+  border-radius: 12px;
+  padding: 0.7rem 1rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  max-width: 640px;
+}
+.pricing-detail-assets {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(36, 20, 71, 0.7);
+}
+.pricing-alert {
+  margin: 0 0 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.pricing-detail-shell > .pricing-alert {
+  margin: 0 2rem 0.75rem;
+}
+.pricing-alert--error {
+  background: #fef2f2;
+  color: #991b1b;
+}
+.pricing-alert--warn {
+  background: #fff7ed;
+  color: #9a3412;
+}
+.pricing-alert-link {
+  margin-left: 0.35rem;
+  font-weight: 700;
+  color: #241447;
+}
+.pricing-collect-card {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.92rem;
+  color: #241447;
+  font-weight: 500;
+}
+.pricing-stripe-element {
+  padding: 0.85rem 0.9rem;
+  border: 1px solid rgba(36, 20, 71, 0.18);
+  border-radius: 10px;
+  background: #fff;
 }
 </style>

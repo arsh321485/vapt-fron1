@@ -24,8 +24,11 @@
           <p class="otp-verify-sub">
             Your One-Time Password (OTP) for VAPTFIX Admin Signup is:
           </p>
+          <div v-if="inviteBannerText" class="invite-banner" :class="inviteBannerClass">
+            {{ inviteBannerText }}
+          </div>
 
-          <div class="otp-inputs d-flex justify-content-center gap-2 mb-4">
+          <div class="otp-inputs d-flex justify-content-center gap-2 mb-3">
             <input
               v-for="(digit, index) in 6"
               :key="index"
@@ -34,6 +37,7 @@
               class="form-control otp-box otp-box-modern text-center"
               maxlength="1"
               :value="otpDigits[index]"
+              :disabled="otpExpired || loading"
               @input="handleOtpInput($event, index)"
               @keydown="handleOtpKeydown($event, index)"
               @paste="handleOtpPaste($event, index)"
@@ -42,20 +46,34 @@
             />
           </div>
 
+          <p class="otp-timer-text mb-3">
+            {{ otpExpired ? 'OTP expired. Request a new one.' : `Resend available in ${otpCountdownLabel}` }}
+          </p>
+
           <div class="otp-note mb-4">
             <i class="bi bi-info-circle-fill otp-note-icon"></i>
             <p class="otp-note-text">
-              This OTP is valid for <strong>5 minutes</strong>. Please do not share this OTP with anyone for security reasons.
+              This OTP is valid for <strong>1 minute</strong>. Please do not share this OTP with anyone for security reasons.
             </p>
           </div>
 
           <button
+            v-if="!otpExpired"
             class="btn signup-btn otp-verify-btn w-100 mb-3"
             @click="handleVerifyOtp"
             :disabled="loading || otp.length < 6"
           >
             <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
             Verify & Continue
+          </button>
+          <button
+            v-else
+            class="btn signup-btn otp-verify-btn w-100 mb-3"
+            @click="handleResendOtp"
+            :disabled="loading"
+          >
+            <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+            Resend OTP
           </button>
 
           <p class="text-center small mt-2">
@@ -74,6 +92,9 @@
       <div v-else>
         <h2 class="signup-title">Get started</h2>
         <p class="signup-sub mb-4">Create your VaptFix account to begin your security engagement</p>
+        <div v-if="inviteBannerText" class="invite-banner" :class="inviteBannerClass">
+          {{ inviteBannerText }}
+        </div>
 
         <form @submit.prevent="handleSignup" autocomplete="off">
           <!-- Email -->
@@ -180,6 +201,13 @@
 
 <script>
 import { useAuthStore } from '@/stores/authStore'
+import {
+  extractClaimInviteToken,
+  markClaimInviteSignup,
+  setClaimInviteReportCount,
+  setClaimInviteValid,
+  storeClaimInviteToken,
+} from '@/utils/claimInvite'
 import Swal from 'sweetalert2'
 
 export default {
@@ -198,10 +226,35 @@ export default {
       otpDigits: ['', '', '', '', '', ''],
       otpRefs: [],
       recaptchaToken: '',
-      recaptchaWidgetId: null
+      recaptchaWidgetId: null,
+      otpSecondsLeft: 60,
+      otpTimerId: null,
+      inviteToken: '',
+      inviteChecked: false,
+      inviteExpired: false,
+      inviteReportCount: 0,
     }
   },
   computed: {
+    inviteBannerText() {
+      if (!this.inviteToken) return ''
+      if (!this.inviteChecked) return 'Checking invite…'
+      if (this.inviteExpired) return 'This invite link has expired.'
+      const count = this.inviteReportCount || 1
+      return `You're claiming ${count} report${count === 1 ? '' : 's'} — sign up below to receive them.`
+    },
+    inviteBannerClass() {
+      if (!this.inviteChecked) return 'invite-banner-pending'
+      if (this.inviteExpired) return 'invite-banner-expired'
+      return 'invite-banner-ok'
+    },
+    otpExpired() {
+      return this.otpSent && this.otpSecondsLeft <= 0
+    },
+    otpCountdownLabel() {
+      const secs = Math.max(0, this.otpSecondsLeft)
+      return `0:${String(secs).padStart(2, '0')}`
+    },
     pwdRules() {
       const pwd = this.form.password || '';
       return {
@@ -247,6 +300,7 @@ export default {
         if (result.status) {
           this.otpSent = true
           this.otpDigits = ['', '', '', '', '', '']
+          this.startOtpTimer()
           this.$nextTick(() => {
             if (this.otpRefs[0]) this.otpRefs[0].focus()
           })
@@ -263,6 +317,7 @@ export default {
     },
 
     async handleVerifyOtp() {
+      if (this.otpExpired) return
       if (this.otp.length < 6) {
         Swal.fire('Error', 'Please enter the complete 6-digit OTP', 'warning')
         return
@@ -271,16 +326,24 @@ export default {
       this.loading = true
       try {
         const authStore = useAuthStore()
+        const inviteToken = this.inviteToken
         const result = await authStore.signupVerifyOtp({
           email: this.form.email,
-          otp: this.otp
+          otp: this.otp,
+          ...(inviteToken ? { invite_token: inviteToken } : {}),
         })
 
         if (result.status) {
           this.form = { email: '', password: '', confirm_password: '' }
           authStore.setAdminLoginMethod('email')
-          const route = await authStore.getAdminOnboardingRoute()
-          this.$router.push(route)
+          if (inviteToken) {
+            markClaimInviteSignup()
+            authStore.unmarkStepCompleted(1)
+            this.$router.push('/communication')
+          } else {
+            const route = await authStore.getAdminOnboardingRoute()
+            this.$router.push(route)
+          }
         } else {
           Swal.fire('Error', result.message || 'Invalid OTP. Please try again.', 'error')
           this.resetRecaptcha()
@@ -294,6 +357,7 @@ export default {
     },
 
     handleOtpInput(event, index) {
+      if (this.otpExpired) return
       const value = event.target.value.replace(/\D/g, '')
       this.otpDigits.splice(index, 1, value ? value[0] : '')
 
@@ -340,10 +404,111 @@ export default {
         window.grecaptcha.reset(this.recaptchaWidgetId)
         this.recaptchaToken = ''
       }
+    },
+    startOtpTimer() {
+      this.clearOtpTimer()
+      this.otpSecondsLeft = 60
+      this.otpTimerId = setInterval(() => {
+        if (this.otpSecondsLeft <= 1) {
+          this.otpSecondsLeft = 0
+          this.clearOtpTimer()
+          this.otpDigits = ['', '', '', '', '', '']
+          return
+        }
+        this.otpSecondsLeft -= 1
+      }, 1000)
+    },
+    clearOtpTimer() {
+      if (this.otpTimerId) {
+        clearInterval(this.otpTimerId)
+        this.otpTimerId = null
+      }
+    },
+    async handleResendOtp() {
+      if (!this.otpExpired || this.loading) return
+      if (!this.recaptchaToken) {
+        this.otpSent = false
+        this.clearOtpTimer()
+        this.resetRecaptcha()
+        Swal.fire('Info', 'Please complete reCAPTCHA and send OTP again.', 'info')
+        return
+      }
+      this.loading = true
+      try {
+        const authStore = useAuthStore()
+        const result = await authStore.signupSendOtp({
+          email: this.form.email,
+          password: this.form.password,
+          confirm_password: this.form.confirm_password,
+          recaptcha: this.recaptchaToken
+        })
+        if (result.status) {
+          this.otpDigits = ['', '', '', '', '', '']
+          this.startOtpTimer()
+          this.$nextTick(() => {
+            if (this.otpRefs[0]) this.otpRefs[0].focus()
+          })
+          Swal.fire({ icon: 'success', title: 'OTP Sent!', text: 'A new OTP has been sent to your email.', timer: 2000, showConfirmButton: false })
+        } else {
+          Swal.fire('Error', result.message || 'Failed to resend OTP', 'error')
+          this.resetRecaptcha()
+        }
+      } catch (error) {
+        Swal.fire('Error', error.message || 'Something went wrong', 'error')
+      } finally {
+        this.loading = false
+      }
+    },
+    syncClaimInvite() {
+      const fromQuery = extractClaimInviteToken(this.$route?.query || {})
+      if (!fromQuery) {
+        this.inviteToken = ''
+        this.inviteChecked = true
+        this.inviteExpired = false
+        this.inviteReportCount = 0
+        return
+      }
+      storeClaimInviteToken(fromQuery)
+      this.inviteToken = fromQuery
+      this.inviteChecked = false
+      this.inviteExpired = false
+      this.inviteReportCount = 0
+      this.validateInvite()
+    },
+    async validateInvite() {
+      if (!this.inviteToken) {
+        this.inviteChecked = true
+        this.inviteExpired = false
+        return
+      }
+      try {
+        const authStore = useAuthStore()
+        const res = await authStore.validateClaimInvite(this.inviteToken)
+        this.inviteExpired = res.expired === true
+        this.inviteReportCount = this.inviteExpired ? 0 : (res.report_count || 1)
+        setClaimInviteValid(!this.inviteExpired)
+        setClaimInviteReportCount(this.inviteReportCount)
+      } catch {
+        this.inviteExpired = false
+        this.inviteReportCount = this.inviteReportCount || 1
+        setClaimInviteValid(true)
+        setClaimInviteReportCount(this.inviteReportCount)
+      } finally {
+        this.inviteChecked = true
+      }
     }
   },
+  beforeUnmount() {
+    this.clearOtpTimer()
+  },
 
+  watch: {
+    '$route.query.invite'() {
+      this.syncClaimInvite()
+    },
+  },
   mounted() {
+    this.syncClaimInvite()
     // Clear any stale auth token so it doesn't get sent with signup/OTP requests
     // A leftover expired token would cause the interceptor to catch a 401 and redirect to /signin
     localStorage.removeItem('authorization')
@@ -639,9 +804,19 @@ export default {
   padding: 0;
 }
 
-.otp-box:focus {
-  border-color: #66558c;
-  box-shadow: 0 0 0 3px rgba(102, 85, 140, 0.16);
+.otp-box:disabled {
+  background: #e5e7eb !important;
+  color: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.otp-timer-text {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #241447;
+  margin: 0;
 }
 
 /* Hide number input spinners */
@@ -649,5 +824,28 @@ export default {
 .otp-box::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+
+.invite-banner {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.invite-banner-pending {
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  color: #3730a3;
+}
+.invite-banner-ok {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+}
+.invite-banner-expired {
+  background: #fef3c7;
+  border: 1px solid #fde047;
+  color: #92400e;
 }
 </style>

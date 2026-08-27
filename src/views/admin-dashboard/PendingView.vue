@@ -259,6 +259,13 @@ export default {
     openDescriptionModal(desc) {
       this.selectedDescription = desc;
     },
+    async liveRefreshPage() {
+      if (!this.reportId) {
+        await this.authStore.fetchVulnerabilityRegister(true);
+        this.reportId = this.authStore.latestReportId;
+      }
+      if (this.reportId) await this.loadOpenTickets();
+    },
     async loadOpenTickets() {
       if (!this.reportId) {
         console.warn("No reportId found");
