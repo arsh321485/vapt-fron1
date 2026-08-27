@@ -345,6 +345,42 @@ export function tabKeyForAsset(asset) {
   return uiTypeFromAssetType(resolveAssetType(asset));
 }
 
+function inferAssetTypeFromVulnText(text) {
+  const value = String(text || "").toLowerCase();
+  if (
+    /iis|internet information services|apache|nginx|tomcat|http server|web server|wordpress|drupal|jquery/.test(
+      value,
+    )
+  ) {
+    return "web_app";
+  }
+  if (/firewall|fortigate|palo alto|cisco asa|checkpoint|pfsense/.test(value)) return "firewall";
+  return "";
+}
+
+/** When user assets API omits asset_type, use register vuln names (same report as admin). */
+export function enrichAssetsWithVulnTypes(assets, registerRows) {
+  const namesByHost = {};
+  (registerRows || []).forEach((row) => {
+    const host = String(row.asset || row.host_name || row.host || "")
+      .trim()
+      .toLowerCase();
+    const name = row.vul_name || row.plugin_name || row.vulnerability_name || "";
+    if (!host || !name) return;
+    (namesByHost[host] ||= []).push(name);
+  });
+  return (assets || []).map((asset) => {
+    const current = resolveAssetType(asset);
+    if (current !== "other") return { ...asset, asset_type: current };
+    const host = String(getAssetHostName(asset) || "")
+      .trim()
+      .toLowerCase();
+    const inferred = inferAssetTypeFromVulnText((namesByHost[host] || []).join(" "));
+    return { ...asset, asset_type: inferred || current };
+  });
+}
+
+
 export const ASSET_TYPE_DISPLAY = [
   { type: "server", ui: "server", code: "SR", label: "Server", emoji: "🖥️" },
   { type: "web_app", ui: "webapp", code: "WA", label: "Web App", emoji: "🌐" },

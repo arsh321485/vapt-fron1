@@ -6,6 +6,6 @@ export function resolveMitigationDays(sevData: unknown, criteriaValue?: unknown)
 export function resolveMitigationLabel(
   sevData: unknown,
   days: unknown,
-  formatTimeline: (opts: { days: unknown }) => string,
+  formatTimeline: (input: { days: unknown }) => string,
 ): string;
 export function extractRiskCriteriaRecord(payload: unknown): any;

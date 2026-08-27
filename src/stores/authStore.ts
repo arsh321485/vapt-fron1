@@ -11,6 +11,7 @@ import {
   normalizeAssetVulnerabilityList,
 } from "@/utils/assetVulnerabilities";
 import {
+  enrichAssetsWithVulnTypes,
   extractAssetRows,
   getAssetHostName,
   resolveAssetType,
@@ -4187,8 +4188,16 @@ export const useAuthStore = defineStore("auth", {
       this._lockAutomationPremium(message);
     },
 
+    applyUserAssetTypeHints() {
+      this.cachedUserAssets = enrichAssetsWithVulnTypes(
+        this.cachedUserAssets,
+        this.cachedUserVulnRegister,
+      );
+    },
+
     async fetchUserAssets(force = false) {
       if (!force && this.cachedUserAssets.length > 0) {
+        this.applyUserAssetTypeHints();
         return { status: true, data: this.cachedUserAssets, total: this.cachedUserAssetTotal };
       }
       try {
@@ -4216,6 +4225,7 @@ export const useAuthStore = defineStore("auth", {
         if (payload.report_id) this.userLatestReportId = payload.report_id;
         this.cachedUserAssets = normalized;
         this.cachedUserAssetTotal = normalized.length;
+        this.applyUserAssetTypeHints();
         return { status: true, data: this.cachedUserAssets, total: this.cachedUserAssetTotal };
       } catch (error: any) {
         return {
@@ -4517,6 +4527,7 @@ export const useAuthStore = defineStore("auth", {
         this.userLatestReportId = res.data?.report_id || null;
         this.cachedUserVulnRegister = filterPlatformLabelVulnRows(Array.isArray(rows) ? rows : []);
         this.userVulnRegisterFetched = true;
+        this.applyUserAssetTypeHints();
         return { status: true, data: this.cachedUserVulnRegister };
       } catch (error: any) {
         return {
@@ -7609,6 +7620,9 @@ export const useAuthStore = defineStore("auth", {
           res.hasRiskCriteria ||
           this.completedSteps.includes(2)
         ) {
+          if (res.hasReport || this.completedSteps.includes(2)) {
+            clearClaimInvite();
+          }
           this._markOnboardingComplete();
           return "/admindashboardonboarding";
         }

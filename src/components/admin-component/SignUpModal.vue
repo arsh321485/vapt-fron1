@@ -1688,6 +1688,9 @@ export default {
       this.adminLoading = true;
       try {
         const authStore = useAuthStore();
+        const fromQuery = extractClaimInviteToken(this.$route?.query || {});
+        if (fromQuery) storeClaimInviteToken(fromQuery);
+        const inviteToken = fromQuery || readClaimInviteToken();
         const result = await authStore.login({
           email: this.adminForm.email,
           password: this.adminForm.password,

@@ -4,11 +4,12 @@ export const FREEMIUM_RETEST_MESSAGE: string;
 export const FREEMIUM_VISIBLE_ASSET_LIMIT: number;
 export const FREEMIUM_TEAM_MEMBER_LIMIT: number;
 
-export interface RetestErrorExtras {
-  fallback?: string;
-  isFreemium?: boolean;
-  automationPremiumRequired?: boolean;
-  httpStatus?: number;
+export interface BillingAssetBreakdown {
+  asset_count: number;
+  visible_asset_count: number;
+  locked_asset_count: number;
+  original_asset_count: number;
+  billable_asset_count: number;
 }
 
 export interface FreemiumUpgrade {
@@ -20,17 +21,11 @@ export interface FreemiumUpgrade {
   upgrade_url: string;
 }
 
-export interface BillingAssetBreakdown {
-  asset_count: number;
-  visible_asset_count: number;
-  locked_asset_count: number;
-  original_asset_count: number;
-  billable_asset_count: number;
-}
-
-export interface PlanHint {
-  count: number;
-  suggested: string;
+export interface RetestErrorExtras {
+  fallback?: string;
+  isFreemium?: boolean;
+  automationPremiumRequired?: boolean;
+  httpStatus?: number;
 }
 
 export function isActiveSubscription(subscription: unknown): boolean;
@@ -49,7 +44,7 @@ export function parseFreemiumUpgrade(data: unknown): FreemiumUpgrade | null;
 export function freemiumUpgradeAssetCount(banner: unknown): number;
 export function wasFreemiumCompletePopupShown(): boolean;
 export function markFreemiumCompletePopupShown(): void;
-export function collectFreemiumTrimmedResults(data: unknown): unknown[];
+export function collectFreemiumTrimmedResults(data: unknown): any[];
 export function formatFreemiumTrimmedMessage(row?: unknown): string;
 export function billingAssetBreakdown(source: unknown): BillingAssetBreakdown;
 export function billableAssetCount(source: unknown, fallback?: number): number;
@@ -58,7 +53,7 @@ export function formatLockedUpgradeNotice(source: unknown): string;
 export function storeBillableAssetCount(count: unknown): void;
 export function peekBillableAssetCount(): number;
 export function rememberFullAssetCount(source: unknown, fallback?: number): number;
-export function suggestedPlanFromAssetCount(count: unknown): "custom" | "premium" | "freemium";
+export function suggestedPlanFromAssetCount(count: unknown): string;
 export function planDisplayName(planOrSubscription: unknown): string;
 export function otherPlans(suggested: unknown): string[];
 export function setBillingReturnTo(path: unknown): void;
@@ -68,10 +63,6 @@ export function clearBillingReturnTo(): void;
 export function markFreemiumActiveNotice(): void;
 export function consumeFreemiumActiveNotice(): boolean;
 export function extraIpCount(total: unknown, limit: unknown): number;
-export function parsePlanHintFromMessage(text: unknown): PlanHint;
+export function parsePlanHintFromMessage(text: unknown): { count: number; suggested: string };
 export function plansThatCoverCount(count: unknown): string[];
-export function localPremiumEstimate(
-  assetCount: unknown,
-  mode?: unknown,
-  billingCycle?: unknown,
-): Record<string, unknown> | null;
+export function localPremiumEstimate(assetCount: unknown, mode?: unknown, billingCycle?: unknown): any;
