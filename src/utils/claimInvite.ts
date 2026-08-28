@@ -67,10 +67,10 @@ function inviteExpiresAtPassed(payload: Record<string, unknown>): boolean {
   return Number.isFinite(ms) && ms <= Date.now();
 }
 
-/** Backend: { valid: true, report_count: N } | { valid: false }. Nested `data` is also accepted. */
+/** Backend: { valid: true, report_count: N } | { valid: false, expired?: true }. Nested `data` is also accepted. */
 export function parseClaimInviteValidate(
   data: unknown,
-  _httpStatus?: number,
+  httpStatus?: number,
 ): {
   valid: boolean;
   expired: boolean;
@@ -78,16 +78,18 @@ export function parseClaimInviteValidate(
 } {
   const payload = unwrapInvitePayload(data);
   const report_count = Number(payload.report_count ?? payload.reports_count ?? payload.count) || 0;
-  const flag = readRawValidFlag(payload);
-  // Spec: expired banner only when the validate API returns { valid: false }.
-  if (flag === false) {
+  if (isExplicitInviteExpired(data, httpStatus)) {
     return { valid: false, expired: true, report_count: 0 };
   }
-  if (flag === true) {
-    return { valid: true, expired: false, report_count: report_count || 1 };
+  const flag = readRawValidFlag(payload);
+  const successHttp = httpStatus == null || (httpStatus >= 200 && httpStatus < 300);
+  // Backend contract: HTTP 200 + { valid: false } = invite TTL ended (15 minutes).
+  // HTTP 4xx/5xx valid:false must not flash the expired banner on a fresh link.
+  if (successHttp && flag === false) {
+    return { valid: false, expired: true, report_count: 0 };
   }
-  // No `valid` field (network / empty body): do not show expired.
-  return { valid: true, expired: false, report_count: report_count || 1 };
+  const valid = isInvitePayloadValid(data, httpStatus);
+  return { valid, expired: false, report_count: valid ? report_count || 1 : report_count };
 }
 
 /**
@@ -176,9 +178,9 @@ export function readLiveMagicInvite(query: Record<string, unknown> = {}): string
   return extractClaimInviteToken(query);
 }
 
-/** Live URL first, then the token stored after the link was opened. */
-export function resolveSignupInviteToken(query: Record<string, unknown> = {}): string {
-  return (readLiveMagicInvite(query) || readClaimInviteToken()).trim();
+/** Live URL first, then the token stored after validate (needed if the query is stripped). */
+export function resolveClaimInviteToken(query: Record<string, unknown> = {}): string {
+  return readLiveMagicInvite(query) || readClaimInviteToken();
 }
 
 try {

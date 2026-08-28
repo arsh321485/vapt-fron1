@@ -95,8 +95,7 @@ import {
   seedLockFromWindow,
   writeLockedRoute,
 } from "../utils/routeLock";
-import { extractClaimInviteToken, isClaimInviteFlow, storeClaimInviteToken } from "../utils/claimInvite";
-import { fetchClaimInviteValidate } from "../services/claimInviteApi";
+import { extractClaimInviteToken, isClaimInviteFlow, storeClaimInviteToken, setClaimInviteValid, setClaimInviteReportCount } from "../utils/claimInvite";
 import { useAuthStore } from "../stores/authStore";
 import { hasAuthSession, isStoredTeamMember } from "../utils/authenticatedHome";
 import {
@@ -638,19 +637,21 @@ router.beforeEach(async (to, from, next) => {
   }
 
   // Magic link is ?invite= only. Never rewrite ?token= (User/Admin set-password).
-  // Always land on /home Get Started modal — never the dedicated /signup page.
+  // Stay on /signup?invite= so SignupView can GET claim-invite/validate on load.
   const inviteToken = extractClaimInviteToken(to.query || {});
   if (inviteToken) {
     storeClaimInviteToken(inviteToken);
-    // Must hit validate even when we rewrite /signup → /home (backend logs this).
     try {
-      await fetchClaimInviteValidate(inviteToken);
+      const authStore = useAuthStore();
+      void authStore.validateClaimInvite(inviteToken).then((res) => {
+        setClaimInviteValid(!res.expired);
+        if (!res.expired) setClaimInviteReportCount(res.report_count || 1);
+      });
     } catch {
-      /* still open signup; banner is driven by the UI call */
+      /* Pinia may not be ready on the very first tick */
     }
   }
   const inviteHomePaths = new Set([
-    "/signup",
     "/signin",
     "/auth",
     "/login",

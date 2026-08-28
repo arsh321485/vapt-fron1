@@ -152,12 +152,24 @@ export default {
             return;
           }
 
-          // Premium (report already uploaded): add users → risk criteria → dashboard.
-          if (authStore.isSlackOrTeamsLogin()) {
-            this.continuePath = '/riskcriteria';
+          const storedPath = String(stored || '');
+          const backToUpload =
+            storedPath.startsWith(UPLOAD_RETURN_PATH) || storedPath.startsWith('/admin-upload-report');
+          if (backToUpload || storedPath.startsWith('/communication')) {
+            this.continuePath = storedPath;
           } else {
-            authStore.unmarkStepCompleted(1);
-            this.continuePath = '/communication';
+            try {
+              const route = await authStore.getAdminOnboardingRoute();
+              if (route === '/admin-upload-report') {
+                this.continuePath = authStore.isSlackOrTeamsLogin()
+                  ? '/riskcriteria'
+                  : '/communication';
+              } else {
+                this.continuePath = route;
+              }
+            } catch {
+              this.continuePath = storedPath || '/communication';
+            }
           }
           window.setTimeout(() => {
             this.$router.replace(this.continuePath);

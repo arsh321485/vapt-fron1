@@ -11,6 +11,7 @@ import {
   normalizeAssetVulnerabilityList,
 } from "@/utils/assetVulnerabilities";
 import {
+  enrichAssetsWithVulnTypes,
   extractAssetRows,
   getAssetHostName,
   resolveAssetType,
@@ -19,8 +20,7 @@ import {
   sanitizeTeamHostPayload,
   isRealScanHost,
 } from "@/utils/assetDummyData";
-import { isClaimInviteFlow, clearClaimInvite, markClaimInviteSignup, readClaimInviteToken } from "@/utils/claimInvite";
-import { fetchClaimInviteValidate } from "@/services/claimInviteApi";
+import { isClaimInviteFlow, clearClaimInvite, markClaimInviteSignup, parseClaimInviteValidate } from "@/utils/claimInvite";
 import { clearLockedRoute } from "@/utils/routeLock";
 import { clearCachedPaidPlan, hasCachedPaidPlan, setCachedPaidPlan } from "@/utils/authenticatedHome";
 import { getMySubscription } from "@/services/billingApi";
@@ -185,7 +185,6 @@ function extractApiErrorMessage(error: unknown, fallback = "Request failed"): st
   const fieldMsgs = [
     ...flattenFieldErrors(data?.detail),
     ...flattenFieldErrors(data?.errors),
-    ...flattenFieldErrors(data?.non_field_errors),
   ];
   const unique = [...new Set(fieldMsgs.filter(Boolean))];
   if (unique.length) return unique.join(" ");
@@ -572,8 +571,37 @@ export const useAuthStore = defineStore("auth", {
     },
 
     async validateClaimInvite(token: string) {
-      const invite = String(token || "").trim() || readClaimInviteToken();
-      return fetchClaimInviteValidate(invite);
+      const invite = String(token || "").trim();
+      if (!invite) {
+        return { status: false, valid: false, expired: false, report_count: 0, data: {} };
+      }
+      try {
+        const res = await endpoint.get("/api/admin/upload_report/claim-invite/validate/", {
+          params: { invite },
+        });
+        const parsed = parseClaimInviteValidate(res.data, res.status);
+        return {
+          status: true,
+          valid: parsed.valid,
+          expired: parsed.expired,
+          report_count: parsed.report_count,
+          data: res.data || {},
+        };
+      } catch (error: any) {
+        const data = error?.response?.data || {};
+        const parsed = parseClaimInviteValidate(data, error?.response?.status);
+        // Banner only for a real 15-minute expiry. Network/valid:false/404 must not show it.
+        if (parsed.expired) {
+          return { status: false, valid: false, expired: true, report_count: 0, data };
+        }
+        return {
+          status: false,
+          valid: true,
+          expired: false,
+          report_count: parsed.report_count || 1,
+          data,
+        };
+      }
     },
 
     // ✅ Signup Step 2: Verify OTP
@@ -583,9 +611,8 @@ export const useAuthStore = defineStore("auth", {
           email: payload.email,
           otp: payload.otp,
         };
-        const invite = String(payload.invite_token || readClaimInviteToken() || "").trim();
-        if (invite) {
-          body.invite_token = invite;
+        if (payload.invite_token) {
+          body.invite_token = payload.invite_token;
         }
         const res = await endpoint.post("/api/admin/users/signup/verify-otp/", body);
 
@@ -633,6 +660,7 @@ export const useAuthStore = defineStore("auth", {
         // Do not clear the magic-link flag here — a failed attempt must not wipe it,
         // and a success still needs it for the post-login route.
         clearAllAuthTokens();
+        clearClaimInvite();
         localStorage.removeItem("reportId");
         this.reportStatus.state = null;
         this.reportStatus.hasReport = false;
@@ -1571,9 +1599,8 @@ export const useAuthStore = defineStore("auth", {
         if (adminId) {
           params.admin_id = String(adminId);
         }
-        const invite = String(inviteToken || readClaimInviteToken() || "").trim();
-        if (invite) {
-          params.invite_token = invite;
+        if (inviteToken) {
+          params.invite_token = String(inviteToken).trim();
         }
         const res = await endpoint.get("/api/admin/users/microsoft-teams/oauth-url/", { params });
 
@@ -2353,7 +2380,7 @@ export const useAuthStore = defineStore("auth", {
         base_url: baseUrl,
         admin_id: adminId ? String(adminId) : null,
       };
-      const invite = String(inviteToken || readClaimInviteToken() || "").trim();
+      const invite = String(inviteToken || "").trim();
       if (invite) {
         payload.invite_token = invite;
       }
@@ -4173,8 +4200,16 @@ export const useAuthStore = defineStore("auth", {
       this._lockAutomationPremium(message);
     },
 
+    applyUserAssetTypeHints() {
+      this.cachedUserAssets = enrichAssetsWithVulnTypes(
+        this.cachedUserAssets,
+        this.cachedUserVulnRegister,
+      );
+    },
+
     async fetchUserAssets(force = false) {
       if (!force && this.cachedUserAssets.length > 0) {
+        this.applyUserAssetTypeHints();
         return { status: true, data: this.cachedUserAssets, total: this.cachedUserAssetTotal };
       }
       try {
@@ -4202,6 +4237,7 @@ export const useAuthStore = defineStore("auth", {
         if (payload.report_id) this.userLatestReportId = payload.report_id;
         this.cachedUserAssets = normalized;
         this.cachedUserAssetTotal = normalized.length;
+        this.applyUserAssetTypeHints();
         return { status: true, data: this.cachedUserAssets, total: this.cachedUserAssetTotal };
       } catch (error: any) {
         return {
@@ -4503,6 +4539,7 @@ export const useAuthStore = defineStore("auth", {
         this.userLatestReportId = res.data?.report_id || null;
         this.cachedUserVulnRegister = filterPlatformLabelVulnRows(Array.isArray(rows) ? rows : []);
         this.userVulnRegisterFetched = true;
+        this.applyUserAssetTypeHints();
         return { status: true, data: this.cachedUserVulnRegister };
       } catch (error: any) {
         return {
@@ -7343,14 +7380,9 @@ export const useAuthStore = defineStore("auth", {
 
     // ✅ Initialize completed steps from localStorage
     initCompletedSteps() {
-      let storedUser: any = null;
-      try {
-        const raw = sessionStorage.getItem("user") || localStorage.getItem("user");
-        storedUser = raw && raw !== "undefined" && raw !== "null" ? JSON.parse(raw) : null;
-      } catch {
-        storedUser = null;
-      }
-      const user = this.user || storedUser;
+      const user =
+        this.user ||
+        (sessionStorage.getItem("user") ? JSON.parse(sessionStorage.getItem("user")!) : null);
       const ids = [user?.id, user?.pk, user?.user_id, user?.email]
         .map((v) => String(v || "").trim())
         .filter(Boolean);
@@ -7600,6 +7632,9 @@ export const useAuthStore = defineStore("auth", {
           res.hasRiskCriteria ||
           this.completedSteps.includes(2)
         ) {
+          if (res.hasReport || this.completedSteps.includes(2)) {
+            clearClaimInvite();
+          }
           this._markOnboardingComplete();
           return "/admindashboardonboarding";
         }

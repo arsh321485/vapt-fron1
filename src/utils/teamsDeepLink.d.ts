@@ -12,15 +12,15 @@ export function readStoredTeamsDeepLink(): TeamsDeepLink;
 export function isBareTeamsHome(url: unknown): boolean;
 export function isTeamsChatOrTeamHomeUrl(url: unknown): boolean;
 export function isChannelSpecificTeamsUrl(url: unknown): boolean;
-export function pickTeamsTabUrl(links: TeamsDeepLink | Record<string, unknown> | null | undefined): string;
-export function pickTeamsWebUrl(links: TeamsDeepLink | Record<string, unknown> | null | undefined): string;
+export function pickTeamsTabUrl(links: unknown): string;
+export function pickTeamsWebUrl(links: unknown): string;
 export function pickTeamsRedirectUrl(
-  links: TeamsDeepLink | Record<string, unknown> | null | undefined,
+  links: unknown,
   options?: { preferDesktop?: boolean },
 ): string;
 export function resolveTeamsAdminDashboardUrl(
   payload: unknown,
-  fetchStatus?: () => unknown,
+  fetchStatus?: () => unknown | Promise<unknown>,
 ): Promise<string>;
 export function openTeamsAdminDashboard(url: unknown): boolean;
 export function redirectToTeamsTabUrl(payload: unknown): boolean;

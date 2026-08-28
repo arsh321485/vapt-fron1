@@ -1068,11 +1068,11 @@ export default {
     },
     existingReportIpCount() {
       const r = this.existingReport || {};
-      return (
-        detectedFileAssetCount(r) ||
-        detectedFileAssetCount(this.uploadResult) ||
-        detectedFileAssetCount(this.subscription) ||
-        peekBillableAssetCount()
+      return Math.max(
+        detectedFileAssetCount(r),
+        detectedFileAssetCount(this.uploadResult),
+        detectedFileAssetCount(this.subscription),
+        peekBillableAssetCount(),
       );
     },
     hasExistingReport() {
@@ -1209,11 +1209,12 @@ export default {
       const source = String(extras.source || '').toLowerCase();
       const isScopeFile = source === 'scope' || source === 'scope-csv' || source === 'scope-manual';
       const nextAfterPay = isScopeFile ? '/waiting-for-report' : '/communication';
-      const count =
-        Number(assetCount) ||
-        detectedFileAssetCount(this.uploadResult) ||
-        detectedFileAssetCount(this.existingReport) ||
-        peekBillableAssetCount();
+      const count = Math.max(
+        Number(assetCount) || 0,
+        detectedFileAssetCount(this.uploadResult),
+        detectedFileAssetCount(this.existingReport),
+        peekBillableAssetCount(),
+      );
       const query = { plan: planId };
       if (uploadDone) {
         query.returnTo = nextAfterPay;
@@ -1656,15 +1657,16 @@ export default {
     },
     async continueWithSelectedPlan(planId, assetCount = 0) {
       if (!planId || this.uploading) return;
-      const count =
-        Number(assetCount) ||
-        Number(this.uploadPlanOffer?.count) ||
-        Number(this.planSuggestPrompt?.count) ||
-        Number(this.planLimitPrompt?.count) ||
-        Number(this.planFitNotice?.count) ||
-        this.existingReportIpCount ||
-        this.existingEntryCount ||
-        0;
+      const count = Math.max(
+        Number(assetCount) || 0,
+        Number(this.uploadPlanOffer?.count) || 0,
+        Number(this.planSuggestPrompt?.count) || 0,
+        Number(this.planLimitPrompt?.count) || 0,
+        Number(this.planFitNotice?.count) || 0,
+        this.existingReportIpCount,
+        this.existingEntryCount,
+        peekBillableAssetCount(),
+      );
       const files = this.selectedFiles.length
         ? this.selectedFiles
         : (this.selectedFile ? [this.selectedFile] : []);
@@ -1944,7 +1946,7 @@ export default {
       const authStore = useAuthStore();
       await authStore.fetchAssets(true);
       const count = Number(authStore.assetCount) || (authStore.assetRows || []).length;
-      const fullCount = count || this.existingReportIpCount || peekBillableAssetCount();
+      const fullCount = Math.max(count, this.existingReportIpCount, peekBillableAssetCount());
       if (this.showPlanSuggestPrompt('upload', fullCount)) return false;
       if (
         isActiveSubscription(this.subscription) &&

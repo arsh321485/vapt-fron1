@@ -252,7 +252,6 @@ import {
   isClaimInviteFlow,
   markClaimInviteSignup,
   readLiveMagicInvite,
-  resolveSignupInviteToken,
   setClaimInviteValid,
   setClaimInviteReportCount,
   storeClaimInviteToken,
@@ -341,12 +340,14 @@ export default {
       return readLiveMagicInvite(this.$route?.query || {});
     },
     signupInviteToken() {
-      return resolveSignupInviteToken(this.$route?.query || {});
+      return (this.inviteToken || this.activeInviteToken || '').trim();
     },
     invitePending() {
-      return !!this.signupInviteToken && !this.inviteChecked;
+      return !!this.activeInviteToken && !this.inviteChecked;
     },
     inviteBannerText() {
+      // Never show claiming/expired on a normal Get Started — only a live magic link.
+      // Expired only after a real 15-minute TTL (HTTP 200 + valid:false, or expired/410).
       if (!this.activeInviteToken) return '';
       if (!this.inviteChecked) return 'Checking invite…';
       if (this.inviteExpired) return 'This invite link has expired.';
@@ -423,7 +424,7 @@ export default {
       }
       try {
         const res = await this.authStore.validateClaimInvite(this.inviteToken);
-        this.inviteExpired = res.valid === false;
+        this.inviteExpired = res.expired === true;
         this.inviteValid = !this.inviteExpired;
         this.inviteReportCount = this.inviteExpired ? 0 : (res.report_count || 1);
         setClaimInviteValid(this.inviteValid);

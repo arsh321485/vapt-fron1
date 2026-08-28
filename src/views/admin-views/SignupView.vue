@@ -231,7 +231,6 @@ import { useAuthStore } from '@/stores/authStore'
 import {
   extractClaimInviteToken,
   markClaimInviteSignup,
-  resolveSignupInviteToken,
   setClaimInviteReportCount,
   setClaimInviteValid,
   storeClaimInviteToken,
@@ -362,7 +361,7 @@ export default {
       this.loading = true
       try {
         const authStore = useAuthStore()
-        const inviteToken = resolveSignupInviteToken(this.$route?.query || {}) || this.inviteToken
+        const inviteToken = this.inviteToken
         const result = await authStore.signupVerifyOtp({
           email: this.form.email,
           otp: this.otp,
@@ -520,8 +519,7 @@ export default {
       try {
         const authStore = useAuthStore()
         const res = await authStore.validateClaimInvite(this.inviteToken)
-        // Expired banner only when GET claim-invite/validate returns { valid: false }.
-        this.inviteExpired = res.valid === false
+        this.inviteExpired = res.expired === true
         this.inviteReportCount = this.inviteExpired ? 0 : (res.report_count || 1)
         setClaimInviteValid(!this.inviteExpired)
         setClaimInviteReportCount(this.inviteReportCount)
@@ -538,7 +536,7 @@ export default {
       if (this.invitePending || this.loading) return
       try {
         const authStore = useAuthStore()
-        const inviteToken = resolveSignupInviteToken(this.$route?.query || {}) || this.inviteToken || null
+        const inviteToken = this.inviteToken || null
         const res = await authStore.getSlackOAuthUrl(this.backendBase, null, inviteToken)
         if (res.status && res.data?.auth_url) {
           window.open(res.data.auth_url, '_blank')
@@ -554,7 +552,7 @@ export default {
       try {
         const authStore = useAuthStore()
         const redirectUri = `${window.location.origin}/microsoft/callback`
-        const inviteToken = resolveSignupInviteToken(this.$route?.query || {}) || this.inviteToken || null
+        const inviteToken = this.inviteToken || null
         const res = await authStore.getMicrosoftOAuthUrl(redirectUri, null, inviteToken)
         if (res.status && res.data?.auth_url) {
           window.open(res.data.auth_url, '_blank')

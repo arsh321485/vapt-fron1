@@ -744,8 +744,9 @@ export default {
       if (fromEstimate) return fromEstimate;
       const fromSub = detectedFileAssetCount(this.currentSubscription);
       if (fromSub) return fromSub;
+      const fromQuery = Number(this.$route.query.assets) || 0;
       const fromMeta = peekPendingUploadMeta()?.count || 0;
-      return fromMeta || Number(this.autoSelectedFromAssets) || 0;
+      return fromQuery || fromMeta || Number(this.autoSelectedFromAssets) || 0;
     },
     billingBreakdown() {
       const fromEstimate = billingAssetBreakdown(this.estimate);
@@ -761,9 +762,6 @@ export default {
       return formatLockedUpgradeNotice(this.estimate || this.currentSubscription);
     },
     freemiumLockedExtrasNotice() {
-      // Scope / manual entry is Premium-only — never show Freemium lock copy.
-      if (this.fromScopeFile && !this.fromScanReport) return '';
-      if (this.managementModeLocked) return '';
       if (this.currentPlanId === 'premium' || this.currentPlanId === 'custom') return '';
       if (this.selectedPlan === 'premium' || this.selectedPlan === 'custom') return '';
       if (this.autoSelectedPlan === 'premium' || this.autoSelectedPlan === 'custom') return '';
@@ -775,16 +773,10 @@ export default {
       return `This report has ${count} IPs. Freemium shows 5 now — ${extra} stay locked until you upgrade (no re-upload).`;
     },
     autoSelectNotice() {
+      if (!this.autoSelectedPlan || !this.fileCountReady) return '';
       const count = this.detectedAssetCount;
-      const planId =
-        count > 250
-          ? 'custom'
-          : (this.selectedPlan === 'premium' || this.selectedPlan === 'custom'
-            ? this.selectedPlan
-            : this.autoSelectedPlan);
-      if (!planId || planId === 'freemium' || !this.fileCountReady) return '';
       if (!count) return '';
-      const name = planDisplayName(planId);
+      const name = planDisplayName(this.autoSelectedPlan);
       if (this.managementModeLocked || this.fromScopeFile) {
         return `Your scope file has ${count} assets — ${name} is auto-selected.`;
       }
@@ -909,10 +901,6 @@ export default {
       if (next === 'details') this.fetchEstimate();
     },
   },
-  created() {
-    // Scope/upload already picked a plan in the URL — never paint the 3-card listing first.
-    this.applyRequestedPlanFromRoute();
-  },
   async mounted() {
     const handoffError = consumeHandoffError();
     if (handoffError) {
@@ -944,15 +932,12 @@ export default {
     const requestedPlan = String(this.$route.query.plan || '').toLowerCase();
     const requestedMode = String(this.$route.query.mode || '').toLowerCase();
     if (requestedPlan === 'freemium' || requestedPlan === 'premium' || requestedPlan === 'custom') {
-      const planId = (this.fileAssetCount || Number(this.$route.query.assets) || 0) > 250
-        ? 'custom'
-        : requestedPlan;
-      this.autoSelectedPlan = planId;
+      this.autoSelectedPlan = requestedPlan;
       this.autoSelectedFromAssets = this.fileAssetCount || 0;
-      if (planId === 'custom' && this.fileAssetCount && !this.leadForm.assets) {
+      if (requestedPlan === 'custom' && this.fileAssetCount && !this.leadForm.assets) {
         this.leadForm.assets = String(this.fileAssetCount);
       }
-      this.selectPlan(planId, { premiumMode: requestedMode });
+      this.selectPlan(requestedPlan, { premiumMode: requestedMode });
     }
   },
   beforeUnmount() {
@@ -961,31 +946,6 @@ export default {
   methods: {
     isCurrentPlan(planId) {
       return !!this.currentPlanId && this.currentPlanId === planId;
-    },
-    applyRequestedPlanFromRoute() {
-      const requestedPlan = String(this.$route.query.plan || '').toLowerCase();
-      if (requestedPlan !== 'premium' && requestedPlan !== 'custom') return false;
-      const requestedMode = String(this.$route.query.mode || '').toLowerCase();
-      const assets = Number(this.$route.query.assets) || 0;
-      const planId = assets > 250 ? 'custom' : requestedPlan;
-      this.autoSelectedPlan = planId;
-      this.selectedPlan = planId;
-      this.step = 'details';
-      if (planId === 'premium') {
-        this.premiumMode =
-          requestedMode === 'testing' || requestedMode === 'management_testing'
-            ? 'testing'
-            : 'management';
-      }
-      if (assets) {
-        this.fileAssetCount = assets;
-        this.autoSelectedFromAssets = assets;
-        this.fileCountReady = true;
-        if (planId === 'custom' && !this.leadForm.assets) {
-          this.leadForm.assets = String(assets);
-        }
-      }
-      return true;
     },
     planPriceNote(plan) {
       if (plan?.id === 'premium' && this.testingModeLocked) {
@@ -1125,13 +1085,14 @@ export default {
         detectedFileAssetCount(this.estimate) ||
         detectedFileAssetCount(this.currentSubscription) ||
         this.billedAssetCount;
-      if (billable) {
+      if (billable && !(this.selectedPlan === 'premium' && this.premiumMode === 'testing')) {
         payload.asset_count = billable;
       }
       return payload;
     },
     applyLocalEstimate() {
       if (this.selectedPlan !== 'premium' || !this.pendingAssetCount) return false;
+      if (this.premiumMode === 'testing') return false;
       const local = localPremiumEstimate(this.pendingAssetCount, this.premiumMode, this.billingCycle);
       if (!local) return false;
       this.estimate = local;
@@ -1167,8 +1128,6 @@ export default {
         }
         if (data?.over_ceiling && this.selectedPlan === 'premium') {
           this.estimateError = '';
-          this.autoSelectedPlan = 'custom';
-          this.selectPlan('custom');
         }
       } catch (error) {
         this.estimate = null;
@@ -1286,12 +1245,6 @@ export default {
       if ((this.managementModeLocked || (this.fromScopeFile && !this.fromScanReport)) && planId === 'freemium') {
         planId = 'premium';
         options = { ...options, premiumMode: 'testing' };
-      }
-      if ((planId === 'premium' || planId === 'custom') && this.detectedAssetCount > 250) {
-        planId = 'custom';
-      }
-      if (planId === 'premium' || planId === 'custom') {
-        this.autoSelectedPlan = planId;
       }
       if (planId === 'freemium') {
         this.selectedPlan = planId;

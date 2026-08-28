@@ -225,11 +225,11 @@ export function extractScopeSubmitStatus(payload) {
 }
 
 export function recommendedPaidPlanFromScope(rec, count = 0) {
-  const n = Number(rec?.total_scope_assets) || Number(count) || 0;
-  if (n > 250) return "custom";
   const plan = String(rec?.recommended_plan || "").toLowerCase();
   if (plan === "custom") return "custom";
-  return "premium";
+  if (plan === "premium") return "premium";
+  const n = Number(rec?.total_scope_assets) || Number(count) || 0;
+  return n > 250 ? "custom" : "premium";
 }
 
 export function extractPlanRecommendation(payload) {
@@ -248,9 +248,8 @@ export function extractPlanRecommendation(payload) {
     Number(rec.total_scope_assets) ||
     (internal + external + web) ||
     0;
-  if (total > 250) plan = "custom";
-  else if (plan !== "premium" && plan !== "custom") {
-    plan = "premium";
+  if (plan !== "premium" && plan !== "custom") {
+    plan = total > 250 ? "custom" : "premium";
   }
   return {
     recommended_plan: plan,

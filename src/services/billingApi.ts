@@ -136,6 +136,7 @@ export function isScopeBlocksFreemiumError(error: unknown, message = ""): boolea
   return status === 400 && /scope/.test(text);
 }
 
+
 export function formatUsd(amount: string | number | null | undefined, currency = "usd"): string {
   const n = Number(amount);
   if (!Number.isFinite(n)) return currency.toLowerCase() === "usd" ? "$0.00" : "0.00";

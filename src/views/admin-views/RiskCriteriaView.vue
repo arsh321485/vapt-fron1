@@ -176,7 +176,7 @@
 <script>
 import DashboardHeader from '@/components/admin-component/DashboardHeader.vue';
 import { useAuthStore } from "@/stores/authStore";
-import { isClaimInviteFlow, hasClaimInviteReport } from "@/utils/claimInvite";
+import { isClaimInviteFlow, hasClaimInviteReport, clearClaimInvite } from "@/utils/claimInvite";
 import { isScopeAwaitingScan } from "@/utils/scopeScanGate";
 import { dismissUploadReportModal } from "@/utils/suppressUploadReportModal";
 import Swal from "sweetalert2";
@@ -274,6 +274,7 @@ export default {
           auth.markStepCompleted(2);
           auth._markOnboardingComplete();
           if (isClaimInviteFlow() || hasClaimInviteReport()) {
+            clearClaimInvite();
             await this.$router.push("/admindashboardonboarding");
             return;
           }
@@ -332,6 +333,7 @@ export default {
           });
 
           if (isClaimInviteFlow() || hasClaimInviteReport()) {
+            clearClaimInvite();
             await this.$router.push("/admindashboardonboarding");
             return;
           }
