@@ -5,8 +5,8 @@
   <div class="d-flex align-items-center justify-content-between gap-4 py-2 px-4">
 
       <div class="browser-bar">
-        <router-link to="/home">
-          <img src="@/assets/images/vaptfix_white.png" alt="">
+        <router-link to="/userdashboard">
+          <img src="@/assets/images/vaptfix_white.png" alt="VaptFix">
         </router-link>
       </div>
 
@@ -42,7 +42,11 @@
         </router-link>
 
         <!-- Upgrade -->
-        <router-link to="/pricingplan" class="btn btn-sm btn-outline-dark w-100 mb-2" @click="showDropdown = false">
+        <router-link
+          :to="{ path: '/pricingplan', query: { returnTo: $route.fullPath } }"
+          class="btn btn-sm btn-outline-dark w-100 mb-2"
+          @click="showDropdown = false"
+        >
           Upgrade Plan
         </router-link>
 

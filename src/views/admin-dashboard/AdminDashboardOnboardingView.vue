@@ -151,6 +151,19 @@
               </div>
             </div>
 
+            <div
+              v-if="freemiumUpgradeBanner"
+              class="freemium-upgrade-banner d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3"
+            >
+              <div class="d-flex align-items-start gap-2 flex-grow-1">
+                <i class="bi bi-unlock-fill flex-shrink-0"></i>
+                <p class="mb-0">{{ freemiumUpgradeBanner.message }}</p>
+              </div>
+              <button type="button" class="freemium-upgrade-btn flex-shrink-0" @click="goFreemiumUpgrade">
+                Upgrade to Premium
+              </button>
+            </div>
+
             <!-- ===== 6-CARD ANALYTICS GRID ===== -->
             <!-- ROW 1: Assets + MTTR | Vulnerabilities | Mitigation Timeline -->
             <div class="row g-2 mb-3 align-items-stretch">
@@ -260,7 +273,7 @@
                       <div v-else class="d-flex flex-column gap-2">
                         <div v-for="item in inProcessItems" :key="item.fix_vulnerability_id" class="in-process-item-row">
                           <div>
-                            <div class="in-process-vuln-name">{{ item.vulnerability_name }}</div>
+                            <div class="in-process-vuln-name" :title="item.vulnerability_name">{{ item.vulnerability_name }}</div>
                             <div class="in-process-asset">Asset: {{ item.asset }}</div>
                           </div>
                           <button class="in-process-action-btn in-process-view-btn" @click="goToInProcessTimeline(item)">View</button>
@@ -345,8 +358,13 @@
                     <!-- <span class="info-tooltip" data-tooltip="Displays the remaining remediation time for vulnerabilities based on the defined risk criteria."><i class="bi bi-info-circle dash-info-icon"></i></span> -->
                   </div>
 
+                  <div v-if="mitigationGaugesLoading" class="d-flex flex-column align-items-center justify-content-center py-3">
+                    <div class="spinner-border spinner-border-sm text-secondary" role="status"></div>
+                    <span style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:8px;">Loading timeline...</span>
+                  </div>
+
                   <!-- No-data state -->
-                  <div v-if="!authStore.mitigationTimeline" class="d-flex flex-column align-items-center justify-content-center py-2" style="opacity:0.55;">
+                  <div v-else-if="!hasMitigationGaugeData" class="d-flex flex-column align-items-center justify-content-center py-2" style="opacity:0.55;">
                     <i class="bi bi-clock-history" style="font-size:2rem;color:#cbd5e1;margin-bottom:8px;"></i>
                     <span style="font-size:11px;color:#94a3b8;font-weight:600;">Awaiting timeline data</span>
                   </div>
@@ -864,7 +882,7 @@
                           <div v-else class="d-flex flex-column gap-3">
                             <div v-for="(v, i) in overlayFilteredVulns" :key="i" class="vuln-accordion-item">
                               <div class="vuln-accordion-header" data-bs-toggle="collapse" :data-bs-target="'#ov' + i" role="button">
-                                <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
+                                <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0 overflow-hidden">
                                   <i class="bi bi-exclamation-triangle-fill vuln-icon flex-shrink-0"
                                     :class="{
                                       'vuln-icon-critical': v.severity === 'Critical',
@@ -872,7 +890,7 @@
                                       'vuln-icon-medium': v.severity === 'Medium',
                                       'vuln-icon-low': v.severity === 'Low'
                                     }"></i>
-                                  <span class="vuln-name">{{ v.vul_name }}</span>
+                                  <TruncatedVulnName class="vuln-name" :text="v.vul_name" />
                                 </div>
                                 <div class="d-flex align-items-center gap-3 flex-shrink-0 vuln-top-meta-row">
                                   <span class="sev-badge" :class="'sev-' + (v.severity?.toLowerCase() || '')">{{ v.severity }}</span>
@@ -916,7 +934,7 @@
                                 <div class="d-flex align-items-center gap-3">
                                   <i class="bi bi-check-circle-fill fixed-check-icon"></i>
                                   <div>
-                                    <p class="fixed-vuln-name">{{ item.vulnerability_name }}</p>
+                                    <p class="fixed-vuln-name" :title="item.vulnerability_name">{{ item.vulnerability_name }}</p>
                                     <p class="fixed-vuln-date">Status: {{ item.status }}</p>
                                   </div>
                                 </div>
@@ -931,7 +949,7 @@
                             <div v-for="(req, i) in overlaySupportRequests" :key="req._id" class="support-req-item">
                               <div class="d-flex align-items-center gap-3">
                                 <div class="sr-index-circle">{{ i + 1 }}</div>
-                                <p class="sr-vul-name mb-0">{{ req.vul_name }}</p>
+                                <p class="sr-vul-name mb-0" :title="req.vul_name">{{ req.vul_name }}</p>
                               </div>
                             </div>
                           </div>
@@ -1432,7 +1450,17 @@
 import DashboardMenu from '@/components/admin-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/admin-component/DashboardHeader.vue';
 import AdminProjectField from '@/components/admin-component/AdminProjectField.vue';
+import TruncatedVulnName from '@/components/common/TruncatedVulnName.vue';
+import { isRealScanHost } from '@/utils/assetDummyData';
 import { useAuthStore } from "@/stores/authStore";
+import { isClaimInviteFlow, hasClaimInviteReport } from "@/utils/claimInvite";
+import { resolveMitigationDays, resolveMitigationLabel } from "@/utils/mitigationTimeline";
+import {
+  freemiumUpgradeAssetCount,
+  markFreemiumCompletePopupShown,
+  setBillingReturnTo,
+  wasFreemiumCompletePopupShown,
+} from "@/utils/planLimits";
 import Swal from "sweetalert2";
 import Chart from 'chart.js/auto';
 
@@ -1442,6 +1470,7 @@ export default {
     DashboardMenu,
     DashboardHeader,
     AdminProjectField,
+    TruncatedVulnName,
   },
   data() {
     return {
@@ -1534,6 +1563,7 @@ export default {
       vulFixedMedium: 0,
       vulFixedLow: 0,
       dashboardLoadToken: 0,
+      summaryCardsLoading: false,
       mitigationLoading: false,
       mitigationByTeamData: null,
       vulnAssetCountData: null,
@@ -1575,6 +1605,20 @@ export default {
   computed: {
     authStore() {
       return useAuthStore();
+    },
+    hasMitigationGaugeData() {
+      return ["critical", "high", "medium", "low"].some((sev) => {
+        const label = this.getMitigationLabel(sev);
+        return label && label !== "--";
+      });
+    },
+    mitigationGaugesLoading() {
+      return this.summaryCardsLoading && !this.hasMitigationGaugeData;
+    },
+    freemiumUpgradeBanner() {
+      const banner = this.authStore.freemiumUpgrade;
+      if (!banner || banner.eligible !== true) return null;
+      return banner;
     },
     mteDropdownTeams() {
       return (this.adminMteTeams || [])
@@ -1680,7 +1724,7 @@ export default {
         else if (vuln.host_name) teamHostnames.add(norm(vuln.host_name));
       }
       if (teamHostnames.size === 0) return [];
-      return this.allAssets.filter(a => teamHostnames.has(norm(a.asset)));
+      return this.allAssets.filter(a => teamHostnames.has(norm(a.asset)) && isRealScanHost(a.asset));
     },
     filteredOverlayAssets() {
       const q = (this.overlayQuery || '').toLowerCase();
@@ -1701,15 +1745,19 @@ export default {
     },
     uniqueMitigationVulns() {
       const seen = new Map();
+      const addHost = (set, value) => {
+        const host = String(value || '').trim();
+        if (isRealScanHost(host)) set.add(host);
+      };
       for (const vuln of this.mitigationActiveTeamData.vulnerabilities) {
         const key = (vuln.plugin_name || '').trim().toLowerCase();
         if (!seen.has(key)) {
           const assets = new Set();
-          if (Array.isArray(vuln.assets)) vuln.assets.forEach(a => assets.add(String(a)));
-          if (vuln.host_name) assets.add(String(vuln.host_name));
-          if (vuln.asset) assets.add(String(vuln.asset));
-          if (vuln.ip) assets.add(String(vuln.ip));
-          if (vuln.hostname) assets.add(String(vuln.hostname));
+          if (Array.isArray(vuln.assets)) vuln.assets.forEach(a => addHost(assets, a));
+          addHost(assets, vuln.host_name);
+          addHost(assets, vuln.asset);
+          addHost(assets, vuln.ip);
+          addHost(assets, vuln.hostname);
 
           seen.set(key, {
             ...vuln,
@@ -1718,15 +1766,17 @@ export default {
           });
         } else {
           const existing = seen.get(key);
-          if (Array.isArray(vuln.assets)) vuln.assets.forEach(a => existing._assetSet.add(String(a)));
-          if (vuln.host_name) existing._assetSet.add(String(vuln.host_name));
-          if (vuln.asset) existing._assetSet.add(String(vuln.asset));
-          if (vuln.ip) existing._assetSet.add(String(vuln.ip));
-          if (vuln.hostname) existing._assetSet.add(String(vuln.hostname));
+          if (Array.isArray(vuln.assets)) vuln.assets.forEach(a => addHost(existing._assetSet, a));
+          addHost(existing._assetSet, vuln.host_name);
+          addHost(existing._assetSet, vuln.asset);
+          addHost(existing._assetSet, vuln.ip);
+          addHost(existing._assetSet, vuln.hostname);
           existing.assetCount = existing._assetSet.size;
         }
       }
-      return Array.from(seen.values()).map(({ _assetSet, ...rest }) => rest);
+      return Array.from(seen.values())
+        .filter((item) => item.assetCount > 0)
+        .map(({ _assetSet, ...rest }) => rest);
     },
     modalSeverityLabel() {
       const map = { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low' };
@@ -2267,30 +2317,10 @@ export default {
     },
     getMitigationLabel(sev) {
       const sevData = this.getMitigationSevData(sev);
-      if (sevData && typeof sevData === 'object') {
-        // 1st: remaining_label (e.g. "Overdue")
-        if (sevData.remaining_label) return sevData.remaining_label;
-        // 2nd: status field fallback
-        if (String(sevData.status || '').toLowerCase() === 'overdue') return 'Overdue';
-        // 3rd: remaining_days formatted
-        if (sevData.remaining_days != null) return this.formatTimeline({ days: sevData.remaining_days });
-        // 4th: configured days formatted
-        return this.formatTimeline({ days: sevData.days });
-      }
-      return this.formatTimeline(this.getMitigationValue(sev));
+      return resolveMitigationLabel(sevData, this.getMitigationDays(sev), (value) => this.formatTimeline(value));
     },
     getMitigationDays(sev) {
-      const sevData = this.getMitigationSevData(sev);
-      if (typeof sevData === 'number') return sevData;
-      if (typeof sevData === 'string') {
-        const p = Number(sevData);
-        return Number.isFinite(p) ? p : null;
-      }
-      if (sevData && typeof sevData === 'object') {
-        const r = sevData.remaining_days;
-        return (r !== null && r !== undefined) ? r : (sevData.days ?? null);
-      }
-      return null;
+      return resolveMitigationDays(this.getMitigationSevData(sev), this.riskCriteria?.[sev]);
     },
     getMitigationValue(sev) {
       const days = this.getMitigationDays(sev);
@@ -2694,12 +2724,66 @@ export default {
         }
       }
     },
+    liveRefreshPage() {
+      this.loadDashboardData();
+    },
+    goFreemiumUpgrade() {
+      const banner = this.freemiumUpgradeBanner;
+      const total = freemiumUpgradeAssetCount(banner);
+      setBillingReturnTo('/communication');
+      const query = { plan: 'premium', returnTo: '/communication' };
+      if (total > 0) query.assets = String(total);
+      const raw = banner?.upgrade_url || '/pricingplan';
+      try {
+        if (/^https?:\/\//i.test(raw)) {
+          const parsed = new URL(raw, window.location.origin);
+          if (parsed.origin === window.location.origin) {
+            const path = parsed.pathname || '/pricingplan';
+            if (path.includes('pricing')) {
+              this.$router.push({ path, query: { ...Object.fromEntries(parsed.searchParams.entries()), ...query } });
+              return;
+            }
+            this.$router.push(parsed.pathname + parsed.search + parsed.hash);
+            return;
+          }
+          window.location.assign(raw);
+          return;
+        }
+      } catch {
+        /* fall through */
+      }
+      this.$router.push({ path: '/pricingplan', query });
+    },
+    maybeShowFreemiumCompletePopup() {
+      const banner = this.freemiumUpgradeBanner;
+      if (!banner) return;
+      if (wasFreemiumCompletePopupShown()) return;
+      markFreemiumCompletePopupShown();
+      const text = String(banner.message || '').trim()
+        || "You've closed every visible finding — upgrade to Premium to unlock more asset(s) from this file, no re-upload needed.";
+      Swal.fire({
+        icon: 'info',
+        text,
+        confirmButtonText: 'Upgrade to Premium',
+        showCancelButton: true,
+        cancelButtonText: 'Later',
+        confirmButtonColor: '#241447',
+        cancelButtonColor: '#64748b',
+        didOpen: () => {
+          const container = document.querySelector('.swal2-container');
+          if (container) container.style.zIndex = '999999';
+        },
+      }).then((result) => {
+        if (result.isConfirmed) this.goFreemiumUpgrade();
+      });
+    },
     loadDashboardData() {
       const token = Date.now();
       this.dashboardLoadToken = token;
       // Only show loading on first load (no existing data)
       const isFirstLoad = !this.mitigationByTeamData;
       if (isFirstLoad) this.mitigationLoading = true;
+      if (!this.hasMitigationGaugeData) this.summaryCardsLoading = true;
 
       // Single parallel batch: avoids waiting for mitigation/vuln helpers to finish before KPI Promise.all starts.
       Promise.allSettled([
@@ -2730,15 +2814,16 @@ export default {
             if (fixed.medium_fixed !== undefined) this.vulFixedMedium = fixed.medium_fixed;
             if (fixed.low_fixed !== undefined) this.vulFixedLow = fixed.low_fixed;
           }
+          this.maybeShowFreemiumCompletePopup();
           console.log("✅ Dashboard API batch finished");
         })
         .catch((err) => {
           console.error("❌ Dashboard API error", err);
         })
         .finally(() => {
-          if (this.dashboardLoadToken === token && isFirstLoad) {
-            this.mitigationLoading = false;
-          }
+          if (this.dashboardLoadToken !== token) return;
+          if (isFirstLoad) this.mitigationLoading = false;
+          this.summaryCardsLoading = false;
         });
     },
 
@@ -2859,24 +2944,27 @@ export default {
     async initReportStatusCheck() {
       console.log("🚀 Initializing report status check...");
 
-      const res = await this.authStore.getReportStatus();
-      const state = res.state || (res.hasReport ? "ready" : "no_report");
+      this.authStore.initCompletedSteps();
+      const magicLinkReady =
+        isClaimInviteFlow() &&
+        (this.authStore.completedSteps.includes(2) || this.authStore.reportStatus?.hasRiskCriteria);
 
-      if (state === "no_report") {
-        this.$router.replace("/admin-upload-report");
-        return;
-      }
-      if (state === "needs_risk_criteria") {
+      if (!magicLinkReady) {
         const route = await this.authStore.getAdminOnboardingRoute();
-        this.$router.replace(route);
-        return;
+        if (route !== "/admindashboardonboarding") {
+          this.$router.replace(route);
+          return;
+        }
       }
+      const stepsDone =
+        this.authStore.completedSteps.includes(1) && this.authStore.completedSteps.includes(2);
 
-      // ready — show dashboard
-      this.hasReport = true;
+      const res = this.authStore.reportStatus;
+      this.hasReport = !!(res.hasReport || stepsDone || isClaimInviteFlow() || hasClaimInviteReport());
       this.currentReportId = res.reportId || this.authStore.reportStatus.reportId;
       this.reportStatusChecking = false;
       this.removeReportStatusOverlay();
+      if (this.hasReport) this.loadDashboardData();
     },
     startLiveDashboardSync() {
       if (this._liveDashboardTimer) return;
@@ -2906,8 +2994,6 @@ mounted() {
   // Fire dashboard APIs immediately; report-status check runs in parallel (no duplicate loadDashboardData).
   this.loadDashboardData();
   void this.initReportStatusCheck();
-  this.startLiveDashboardSync();
-  document.addEventListener("visibilitychange", this.handleLiveDashboardVisibility);
 
   queueMicrotask(() => {
     this.initTestingOverlay();
@@ -2936,7 +3022,6 @@ mounted() {
     void this.initReportStatusCheck();
     // Refresh every time dashboard is shown again (keep-alive includes vulns-fixed + in-process inside loadDashboardData).
     this.loadDashboardData();
-    this.startLiveDashboardSync();
     this._lastDashboardLoad = Date.now();
   },
 };
@@ -4365,6 +4450,7 @@ mounted() {
   align-items: center;
   cursor: pointer;
   gap: 12px;
+  min-width: 0;
 }
 
 .vuln-accordion-item .accordion-collapse.show {
@@ -4386,9 +4472,12 @@ mounted() {
   font-size: 0.92rem;
   font-weight: 700;
   color: #241447;
+  min-width: 0;
+  flex: 1 1 0%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: default;
 }
 
 .vuln-accordion-body { padding: 18px 20px; }
@@ -4462,6 +4551,11 @@ mounted() {
   font-weight: 700;
   color: #241447;
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 420px;
+  cursor: default;
 }
 .fixed-vuln-date {
   font-size: 0.7rem;
@@ -4493,6 +4587,11 @@ mounted() {
   font-size: 0.9rem;
   font-weight: 600;
   color: #241447;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
 }
 .sr-empty {
   color: #94a3b8;
@@ -4673,10 +4772,18 @@ mounted() {
   border-radius: 10px;
   padding: 10px 12px;
 }
+.in-process-item-row > div:first-child {
+  min-width: 0;
+  flex: 1;
+}
 .in-process-vuln-name {
   font-size: 0.85rem;
   font-weight: 700;
   color: #1e293b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
 }
 .in-process-asset {
   font-size: 0.75rem;
@@ -4745,5 +4852,36 @@ mounted() {
   box-shadow: 0 1px 3px rgba(99, 102, 241, 0.2);
   white-space: nowrap;
   display: inline-block;
+}
+
+.freemium-upgrade-banner {
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  border-radius: 12px;
+  padding: 14px 16px;
+  color: #9a3412;
+}
+.freemium-upgrade-banner i {
+  color: #c2410c;
+  font-size: 1.1rem;
+  margin-top: 2px;
+}
+.freemium-upgrade-banner p {
+  font-size: 0.92rem;
+  line-height: 1.45;
+  font-weight: 600;
+}
+.freemium-upgrade-btn {
+  background: #241447;
+  color: #fff;
+  border: 0;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 8px 16px;
+}
+.freemium-upgrade-btn:hover {
+  opacity: 0.92;
+  color: #fff;
 }
 </style>

@@ -14,6 +14,10 @@
             <h3 class="form-title">Get Started</h3>
             <p class="form-subtitle">Create your VaptFix account to begin your security engagement</p>
           </div>
+          <div v-if="inviteBannerText" class="invite-banner" :class="inviteBannerClass">
+            <i class="bi" :class="inviteBannerIcon"></i>
+            <span>{{ inviteBannerText }}</span>
+          </div>
           <hr class="form-divider" />
 
           <form @submit.prevent="handleSignup">
@@ -99,7 +103,7 @@
             </div>
 
             <!-- Submit Button -->
-            <button type="submit" class="submit-btn" :disabled="loading || !recaptchaToken || !allPwdRulesPass">
+            <button type="submit" class="submit-btn" :disabled="loading || invitePending || !recaptchaToken || !allPwdRulesPass">
               <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
               Send OTP
             </button>
@@ -115,7 +119,7 @@
                 v-if="!slackConnected"
                 type="button"
                 class="social-btn social-btn-slack"
-                :disabled="isSlackDisabled"
+                :disabled="isSlackDisabled || invitePending"
                 @click.prevent="startSlackLogin"
               >
                 <img :src="slackIcon" alt="" class="social-btn-icon" />
@@ -136,7 +140,7 @@
                 v-if="!teamsConnected"
                 type="button"
                 class="social-btn social-btn-teams"
-                :disabled="isTeamsDisabled"
+                :disabled="isTeamsDisabled || invitePending"
                 @click.prevent="startMicrosoftLogin"
               >
                 <img :src="teamsIcon" alt="" class="social-btn-icon" />
@@ -169,17 +173,23 @@
             <h3 class="form-title">OTP Verification</h3>
             <p class="form-subtitle">Your One-Time Password has been sent to <strong>{{ form.email }}</strong></p>
           </div>
+          <div v-if="inviteBannerText" class="invite-banner" :class="inviteBannerClass">
+            <i class="bi" :class="inviteBannerIcon"></i>
+            <span>{{ inviteBannerText }}</span>
+          </div>
           <hr class="form-divider" />
 
-          <div class="otp-inputs d-flex justify-content-center gap-2 mb-4">
+          <div class="otp-inputs d-flex justify-content-center gap-2 mb-3">
             <input
               v-for="(digit, index) in 6"
               :key="index"
               type="text"
               inputmode="numeric"
               class="otp-box text-center"
+              :class="{ 'otp-box-disabled': otpExpired }"
               maxlength="1"
               :value="otpDigits[index]"
+              :disabled="otpExpired || loading"
               @input="handleOtpInput($event, index)"
               @keydown="handleOtpKeydown($event, index)"
               @paste="handleOtpPaste($event, index)"
@@ -188,16 +198,35 @@
             />
           </div>
 
+          <p class="otp-timer-text mb-3">
+            <template v-if="!otpExpired">Resend available in {{ otpCountdownLabel }}</template>
+            <template v-else>OTP expired. Request a new one.</template>
+          </p>
+
           <div class="otp-note mb-4">
             <i class="bi bi-info-circle-fill otp-note-icon"></i>
             <p class="otp-note-text">
-              This OTP is valid for <strong>5 minutes</strong>. Please do not share this OTP with anyone for security reasons.
+              This OTP is valid for <strong>1 minute</strong>. Please do not share this OTP with anyone for security reasons.
             </p>
           </div>
 
-          <button class="submit-btn" @click="handleVerifyOtp" :disabled="loading || otp.length < 6">
+          <button
+            v-if="!otpExpired"
+            class="submit-btn"
+            @click="handleVerifyOtp"
+            :disabled="loading || otp.length < 6"
+          >
             <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
             Verify & Continue
+          </button>
+          <button
+            v-else
+            class="submit-btn"
+            @click="handleResendOtp"
+            :disabled="loading"
+          >
+            <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+            Resend OTP
           </button>
 
           <p class="footer-text" style="margin-top: 12px;">
@@ -214,9 +243,30 @@
 
 <script>
 import { useAuthStore } from '@/stores/authStore';
+import { markAdminSetPasswordEmailIfNew } from '@/utils/postLoginSuccess';
 import Swal from 'sweetalert2';
 import teamsIcon from '@/assets/images/teams.png';
 import slackIcon from '@/assets/images/slack.png';
+import {
+  clearClaimInvite,
+  isClaimInviteFlow,
+  markClaimInviteSignup,
+  readLiveMagicInvite,
+  resolveSignupInviteToken,
+  setClaimInviteValid,
+  setClaimInviteReportCount,
+  storeClaimInviteToken,
+} from '@/utils/claimInvite';
+import {
+  extractTeamsDeepLink,
+  isBareTeamsHome,
+  persistTeamsDeepLink,
+  pickTeamsTabUrl,
+  readStoredTeamsDeepLink,
+  redirectToTeamsTabUrl,
+  resolveTeamsAdminDashboardUrl,
+} from '@/utils/teamsDeepLink';
+import { consumeAdminPlatformOAuthError } from '@/utils/platformOAuthMessage';
 
 export default {
   name: 'AdminSignUpModal',
@@ -244,10 +294,24 @@ export default {
       teamsIcon,
       slackConnected: false,
       teamsConnected: false,
-      backendBase: 'https://vaptbackend.secureitlab.com'
+      backendBase: 'https://vaptbackend.secureitlab.com',
+      inviteToken: '',
+      inviteValid: false,
+      inviteExpired: false,
+      inviteReportCount: 0,
+      inviteChecked: false,
+      otpSecondsLeft: 60,
+      otpTimerId: null,
     };
   },
   computed: {
+    otpExpired() {
+      return this.otpSent && this.otpSecondsLeft <= 0;
+    },
+    otpCountdownLabel() {
+      const secs = Math.max(0, this.otpSecondsLeft);
+      return `0:${String(secs).padStart(2, '0')}`;
+    },
     isSlackDisabled() {
       return this.teamsConnected && !this.slackConnected;
     },
@@ -272,17 +336,50 @@ export default {
     },
     otp() {
       return this.otpDigits.join('');
+    },
+    activeInviteToken() {
+      return readLiveMagicInvite(this.$route?.query || {});
+    },
+    signupInviteToken() {
+      return resolveSignupInviteToken(this.$route?.query || {});
+    },
+    invitePending() {
+      return !!this.signupInviteToken && !this.inviteChecked;
+    },
+    inviteBannerText() {
+      if (!this.activeInviteToken) return '';
+      if (!this.inviteChecked) return 'Checking invite…';
+      if (this.inviteExpired) return 'This invite link has expired.';
+      const count = this.inviteReportCount || 1;
+      return `You're claiming ${count} report${count === 1 ? '' : 's'} — sign up below to receive them.`;
+    },
+    inviteBannerClass() {
+      if (this.invitePending) return 'invite-banner-pending';
+      if (this.inviteExpired) return 'invite-banner-expired';
+      return 'invite-banner-ok';
+    },
+    inviteBannerIcon() {
+      if (this.invitePending) return 'bi-hourglass-split';
+      if (this.inviteExpired) return 'bi-exclamation-triangle';
+      return 'bi-envelope-check';
     }
   },
   watch: {
-    show(newVal) {
-      if (newVal) {
-        this.$nextTick(() => {
-          this.renderRecaptcha();
-          this.syncPlatformConnectionState();
-        });
-      }
-    }
+    show: {
+      immediate: true,
+      handler(newVal) {
+        if (newVal) {
+          this.syncClaimInvite();
+          this.$nextTick(() => {
+            this.renderRecaptcha();
+            this.syncPlatformConnectionState();
+          });
+        }
+      },
+    },
+    '$route.query.invite'() {
+      if (this.show) this.syncClaimInvite();
+    },
   },
   mounted() {
     this.loadRecaptchaScript();
@@ -290,6 +387,7 @@ export default {
     window.addEventListener('message', this.handleSlackMessage);
     window.addEventListener('storage', this.onStorageChange);
     if (this.show) {
+      this.syncClaimInvite();
       this.$nextTick(() => this.renderRecaptcha());
     }
   },
@@ -298,10 +396,74 @@ export default {
       this.resetForm();
       this.$emit('close');
     },
+    syncClaimInvite() {
+      const live = readLiveMagicInvite(this.$route?.query || {});
+      if (!live) {
+        clearClaimInvite();
+        this.inviteToken = '';
+        this.inviteChecked = true;
+        this.inviteValid = false;
+        this.inviteExpired = false;
+        this.inviteReportCount = 0;
+        return;
+      }
+      storeClaimInviteToken(live);
+      this.inviteToken = live;
+      this.inviteChecked = false;
+      this.inviteValid = false;
+      this.inviteExpired = false;
+      this.inviteReportCount = 0;
+      this.validateInvite();
+    },
+    async validateInvite() {
+      if (!this.inviteToken) {
+        this.inviteChecked = true;
+        this.inviteExpired = false;
+        return;
+      }
+      try {
+        const res = await this.authStore.validateClaimInvite(this.inviteToken);
+        this.inviteExpired = res.valid === false;
+        this.inviteValid = !this.inviteExpired;
+        this.inviteReportCount = this.inviteExpired ? 0 : (res.report_count || 1);
+        setClaimInviteValid(this.inviteValid);
+        setClaimInviteReportCount(this.inviteReportCount);
+      } catch {
+        this.inviteValid = true;
+        this.inviteExpired = false;
+        this.inviteReportCount = this.inviteReportCount || 1;
+        setClaimInviteValid(true);
+        setClaimInviteReportCount(this.inviteReportCount);
+      } finally {
+        this.inviteChecked = true;
+      }
+    },
+    async redirectAfterSignup() {
+      const authStore = useAuthStore();
+      if (isClaimInviteFlow()) {
+        setClaimInviteValid(true);
+        if (this.inviteReportCount) setClaimInviteReportCount(this.inviteReportCount);
+        // New magic-link admin always lands on Add Users when super admin already attached a file.
+        authStore.unmarkStepCompleted(1);
+        try {
+          this.$router.push('/communication');
+        } catch {
+          this.$router.push('/communication');
+        }
+        return;
+      }
+      try {
+        this.$router.push(await authStore.getAdminOnboardingRoute());
+      } catch {
+        this.$router.push('/admin-upload-report');
+      }
+    },
     resetForm() {
+      this.clearOtpTimer();
       this.form = { email: '', password: '', confirm_password: '' };
       this.otpSent = false;
       this.otpDigits = ['', '', '', '', '', ''];
+      this.otpSecondsLeft = 60;
       this.recaptchaToken = '';
       this.showPassword = false;
       this.showConfirmPassword = false;
@@ -360,6 +522,7 @@ export default {
         if (result.status) {
           this.otpSent = true;
           this.otpDigits = ['', '', '', '', '', ''];
+          this.startOtpTimer();
           Swal.fire({ icon: 'success', title: 'OTP Sent!', text: 'Please check your email for the verification code.', timer: 2500, showConfirmButton: false });
           this.$nextTick(() => { if (this.otpRefs[0]) this.otpRefs[0].focus(); });
         } else {
@@ -374,6 +537,7 @@ export default {
       }
     },
     async handleVerifyOtp() {
+      if (this.otpExpired) return;
       if (this.otp.length < 6) {
         Swal.fire({ icon: 'warning', title: 'Incomplete OTP', text: 'Please enter the complete 6-digit OTP', confirmButtonColor: '#241447' });
         return;
@@ -381,12 +545,15 @@ export default {
       this.loading = true;
       try {
         const authStore = useAuthStore();
-        const result = await authStore.signupVerifyOtp({ email: this.form.email, otp: this.otp });
+        const verifyPayload = { email: this.form.email, otp: this.otp };
+        const inviteToken = this.signupInviteToken;
+        if (inviteToken) verifyPayload.invite_token = inviteToken;
+        const result = await authStore.signupVerifyOtp(verifyPayload);
         if (result.status) {
           this.$emit('close');
           Swal.fire({ icon: 'success', title: 'Signup Successful!', text: 'Your account has been created successfully.', timer: 2000, showConfirmButton: false });
           authStore.setAdminLoginMethod('email');
-          this.$router.push('/admin-upload-report');
+          this.redirectAfterSignup();
         } else {
           Swal.fire({ icon: 'error', title: 'Invalid OTP', text: result.message || 'Invalid OTP. Please try again.', confirmButtonColor: '#241447' });
         }
@@ -397,6 +564,7 @@ export default {
       }
     },
     handleOtpInput(event, index) {
+      if (this.otpExpired) return;
       const value = event.target.value.replace(/\D/g, '');
       this.otpDigits.splice(index, 1, value ? value[0] : '');
       if (value && index < 5) {
@@ -424,8 +592,61 @@ export default {
       this.$nextTick(() => { if (this.otpRefs[nextFocus]) this.otpRefs[nextFocus].focus(); });
     },
     goBackToSignup() {
+      this.clearOtpTimer();
       this.otpSent = false;
       this.otpDigits = ['', '', '', '', '', ''];
+      this.otpSecondsLeft = 60;
+    },
+    startOtpTimer() {
+      this.clearOtpTimer();
+      this.otpSecondsLeft = 60;
+      this.otpTimerId = setInterval(() => {
+        if (this.otpSecondsLeft <= 1) {
+          this.otpSecondsLeft = 0;
+          this.clearOtpTimer();
+          this.otpDigits = ['', '', '', '', '', ''];
+          return;
+        }
+        this.otpSecondsLeft -= 1;
+      }, 1000);
+    },
+    clearOtpTimer() {
+      if (this.otpTimerId) {
+        clearInterval(this.otpTimerId);
+        this.otpTimerId = null;
+      }
+    },
+    async handleResendOtp() {
+      if (!this.otpExpired || this.loading) return;
+      if (!this.recaptchaToken) {
+        this.goBackToSignup();
+        this.resetRecaptcha();
+        Swal.fire({ icon: 'info', title: 'Complete reCAPTCHA', text: 'Please complete reCAPTCHA and send OTP again.', confirmButtonColor: '#241447' });
+        return;
+      }
+      this.loading = true;
+      try {
+        const authStore = useAuthStore();
+        const result = await authStore.signupSendOtp({
+          email: this.form.email,
+          password: this.form.password,
+          confirm_password: this.form.confirm_password,
+          recaptcha: this.recaptchaToken,
+        });
+        if (result.status) {
+          this.otpDigits = ['', '', '', '', '', ''];
+          this.startOtpTimer();
+          this.$nextTick(() => { if (this.otpRefs[0]) this.otpRefs[0].focus(); });
+          Swal.fire({ icon: 'success', title: 'OTP Sent!', text: 'A new OTP has been sent to your email.', timer: 2000, showConfirmButton: false });
+        } else {
+          Swal.fire({ icon: 'error', title: 'Error', text: result.message || 'Failed to resend OTP', confirmButtonColor: '#241447' });
+          this.resetRecaptcha();
+        }
+      } catch (error) {
+        Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'Something went wrong', confirmButtonColor: '#241447' });
+      } finally {
+        this.loading = false;
+      }
     },
     resetRecaptcha() {
       if (window.grecaptcha && this.recaptchaWidgetId !== null) {
@@ -489,16 +710,39 @@ export default {
       }
     },
   // —— Slack / Teams: same as LocationView (/communication) ——
+    async openStoredTeamsDashboard() {
+      const stored = pickTeamsTabUrl(readStoredTeamsDeepLink());
+      if (stored && !isBareTeamsHome(stored)) {
+        window.location.href = stored;
+        return;
+      }
+      Swal.fire({
+        icon: 'info',
+        title: 'Setting up your workspace',
+        text: 'Opening the VAPTFIX admin dashboard channel as soon as it is ready.',
+        timer: 2200,
+        showConfirmButton: false,
+      });
+      const statusRes = await this.authStore.fetchMicrosoftTeamsLoginStatus();
+      const url = await resolveTeamsAdminDashboardUrl(statusRes.data || {}, async () => {
+        const next = await this.authStore.fetchMicrosoftTeamsLoginStatus();
+        return next.data || {};
+      });
+      if (url) {
+        window.location.href = url;
+      }
+    },
     async startMicrosoftLogin() {
       if (this.teamsConnected) {
-        window.open('https://teams.microsoft.com/', '_blank');
+        await this.openStoredTeamsDashboard();
         return;
       }
       if (this.isTeamsDisabled && !this.teamsConnected) return;
       try {
         const redirectUri = `${window.location.origin}/microsoft/callback`;
-        const adminId = this.getAdminId();
-        const res = await this.authStore.getMicrosoftOAuthUrl(redirectUri, adminId);
+        const inviteToken = this.signupInviteToken || null;
+        const adminId = inviteToken ? null : this.getAdminId();
+        const res = await this.authStore.getMicrosoftOAuthUrl(redirectUri, adminId, inviteToken);
         if (res.status && res.data.auth_url) {
           window.open(res.data.auth_url, '_blank');
         } else {
@@ -515,7 +759,18 @@ export default {
         'https://vaptbackend.secureitlab.com'
       ];
       if (!allowedOrigins.includes(event.origin)) return;
+      const platformError = consumeAdminPlatformOAuthError(event.data);
+      if (platformError) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Cannot connect',
+          text: platformError,
+          confirmButtonColor: '#241447',
+        });
+        return;
+      }
       if (event.data?.type !== 'TEAMS_CONNECTED') return;
+      if (event.data?.success === false) return;
 
       const graphToken = event.data.tokens?.access_token;
       const teamObj = event.data.vaptfix_team || null;
@@ -543,10 +798,17 @@ export default {
       this.teamsConnected = true;
       this.slackConnected = false;
 
+      persistTeamsDeepLink(extractTeamsDeepLink(event.data));
+
       Swal.fire({
         icon: 'success',
-        title: 'Microsoft Teams connected successfully',
-        timer: 2000,
+        title: event.data?.status === 'provisioning'
+          ? 'Setting up your workspace'
+          : 'Microsoft Teams connected successfully',
+        text: event.data?.status === 'provisioning'
+          ? 'Your dashboard channel is being created. This can take a few seconds.'
+          : '',
+        timer: event.data?.status === 'provisioning' ? 2400 : 2000,
         showConfirmButton: false
       });
 
@@ -558,7 +820,9 @@ export default {
         await this.authStore.ensureTeamsChannelsCached();
       }
 
+      markAdminSetPasswordEmailIfNew(event.data.is_new_user === true);
       this.ensureAuthSessionFromOAuth(event.data);
+      if (redirectToTeamsTabUrl(event.data)) return;
       this.maybeFinishSignupAfterOAuth();
     },
     onStorageChange(event) {
@@ -594,8 +858,9 @@ export default {
       }
       if (this.isSlackDisabled && !this.slackConnected) return;
       try {
-        const adminId = this.getAdminId();
-        const res = await this.authStore.getSlackOAuthUrl(this.backendBase, adminId);
+        const inviteToken = this.signupInviteToken || null;
+        const adminId = inviteToken ? null : this.getAdminId();
+        const res = await this.authStore.getSlackOAuthUrl(this.backendBase, adminId, inviteToken);
 
         if (res.status && res.data?.auth_url) {
           const width = 1000;
@@ -629,7 +894,19 @@ export default {
         return;
       }
 
-      if (event.data?.type === 'SLACK_CONNECTED') {
+      const platformError = consumeAdminPlatformOAuthError(event.data);
+      if (platformError) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Cannot connect',
+          text: platformError,
+          confirmButtonColor: '#241447',
+        });
+        return;
+      }
+
+      const slackType = event.data?.type;
+      if (slackType === 'SLACK_CONNECTED') {
         if (event.data.bot_token) {
           localStorage.setItem('slack_bot_token', event.data.bot_token);
         }
@@ -649,10 +926,13 @@ export default {
         }
 
         // ✅ Immediately set auth in parent window with correct token + Django admin user
+        markAdminSetPasswordEmailIfNew(event.data.is_new_user === true);
+
         this.ensureAuthSessionFromOAuth({
           django_access_token: event.data.django_access_token,
           django_refresh_token: event.data.django_refresh_token,
           user: appUser,
+          local_user: appUser,
         });
 
         this.onSlackConnected();
@@ -710,7 +990,7 @@ export default {
         console.error('Slack users error:', err);
       }
     },
-    maybeFinishSignupAfterOAuth() {
+    async maybeFinishSignupAfterOAuth() {
       const hasSession = this.ensureAuthSessionFromOAuth() ||
         this.authStore.authenticated ||
         !!sessionStorage.getItem('authorization') ||
@@ -729,12 +1009,19 @@ export default {
       }
 
       sessionStorage.setItem('isNewUser', 'true');
+      if (this.signupInviteToken) {
+        markClaimInviteSignup();
+        storeClaimInviteToken(this.signupInviteToken);
+      } else {
+        clearClaimInvite();
+      }
       this.resetForm();
       this.$emit('close');
-      this.$router.push('/admin-upload-report');
+      this.redirectAfterSignup();
     }
   },
   beforeUnmount() {
+    this.clearOtpTimer();
     window.removeEventListener('message', this.onTeamsConnected);
     window.removeEventListener('message', this.handleSlackMessage);
     window.removeEventListener('storage', this.onStorageChange);
@@ -829,6 +1116,36 @@ export default {
   color: #6b7280;
   margin: 0;
   line-height: 1.4;
+}
+.invite-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: left;
+}
+.invite-banner i {
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+.invite-banner-pending {
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  color: #3730a3;
+}
+.invite-banner-ok {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+}
+.invite-banner-expired {
+  background: #fef3c7;
+  border: 1px solid #fde047;
+  color: #92400e;
 }
 
 /* Divider */
@@ -1060,11 +1377,18 @@ export default {
   transition: all 0.2s;
   color: #241447;
 }
-.otp-box:focus {
-  outline: none;
-  border-color: #241447;
-  background: #ededf8;
-  box-shadow: 0 0 0 2px rgba(36, 20, 71, 0.15);
+.otp-box:disabled,
+.otp-box-disabled {
+  background: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+.otp-timer-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: #241447;
+  margin: 0;
 }
 
 .otp-note {
