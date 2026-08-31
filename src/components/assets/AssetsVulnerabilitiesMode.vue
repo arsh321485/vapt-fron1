@@ -327,6 +327,7 @@
                   :title="automationDownloadLocked ? (authStore.automationPremiumMessage || 'Automation scripts are not available on the Freemium plan. Upgrade to Premium.') : 'Download fix'"
                 >
                 <button
+                  v-if="hasAutomationScript(v)"
                   type="button"
                   class="vuln-download-icon-btn"
                   :class="{ 'vuln-download-icon-btn--disabled': automationDownloadLocked }"
@@ -368,7 +369,9 @@
                   <button
                     type="button"
                     class="av-dtab"
-                    :class="{ active: currentVulnTab === 'auto' }"
+                    :class="{ active: currentVulnTab === 'auto', 'av-dtab--disabled': automationDownloadLocked }"
+                    :disabled="automationDownloadLocked"
+                    :title="automationDownloadLocked ? (authStore.automationPremiumMessage || 'Upgrade to Premium to use automated fixes') : ''"
                     @click="setVulnDetailTab('auto')"
                   >
                     <span class="av-dtab-emoji" aria-hidden="true">🤖</span>
@@ -1581,6 +1584,7 @@ export default {
       return 'auto';
     },
     setVulnDetailTab(tab) {
+      if (tab === 'auto' && this.automationDownloadLocked) return;
       this.currentVulnTab = tab;
     },
     getStatusLabel(status) {

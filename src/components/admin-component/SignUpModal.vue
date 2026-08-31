@@ -1700,6 +1700,9 @@ export default {
       this.adminLoading = true;
       try {
         const authStore = useAuthStore();
+        const fromQuery = extractClaimInviteToken(this.$route?.query || {});
+        if (fromQuery) storeClaimInviteToken(fromQuery);
+        const inviteToken = fromQuery || readClaimInviteToken();
         const result = await authStore.login({
           email: this.adminForm.email,
           password: this.adminForm.password,
@@ -1791,7 +1794,7 @@ export default {
         const route = await authStore.getAdminOnboardingRoute();
         this.$router.replace(route);
       } catch {
-        this.$router.replace('/admin-upload-report');
+        this.$router.replace(isClaimInviteFlow() ? '/communication' : '/admin-upload-report');
       }
     },
     openForgotPassword(type) {

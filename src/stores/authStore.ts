@@ -682,6 +682,7 @@ export const useAuthStore = defineStore("auth", {
         // Do not clear the magic-link flag here — a failed attempt must not wipe it,
         // and a success still needs it for the post-login route.
         clearAllAuthTokens();
+        clearClaimInvite();
         localStorage.removeItem("reportId");
         this.reportStatus.state = null;
         this.reportStatus.hasReport = false;

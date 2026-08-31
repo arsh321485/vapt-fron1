@@ -1060,6 +1060,9 @@ export default {
     hasExistingReport() {
       return this.existingUploadedFiles.length > 0;
     },
+    hasExistingReport() {
+      return this.existingUploadedFiles.length > 0;
+    },
     existingReportId() {
       return (
         this.existingReport?.report_id ||
