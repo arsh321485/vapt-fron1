@@ -12,7 +12,7 @@ export interface BillingAssetBreakdown {
   billable_asset_count: number;
 }
 
-export interface FreemiumUpgrade {
+export interface FreemiumUpgradeBanner {
   eligible: true;
   locked_assets: number;
   visible_assets: number;
@@ -20,6 +20,7 @@ export interface FreemiumUpgrade {
   message: string;
   upgrade_url: string;
 }
+export type FreemiumUpgrade = FreemiumUpgradeBanner;
 
 export interface RetestErrorExtras {
   fallback?: string;
@@ -43,7 +44,7 @@ export function retestErrorMessage(apiMessage?: unknown, extras?: RetestErrorExt
 export function planAssetLimit(planOrSubscription: unknown): number;
 export function planBlocksOversizedUpload(planOrSubscription: unknown): boolean;
 export function isFreemiumTeamLimitMessage(text: unknown): boolean;
-export function parseFreemiumUpgrade(data: unknown): FreemiumUpgrade | null;
+export function parseFreemiumUpgrade(data: unknown): FreemiumUpgradeBanner | null;
 export function freemiumUpgradeAssetCount(banner: unknown): number;
 export function wasFreemiumCompletePopupShown(): boolean;
 export function markFreemiumCompletePopupShown(): void;
@@ -57,7 +58,7 @@ export function formatLockedUpgradeNotice(source: unknown): string;
 export function storeBillableAssetCount(count: unknown): void;
 export function peekBillableAssetCount(): number;
 export function rememberFullAssetCount(source: unknown, fallback?: number): number;
-export function suggestedPlanFromAssetCount(count: unknown): string;
+export function suggestedPlanFromAssetCount(count: unknown): "custom" | "premium" | "freemium";
 export function planDisplayName(planOrSubscription: unknown): string;
 export function otherPlans(suggested: unknown): string[];
 export function setBillingReturnTo(path: unknown): void;
@@ -69,4 +70,4 @@ export function consumeFreemiumActiveNotice(): boolean;
 export function extraIpCount(total: unknown, limit: unknown): number;
 export function parsePlanHintFromMessage(text: unknown): { count: number; suggested: string };
 export function plansThatCoverCount(count: unknown): string[];
-export function localPremiumEstimate(assetCount: unknown, mode?: unknown, billingCycle?: unknown): any;
+export function localPremiumEstimate(assetCount: unknown, mode?: unknown, billingCycle?: unknown): Record<string, unknown> | null;

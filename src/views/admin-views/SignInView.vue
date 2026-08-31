@@ -347,7 +347,8 @@ export default {
           useAuthStore().setAdminLoginMethod('teams')
         } catch (_) { /* ignore */ }
         markAdminSetPasswordEmailIfNew(event.data.is_new_user === true)
-        if (redirectToTeamsTabUrl(event.data)) return
+        // Do NOT navigate this tab to the Teams channel — the OAuth popup tab
+        // already opens that itself. Keep this tab on VaptFix, same as Slack above.
         await this.finishOAuthSignIn()
       }
     },

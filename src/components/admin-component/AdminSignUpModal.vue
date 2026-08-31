@@ -252,6 +252,7 @@ import {
   isClaimInviteFlow,
   markClaimInviteSignup,
   readLiveMagicInvite,
+  resolveSignupInviteToken,
   setClaimInviteValid,
   setClaimInviteReportCount,
   storeClaimInviteToken,
@@ -262,7 +263,6 @@ import {
   persistTeamsDeepLink,
   pickTeamsTabUrl,
   readStoredTeamsDeepLink,
-  redirectToTeamsTabUrl,
   resolveTeamsAdminDashboardUrl,
 } from '@/utils/teamsDeepLink';
 import { consumeAdminPlatformOAuthError } from '@/utils/platformOAuthMessage';
@@ -340,7 +340,7 @@ export default {
       return readLiveMagicInvite(this.$route?.query || {});
     },
     signupInviteToken() {
-      return (this.inviteToken || this.activeInviteToken || '').trim();
+      return resolveSignupInviteToken(this.$route?.query || {}) || (this.inviteToken || this.activeInviteToken || '').trim();
     },
     invitePending() {
       return !!this.activeInviteToken && !this.inviteChecked;
@@ -554,6 +554,16 @@ export default {
           this.$emit('close');
           Swal.fire({ icon: 'success', title: 'Signup Successful!', text: 'Your account has been created successfully.', timer: 2000, showConfirmButton: false });
           authStore.setAdminLoginMethod('email');
+          // Persist the claim-invite flag before the upcoming /communication navigation
+          // drops ?invite= from the URL — otherwise isClaimInviteFlow() goes false on the
+          // very next page and the user gets bounced into the upload-report step even
+          // though the super admin already attached a report to this invite.
+          if (inviteToken) {
+            markClaimInviteSignup();
+            storeClaimInviteToken(inviteToken);
+          } else {
+            clearClaimInvite();
+          }
           this.redirectAfterSignup();
         } else {
           Swal.fire({ icon: 'error', title: 'Invalid OTP', text: result.message || 'Invalid OTP. Please try again.', confirmButtonColor: '#241447' });
@@ -823,7 +833,10 @@ export default {
 
       markAdminSetPasswordEmailIfNew(event.data.is_new_user === true);
       this.ensureAuthSessionFromOAuth(event.data);
-      if (redirectToTeamsTabUrl(event.data)) return;
+      // Do NOT navigate this VaptFix tab to the Teams channel — the OAuth popup tab
+      // (MicrosoftCallbackView) already opens that itself. This tab must stay on
+      // VaptFix and continue the signup flow, exactly like the Slack path does
+      // (see onSlackConnected, which never navigates this window either).
       this.maybeFinishSignupAfterOAuth();
     },
     onStorageChange(event) {

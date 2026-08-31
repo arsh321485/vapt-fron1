@@ -637,7 +637,7 @@ router.beforeEach(async (to, from, next) => {
   }
 
   // Magic link is ?invite= only. Never rewrite ?token= (User/Admin set-password).
-  // Stay on /signup?invite= so SignupView can GET claim-invite/validate on load.
+  // Auth marketing routes (including /signup) rewrite to /home Get Started.
   const inviteToken = extractClaimInviteToken(to.query || {});
   if (inviteToken) {
     storeClaimInviteToken(inviteToken);
@@ -652,6 +652,7 @@ router.beforeEach(async (to, from, next) => {
     }
   }
   const inviteHomePaths = new Set([
+    "/signup",
     "/signin",
     "/auth",
     "/login",

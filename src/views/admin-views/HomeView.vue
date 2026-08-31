@@ -576,7 +576,7 @@ export default {
       this.showWebinarPopup = false;
       this.clearWebinarPopupTimer();
       this.showAdminSignUpModal = true;
-      useAuthStore().validateClaimInvite(invite);
+      void useAuthStore().validateClaimInvite(invite);
       return true;
     },
     scheduleWebinarPopup() {

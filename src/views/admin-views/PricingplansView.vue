@@ -762,6 +762,9 @@ export default {
       return formatLockedUpgradeNotice(this.estimate || this.currentSubscription);
     },
     freemiumLockedExtrasNotice() {
+      // Scope / manual entry is Premium-only — never show Freemium lock copy.
+      if (this.fromScopeFile && !this.fromScanReport) return '';
+      if (this.managementModeLocked) return '';
       if (this.currentPlanId === 'premium' || this.currentPlanId === 'custom') return '';
       if (this.selectedPlan === 'premium' || this.selectedPlan === 'custom') return '';
       if (this.autoSelectedPlan === 'premium' || this.autoSelectedPlan === 'custom') return '';
@@ -773,10 +776,16 @@ export default {
       return `This report has ${count} IPs. Freemium shows 5 now — ${extra} stay locked until you upgrade (no re-upload).`;
     },
     autoSelectNotice() {
-      if (!this.autoSelectedPlan || !this.fileCountReady) return '';
       const count = this.detectedAssetCount;
+      const planId =
+        count > 250
+          ? 'custom'
+          : (this.selectedPlan === 'premium' || this.selectedPlan === 'custom'
+            ? this.selectedPlan
+            : this.autoSelectedPlan);
+      if (!planId || planId === 'freemium' || !this.fileCountReady) return '';
       if (!count) return '';
-      const name = planDisplayName(this.autoSelectedPlan);
+      const name = planDisplayName(planId);
       if (this.managementModeLocked || this.fromScopeFile) {
         return `Your scope file has ${count} assets — ${name} is auto-selected.`;
       }
@@ -901,6 +910,10 @@ export default {
       if (next === 'details') this.fetchEstimate();
     },
   },
+  created() {
+    // Scope/upload already picked a plan in the URL — never paint the 3-card listing first.
+    this.applyRequestedPlanFromRoute();
+  },
   async mounted() {
     const handoffError = consumeHandoffError();
     if (handoffError) {
@@ -932,12 +945,15 @@ export default {
     const requestedPlan = String(this.$route.query.plan || '').toLowerCase();
     const requestedMode = String(this.$route.query.mode || '').toLowerCase();
     if (requestedPlan === 'freemium' || requestedPlan === 'premium' || requestedPlan === 'custom') {
-      this.autoSelectedPlan = requestedPlan;
+      const planId = (this.fileAssetCount || Number(this.$route.query.assets) || 0) > 250
+        ? 'custom'
+        : requestedPlan;
+      this.autoSelectedPlan = planId;
       this.autoSelectedFromAssets = this.fileAssetCount || 0;
-      if (requestedPlan === 'custom' && this.fileAssetCount && !this.leadForm.assets) {
+      if (planId === 'custom' && this.fileAssetCount && !this.leadForm.assets) {
         this.leadForm.assets = String(this.fileAssetCount);
       }
-      this.selectPlan(requestedPlan, { premiumMode: requestedMode });
+      this.selectPlan(planId, { premiumMode: requestedMode });
     }
   },
   beforeUnmount() {
@@ -947,6 +963,32 @@ export default {
     isCurrentPlan(planId) {
       return !!this.currentPlanId && this.currentPlanId === planId;
     },
+    applyRequestedPlanFromRoute() {
+      const requestedPlan = String(this.$route.query.plan || '').toLowerCase();
+      if (requestedPlan !== 'premium' && requestedPlan !== 'custom') return false;
+      const requestedMode = String(this.$route.query.mode || '').toLowerCase();
+      const assets = Number(this.$route.query.assets) || 0;
+      const planId = assets > 250 ? 'custom' : requestedPlan;
+      this.autoSelectedPlan = planId;
+      this.selectedPlan = planId;
+      this.step = 'details';
+      if (planId === 'premium') {
+        this.premiumMode =
+          requestedMode === 'testing' || requestedMode === 'management_testing'
+            ? 'testing'
+            : 'management';
+      }
+      if (assets) {
+        this.fileAssetCount = assets;
+        this.autoSelectedFromAssets = assets;
+        this.fileCountReady = true;
+        if (planId === 'custom' && !this.leadForm.assets) {
+          this.leadForm.assets = String(assets);
+        }
+      }
+      return true;
+    },
+
     planPriceNote(plan) {
       if (plan?.id === 'premium' && this.testingModeLocked) {
         return 'per IP/year · Management';

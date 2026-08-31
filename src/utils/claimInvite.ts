@@ -180,7 +180,12 @@ export function readLiveMagicInvite(query: Record<string, unknown> = {}): string
 
 /** Live URL first, then the token stored after validate (needed if the query is stripped). */
 export function resolveClaimInviteToken(query: Record<string, unknown> = {}): string {
-  return readLiveMagicInvite(query) || readClaimInviteToken();
+  return (readLiveMagicInvite(query) || readClaimInviteToken()).trim();
+}
+
+/** Alias used by signup screens. */
+export function resolveSignupInviteToken(query: Record<string, unknown> = {}): string {
+  return resolveClaimInviteToken(query);
 }
 
 try {

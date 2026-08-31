@@ -20,7 +20,7 @@ import {
   sanitizeTeamHostPayload,
   isRealScanHost,
 } from "@/utils/assetDummyData";
-import { isClaimInviteFlow, clearClaimInvite, markClaimInviteSignup, parseClaimInviteValidate } from "@/utils/claimInvite";
+import { isClaimInviteFlow, clearClaimInvite, markClaimInviteSignup, parseClaimInviteValidate, readClaimInviteToken } from "@/utils/claimInvite";
 import { clearLockedRoute } from "@/utils/routeLock";
 import { clearCachedPaidPlan, hasCachedPaidPlan, setCachedPaidPlan } from "@/utils/authenticatedHome";
 import { getMySubscription } from "@/services/billingApi";
@@ -185,6 +185,7 @@ function extractApiErrorMessage(error: unknown, fallback = "Request failed"): st
   const fieldMsgs = [
     ...flattenFieldErrors(data?.detail),
     ...flattenFieldErrors(data?.errors),
+    ...flattenFieldErrors(data?.non_field_errors),
   ];
   const unique = [...new Set(fieldMsgs.filter(Boolean))];
   if (unique.length) return unique.join(" ");
@@ -571,7 +572,7 @@ export const useAuthStore = defineStore("auth", {
     },
 
     async validateClaimInvite(token: string) {
-      const invite = String(token || "").trim();
+      const invite = String(token || "").trim() || readClaimInviteToken();
       if (!invite) {
         return { status: false, valid: false, expired: false, report_count: 0, data: {} };
       }
@@ -611,8 +612,9 @@ export const useAuthStore = defineStore("auth", {
           email: payload.email,
           otp: payload.otp,
         };
-        if (payload.invite_token) {
-          body.invite_token = payload.invite_token;
+        const invite = String(payload.invite_token || readClaimInviteToken() || "").trim();
+        if (invite) {
+          body.invite_token = invite;
         }
         const res = await endpoint.post("/api/admin/users/signup/verify-otp/", body);
 
@@ -1599,8 +1601,9 @@ export const useAuthStore = defineStore("auth", {
         if (adminId) {
           params.admin_id = String(adminId);
         }
-        if (inviteToken) {
-          params.invite_token = String(inviteToken).trim();
+        const invite = String(inviteToken || readClaimInviteToken() || "").trim();
+        if (invite) {
+          params.invite_token = invite;
         }
         const res = await endpoint.get("/api/admin/users/microsoft-teams/oauth-url/", { params });
 
@@ -2380,7 +2383,7 @@ export const useAuthStore = defineStore("auth", {
         base_url: baseUrl,
         admin_id: adminId ? String(adminId) : null,
       };
-      const invite = String(inviteToken || "").trim();
+      const invite = String(inviteToken || readClaimInviteToken() || "").trim();
       if (invite) {
         payload.invite_token = invite;
       }
@@ -7380,9 +7383,14 @@ export const useAuthStore = defineStore("auth", {
 
     // ✅ Initialize completed steps from localStorage
     initCompletedSteps() {
-      const user =
-        this.user ||
-        (sessionStorage.getItem("user") ? JSON.parse(sessionStorage.getItem("user")!) : null);
+      let storedUser: any = null;
+      try {
+        const raw = sessionStorage.getItem("user") || localStorage.getItem("user");
+        storedUser = raw && raw !== "undefined" && raw !== "null" ? JSON.parse(raw) : null;
+      } catch {
+        storedUser = null;
+      }
+      const user = this.user || storedUser;
       const ids = [user?.id, user?.pk, user?.user_id, user?.email]
         .map((v) => String(v || "").trim())
         .filter(Boolean);
