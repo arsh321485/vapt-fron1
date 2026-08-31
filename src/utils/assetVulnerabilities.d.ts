@@ -29,6 +29,13 @@ export interface NormalizedAssetVulnerability {
 export function canonSeverity(sev: unknown): string;
 export function vulnDisplayName(v: Record<string, unknown> | null | undefined): string;
 export function vulnNameKey(v: Record<string, unknown> | null | undefined): string;
+export function pickVulnDescription(
+  ...sources: Array<string | Record<string, unknown> | null | undefined>
+): string;
+export function mergeDescriptionsIntoVulns(
+  vulns: unknown,
+  ...extraLists: unknown[]
+): NormalizedAssetVulnerability[];
 export function isActiveVulnStatus(status: unknown): boolean;
 export function normalizeAssetVulnerability(
   v: Record<string, unknown> | null | undefined,

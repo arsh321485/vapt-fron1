@@ -493,6 +493,7 @@ import AdminSignUpModal from '@/components/admin-component/AdminSignUpModal.vue'
 import { useAuthStore } from '@/stores/authStore';
 import Swal from 'sweetalert2';
 import { consumeAdminPlatformOAuthError } from '@/utils/platformOAuthMessage';
+import { openTeamsOAuthPopup } from '@/utils/teamsDeepLink';
 
 export default {
   name: 'HowVaptfixWorksView',
@@ -599,11 +600,7 @@ export default {
         const redirectUri = `${window.location.origin}/microsoft/callback`;
         const res = await this.authStore.getMicrosoftOAuthUrl(redirectUri, adminId);
         if (res.status && res.data?.auth_url) {
-          const width = 1000;
-          const height = 700;
-          const left = window.screenX + (window.outerWidth - width) / 2;
-          const top = window.screenY + (window.outerHeight - height) / 2;
-          window.open(res.data.auth_url, '_blank', `width=${width},height=${height},left=${left},top=${top}`);
+          openTeamsOAuthPopup(res.data.auth_url);
         } else {
           Swal.fire({ icon: 'error', title: 'Microsoft Error', text: 'Could not get Microsoft sign-in URL. Please try again.' });
         }

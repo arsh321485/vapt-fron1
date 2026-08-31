@@ -335,7 +335,6 @@
                               :title="automationDownloadLocked ? (authStore.automationPremiumMessage || 'Automation scripts are not available on the Freemium plan. Upgrade to Premium.') : 'Download fix'"
                             >
                             <button
-                              v-if="hasAutomationScript(vuln)"
                               type="button"
                               class="vuln-download-icon-btn"
                               :class="{ 'vuln-download-icon-btn--disabled': automationDownloadLocked }"
@@ -355,10 +354,10 @@
                             <div class="av-description-block">
                               <div class="av-db-label">DESCRIPTION</div>
                               <p class="av-db-text">
-                                {{ getDisplayDescription(vuln.description, idx) }}
+                                {{ getDisplayDescription(vuln, idx) }}
                               </p>
                               <button
-                                v-if="(vuln.description || '').length > descriptionPreviewLimit"
+                                v-if="descriptionText(vuln).length > descriptionPreviewLimit"
                                 type="button"
                                 class="av-read-more"
                                 @click="toggleDescription(idx)"
@@ -380,9 +379,7 @@
                               <button
                                 type="button"
                                 class="av-dtab"
-                                :class="{ active: currentVulnTab === 'auto', 'av-dtab--disabled': automationDownloadLocked }"
-                                :disabled="automationDownloadLocked"
-                                :title="automationDownloadLocked ? (authStore.automationPremiumMessage || 'Upgrade to Premium to use automated fixes') : ''"
+                                :class="{ active: currentVulnTab === 'auto' }"
                                 @click="setVulnDetailTab('auto')"
                               >
                                 <span class="av-dtab-emoji" aria-hidden="true">🤖</span>
@@ -402,7 +399,7 @@
                             <!-- Tab Content -->
                             <div
                               class="av-detail-tab-content"
-                              :class="{ 'av-detail-tab-content--manual': currentVulnTab === 'manual' || automationDownloadLocked }"
+                              :class="{ 'av-detail-tab-content--manual': currentVulnTab === 'manual' }"
                             >
                               <div v-if="currentVulnTab === 'auto'" class="av-auto-tab">
                                 <AutomatedFixPanel
@@ -431,6 +428,7 @@
                                     :asset-os="selectedAsset && selectedAsset.os ? selectedAsset.os : ''"
                                     @open-support-modal="onManualFixSupportModal"
                                     @team-resolved="onVulnTeamResolved"
+                                    @description-resolved="onVulnDescriptionResolved"
                                   />
                                 </div>
                               </div>
@@ -786,6 +784,7 @@ import {
   severityMatchesFilter,
   isAutomationNotAvailable,
   findVulnIndexInList,
+  pickVulnDescription,
 } from "@/utils/assetVulnerabilities";
 import { useAuthStore } from "@/stores/authStore";
 import {
@@ -1103,6 +1102,7 @@ class TLSConfigurator:
           }
         });
         const vuln = this.filteredVulnerabilities[index];
+        this.hydrateVulnDescription(vuln);
         const already = this.getAutomationForVuln(vuln);
         if (already) return;
         const id = this.resolveVulnPluginId(vuln);
@@ -1149,6 +1149,38 @@ class TLSConfigurator:
           v.assigned_team = team;
         }
       });
+    },
+    descriptionText(vuln) {
+      return pickVulnDescription(vuln);
+    },
+    onVulnDescriptionResolved(description) {
+      const idx = this.expandedVulnIndex;
+      const expanded = idx != null ? this.filteredVulnerabilities[idx] : null;
+      const name = String(expanded?.vul_name || expanded?.plugin_name || '').toLowerCase().trim();
+      this.patchVulnDescription(name, description);
+    },
+    patchVulnDescription(vulnName, description) {
+      const text = pickVulnDescription(description);
+      const name = String(vulnName || '').toLowerCase().trim();
+      if (!text || !name) return;
+      this.authStore.rememberVulnDescription(name, text);
+      const vulns = this.authStore.selectedAssetVulnerabilities || [];
+      vulns.forEach((v) => {
+        if (String(v.vul_name || v.plugin_name || '').toLowerCase().trim() !== name) return;
+        if (!pickVulnDescription(v)) v.description = text;
+      });
+    },
+    async hydrateVulnDescription(vuln) {
+      if (!vuln || pickVulnDescription(vuln)) return;
+      const fixId = String(vuln.fix_vulnerability_id || '').trim();
+      if (!fixId) return;
+      const os = this.selectedAsset?.os || 'windows';
+      const res = await this.authStore.getUserFixVulnerabilitySteps(fixId, os);
+      if (!res?.status) return;
+      this.patchVulnDescription(
+        vuln.vul_name || vuln.plugin_name,
+        pickVulnDescription(res.data),
+      );
     },
     async onManualFixSupportModal({ vulnName, step } = {}) {
       this.assetSrVulnName = vulnName || '';
@@ -1366,8 +1398,8 @@ class TLSConfigurator:
         [index]: !this.expandedDescriptions[index],
       };
     },
-    getDisplayDescription(description, index) {
-      const fullText = description || "-";
+    getDisplayDescription(vuln, index) {
+      const fullText = this.descriptionText(vuln) || 'No description available for this vulnerability.';
       if (this.isDescriptionExpanded(index) || fullText.length <= this.descriptionPreviewLimit) {
         return fullText;
       }
@@ -1769,7 +1801,6 @@ class TLSConfigurator:
       return 'auto';
     },
     setVulnDetailTab(tab) {
-      if (tab === 'auto' && this.automationDownloadLocked) return;
       this.currentVulnTab = tab;
     },
     findAssetPage(assetIp) {

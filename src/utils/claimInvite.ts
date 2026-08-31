@@ -67,29 +67,6 @@ function inviteExpiresAtPassed(payload: Record<string, unknown>): boolean {
   return Number.isFinite(ms) && ms <= Date.now();
 }
 
-/** Backend: { valid: true, report_count: N } | { valid: false }. Nested `data` is also accepted. */
-export function parseClaimInviteValidate(
-  data: unknown,
-  _httpStatus?: number,
-): {
-  valid: boolean;
-  expired: boolean;
-  report_count: number;
-} {
-  const payload = unwrapInvitePayload(data);
-  const report_count = Number(payload.report_count ?? payload.reports_count ?? payload.count) || 0;
-  const flag = readRawValidFlag(payload);
-  // Spec: expired banner only when the validate API returns { valid: false }.
-  if (flag === false) {
-    return { valid: false, expired: true, report_count: 0 };
-  }
-  if (flag === true) {
-    return { valid: true, expired: false, report_count: report_count || 1 };
-  }
-  // No `valid` field (network / empty body): do not show expired.
-  return { valid: true, expired: false, report_count: report_count || 1 };
-}
-
 /**
  * Only a real 15-minute (or backend) expiry: HTTP 410, expired/is_expired,
  * expires_at in the past, or an expiry error code/message.
@@ -112,6 +89,31 @@ export function isExplicitInviteExpired(data: unknown, httpStatus?: number): boo
     text.includes("token_expired") ||
     text.includes("no longer valid")
   );
+}
+
+/** Nested `data` is accepted. Expired banner only for real expiry, not every valid:false. */
+export function parseClaimInviteValidate(
+  data: unknown,
+  httpStatus?: number,
+): {
+  valid: boolean;
+  expired: boolean;
+  report_count: number;
+} {
+  const payload = unwrapInvitePayload(data);
+  const report_count = Number(payload.report_count ?? payload.reports_count ?? payload.count) || 0;
+  const expired = isExplicitInviteExpired(payload, httpStatus);
+  if (expired) {
+    return { valid: false, expired: true, report_count: 0 };
+  }
+  const flag = readRawValidFlag(payload);
+  if (flag === false) {
+    return { valid: false, expired: false, report_count: report_count || 1 };
+  }
+  if (flag === true) {
+    return { valid: true, expired: false, report_count: report_count || 1 };
+  }
+  return { valid: true, expired: false, report_count: report_count || 1 };
 }
 
 export function isInvitePayloadValid(data: unknown, httpStatus?: number): boolean {

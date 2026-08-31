@@ -638,18 +638,18 @@ router.beforeEach(async (to, from, next) => {
   }
 
   // Magic link is ?invite= only. Never rewrite ?token= (User/Admin set-password).
-  // /signup?invite= stays on SignupView so page-load validate is visible in Network.
-  // /signin and other auth URLs still open Home Get Started.
+  // /signup?invite= and other auth URLs open Home Get Started.
   const inviteToken = extractClaimInviteToken(to.query || {});
   if (inviteToken) {
     storeClaimInviteToken(inviteToken);
     try {
       await fetchClaimInviteValidate(inviteToken);
     } catch {
-      /* SignupView / Home modal still re-check */
+      /* Home modal still re-check */
     }
   }
   const inviteHomePaths = new Set([
+    "/signup",
     "/signin",
     "/auth",
     "/login",

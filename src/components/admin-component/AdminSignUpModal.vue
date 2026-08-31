@@ -251,6 +251,7 @@ import {
   clearClaimInvite,
   isClaimInviteFlow,
   markClaimInviteSignup,
+  readClaimInviteToken,
   readLiveMagicInvite,
   resolveSignupInviteToken,
   setClaimInviteValid,
@@ -264,6 +265,8 @@ import {
   pickTeamsTabUrl,
   readStoredTeamsDeepLink,
   resolveTeamsAdminDashboardUrl,
+  landOnTeamsAdminDashboardChannel,
+  openTeamsAdminDashboard,
   openTeamsOAuthPopup,
 } from '@/utils/teamsDeepLink';
 import { consumeAdminPlatformOAuthError } from '@/utils/platformOAuthMessage';
@@ -398,17 +401,20 @@ export default {
     },
     syncClaimInvite() {
       const live = readLiveMagicInvite(this.$route?.query || {});
+      const stored = readClaimInviteToken();
+      const token = live || stored;
       if (!live) {
-        clearClaimInvite();
-        this.inviteToken = '';
+        // Keep the stored magic-link token. Clearing it here dropped invite_token
+        // from verify-otp if the address bar lost ?invite= during signup.
+        this.inviteToken = stored;
         this.inviteChecked = true;
-        this.inviteValid = false;
+        this.inviteValid = !!stored;
         this.inviteExpired = false;
-        this.inviteReportCount = 0;
+        this.inviteReportCount = stored ? (this.inviteReportCount || 1) : 0;
         return;
       }
       storeClaimInviteToken(live);
-      this.inviteToken = live;
+      this.inviteToken = token;
       this.inviteChecked = false;
       this.inviteValid = false;
       this.inviteExpired = false;
@@ -423,7 +429,7 @@ export default {
       }
       try {
         const res = await this.authStore.validateClaimInvite(this.inviteToken);
-        this.inviteExpired = res.valid === false;
+        this.inviteExpired = res.expired === true;
         this.inviteValid = !this.inviteExpired;
         this.inviteReportCount = this.inviteExpired ? 0 : (res.report_count || 1);
         setClaimInviteValid(this.inviteValid);
@@ -515,7 +521,8 @@ export default {
           email: this.form.email,
           password: this.form.password,
           confirm_password: this.form.confirm_password,
-          recaptcha: this.recaptchaToken
+          recaptcha: this.recaptchaToken,
+          invite_token: this.signupInviteToken,
         });
         if (result.status) {
           this.otpSent = true;
@@ -544,7 +551,7 @@ export default {
       try {
         const authStore = useAuthStore();
         const verifyPayload = { email: this.form.email, otp: this.otp };
-        const inviteToken = this.signupInviteToken;
+        const inviteToken = this.signupInviteToken || this.inviteToken || readClaimInviteToken();
         if (inviteToken) verifyPayload.invite_token = inviteToken;
         const result = await authStore.signupVerifyOtp(verifyPayload);
         if (result.status) {
@@ -640,6 +647,7 @@ export default {
           password: this.form.password,
           confirm_password: this.form.confirm_password,
           recaptcha: this.recaptchaToken,
+          invite_token: this.signupInviteToken,
         });
         if (result.status) {
           this.otpDigits = ['', '', '', '', '', ''];
@@ -721,7 +729,7 @@ export default {
     async openStoredTeamsDashboard() {
       const stored = pickTeamsTabUrl(readStoredTeamsDeepLink());
       if (stored && !isBareTeamsHome(stored)) {
-        window.location.href = stored;
+        openTeamsAdminDashboard(stored, { newTab: true });
         return;
       }
       Swal.fire({
@@ -737,7 +745,7 @@ export default {
         return next.data || {};
       });
       if (url) {
-        window.location.href = url;
+        openTeamsAdminDashboard(url, { newTab: true });
       }
     },
     async startMicrosoftLogin() {
@@ -808,6 +816,15 @@ export default {
 
       persistTeamsDeepLink(extractTeamsDeepLink(event.data));
 
+      const teamId = teamObj?.groupId || teamObj?.group_id || teamObj?.team_id || teamObj?.id;
+      if (teamId && typeof this.authStore.subscribeTeamsWebhook === 'function') {
+        await this.authStore.subscribeTeamsWebhook(teamId);
+      }
+      if (typeof this.authStore.ensureTeamsChannelsCached === 'function') {
+        await this.authStore.ensureTeamsChannelsCached();
+      }
+      landOnTeamsAdminDashboardChannel(event.data, { newTab: true });
+
       Swal.fire({
         icon: 'success',
         title: event.data?.status === 'provisioning'
@@ -820,20 +837,8 @@ export default {
         showConfirmButton: false
       });
 
-      const teamId = teamObj?.team_id || teamObj?.id;
-      if (teamId && typeof this.authStore.subscribeTeamsWebhook === 'function') {
-        await this.authStore.subscribeTeamsWebhook(teamId);
-      }
-      if (teamId && typeof this.authStore.ensureTeamsChannelsCached === 'function') {
-        await this.authStore.ensureTeamsChannelsCached();
-      }
-
       markAdminSetPasswordEmailIfNew(event.data.is_new_user === true);
       this.ensureAuthSessionFromOAuth(event.data);
-      // Do NOT navigate this VaptFix tab to the Teams channel — the OAuth popup tab
-      // (MicrosoftCallbackView) already opens that itself. This tab must stay on
-      // VaptFix and continue the signup flow, exactly like the Slack path does
-      // (see onSlackConnected, which never navigates this window either).
       this.maybeFinishSignupAfterOAuth();
     },
     onStorageChange(event) {

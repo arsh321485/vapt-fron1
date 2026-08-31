@@ -415,15 +415,6 @@ export default {
       this.setPasswordToken = '';
       this.setPasswordEmail = '';
       clearStoredSetPasswordDeepLink();
-      clearStoredAdminSetPasswordDeepLink();
-    },
-    handleUserPasswordSet() {
-      this.signUpUserInitialTab = 'signIn';
-      this.setPasswordUidb64 = '';
-      this.setPasswordToken = '';
-      this.setPasswordEmail = '';
-      clearStoredSetPasswordDeepLink();
-      clearStoredAdminSetPasswordDeepLink();
     },
     openAdminSignUpModal() {
       this.showAdminSignUpModal = true;

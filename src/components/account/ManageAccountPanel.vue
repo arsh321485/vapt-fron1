@@ -326,6 +326,7 @@ import router from '@/router';
 import AdminProjectField from '@/components/admin-component/AdminProjectField.vue';
 import { billingErrorMessage, cancelSubscription, formatUsd, getMySubscription } from '@/services/billingApi';
 import { consumeAdminPlatformOAuthError } from '@/utils/platformOAuthMessage';
+import { openTeamsOAuthPopup } from '@/utils/teamsDeepLink';
 
 const USER_TEAM_KEY = 'vaptfix_user_preferred_team';
 
@@ -689,12 +690,7 @@ export default {
         const redirectUri = `${window.location.origin}/microsoft/callback`;
         const res = await this.authStore.getMicrosoftOAuthUrl(redirectUri, adminId);
         if (res.status && res.data?.auth_url) {
-          const width = 1000;
-          const height = 700;
-          const left = window.screenX + (window.outerWidth - width) / 2;
-          const top = window.screenY + (window.outerHeight - height) / 2;
-          const popup = window.open(res.data.auth_url, 'TeamsOAuth', `width=${width},height=${height},left=${left},top=${top}`);
-          if (!popup) {
+          if (!openTeamsOAuthPopup(res.data.auth_url)) {
             Swal.fire({ icon: 'warning', title: 'Popup blocked', text: 'Please allow popups for this site.', confirmButtonColor: '#241447' });
           }
         } else {

@@ -1,6 +1,14 @@
 <template>
   <div class="callback-loading">
     <p>{{ statusMessage }}</p>
+    <button
+      v-if="teamsOpenUrl"
+      type="button"
+      class="open-teams-btn"
+      @click="openTeamsNow"
+    >
+      Open VAPTFIX in Teams
+    </button>
   </div>
 </template>
 
@@ -21,14 +29,18 @@ import {
 import {
   extractTeamsDeepLink,
   persistTeamsDeepLink,
-  pickTeamsTabUrl,
   resolveTeamsAdminDashboardUrl,
+  landOnTeamsAdminDashboardChannel,
+  openTeamsAdminDashboard,
+  pickTeamsTabUrl,
+  readStoredTeamsDeepLink,
 } from "@/utils/teamsDeepLink";
 
 export default {
   data() {
     return {
       statusMessage: "Connecting Microsoft Teams...",
+      teamsOpenUrl: "",
     };
   },
   methods: {
@@ -69,19 +81,73 @@ export default {
         hashParams.get("access_token")
       );
     },
-    async finishMemberSuccess() {
+    resolvedTeamsUrl(payload = {}) {
+      return (
+        pickTeamsTabUrl(extractTeamsDeepLink(payload || {})) ||
+        pickTeamsTabUrl(readStoredTeamsDeepLink()) ||
+        ""
+      );
+    },
+    openTeamsNow() {
+      const url = this.teamsOpenUrl;
+      if (!url) return;
+      if (!openTeamsAdminDashboard(url, { newTab: false })) {
+        window.location.assign(url);
+      }
+    },
+    keepTeamsTabOpen(payload = {}) {
+      this.teamsOpenUrl = this.resolvedTeamsUrl(payload);
+      this.statusMessage = this.teamsOpenUrl
+        ? "Teams connected. Click below to open the VAPTFIX admin dashboard channel."
+        : "Teams connected. Waiting for the VAPTFIX admin dashboard channel…";
+    },
+    async landThisTabOnTeams(payload = {}) {
+      const authStore = useAuthStore();
+      try {
+        if (typeof authStore.ensureTeamsChannelsCached === "function") {
+          await authStore.ensureTeamsChannelsCached();
+        }
+      } catch {
+        /* continue with payload channels */
+      }
+      if (landOnTeamsAdminDashboardChannel(payload, { newTab: false })) {
+        return true;
+      }
+      const url = await resolveTeamsAdminDashboardUrl(payload, async () => {
+        try {
+          await authStore.ensureTeamsChannelsCached();
+        } catch {
+          /* ignore */
+        }
+        const statusRes = await authStore.fetchMicrosoftTeamsLoginStatus();
+        return statusRes.data || {};
+      });
+      if (url && openTeamsAdminDashboard(url, { newTab: false })) {
+        return true;
+      }
+      return false;
+    },
+    async finishMemberSuccess(payload = {}) {
       clearPendingMemberFlow();
       sessionStorage.setItem("member_teams_connected", "true");
       localStorage.setItem("member_teams_connected", "true");
       sessionStorage.removeItem("member_slack_connected");
       localStorage.removeItem("member_slack_connected");
+      persistTeamsDeepLink(extractTeamsDeepLink(payload || {}));
       this.notifyOpener({ type: "TEAMS_MEMBER_LOGGED_IN", success: true });
-      this.statusMessage = "Signed in. Opening your dashboard...";
-      if (window.opener) {
-        setTimeout(() => window.close(), 800);
+      this.statusMessage = "Signed in. Opening the VAPTFIX admin dashboard channel...";
+      if (await this.landThisTabOnTeams(payload)) {
         return;
       }
-      this.$router.replace("/userdashboard");
+      if (window.opener) {
+        this.keepTeamsTabOpen(payload);
+        return;
+      }
+      if (openTeamsAdminDashboard(this.resolvedTeamsUrl(payload), { newTab: true })) {
+        this.$router.replace("/userdashboard");
+        return;
+      }
+      this.keepTeamsTabOpen(payload);
     },
     async handleMemberCallback(accessToken) {
       const authStore = useAuthStore();
@@ -99,7 +165,7 @@ export default {
       });
 
       if (res.status) {
-        await this.finishMemberSuccess();
+        await this.finishMemberSuccess(res.data || {});
       } else if (this.redirectMemberToSetPassword(res.details)) {
         clearPendingMemberFlow();
         this.statusMessage = "Redirecting to set your password...";
@@ -149,32 +215,28 @@ export default {
             ? "Setting up your workspace..."
             : "Opening the VAPTFIX admin dashboard channel...";
 
-        const tabUrl = pickTeamsTabUrl(links);
-        if (tabUrl) {
-          window.location.href = tabUrl;
+        if (await this.landThisTabOnTeams(res.data)) {
           return;
         }
 
-        const url = await resolveTeamsAdminDashboardUrl(res.data, async () => {
-          const statusRes = await authStore.fetchMicrosoftTeamsLoginStatus();
-          return statusRes.data || {};
-        });
-        if (url) {
-          window.location.href = url;
-          return;
-        }
-        this.statusMessage =
-          "Teams connected. Waiting for the VAPTFIX admin dashboard channel…";
+        // VaptFix tab (opener) continues Provide Scope. This tab must stay as Teams — never close it.
         if (window.opener) {
-          setTimeout(() => window.close(), 1200);
+          this.keepTeamsTabOpen(res.data);
           return;
         }
-        try {
-          const next = await authStore.getAdminOnboardingRoute();
-          this.$router.replace(next);
-        } catch {
-          this.$router.replace("/riskcriteria");
+
+        const url = this.resolvedTeamsUrl(res.data);
+        if (url && openTeamsAdminDashboard(url, { newTab: true })) {
+          try {
+            const next = await authStore.getAdminOnboardingRoute();
+            this.$router.replace(next);
+          } catch {
+            this.$router.replace("/admin-upload-report");
+          }
+          return;
         }
+
+        this.keepTeamsTabOpen(res.data);
       } else {
         const message =
           res.message ||
@@ -240,3 +302,26 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+.callback-loading {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+  text-align: center;
+  font-family: inherit;
+}
+.open-teams-btn {
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 18px;
+  background: #241447;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+</style>

@@ -467,7 +467,13 @@ import {
   markPendingMemberFlow,
   readPendingMemberFlow,
 } from '@/utils/authenticatedHome';
-import { persistTeamsDeepLink, extractTeamsDeepLink, redirectToTeamsTabUrl } from '@/utils/teamsDeepLink';
+import {
+  persistTeamsDeepLink,
+  extractTeamsDeepLink,
+  redirectToTeamsTabUrl,
+  landOnTeamsAdminDashboardChannel,
+  openTeamsOAuthPopup,
+} from '@/utils/teamsDeepLink';
 import { consumeAdminPlatformOAuthError } from '@/utils/platformOAuthMessage';
 
 export default {
@@ -673,7 +679,10 @@ export default {
         if (newVal) {
           try {
             const fromQuery = extractClaimInviteToken(this.$route?.query || {});
-            if (fromQuery) storeClaimInviteToken(fromQuery);
+            if (fromQuery) {
+              storeClaimInviteToken(fromQuery);
+              void useAuthStore().validateClaimInvite(fromQuery);
+            }
           } catch {
             /* invite is optional on normal sign-in */
           }
@@ -1143,18 +1152,7 @@ export default {
         const redirectUri = `${window.location.origin}/microsoft/callback`;
         const res = await authStore.getMicrosoftOAuthUrl(redirectUri, adminId);
         if (res.status && res.data?.auth_url) {
-          const width = 1000;
-          const height = 700;
-          const left = window.screenX + (window.outerWidth - width) / 2;
-          const top = window.screenY + (window.outerHeight - height) / 2;
-          const popup = window.open(
-            res.data.auth_url,
-            'TeamsOAuth',
-            `width=${width},height=${height},left=${left},top=${top}`
-          );
-          if (!popup) {
-            alert('Popup blocked! Please allow popups for this site.');
-          }
+          openTeamsOAuthPopup(res.data.auth_url);
         } else {
           Swal.fire('Error', 'Failed to start Microsoft Teams login', 'error');
         }
@@ -1220,6 +1218,7 @@ export default {
         sessionStorage.setItem('admin_teams_connected', 'true');
         sessionStorage.removeItem('admin_slack_connected');
         this.ensureAdminAuthSessionFromOAuth(event.data);
+        landOnTeamsAdminDashboardChannel(event.data, { newTab: true });
         if (event.data.is_new_user === true) {
           markAdminSetPasswordEmailIfNew(true);
         } else {
@@ -1230,8 +1229,6 @@ export default {
             showConfirmButton: false
           });
         }
-        // Do NOT navigate this tab to the Teams channel — the OAuth popup tab
-        // already opens that itself. Keep this tab on VaptFix, same as Slack above.
         await this.finishAdminOAuthSignIn();
       }
     },
@@ -1317,18 +1314,7 @@ export default {
         const redirectUri = `${window.location.origin}/microsoft/callback?flow=member`;
         const res = await authStore.getMicrosoftMemberOAuthUrl(redirectUri, email);
         if (res.status && res.data?.auth_url) {
-          const width = 1000;
-          const height = 700;
-          const left = window.screenX + (window.outerWidth - width) / 2;
-          const top = window.screenY + (window.outerHeight - height) / 2;
-          const popup = window.open(
-            res.data.auth_url,
-            'TeamsMemberOAuth',
-            `width=${width},height=${height},left=${left},top=${top}`
-          );
-          if (!popup) {
-            alert('Popup blocked! Please allow popups for this site.');
-          }
+          openTeamsOAuthPopup(res.data.auth_url);
         } else {
           Swal.fire({ icon: 'error', title: 'Error', text: res.message || 'Failed to start Microsoft Teams login', confirmButtonColor: '#241447' });
         }
@@ -1700,9 +1686,6 @@ export default {
       this.adminLoading = true;
       try {
         const authStore = useAuthStore();
-        const fromQuery = extractClaimInviteToken(this.$route?.query || {});
-        if (fromQuery) storeClaimInviteToken(fromQuery);
-        const inviteToken = fromQuery || readClaimInviteToken();
         const result = await authStore.login({
           email: this.adminForm.email,
           password: this.adminForm.password,
@@ -1724,16 +1707,15 @@ export default {
         }
       } catch (err) {
         console.error('Admin login error:', err);
+        const data = err?.response?.data;
         const raw =
-          err?.response?.data?.non_field_errors?.[0] ||
-          err?.response?.data?.detail ||
-          err?.response?.data?.message ||
-          err?.message ||
-          '';
-        const isCodeError = /is not defined|cannot read|undefined is not a function/i.test(String(raw));
-        this.adminErrorMessage = isCodeError
-          ? 'Something went wrong. Please try again.'
-          : (raw || 'Invalid email or password. Please try again.');
+          (typeof data?.message === 'string' && data.message) ||
+          (typeof data?.detail === 'string' && data.detail) ||
+          (Array.isArray(data?.non_field_errors) && data.non_field_errors[0]) ||
+          (typeof err?.message === 'string' && !/is not defined|cannot read|undefined is not a function/i.test(err.message)
+            ? err.message
+            : '');
+        this.adminErrorMessage = raw || 'Invalid email or password. Please try again.';
         this.adminForm.password = '';
         this.safeResetAdminRecaptcha();
       } finally {
@@ -1794,7 +1776,7 @@ export default {
         const route = await authStore.getAdminOnboardingRoute();
         this.$router.replace(route);
       } catch {
-        this.$router.replace(isClaimInviteFlow() ? '/communication' : '/admin-upload-report');
+        this.$router.replace('/admin-upload-report');
       }
     },
     openForgotPassword(type) {

@@ -816,6 +816,12 @@ import { useAuthStore } from '@/stores/authStore';
 import { countUniqueIpHosts } from '@/utils/assetDummyData';
 import { isClaimInviteFlow } from '@/utils/claimInvite';
 import { isScopeAwaitingScan, markScopeAwaitingScan, markScopeFileAwaitingSuperadmin, readStoredAdminEmail } from '@/utils/scopeScanGate';
+import {
+  clearPersistedAgentGeneration,
+  isAgentGenerationInProgress,
+  persistAgentGeneration,
+  readPersistedAgentGeneration,
+} from '@/utils/agentGeneration';
 import { isExternalDeepLink } from '@/utils/routeLock';
 import {
   billingErrorMessage,
@@ -1056,9 +1062,6 @@ export default {
     },
     existingReportIpCount() {
       return this.recommendAssetCount();
-    },
-    hasExistingReport() {
-      return this.existingUploadedFiles.length > 0;
     },
     hasExistingReport() {
       return this.existingUploadedFiles.length > 0;
@@ -1492,6 +1495,7 @@ export default {
       this.redirecting = false;
       this.reportIds = [];
       this.statusByReportId = {};
+      clearPersistedAgentGeneration();
       const source = this.planSuggestPrompt?.source || this.savedSuggestPrompt?.source || 'upload';
       this.planSuggestPrompt = null;
       this.planLimitPrompt = null;
@@ -2522,9 +2526,11 @@ export default {
 
         try {
           const upload = await authStore.getScopingUploadStatus();
+          if (upload.cards_generating === true || isAgentGenerationInProgress(upload)) {
+            return await this.resumeAgentGenerationIfNeeded();
+          }
           const hasSlackFile =
             upload.file_uploaded === true ||
-            upload.cards_generating === true ||
             Number(upload.reports_ready) > 0 ||
             Number(upload.reports_total) > 0;
           if (hasSlackFile) {
@@ -2540,6 +2546,9 @@ export default {
         }
 
         await this.loadExistingReport();
+        if (isAgentGenerationInProgress(this.existingReport)) {
+          return await this.resumeAgentGenerationIfNeeded();
+        }
         if (this.hasExistingReport) {
           this.redirecting = true;
           this.stopExternalReportWatch();
@@ -2593,22 +2602,82 @@ export default {
 
         if (this.allAgentsReady) {
           this.stopPolling();
+          clearPersistedAgentGeneration();
           await this.redirectAfterAgentsReady();
         }
       } finally {
         this.polling = false;
       }
     },
-    startPolling(reportIds) {
-      this.reportIds = reportIds;
-      this.statusByReportId = {};
+    startPolling(reportIds, seedStatus = null) {
+      this.reportIds = [...new Set((reportIds || []).map((id) => String(id || '').trim()).filter(Boolean))];
+      this.statusByReportId =
+        seedStatus && typeof seedStatus === 'object' ? { ...seedStatus } : {};
       this.generating = true;
       this.redirecting = false;
+      persistAgentGeneration(readStoredAdminEmail(), this.reportIds);
       this.stopPolling();
       this.pollOnce();
       this.pollTimer = setInterval(() => {
         if (!document.hidden && !this.redirecting) this.pollOnce();
       }, STATUS_POLL_MS);
+    },
+    async resumeAgentGenerationIfNeeded() {
+      if (this.generating || this.redirecting || this.uploading) return false;
+      if (this.isReplacingUpload) return false;
+
+      const authStore = useAuthStore();
+      const email = readStoredAdminEmail();
+      const persisted = readPersistedAgentGeneration(email);
+      const reportId = String(this.existingReportId || '').trim();
+      const ids = [...new Set([...(persisted?.reportIds || []), reportId].filter(Boolean))];
+
+      if (!ids.length && !isAgentGenerationInProgress(this.existingReport)) return false;
+
+      const seed = {};
+      if (reportId && this.existingReport) seed[reportId] = this.existingReport;
+
+      let anyInProgress = isAgentGenerationInProgress(this.existingReport);
+      for (const id of ids) {
+        try {
+          const res = await authStore.fetchUploadReportStatus(id);
+          if (res.status && res.data) {
+            seed[id] = { ...(seed[id] || {}), ...res.data };
+            if (isAgentGenerationInProgress(res.data)) anyInProgress = true;
+          }
+        } catch {
+          /* keep checking other ids */
+        }
+      }
+
+      if (!anyInProgress) {
+        try {
+          const scoping = await authStore.getScopingUploadStatus();
+          if (scoping.cards_generating === true || isAgentGenerationInProgress(scoping)) {
+            anyInProgress = true;
+            if (reportId) {
+              seed[reportId] = { ...(seed[reportId] || {}), ...scoping };
+            }
+          }
+        } catch {
+          /* optional */
+        }
+      }
+
+      if (!anyInProgress && persisted?.reportIds?.length && !Object.keys(seed).length) {
+        anyInProgress = true;
+      }
+
+      if (!anyInProgress) {
+        clearPersistedAgentGeneration();
+        return false;
+      }
+
+      const pollIds = ids.length ? ids : persisted?.reportIds || [];
+      if (!pollIds.length) return false;
+
+      this.startPolling(pollIds, seed);
+      return true;
     },
     async redirectAfterAgentsReady() {
       if (this.redirecting) return;
@@ -2629,6 +2698,7 @@ export default {
 
       this.redirecting = true;
       this.stopPolling();
+      clearPersistedAgentGeneration();
 
       try {
         const { syncSubscriptionAssets } = await import('@/services/billingApi');
@@ -2728,6 +2798,9 @@ export default {
     }
     this.applyRouteMode();
     await Promise.all([this.loadExistingScope(), this.loadExistingReport(), this.loadSubscription()]);
+    if (await this.resumeAgentGenerationIfNeeded()) {
+      return;
+    }
     const authStore = useAuthStore();
     const status = await authStore.getReportStatus();
     if (
@@ -2744,7 +2817,9 @@ export default {
     }
     // Paid onboarding can skip this screen once a report already exists.
     // Unpaid must stay here: upload the file, then pick a plan.
+    // If agents are still generating, stay and keep polling.
     if (status?.hasReport && !this.isExplicitScopeVisit && (await authStore.hasPaidPlan())) {
+      if (await this.resumeAgentGenerationIfNeeded()) return;
       this.redirecting = true;
       await this.$router.replace(await authStore.getAdminOnboardingRoute());
       return;

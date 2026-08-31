@@ -372,10 +372,10 @@
                             <div class="av-description-block">
                               <div class="av-db-label">DESCRIPTION</div>
                               <p class="av-db-text">
-                                {{ getDisplayDescription(v.description, i) }}
+                                {{ getDisplayDescription(v, i) }}
                               </p>
                               <button
-                                v-if="(v.description || '').length > descriptionPreviewLimit"
+                                v-if="descriptionText(v).length > descriptionPreviewLimit"
                                 type="button"
                                 class="av-read-more"
                                 @click="toggleDescription(i)"
@@ -397,9 +397,7 @@
                               <button
                                 type="button"
                                 class="av-dtab"
-                                :class="{ active: currentVulnTab === 'auto', 'av-dtab--disabled': automationDownloadLocked }"
-                                :disabled="automationDownloadLocked"
-                                :title="automationDownloadLocked ? (authStore.automationPremiumMessage || 'Upgrade to Premium to use automated fixes') : ''"
+                                :class="{ active: currentVulnTab === 'auto' }"
                                 @click="setVulnDetailTab('auto')"
                               >
                                 <span class="av-dtab-emoji" aria-hidden="true">🤖</span>
@@ -432,7 +430,7 @@
                                 />
                               </div>
 
-                              <div v-show="currentVulnTab === 'manual' || automationDownloadLocked" class="av-manual-tab">
+                              <div v-show="currentVulnTab === 'manual'" class="av-manual-tab">
                                 <div v-if="manualPanelMountedIndex === i" class="av-asset-section">
                                   <div v-if="v.operating_system" class="av-asset-label">
                                     <span class="av-asset-os-lbl">{{ v.operating_system }}</span>
@@ -447,6 +445,7 @@
                                     :asset-os="v.operating_system || 'windows'"
                                     :fix-id="fixIdForVuln(v)"
                                     @team-resolved="onVulnTeamResolved"
+                                    @description-resolved="onVulnDescriptionResolved"
                                   />
                                 </div>
                               </div>
@@ -619,6 +618,7 @@ import {
   isActiveVulnStatus,
   lookupFixVulnerabilityId,
   findVulnIndexInList,
+  pickVulnDescription,
 } from "@/utils/assetVulnerabilities";
 import { useAuthStore } from "@/stores/authStore";
 import { resolveVulnPluginId as lookupVulnPluginId } from "@/utils/automationScriptDownload";
@@ -934,12 +934,6 @@ class TLSConfigurator:
     activeFilters() {
       this.expandedVulnIndex = null;
     },
-    automationDownloadLocked: {
-      handler(locked) {
-        if (locked && this.currentVulnTab === 'auto') this.setVulnDetailTab('manual');
-      },
-      immediate: true,
-    },
     pagedAssets: {
       handler(list) {
         if (this.$route.query?.asset) return;
@@ -1053,6 +1047,7 @@ class TLSConfigurator:
         });
         // Fetch individual automation script for opened vuln
         const vuln = this.filteredVulnerabilities[index];
+        this.hydrateVulnDescription(vuln);
         const already = this.getAutomationForVuln(vuln);
         if (already) return;
         const id = this.resolveVulnPluginId(vuln);
@@ -1097,6 +1092,37 @@ class TLSConfigurator:
           v.assigned_team = team;
         }
       });
+    },
+    descriptionText(vuln) {
+      return pickVulnDescription(vuln);
+    },
+    onVulnDescriptionResolved(description) {
+      const idx = this.expandedVulnIndex;
+      const expanded = idx != null ? this.filteredVulnerabilities[idx] : null;
+      const name = String(expanded?.vul_name || expanded?.plugin_name || '').toLowerCase().trim();
+      this.patchVulnDescription(name, description);
+    },
+    patchVulnDescription(vulnName, description) {
+      const text = pickVulnDescription(description);
+      const name = String(vulnName || '').toLowerCase().trim();
+      if (!text || !name) return;
+      this.authStore.rememberVulnDescription(name, text);
+      const vulns = this.authStore.selectedAssetVulnerabilities || [];
+      vulns.forEach((v) => {
+        if (String(v.vul_name || v.plugin_name || '').toLowerCase().trim() !== name) return;
+        if (!pickVulnDescription(v)) v.description = text;
+      });
+    },
+    async hydrateVulnDescription(vuln) {
+      if (!vuln || pickVulnDescription(vuln)) return;
+      const fixId = this.fixIdForVuln(vuln);
+      if (!fixId) return;
+      const res = await this.authStore.getFixVulnerabilitySteps(fixId);
+      if (!res?.status) return;
+      this.patchVulnDescription(
+        vuln.vul_name || vuln.plugin_name,
+        pickVulnDescription(res.data),
+      );
     },
     resolveAutomationMatched(vuln) {
       const data = this.getAutomationForVuln(vuln);
@@ -1651,8 +1677,8 @@ class TLSConfigurator:
         [index]: !this.expandedDescriptions[index],
       };
     },
-    getDisplayDescription(description, index) {
-      const fullText = description || "-";
+    getDisplayDescription(vuln, index) {
+      const fullText = this.descriptionText(vuln) || 'No description available for this vulnerability.';
       if (this.isDescriptionExpanded(index) || fullText.length <= this.descriptionPreviewLimit) {
         return fullText;
       }
@@ -1693,7 +1719,6 @@ class TLSConfigurator:
       return 'auto';
     },
     setVulnDetailTab(tab) {
-      if (tab === 'auto' && this.automationDownloadLocked) return;
       this.currentVulnTab = tab;
       if (tab === 'manual' && this.expandedVulnIndex != null) {
         this.manualPanelMountedIndex = this.expandedVulnIndex;

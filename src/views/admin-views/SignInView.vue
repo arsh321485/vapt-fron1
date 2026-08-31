@@ -157,7 +157,13 @@
 <script>
 import { useAuthStore } from '@/stores/authStore'
 import { markAdminSetPasswordEmailIfNew, markPostLoginSuccess } from '@/utils/postLoginSuccess'
-import { extractTeamsDeepLink, persistTeamsDeepLink, redirectToTeamsTabUrl } from '@/utils/teamsDeepLink'
+import {
+  extractTeamsDeepLink,
+  persistTeamsDeepLink,
+  redirectToTeamsTabUrl,
+  landOnTeamsAdminDashboardChannel,
+  openTeamsOAuthPopup,
+} from '@/utils/teamsDeepLink'
 import { extractClaimInviteToken, readClaimInviteToken, setClaimInviteValid, storeClaimInviteToken } from '@/utils/claimInvite'
 import { consumeAdminPlatformOAuthError } from '@/utils/platformOAuthMessage'
 import Swal from 'sweetalert2'
@@ -284,18 +290,7 @@ export default {
         const redirectUri = `${window.location.origin}/microsoft/callback`
         const res = await authStore.getMicrosoftOAuthUrl(redirectUri, adminId)
         if (res.status && res.data?.auth_url) {
-          const width = 1000
-          const height = 700
-          const left = window.screenX + (window.outerWidth - width) / 2
-          const top = window.screenY + (window.outerHeight - height) / 2
-          const popup = window.open(
-            res.data.auth_url,
-            'TeamsOAuth',
-            `width=${width},height=${height},left=${left},top=${top}`
-          )
-          if (!popup) {
-            alert('Popup blocked! Please allow popups for this site.')
-          }
+          openTeamsOAuthPopup(res.data.auth_url)
         } else {
           Swal.fire('Error', 'Failed to start Microsoft Teams login', 'error')
         }
@@ -352,8 +347,7 @@ export default {
           useAuthStore().setAdminLoginMethod('teams')
         } catch (_) { /* ignore */ }
         markAdminSetPasswordEmailIfNew(event.data.is_new_user === true)
-        // Do NOT navigate this tab to the Teams channel — the OAuth popup tab
-        // already opens that itself. Keep this tab on VaptFix, same as Slack above.
+        landOnTeamsAdminDashboardChannel(event.data, { newTab: true })
         await this.finishOAuthSignIn()
       }
     },
@@ -378,14 +372,10 @@ export default {
       this.loading = true
       try {
         const authStore = useAuthStore()
-        const fromQuery = extractClaimInviteToken(this.$route?.query || {})
-        if (fromQuery) storeClaimInviteToken(fromQuery)
-        const inviteToken = fromQuery || readClaimInviteToken()
         const result = await authStore.login({
           email: this.form.email,
           password: this.form.password,
           recaptcha: recaptchaResponse,
-          ...(inviteToken ? { invite_token: inviteToken } : {}),
         })
 
         if (result.status) {
@@ -469,7 +459,7 @@ export default {
         const route = await authStore.getAdminOnboardingRoute()
         this.$router.replace(route)
       } catch {
-        this.$router.replace(readClaimInviteToken() ? '/communication' : '/admin-upload-report')
+        this.$router.replace('/admin-upload-report')
       }
     }
   },

@@ -8,7 +8,10 @@ import {
   extractFixVulnerabilityId,
   filterDeletedVulnsForHost,
   lookupFixVulnerabilityId,
+  mergeDescriptionsIntoVulns,
   normalizeAssetVulnerabilityList,
+  pickVulnDescription,
+  vulnDisplayName,
 } from "@/utils/assetVulnerabilities";
 import {
   extractAssetRows,
@@ -32,6 +35,11 @@ import {
   markScopeFileAwaitingSuperadmin,
   readStoredAdminEmail,
 } from "@/utils/scopeScanGate";
+import {
+  clearPersistedAgentGeneration,
+  isAgentGenerationInProgress,
+  readPersistedAgentGeneration,
+} from "@/utils/agentGeneration";
 import { extractTeamsDeepLink, persistTeamsDeepLink } from "@/utils/teamsDeepLink";
 import {
   extractMitigationTimeline,
@@ -287,6 +295,7 @@ export const useAuthStore = defineStore("auth", {
     assetSearchCount: 0,
     selectedAssetDetail: null as any,
     selectedAssetVulnerabilities: [] as any[],
+    vulnDescriptionCache: {} as Record<string, string>,
     mitigationTimeline: null as any,
     freemiumUpgrade: null as null | {
       eligible: boolean;
@@ -455,9 +464,24 @@ export const useAuthStore = defineStore("auth", {
       password: string;
       confirm_password: string;
       recaptcha: string;
+      invite_token?: string;
     }) {
       try {
-        const res = await endpoint.post("/api/admin/users/signup/send-otp/", payload);
+        const body: {
+          email: string;
+          password: string;
+          confirm_password: string;
+          recaptcha: string;
+          invite_token?: string;
+        } = {
+          email: payload.email,
+          password: payload.password,
+          confirm_password: payload.confirm_password,
+          recaptcha: payload.recaptcha,
+        };
+        const invite = String(payload.invite_token || readClaimInviteToken() || "").trim();
+        if (invite) body.invite_token = invite;
+        const res = await endpoint.post("/api/admin/users/signup/send-otp/", body);
         return { status: true, data: res.data, message: res.data.message };
       } catch (error: any) {
         const errorData = error.response?.data;
@@ -682,7 +706,6 @@ export const useAuthStore = defineStore("auth", {
         // Do not clear the magic-link flag here — a failed attempt must not wipe it,
         // and a success still needs it for the post-login route.
         clearAllAuthTokens();
-        clearClaimInvite();
         localStorage.removeItem("reportId");
         this.reportStatus.state = null;
         this.reportStatus.hasReport = false;
@@ -1714,6 +1737,15 @@ export const useAuthStore = defineStore("auth", {
         persistTeamsDeepLink(extractTeamsDeepLink(data));
         this.setAdminLoginMethod("teams");
 
+        const tenantId =
+          data.tokens?.tenant_id ||
+          data.tenant_id ||
+          data.user?.tenant_id ||
+          "";
+        if (tenantId) {
+          localStorage.setItem("microsoft_tenant_id", String(tenantId));
+        }
+
         // 🆕 Save new user flag
         localStorage.setItem("is_new_teams_user", String(data.is_new_user));
 
@@ -2048,11 +2080,15 @@ export const useAuthStore = defineStore("auth", {
         if (!Array.isArray(channels) || channels.length === 0) return null;
         const preferred =
           channels.find((c) =>
+            /admin\s*dashboard/i.test(String(c.displayName || c.name || c.channel_name || "")),
+          ) ||
+          channels.find((c) =>
             /general/i.test(String(c.displayName || c.name || c.channel_name || "")),
-          ) || channels[0];
+          ) ||
+          channels[0];
         const channelId = preferred.id || preferred.channel_id;
         const channelName =
-          preferred.displayName || preferred.name || preferred.channel_name || "General";
+          preferred.displayName || preferred.name || preferred.channel_name || "vaptfix admin dashboard";
         if (!channelId) return null;
         return { channelId: String(channelId), channelName: String(channelName) };
       } catch {
@@ -2224,11 +2260,25 @@ export const useAuthStore = defineStore("auth", {
       }
 
       const seen = new Set<string>();
-      return matched.filter((c) => {
+      const unique = matched.filter((c) => {
         if (seen.has(c.channelId)) return false;
         seen.add(c.channelId);
         return true;
       });
+
+      const dashboard = channels.find((ch) =>
+        /admin\s*dashboard/i.test(String(ch.displayName || ch.name || ch.channel_name || "")),
+      );
+      const dashboardId = dashboard ? String(dashboard.id || dashboard.channel_id || "") : "";
+      if (dashboardId && !seen.has(dashboardId)) {
+        unique.unshift({
+          channelId: dashboardId,
+          channelName: String(
+            dashboard.displayName || dashboard.name || dashboard.channel_name || "vaptfix admin dashboard",
+          ),
+        });
+      }
+      return unique;
     },
 
     async syncNewUserToAllConnectedPlatforms(
@@ -4009,7 +4059,8 @@ export const useAuthStore = defineStore("auth", {
           `/api/user/asset/report/${reportId}/asset/${assetIp}/vulnerabilities/`,
           { params: teamParam ? { team: teamParam } : {} },
         );
-        let vulns = normalizeAssetVulnerabilityList(res.data.vulnerabilities || []);
+        const apiVulns = normalizeAssetVulnerabilityList(res.data.vulnerabilities || []);
+        let vulns = apiVulns;
         if (!vulns.length) {
           await this.fetchUserVulnerabilityRegister(true);
           vulns = buildVulnsFromRegister(
@@ -4017,6 +4068,9 @@ export const useAuthStore = defineStore("auth", {
             assetIp,
             this.userDeletedVulnerabilityAssets,
           );
+        } else if (this.cachedUserVulnRegister?.length) {
+          vulns = mergeDescriptionsIntoVulns(vulns, this.cachedUserVulnRegister);
+          vulns = enrichVulnsFromRegister(vulns, this.cachedUserVulnRegister, assetIp);
         }
         vulns = filterDeletedVulnsForHost(vulns, assetIp, this.userDeletedVulnerabilityAssets);
         this.selectedAssetVulnerabilities = vulns;
@@ -4862,6 +4916,7 @@ export const useAuthStore = defineStore("auth", {
             steps: res.data.steps || [],
             post_mitigation_troubleshooting_guide:
               res.data.post_mitigation_troubleshooting_guide || [],
+            description: pickVulnDescription(res.data),
           },
         };
       } catch (error) {
@@ -4935,6 +4990,7 @@ export const useAuthStore = defineStore("auth", {
             steps: res.data.steps || [],
             post_mitigation_troubleshooting_guide:
               res.data.post_mitigation_troubleshooting_guide || [],
+            description: pickVulnDescription(res.data),
           },
         };
       } catch (error) {
@@ -7176,13 +7232,16 @@ export const useAuthStore = defineStore("auth", {
 
         // Register rows are the source of truth for fix_vulnerability_id.
         await this.fetchVulnerabilityRegister(false);
+        const apiVulns = normalizeAssetVulnerabilityList(res.data.vulnerabilities || []);
         let vulns = buildVulnsFromRegister(
           this.vulnerabilityRows,
           asset,
           this.deletedVulnerabilityAssets,
         );
         if (!vulns.length) {
-          vulns = normalizeAssetVulnerabilityList(res.data.vulnerabilities || []);
+          vulns = apiVulns;
+        } else {
+          vulns = mergeDescriptionsIntoVulns(vulns, apiVulns);
         }
         vulns = enrichVulnsFromRegister(vulns, this.vulnerabilityRows, asset);
         vulns = filterDeletedVulnsForHost(vulns, asset, this.deletedVulnerabilityAssets);
@@ -7545,6 +7604,37 @@ export const useAuthStore = defineStore("auth", {
       return reportId;
     },
 
+    /** Persist plugin description so All Assets / All Vulnerabilities share the same text. */
+    rememberVulnDescription(name: string, text: string) {
+      const key = String(name || "").toLowerCase().trim();
+      const desc = pickVulnDescription(text);
+      if (!key || !desc) return;
+      if (this.vulnDescriptionCache[key] === desc) return;
+      this.vulnDescriptionCache = { ...this.vulnDescriptionCache, [key]: desc };
+    },
+
+    async fetchAndCacheAssetVulnDescriptions(assetIp: string, isUser = false) {
+      const ip = String(assetIp || "").trim();
+      if (!ip) return [];
+      try {
+        const reportId = isUser
+          ? this.userLatestReportId
+          : (await this.resolveReportId()) || this.latestReportId;
+        if (!reportId) return [];
+        const url = isUser
+          ? `/api/user/asset/report/${reportId}/asset/${encodeURIComponent(ip)}/vulnerabilities/`
+          : `/api/admin/adminasset/report/${reportId}/asset/${encodeURIComponent(ip)}/vulnerabilities/`;
+        const res = await endpoint.get(url);
+        const vulns = normalizeAssetVulnerabilityList(res.data?.vulnerabilities || []);
+        vulns.forEach((v) => {
+          this.rememberVulnDescription(vulnDisplayName(v) || String(v.vul_name || ""), pickVulnDescription(v));
+        });
+        return vulns;
+      } catch {
+        return [];
+      }
+    },
+
     /** Persist the active report after upload/agent generation and drop stale caches. */
     setActiveReportId(reportId: string) {
       const id = String(reportId || "").trim();
@@ -7557,6 +7647,7 @@ export const useAuthStore = defineStore("auth", {
       this.vulnerabilityCount = 0;
       this.selectedAssetVulnerabilities = [];
       this.selectedAssetDetail = null;
+      this.vulnDescriptionCache = {};
       this.allReportVulnerabilities = [];
       this.allReportVulnerabilitiesFetched = false;
     },
@@ -7704,12 +7795,46 @@ export const useAuthStore = defineStore("auth", {
       return !!(data.id || Number(data.entry_count) || entries.length);
     },
 
+    /** True while scan-report agents are still being generated on the backend. */
+    async isUploadAgentGenerationInProgress(reportId?: string | null): Promise<boolean> {
+      const email = readStoredAdminEmail();
+      const persisted = readPersistedAgentGeneration(email);
+      const ids = [
+        ...new Set(
+          [String(reportId || "").trim(), ...(persisted?.reportIds || [])].filter(Boolean),
+        ),
+      ];
+
+      let fetchedAny = false;
+      for (const id of ids) {
+        try {
+          const res = await this.fetchUploadReportStatus(id);
+          if (res.status && res.data) {
+            fetchedAny = true;
+            if (isAgentGenerationInProgress(res.data)) return true;
+          }
+        } catch {
+          /* try next id */
+        }
+      }
+
+      if (fetchedAny) {
+        if (persisted) clearPersistedAgentGeneration();
+        return false;
+      }
+      return !!persisted;
+    },
+
     /** Route after login / onboarding actions based on report-status.state */
     async getAdminOnboardingRoute(): Promise<string> {
       this.initCompletedSteps();
 
       const claimed = isClaimInviteFlow();
       const res = await this.getReportStatus();
+
+      if (!claimed && (await this.isUploadAgentGenerationInProgress(res.reportId))) {
+        return "/admin-upload-report";
+      }
 
       // Super-admin magic link (file already attached) skips payment + upload.
       if (claimed) {

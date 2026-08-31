@@ -25,28 +25,34 @@ export const ASSET_TYPE_DISPLAY: AssetTypeDisplay[];
 export function normalizeAssetType(value: unknown): string;
 export function assetTypeFromFilterKey(filterKey: unknown): string;
 export function uiTypeFromAssetType(assetType: unknown): string;
-export function filterAssetsByType(assets: any, filterKey: unknown): any[];
-export function extractAssetRows(payload: unknown): any[];
-export function getAssetHostName(asset: any): string;
+export function filterAssetsByType<T>(assets: T[] | null | undefined, filterKey: unknown): T[];
+export function extractAssetRows(payload: unknown): Record<string, unknown>[];
+export function getAssetHostName(asset: unknown): string;
 export function extractIpAddress(name: unknown): string;
 export function countUniqueIpHosts(rows: unknown): number;
-export function getRowScanHost(row: any): string;
+export function getRowScanHost(row: unknown): string;
 export function isPlatformLabelHost(name: unknown): boolean;
 export function isRealScanHost(name: unknown): boolean;
-export function collectScanHosts(row: any): string[];
-export function filterPlatformLabelAssetRows(rows: any): any[];
-export function filterPlatformLabelVulnRows(rows: any): any[];
-export function sanitizeTeamHostPayload(data: any): any;
-export function inferAssetType(asset: any): string;
-export function resolveAssetType(asset: any): string;
-export function getAssetOs(asset: any): string;
-export function getAssetResolvedIp(asset: any): string;
-export function assetMatchesQueryHost(asset: any, host: unknown): boolean;
-export function findAssetByQueryHost(assets: any, host: unknown): any;
-export function tabKeyForAsset(asset: any): string;
+export function collectScanHosts(row: unknown): string[];
+export function filterPlatformLabelAssetRows<T>(rows: T[] | null | undefined): T[];
+export function filterPlatformLabelVulnRows<T>(rows: T[] | null | undefined): T[];
+export function sanitizeTeamHostPayload<T>(data: T): T;
+export function inferAssetType(asset: unknown): string;
+export function resolveAssetType(asset: unknown): string;
+export function getAssetOs(asset: unknown): string;
+export function getAssetResolvedIp(asset: unknown): string;
+export function assetMatchesQueryHost(asset: unknown, host: unknown): boolean;
+export function findAssetByQueryHost<T>(assets: T[] | null | undefined, host: unknown): T | null;
+export function tabKeyForAsset(asset: unknown): string;
 export function normalizeAssetTypeCounts(raw: unknown): AssetTypeCounts;
 export function hasAssetTypeCounts(raw: unknown): boolean;
-export function assetTypeCountChips(raw: unknown): Array<AssetTypeDisplay & { count: number }>;
+export function assetTypeCountChips(
+  raw: unknown,
+): Array<AssetTypeDisplay & { count: number }>;
 export function assetTypeCountForFilter(raw: unknown, filterKey: unknown): number;
 export function assetTypeBadgeMeta(assetType: unknown): AssetTypeDisplay | null;
-export function resolveHostAssetType(hostName: unknown, catalog?: any[], extra?: any): string;
+export function resolveHostAssetType(
+  hostName: unknown,
+  catalog?: unknown[],
+  extra?: unknown,
+): string;

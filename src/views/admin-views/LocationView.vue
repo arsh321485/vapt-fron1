@@ -623,23 +623,7 @@ export default {
           return;
         }
 
-        const platformSync = res.platformSync || { status: true, skipped: true };
-        const slackSync = res.slack_sync || res.data?.slack_sync;
-        let successText = res.message || "User added successfully";
-
-        if (platform === "teams") {
-          successText = platformSync.status
-            ? "User added and added to Microsoft Teams"
-            : `User created in VaptFix, but Teams sync failed: ${platformSync.message || "unknown"}`;
-        } else if (slackSync?.status === "success") {
-          successText = "User added and invited to Slack channels";
-        } else if (slackSync?.status === "pending_workspace_join") {
-          successText = "User created. Slack workspace invite sent; channel mapping pending.";
-        } else if (platform === "slack" && platformSync.status && !platformSync.skipped) {
-          successText = "User added and invited to Slack channel";
-        } else if (slackSync?.status === "failed") {
-          successText = `User created, Slack sync failed: ${slackSync.error || "unknown"}`;
-        }
+        const successText = res.message || "User added successfully";
 
         Swal.fire({
           icon: "success",

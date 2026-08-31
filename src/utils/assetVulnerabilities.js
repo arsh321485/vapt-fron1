@@ -21,6 +21,53 @@ export function vulnNameKey(v) {
   return vulnDisplayName(v).toLowerCase();
 }
 
+const EMPTY_DESCRIPTION_TOKENS = new Set(['', '-', '—', '–', 'n/a', 'na', 'none', 'null', 'undefined']);
+
+function sanitizeDescriptionText(raw) {
+  const text = String(raw ?? '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .trim();
+  if (!text) return '';
+  return EMPTY_DESCRIPTION_TOKENS.has(text.toLowerCase()) ? '' : text;
+}
+
+/** First non-empty plugin description from one or more API objects / strings. */
+export function pickVulnDescription(...sources) {
+  const fields = ['description', 'synopsis', 'summary', 'plugin_description', 'vuln_description'];
+  for (const source of sources) {
+    if (source == null) continue;
+    if (typeof source === 'string') {
+      const text = sanitizeDescriptionText(source);
+      if (text) return text;
+      continue;
+    }
+    if (typeof source !== 'object') continue;
+    for (const field of fields) {
+      const text = sanitizeDescriptionText(source[field]);
+      if (text) return text;
+    }
+  }
+  return '';
+}
+
+/** Fill missing descriptions on vuln rows from extra API lists (matched by name). */
+export function mergeDescriptionsIntoVulns(vulns, ...extraLists) {
+  const byKey = new Map();
+  extraLists.flat().forEach((row) => {
+    if (!row || typeof row !== 'object') return;
+    const key = vulnNameKey(row);
+    const desc = pickVulnDescription(row);
+    if (key && desc && !byKey.has(key)) byKey.set(key, desc);
+  });
+  return (Array.isArray(vulns) ? vulns : []).map((v) => {
+    const existing = pickVulnDescription(v);
+    if (existing) return existing === v.description ? v : { ...v, description: existing };
+    const fromExtra = byKey.get(vulnNameKey(v)) || '';
+    return fromExtra ? { ...v, description: fromExtra } : v;
+  });
+}
+
 export function isActiveVulnStatus(status) {
   const s = String(status || '').trim().toLowerCase();
   if (!s) return true;
@@ -40,7 +87,7 @@ export function normalizeAssetVulnerability(v) {
     severity,
     risk_factor: v.risk_factor || severity,
     status: statusRaw,
-    description: v.description || v.synopsis || v.summary || '',
+    description: pickVulnDescription(v),
     cvss_score: v.cvss_score ?? v.cvss ?? v.cvss_base_score ?? null,
     cve: v.cve || v.cve_id || '',
     exposure: v.exposure || '',
@@ -181,6 +228,7 @@ export function enrichVulnsFromRegister(vulns, registerRows, assetIp) {
       operating_system: row.operating_system || row.os || v.operating_system || '',
       // Enrich assigned_team from register (most reliable source)
       assigned_team: v.assigned_team || row.assigned_team || '',
+      description: pickVulnDescription(v, row),
     };
   });
 }
@@ -229,7 +277,7 @@ export function normalizeReportVulnerability(v) {
       : null,
     assets: [],
     rows: [],
-    description: v.description || '',
+    description: pickVulnDescription(v),
     selected: false,
   };
 }
@@ -264,7 +312,7 @@ export function enrichReportVulnerabilitiesFromRegister(grouped, registerRows, d
     if (!matching.length) return g;
     const assets = [...new Set(matching.map(r => r.asset || r.host_name).filter(Boolean))]
       .filter((host) => !deletedSet.has(deletedVulnAssetKey(pluginName, host)));
-    const description = matching.find(r => r.description)?.description || g.description || '';
+    const description = pickVulnDescription(...matching, g);
     return {
       ...g,
       assets: assets.length ? assets : g.assets,
@@ -331,7 +379,7 @@ export function mergeAssetThreatVulnerabilities(activeVulns, closedFixVulns = []
         vulnerability_name: fix.vulnerability_name || name,
         severity: fix.severity || fix.risk_factor || 'Medium',
         status: 'closed',
-        description: fix.description || '',
+        description: pickVulnDescription(fix),
       }),
     );
   });

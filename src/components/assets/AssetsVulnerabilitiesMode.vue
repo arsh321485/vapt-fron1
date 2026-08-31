@@ -327,7 +327,6 @@
                   :title="automationDownloadLocked ? (authStore.automationPremiumMessage || 'Automation scripts are not available on the Freemium plan. Upgrade to Premium.') : 'Download fix'"
                 >
                 <button
-                  v-if="hasAutomationScript(v)"
                   type="button"
                   class="vuln-download-icon-btn"
                   :class="{ 'vuln-download-icon-btn--disabled': automationDownloadLocked }"
@@ -341,13 +340,13 @@
                 <i class="bi text-muted" :class="expandedVulnIndex === i ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
               </div>
             </div>
-            <div v-show="expandedVulnIndex === i" class="vuln-accordion-expand">
+            <div v-if="expandedVulnIndex === i" class="vuln-accordion-expand">
               <div class="vuln-accordion-body">
                 <div class="av-description-block">
                   <div class="av-db-label">DESCRIPTION</div>
-                  <p class="av-db-text">{{ getDisplayDescription(v.description, v._key) }}</p>
+                  <p class="av-db-text">{{ getDisplayDescription(v, v._key) }}</p>
                   <button
-                    v-if="(v.description || '').length > descriptionPreviewLimit"
+                    v-if="resolveGroupedDescription(v._key, v, ...(v.rows || [])).length > descriptionPreviewLimit"
                     type="button"
                     class="av-read-more"
                     @click="toggleDescription(v._key)"
@@ -369,9 +368,7 @@
                   <button
                     type="button"
                     class="av-dtab"
-                    :class="{ active: currentVulnTab === 'auto', 'av-dtab--disabled': automationDownloadLocked }"
-                    :disabled="automationDownloadLocked"
-                    :title="automationDownloadLocked ? (authStore.automationPremiumMessage || 'Upgrade to Premium to use automated fixes') : ''"
+                    :class="{ active: currentVulnTab === 'auto' }"
                     @click="setVulnDetailTab('auto')"
                   >
                     <span class="av-dtab-emoji" aria-hidden="true">🤖</span>
@@ -391,7 +388,7 @@
                 <div class="av-detail-tab-content">
                   <!-- Affected Assets content hidden -->
 
-                  <div v-if="currentVulnTab === 'auto'" class="av-auto-tab">
+                  <div v-show="currentVulnTab === 'auto'" class="av-auto-tab">
                     <AutomatedFixPanel
                       :key="v._key + '-' + i + '-' + panelAssetKey"
                       :severity="v.severity"
@@ -408,7 +405,7 @@
                     />
                   </div>
 
-                  <div v-else class="av-manual-tab">
+                  <div v-show="currentVulnTab === 'manual'" class="av-manual-tab">
                     <div v-for="asset in (selectedPanelAsset ? [selectedPanelAsset] : v.assets)" :key="asset" class="av-asset-section">
                       <div class="av-asset-label">
                         <span class="av-asset-os-lbl">{{ assetMetaFor(v, asset).os }}</span>
@@ -424,6 +421,7 @@
                         :asset-os="assetMetaFor(v, asset).os || ''"
                         @open-support-modal="$emit('open-support-modal', $event)"
                         @team-resolved="onPanelTeamResolved"
+                        @description-resolved="onVulnDescriptionResolved"
                       />
                     </div>
                   </div>
@@ -667,7 +665,7 @@ import FixAvailableIndicator from '@/components/assets/FixAvailableIndicator.vue
 import AutomationNotSafeBanner from '@/components/assets/AutomationNotSafeBanner.vue';
 import FixPanelHeaderAlerts from '@/components/assets/FixPanelHeaderAlerts.vue';
 import TruncatedVulnName from '@/components/common/TruncatedVulnName.vue';
-import { isAutomationNotAvailable, matchesVulnStatusFilter, normalizeReportVulnerability } from '@/utils/assetVulnerabilities';
+import { isAutomationNotAvailable, matchesVulnStatusFilter, normalizeReportVulnerability, pickVulnDescription, lookupFixVulnerabilityId, extractFixVulnerabilityId, vulnNameKey } from '@/utils/assetVulnerabilities';
 import {
   ASSET_TYPE_FILTERS,
   assetTypeFromFilterKey,
@@ -741,6 +739,7 @@ export default {
       panelAssetKey: 0,
       currentVulnTab: 'auto',
       expandedDescriptions: {},
+      hydratedDescriptions: {},
       descriptionPreviewLimit: DESC_LIMIT,
       pythonGuideSeverity: 'Medium',
       affectedAssetsData: [
@@ -851,7 +850,7 @@ export default {
             vul_name: name || 'Unnamed vulnerability',
             severity: row.severity || row.risk_factor || 'Medium',
             status: row.status || 'open',
-            description: row.description || '',
+            description: this.resolveGroupedDescription(key, row),
             cvss_score: row.cvss_score ?? row.cvss ?? null,
             cve: row.cve || row.cve_id || '',
             exposure: row.exposure || '',
@@ -867,7 +866,7 @@ export default {
           const g = map.get(key);
           if (asset && !g.assets.includes(asset)) g.assets.push(asset);
           g.rows.push(row);
-          if (!g.description && row.description) g.description = row.description;
+          if (!g.description && pickVulnDescription(row)) g.description = pickVulnDescription(row);
           if (!g.cve && (row.cve || row.cve_id)) g.cve = row.cve || row.cve_id;
           if (!g.plugin_id && (row.plugin_id || row.nessus_plugin_id)) {
             g.plugin_id = row.plugin_id || row.nessus_plugin_id;
@@ -889,9 +888,11 @@ export default {
       });
       const merged = Array.from(map.values()).map((g) => {
         const report = reportByKey.get(g._key);
-        if (!report) return g;
+        const description = this.resolveGroupedDescription(g._key, g, report, ...(g.rows || []));
+        if (!report) return { ...g, description };
         return {
           ...g,
+          description,
           asset_type_counts: normalizeAssetTypeCounts(report.asset_type_counts),
           total_assets: report.total_assets ?? g.total_assets,
           open_count: report.open_count ?? g.open_count,
@@ -903,6 +904,7 @@ export default {
         if (!normalized) return;
         merged.push({
           ...normalized,
+          description: this.resolveGroupedDescription(key, normalized, report),
           displayId: String(normalized.severity || 'V').charAt(0),
           rows: [],
           selected: false,
@@ -1402,6 +1404,7 @@ export default {
       this.supportRequestsForVuln = [];
       this.supportRequestCount = 0;
       this.ensureVulnAssetRows(item);
+      this.hydrateVulnDescription(item);
       this.$nextTick(() => this.scrollToAccordion(item._key));
     },
     async openVulnSupportModal() {
@@ -1541,6 +1544,7 @@ export default {
         this.selectedKey = item._key;
       }
       if (isOpening && item) {
+        this.hydrateVulnDescription(item);
         this.currentVulnTab = this.defaultFixTab();
         this.$nextTick(() => this.scrollToAccordion(item._key));
         const already = this.getAutomationForVuln(item);
@@ -1584,7 +1588,6 @@ export default {
       return 'auto';
     },
     setVulnDetailTab(tab) {
-      if (tab === 'auto' && this.automationDownloadLocked) return;
       this.currentVulnTab = tab;
     },
     getStatusLabel(status) {
@@ -1611,6 +1614,7 @@ export default {
         this.selectedPanelAsset = assetIp;
         this.expandedVulnIndex = 0;
         this.currentVulnTab = this.defaultFixTab();
+        this.hydrateVulnDescription(item);
       } else {
         this.selectVulnFromList(item, assetIp);
       }
@@ -1624,6 +1628,61 @@ export default {
           v.assigned_team = team;
         }
       });
+    },
+    resolveGroupedDescription(key, ...sources) {
+      const cacheKey = String(key || '').toLowerCase().trim();
+      const fromAsset = (this.authStore.selectedAssetVulnerabilities || []).find(
+        (v) => vulnNameKey(v) === cacheKey,
+      );
+      return pickVulnDescription(
+        this.hydratedDescriptions[cacheKey],
+        this.authStore.vulnDescriptionCache?.[cacheKey],
+        fromAsset,
+        ...sources,
+      );
+    },
+    onVulnDescriptionResolved(description) {
+      const idx = this.expandedVulnIndex;
+      const item = idx != null ? this.panelVulns[idx] : null;
+      const key = item?._key || String(item?.vul_name || '').toLowerCase().trim();
+      this.patchHydratedDescription(key, description);
+    },
+    patchHydratedDescription(key, description) {
+      const cacheKey = String(key || '').toLowerCase().trim();
+      const text = pickVulnDescription(description);
+      if (!cacheKey || !text) return;
+      this.authStore.rememberVulnDescription(cacheKey, text);
+      if (this.hydratedDescriptions[cacheKey] === text) return;
+      this.hydratedDescriptions = { ...this.hydratedDescriptions, [cacheKey]: text };
+    },
+    async hydrateVulnDescription(vuln) {
+      if (!vuln) return;
+      const key = vuln._key || vulnNameKey(vuln);
+      const isUseful = (text) => {
+        const value = pickVulnDescription(text);
+        if (!value) return false;
+        return value.toLowerCase() !== String(vuln.vul_name || '').toLowerCase().trim();
+      };
+      if (isUseful(this.resolveGroupedDescription(key, vuln, ...(vuln.rows || [])))) return;
+
+      const assetIp = vuln.assets?.[0] || '';
+      const fixId =
+        lookupFixVulnerabilityId(this.rawRows, vuln, assetIp) ||
+        extractFixVulnerabilityId(vuln) ||
+        extractFixVulnerabilityId(vuln.rows?.[0]);
+      if (fixId) {
+        const res = this.isUser
+          ? await this.authStore.getUserFixVulnerabilitySteps(fixId, 'windows')
+          : await this.authStore.getFixVulnerabilitySteps(fixId);
+        if (res?.status) {
+          this.patchHydratedDescription(key, pickVulnDescription(res.data));
+        }
+      }
+      if (isUseful(this.resolveGroupedDescription(key, vuln, ...(vuln.rows || [])))) return;
+      if (!assetIp) return;
+      const assetVulns = await this.authStore.fetchAndCacheAssetVulnDescriptions(assetIp, this.isUser);
+      const match = (assetVulns || []).find((v) => vulnNameKey(v) === key);
+      this.patchHydratedDescription(key, pickVulnDescription(match));
     },
     getVulnTeamLabel(assignedTeam, vulnName) {
       // 1st priority: use real assigned_team from API data
@@ -1672,8 +1731,12 @@ export default {
         [key]: !this.expandedDescriptions[key],
       };
     },
-    getDisplayDescription(description, key) {
-      const fullText = this.cleanText(description) || 'No description available for this vulnerability.';
+    descriptionText(vulnOrText) {
+      return pickVulnDescription(vulnOrText);
+    },
+    getDisplayDescription(vuln, key) {
+      const fullText = this.resolveGroupedDescription(key || vuln?._key, vuln, ...(vuln?.rows || []))
+        || 'No description available for this vulnerability.';
       if (this.isDescriptionExpanded(key) || fullText.length <= this.descriptionPreviewLimit) {
         return fullText;
       }

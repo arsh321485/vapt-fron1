@@ -333,7 +333,8 @@ export default {
           email: this.form.email,
           password: this.form.password,
           confirm_password: this.form.confirm_password,
-          recaptcha: this.recaptchaToken
+          recaptcha: this.recaptchaToken,
+          invite_token: resolveSignupInviteToken(this.$route?.query || {}) || this.inviteToken,
         })
 
         if (result.status) {
@@ -478,7 +479,8 @@ export default {
           email: this.form.email,
           password: this.form.password,
           confirm_password: this.form.confirm_password,
-          recaptcha: this.recaptchaToken
+          recaptcha: this.recaptchaToken,
+          invite_token: resolveSignupInviteToken(this.$route?.query || {}) || this.inviteToken,
         })
         if (result.status) {
           this.otpDigits = ['', '', '', '', '', '']
@@ -502,10 +504,10 @@ export default {
         extractClaimInviteToken(this.$route?.query || {}) ||
         readLiveMagicInvite(this.$route?.query || {})
       if (!fromQuery) {
-        this.inviteToken = ''
+        this.inviteToken = resolveSignupInviteToken(this.$route?.query || {})
         this.inviteChecked = true
         this.inviteExpired = false
-        this.inviteReportCount = 0
+        this.inviteReportCount = this.inviteToken ? (this.inviteReportCount || 1) : 0
         return
       }
       storeClaimInviteToken(fromQuery)
@@ -523,7 +525,7 @@ export default {
       }
       try {
         const res = await fetchClaimInviteValidate(this.inviteToken)
-        this.inviteExpired = res.valid === false
+        this.inviteExpired = res.expired === true
         this.inviteReportCount = this.inviteExpired ? 0 : (res.report_count || 1)
         setClaimInviteValid(!this.inviteExpired)
         setClaimInviteReportCount(this.inviteReportCount)

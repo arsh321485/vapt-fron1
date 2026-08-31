@@ -235,10 +235,11 @@ import { MOCK_MANUAL_STEPS } from '@/constants/mockManualRemediationSteps';
 import { getTeamColor } from '@/utils/teamColors';
 import { useAuthStore } from '@/stores/authStore';
 import { FREEMIUM_RETEST_MESSAGE } from '@/utils/planLimits';
+import { pickVulnDescription } from '@/utils/assetVulnerabilities';
 
 export default {
   name: 'ManualRemediationStepsPanel',
-  emits: ['support-request-raised', 'open-support-modal', 'team-resolved', 'vulnerability-status-changed'],
+  emits: ['support-request-raised', 'open-support-modal', 'team-resolved', 'vulnerability-status-changed', 'description-resolved'],
   props: {
     isUser: {
       type: Boolean,
@@ -285,6 +286,7 @@ export default {
       vulnerabilityStatus: '',
       allStepsCompletedFlag: false,
       requestingRetest: false,
+      _fixInitSeq: 0,
     };
   },
   computed: {
@@ -504,6 +506,7 @@ export default {
       if (resolvedTeam) {
         this.$emit('team-resolved', { vulnName: this.vulnName, team: resolvedTeam });
       }
+      this.emitDescriptionIfPresent(data);
 
       // Prefer post-complete payload for status (may already be "closed" / "open/review")
       this.syncVulnerabilityStatusFromPayload(data);
@@ -566,6 +569,11 @@ export default {
         }
       }
     },
+    emitDescriptionIfPresent(...payloads) {
+      const description = pickVulnDescription(...payloads);
+      if (!description) return;
+      this.$emit('description-resolved', description);
+    },
     async refreshStepsFromApi(postOverride = null) {
       if (!this.fixVulnerabilityId) return;
       let stepsRes;
@@ -609,6 +617,7 @@ export default {
           fixId = d._id || d.fix_vulnerability_id || d.id || d.data?._id || d.data?.fix_vulnerability_id || null;
           if (!fixId && typeof d === 'string') fixId = d;
           this.fixVulnData = d;
+          this.emitDescriptionIfPresent(d);
           // Check if create response itself has steps
           if (d.steps?.length) {
             console.log('[ManualFix] Steps found in createRes:', d.steps.length);
@@ -643,6 +652,7 @@ export default {
           }
         }
 
+        if (stepsRes.status) this.emitDescriptionIfPresent(stepsRes.data);
         if (stepsRes.status && Array.isArray(stepsRes.data?.steps) && stepsRes.data.steps.length) {
           this.fixVulnData = {
             ...this.fixVulnData,
@@ -664,6 +674,7 @@ export default {
     async initAdminFixVuln() {
       if (this.isUser || !this.vulnName || !this.assetIp) return;
 
+      const seq = ++this._fixInitSeq;
       const knownFixId = this.fixId || this.fixVulnerabilityId;
       this.loadingFixVuln = true;
       this.fixNotStarted = false;
@@ -676,6 +687,7 @@ export default {
       try {
         // Ensure we create/lookup against the latest uploaded report (not a stale localStorage id).
         await this.authStore.resolveReportId();
+        if (seq !== this._fixInitSeq) return;
 
         let preloadedId = this.fixId || '';
         if (!preloadedId) {
@@ -700,6 +712,7 @@ export default {
             },
           );
         }
+        if (seq !== this._fixInitSeq) return;
 
         if (!preloadedId) {
           this.fixNotStarted = true;
@@ -713,6 +726,8 @@ export default {
         this.fixVulnerabilityId = preloadedId;
 
         const stepsRes = await this.authStore.getFixVulnerabilitySteps(preloadedId);
+        if (seq !== this._fixInitSeq) return;
+        if (stepsRes.status) this.emitDescriptionIfPresent(stepsRes.data);
         if (stepsRes.status && Array.isArray(stepsRes.data?.steps) && stepsRes.data.steps.length) {
           this.fixNotStarted = false;
           this.fixVulnData = {
@@ -725,7 +740,9 @@ export default {
 
         // Fallback: card endpoint often has agent-generated remediation when step-complete is empty/404.
         const cardRes = await this.authStore.fetchFixVulnerabilityCardDetails(preloadedId);
+        if (seq !== this._fixInitSeq) return;
         const cardData = cardRes.status ? cardRes.data : null;
+        this.emitDescriptionIfPresent(cardData);
         const cardSteps = Array.isArray(cardData?.steps) ? cardData.steps : [];
         if (cardSteps.length) {
           this.fixNotStarted = false;
@@ -758,7 +775,7 @@ export default {
           }
         }
       } finally {
-        this.loadingFixVuln = false;
+        if (seq === this._fixInitSeq) this.loadingFixVuln = false;
       }
     },
     mapApiStepToPanel(step, osKey = this.selectedOs) {
