@@ -234,6 +234,7 @@ import Swal from 'sweetalert2';
 import { MOCK_MANUAL_STEPS } from '@/constants/mockManualRemediationSteps';
 import { getTeamColor } from '@/utils/teamColors';
 import { useAuthStore } from '@/stores/authStore';
+import { FREEMIUM_RETEST_MESSAGE } from '@/utils/planLimits';
 
 export default {
   name: 'ManualRemediationStepsPanel',
@@ -936,11 +937,18 @@ export default {
           }
         } else {
           step.submitting = false;
-          Swal.fire({ icon: 'error', title: 'Failed', text: res.message || 'Failed to complete step', timer: 2000, showConfirmButton: false });
+          // Race / already-done / generic miss — data still loads, don't flash this popup.
+          const msg = String(res.message || '');
+          const skipPopup =
+            !msg ||
+            /^failed to complete step$/i.test(msg) ||
+            /already (completed|done|saved|marked)|step already|already closed|not found/i.test(msg);
+          if (!skipPopup) {
+            Swal.fire({ icon: 'error', title: 'Failed', text: msg, timer: 2000, showConfirmButton: false });
+          }
         }
       } catch {
         step.submitting = false;
-        Swal.fire({ icon: 'error', title: 'Error', text: 'Network error — please try again.', timer: 2000, showConfirmButton: false });
       }
     },
     async completeAllSteps() {
@@ -996,6 +1004,15 @@ export default {
         return;
       }
       if (!this.showSendForRetest) return;
+      if (this.authStore.automationPremiumRequired) {
+        Swal.fire({
+          icon: 'info',
+          title: 'Retest not allowed',
+          text: FREEMIUM_RETEST_MESSAGE,
+          confirmButtonColor: '#241447',
+        });
+        return;
+      }
       this.requestingRetest = true;
       try {
         const res = await this.authStore.sendUserFixVerification(this.fixVulnerabilityId);
@@ -1018,7 +1035,12 @@ export default {
             showConfirmButton: false,
           });
         } else {
-          Swal.fire({ icon: 'error', title: 'Failed', text: res.message || 'Failed to send for retest', timer: 2500, showConfirmButton: false });
+          Swal.fire({
+            icon: 'error',
+            title: 'Retest not allowed',
+            text: res.message || FREEMIUM_RETEST_MESSAGE,
+            confirmButtonColor: '#241447',
+          });
         }
       } catch {
         Swal.fire({ icon: 'error', title: 'Error', text: 'Network error — please try again.', timer: 2000, showConfirmButton: false });
@@ -1034,7 +1056,7 @@ export default {
         this.raisedSupportSteps = [];
         return;
       }
-      const res = await this.authStore.getUserSupportRequestsByHost(this.assetIp);
+      const res = await this.authStore.getUserSupportRequestsByHost(this.assetIp, this.authStore.userSelectedTeam);
       if (!res.status || !Array.isArray(res.data)) {
         this.raisedSupportSteps = [];
         return;
@@ -1048,13 +1070,16 @@ export default {
         .filter((n) => Number.isFinite(n));
     },
     openStepSupportModal(task) {
-      if (this.isStepSupportRaised(task.id)) return;
-      // Emit to parent so the parent's modal opens with vuln + step pre-filled
       const completedSteps = this.subtasks
         .filter(t => t.status === 'completed')
         .map(t => Number(t.id))
         .filter(n => Number.isFinite(n));
-      this.$emit('open-support-modal', { vulnName: this.vulnName, step: task.id, completedSteps });
+      this.$emit('open-support-modal', {
+        vulnName: this.vulnName,
+        step: task.id,
+        completedSteps,
+        raisedSupportSteps: this.raisedSupportSteps,
+      });
     },
   },
 };

@@ -266,7 +266,7 @@
                       <div v-else class="d-flex flex-column gap-2">
                         <div v-for="item in inProcessItems" :key="item.fix_vulnerability_id" class="in-process-item-row">
                           <div>
-                            <div class="in-process-vuln-name">{{ item.vulnerability_name }}</div>
+                            <div class="in-process-vuln-name" :title="item.vulnerability_name">{{ item.vulnerability_name }}</div>
                             <div class="in-process-asset">Asset: {{ item.asset }}</div>
                           </div>
                           <button class="in-process-action-btn in-process-view-btn" @click="goToUserInProcessTimeline(item)">View</button>
@@ -340,7 +340,12 @@
                     <span class="info-tooltip" data-tooltip="Displays the remaining remediation time for vulnerabilities based on the defined risk criteria."><i class="bi bi-info-circle dash-info-icon"></i></span>
                   </div>
 
-                  <div v-if="!authStore.mitigationTimeline" class="d-flex flex-column align-items-center justify-content-center py-2" style="opacity:0.55;">
+                  <div v-if="mitigationGaugesLoading" class="d-flex flex-column align-items-center justify-content-center py-3">
+                    <div class="spinner-border spinner-border-sm text-secondary" role="status"></div>
+                    <span style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:8px;">Loading timeline...</span>
+                  </div>
+
+                  <div v-else-if="!hasMitigationGaugeData" class="d-flex flex-column align-items-center justify-content-center py-2" style="opacity:0.55;">
                     <i class="bi bi-clock-history" style="font-size:2rem;color:#cbd5e1;margin-bottom:8px;"></i>
                     <span style="font-size:11px;color:#94a3b8;font-weight:600;">Awaiting timeline data</span>
                   </div>
@@ -1029,7 +1034,9 @@
 import DashboardMenu from '@/components/user-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/user-component/DashboardHeader.vue';
 import { useAuthStore } from '@/stores/authStore';
+import { isRealScanHost } from '@/utils/assetDummyData';
 import { getTeamTextClass } from '@/utils/teamColors';
+import { resolveMitigationDays, resolveMitigationLabel } from '@/utils/mitigationTimeline';
 import Swal from 'sweetalert2';
 
 export default {
@@ -1130,6 +1137,15 @@ export default {
   computed: {
     authStore() {
       return useAuthStore();
+    },
+    hasMitigationGaugeData() {
+      return ['critical', 'high', 'medium', 'low'].some((sev) => {
+        const label = this.getMitigationLabel(sev);
+        return label && label !== '--';
+      });
+    },
+    mitigationGaugesLoading() {
+      return this.assetsLoading && !this.hasMitigationGaugeData;
     },
     closedVulnSet() {
       const set = new Set();
@@ -1308,7 +1324,10 @@ export default {
         const medium   = vulns.filter(v => (v.risk_factor || '').toLowerCase() === 'medium').length;
         const low      = vulns.filter(v => (v.risk_factor || '').toLowerCase() === 'low').length;
         const assetsSet = new Set();
-        vulns.forEach(v => { if (Array.isArray(v.assets)) v.assets.forEach(a => assetsSet.add(a)); else if (v.host_name) assetsSet.add(v.host_name); });
+        vulns.forEach(v => {
+          if (Array.isArray(v.assets)) v.assets.forEach(a => { if (isRealScanHost(a)) assetsSet.add(a); });
+          else if (isRealScanHost(v.host_name)) assetsSet.add(v.host_name);
+        });
         return { ...cfg, total, critical, high, medium, low, affectedAssets: assetsSet.size || 0 };
       });
     },
@@ -1809,6 +1828,7 @@ export default {
     },
     async selectTeam(team) {
       this.selectedTeam = team;
+      this.authStore.setUserSelectedTeam(team);
       if (this.$refs.teamDropdown) {
         this.$refs.teamDropdown.classList.remove('show');
       }
@@ -1825,26 +1845,10 @@ export default {
     },
     getMitigationLabel(sev) {
       const sevData = this.getMitigationSevData(sev);
-      if (sevData && typeof sevData === 'object') {
-        if (sevData.remaining_label) return sevData.remaining_label;
-        if (String(sevData.status || '').toLowerCase() === 'overdue') return 'Overdue';
-        if (sevData.remaining_days != null) return this.formatTimeline({ days: sevData.remaining_days });
-        return this.formatTimeline({ days: sevData.days });
-      }
-      return this.formatTimeline(this.getMitigationValue(sev));
+      return resolveMitigationLabel(sevData, this.getMitigationDays(sev), (value) => this.formatTimeline(value));
     },
     getMitigationDays(sev) {
-      const sevData = this.getMitigationSevData(sev);
-      if (typeof sevData === 'number') return sevData;
-      if (typeof sevData === 'string') {
-        const p = Number(sevData);
-        return Number.isFinite(p) ? p : null;
-      }
-      if (sevData && typeof sevData === 'object') {
-        const r = sevData.remaining_days;
-        return (r !== null && r !== undefined) ? r : (sevData.days ?? null);
-      }
-      return null;
+      return resolveMitigationDays(this.getMitigationSevData(sev), this.riskCriteria?.[sev]);
     },
     getMitigationValue(sev) {
       const days = this.getMitigationDays(sev);
@@ -2113,6 +2117,9 @@ export default {
         this.loadMteExtensionData(),
       ]).catch(() => {});
     },
+    liveRefreshPage() {
+      return this.runLiveDashboardSync(true);
+    },
     startLiveDashboardSync() {
       if (this._liveDashboardTimer) return;
       this._liveDashboardTimer = setInterval(() => {
@@ -2143,11 +2150,9 @@ export default {
       this.userTeams = [];
     }
 
-    const savedTeam = localStorage.getItem('vaptfix_user_preferred_team');
-    this.selectedTeam = savedTeam || 'both';
+    // Shared team filter — carries across Fix/Register/Calendar/Support Request/Fixed too.
+    this.selectedTeam = this.authStore.userSelectedTeam || 'both';
     void this.runLiveDashboardSync(true);
-    this.startLiveDashboardSync();
-    document.addEventListener("visibilitychange", this.handleLiveDashboardVisibility);
 
     // Close dropdown when clicking outside
     document.addEventListener('click', (e) => {
@@ -2159,7 +2164,6 @@ export default {
   },
   activated() {
     void this.runLiveDashboardSync(true);
-    this.startLiveDashboardSync();
   },
   beforeUnmount() {
     document.removeEventListener("mousedown", this.handleCommonWalkthroughDocumentClick);
@@ -2167,7 +2171,6 @@ export default {
     window.removeEventListener("resize", this.handleWalkthroughViewportChange);
     window.removeEventListener("scroll", this.handleWalkthroughViewportChange, true);
     this.stopLiveDashboardSync();
-    document.removeEventListener("visibilitychange", this.handleLiveDashboardVisibility);
   },
 };
 </script>
@@ -3596,10 +3599,18 @@ export default {
   border-radius: 10px;
   padding: 10px 12px;
 }
+.in-process-item-row > div:first-child {
+  min-width: 0;
+  flex: 1;
+}
 .in-process-vuln-name {
   font-size: 0.85rem;
   font-weight: 700;
   color: #1e293b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
 }
 .in-process-asset {
   font-size: 0.75rem;
