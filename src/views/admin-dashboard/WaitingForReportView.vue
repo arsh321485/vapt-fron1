@@ -1,7 +1,9 @@
 <template>
   <main class="wait-main">
     <div class="wait-topbar">
-      <img src="@/assets/images/vaptfix_white.png" alt="VaptFix" class="wait-logo" />
+      <router-link :to="logoPath">
+        <img src="@/assets/images/vaptfix_white.png" alt="VaptFix" class="wait-logo" />
+      </router-link>
     </div>
 
     <div class="wait-page">
@@ -14,14 +16,22 @@
         </div>
 
         <h1 class="wait-title">
-          {{ cardsGenerating ? "Preparing your dashboard" : "Almost there" }}
+          {{
+            awaitingScopeAnalysis
+              ? "Our Super admin will analyse your file"
+              : cardsGenerating
+                ? "Preparing your dashboard"
+                : "Almost there"
+          }}
         </h1>
 
         <p class="wait-message">
           {{
-            cardsGenerating
-              ? "Your report is uploaded. Agents are being created — hang tight while we finish setup."
-              : "Your Super Admin needs to upload your first vulnerability scan report before you can get started. We'll let you know the moment it's ready."
+            awaitingScopeAnalysis
+              ? "Hang tight on this screen. After Super Admin uploads the processed file for your account, we will take you to add users, then risk criteria, then the dashboard with your full data."
+              : cardsGenerating
+                ? "Your report is uploaded. Agents are being created — hang tight while we finish setup."
+                : "Your Super Admin needs to upload your first vulnerability scan report before you can get started. We'll let you know the moment it's ready."
           }}
         </p>
 
@@ -70,6 +80,12 @@
 
 <script>
 import { useAuthStore } from "@/stores/authStore";
+import { fetchScopeAnalysisStatus, isScopeAnalysisReady } from "@/services/scopeFileApi";
+import {
+  clearScopeFileAwaitingSuperadmin,
+  isScopeFileAwaitingSuperadmin,
+  readStoredAdminEmail,
+} from "@/utils/scopeScanGate";
 
 const REPORT_POLL_MS = 30000;
 const PROGRESS_POLL_MS = 2500;
@@ -109,6 +125,9 @@ export default {
         this.pollingData.remaining_time_text
       );
     },
+    awaitingScopeAnalysis() {
+      return isScopeFileAwaitingSuperadmin(readStoredAdminEmail());
+    },
   },
   methods: {
     async redirectFromOnboardingState() {
@@ -126,11 +145,18 @@ export default {
       if (this.checking) return;
       this.checking = true;
       try {
+        if (this.awaitingScopeAnalysis) {
+          const analysis = await fetchScopeAnalysisStatus();
+          if (isScopeAnalysisReady(analysis)) {
+            clearScopeFileAwaitingSuperadmin();
+          }
+        }
         const authStore = useAuthStore();
         const res = await authStore.getReportStatus();
         this.statusMessage = res.message || "";
 
-        if (res.state === "ready" || res.state === "needs_risk_criteria") {
+        if (res.state === "ready" || res.state === "needs_risk_criteria" || res.hasReport) {
+          if (res.hasReport) clearScopeFileAwaitingSuperadmin();
           await this.redirectFromOnboardingState();
         }
       } catch {

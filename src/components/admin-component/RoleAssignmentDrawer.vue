@@ -150,6 +150,8 @@
 </template>
 
 <script>
+import { countUniqueAssignmentAssets } from "@/utils/roleAssignmentData";
+
 export default {
   name: "RoleAssignmentDrawer",
   props: {
@@ -194,7 +196,10 @@ export default {
     },
     currentAssetCount() {
       if (!this.activeRole) return 0;
-      return this.roleAssignments[this.activeRole]?.assets?.length || 0;
+      return countUniqueAssignmentAssets(
+        this.roleAssignments[this.activeRole]?.assets || [],
+        this.catalog[this.activeRole]?.assets || [],
+      );
     },
     currentVulnCount() {
       if (!this.activeRole) return 0;

@@ -143,30 +143,30 @@
               </p>
             </div>
 
-            <div class="field-group">
+            <div v-if="showUserPasswordField" class="field-group">
               <div class="label-row">
                 <label class="field-label" style="margin-bottom:0;">Password</label>
                 <a href="#" @click.prevent="openForgotPassword('user')" class="forgot-link">Forgot Password?</a>
               </div>
               <div class="input-row" style="margin-top:6px;">
                 <i class="bi bi-lock field-icon"></i>
-                <input :type="showUserPassword ? 'text' : 'password'" class="field-input" v-model="userForm.password" placeholder="••••••••" autocomplete="new-password" required />
+                <input :type="showUserPassword ? 'text' : 'password'" class="field-input" v-model="userForm.password" placeholder="••••••••" autocomplete="new-password" :required="showUserPasswordField" />
                 <i class="bi password-toggle" :class="showUserPassword ? 'bi-eye-slash' : 'bi-eye'" @click="showUserPassword = !showUserPassword"></i>
               </div>
             </div>
 
-            <div class="recaptcha-field">
+            <div v-if="showUserPasswordField" class="recaptcha-field">
               <div :id="userRecaptchaContainerId" :key="userRecaptchaKey" class="recaptcha-wrap"></div>
             </div>
 
-            <button type="submit" class="submit-btn" :disabled="userLoading">
+            <button v-if="showUserPasswordField" type="submit" class="submit-btn" :disabled="userLoading">
               <span v-if="userLoading" class="spinner-border spinner-border-sm me-2"></span>
               Sign In to Dashboard
             </button>
 
             <div class="social-divider">
               <span class="social-divider-line"></span>
-              <span class="social-divider-text">or</span>
+              <span class="social-divider-text">{{ showUserPasswordField ? 'or' : 'Sign in with' }}</span>
               <span class="social-divider-line"></span>
             </div>
 
@@ -175,7 +175,7 @@
                 v-if="!userSlackConnected"
                 type="button"
                 class="social-btn social-btn-slack"
-                :disabled="slackLoginDisabled || userTeamsConnected"
+                :disabled="slackLoginDisabled"
                 @click.prevent="startUserSlackLogin"
               >
                 <span v-if="userOAuthLoading === 'slack'" class="spinner-border spinner-border-sm"></span>
@@ -199,7 +199,7 @@
                 v-if="!userTeamsConnected"
                 type="button"
                 class="social-btn social-btn-teams"
-                :disabled="teamsLoginDisabled || userSlackConnected"
+                :disabled="teamsLoginDisabled"
                 @click.prevent="startUserTeamsLogin"
               >
                 <span v-if="userOAuthLoading === 'teams'" class="spinner-border spinner-border-sm"></span>
@@ -223,11 +223,13 @@
 
             <p v-if="platformChecked && userPlatform === 'slack'" class="platform-hint platform-hint--ok">
               <i class="bi bi-info-circle me-1"></i>
-              This account was added via Slack. Use Slack or your password below.
+              <template v-if="userHasPassword">This account was added via Slack. Use Slack or your password.</template>
+              <template v-else>This account was added via Slack. Sign in with Slack.</template>
             </p>
             <p v-else-if="platformChecked && userPlatform === 'microsoft_teams'" class="platform-hint platform-hint--ok">
               <i class="bi bi-info-circle me-1"></i>
-              This account was added via Microsoft Teams. Use Teams or your password below.
+              <template v-if="userHasPassword">This account was added via Microsoft Teams. Use Teams or your password.</template>
+              <template v-else>This account was added via Microsoft Teams. Sign in with Teams.</template>
             </p>
           </form>
         </div>
@@ -240,9 +242,74 @@
             </button>
             <h3 class="form-title form-title--center">Admin Sign In</h3>
           </div>
-          <hr class="form-divider" />
 
-          <form @submit.prevent="handleAdminSignIn">
+          <!-- Tabs -->
+          <div class="user-tabs">
+            <button
+              class="user-tab"
+              :class="{
+                active: adminActiveTab === 'setPassword',
+                disabled: !isAdminSetPasswordAllowed,
+              }"
+              type="button"
+              :disabled="!isAdminSetPasswordAllowed"
+              :title="isAdminSetPasswordAllowed ? '' : 'Use the email link to set your password, or Sign In if already set'"
+              @click="onAdminSetPasswordTabClick"
+            >
+              Set Password
+            </button>
+            <button class="user-tab" :class="{ active: adminActiveTab === 'signIn' }" @click="adminActiveTab = 'signIn'" type="button">
+              Sign In
+            </button>
+          </div>
+
+          <!-- Set Password Form -->
+          <form v-if="adminActiveTab === 'setPassword'" @submit.prevent="handleAdminSetPassword">
+            <div class="field-group">
+              <label class="field-label">New Password</label>
+              <div class="input-row">
+                <i class="bi bi-lock field-icon"></i>
+                <input :type="showAdminNewPassword ? 'text' : 'password'" class="field-input" v-model="adminSetPasswordForm.newPassword" placeholder="••••••••" autocomplete="new-password" required />
+                <i class="bi password-toggle" :class="showAdminNewPassword ? 'bi-eye-slash' : 'bi-eye'" @click="showAdminNewPassword = !showAdminNewPassword"></i>
+              </div>
+              <div v-if="adminSetPasswordForm.newPassword.length > 0 && !allAdminSetPasswordRulesPass" class="pwd-rules">
+                <div class="pwd-rule" :class="adminSetPasswordRules.minLength ? 'pwd-rule-pass' : 'pwd-rule-fail'">
+                  <i class="bi" :class="adminSetPasswordRules.minLength ? 'bi-check-circle-fill' : 'bi-x-circle-fill'"></i>
+                  At least 8 characters
+                </div>
+                <div class="pwd-rule" :class="adminSetPasswordRules.uppercase ? 'pwd-rule-pass' : 'pwd-rule-fail'">
+                  <i class="bi" :class="adminSetPasswordRules.uppercase ? 'bi-check-circle-fill' : 'bi-x-circle-fill'"></i>
+                  At least one uppercase letter (A-Z)
+                </div>
+                <div class="pwd-rule" :class="adminSetPasswordRules.lowercase ? 'pwd-rule-pass' : 'pwd-rule-fail'">
+                  <i class="bi" :class="adminSetPasswordRules.lowercase ? 'bi-check-circle-fill' : 'bi-x-circle-fill'"></i>
+                  At least one lowercase letter (a-z)
+                </div>
+                <div class="pwd-rule" :class="adminSetPasswordRules.number ? 'pwd-rule-pass' : 'pwd-rule-fail'">
+                  <i class="bi" :class="adminSetPasswordRules.number ? 'bi-check-circle-fill' : 'bi-x-circle-fill'"></i>
+                  At least one number (0-9)
+                </div>
+                <div class="pwd-rule" :class="adminSetPasswordRules.special ? 'pwd-rule-pass' : 'pwd-rule-fail'">
+                  <i class="bi" :class="adminSetPasswordRules.special ? 'bi-check-circle-fill' : 'bi-x-circle-fill'"></i>
+                  At least one special character (!@#$%^&*)
+                </div>
+              </div>
+            </div>
+            <div class="field-group">
+              <label class="field-label">Confirm Password</label>
+              <div class="input-row">
+                <i class="bi bi-lock field-icon"></i>
+                <input :type="showAdminConfirmPassword ? 'text' : 'password'" class="field-input" v-model="adminSetPasswordForm.confirmPassword" placeholder="••••••••" autocomplete="new-password" required />
+                <i class="bi password-toggle" :class="showAdminConfirmPassword ? 'bi-eye-slash' : 'bi-eye'" @click="showAdminConfirmPassword = !showAdminConfirmPassword"></i>
+              </div>
+            </div>
+            <button type="submit" class="submit-btn" :disabled="adminSetPasswordLoading">
+              <span v-if="adminSetPasswordLoading" class="spinner-border spinner-border-sm me-2"></span>
+              Set Password
+            </button>
+          </form>
+
+          <form v-if="adminActiveTab === 'signIn'" @submit.prevent="handleAdminSignIn">
             <div v-if="adminErrorMessage" class="error-alert">
               <i class="bi bi-exclamation-circle-fill me-2"></i>
               <span>{{ adminErrorMessage }}</span>
@@ -291,7 +358,7 @@
                 v-if="!adminSlackConnected"
                 type="button"
                 class="social-btn social-btn-slack"
-                :disabled="adminOAuthLoading === 'teams' || adminTeamsConnected"
+                :disabled="adminOAuthLoading === 'teams'"
                 @click.prevent="startAdminSlackLogin"
               >
                 <span v-if="adminOAuthLoading === 'slack'" class="spinner-border spinner-border-sm"></span>
@@ -316,7 +383,7 @@
                 v-if="!adminTeamsConnected"
                 type="button"
                 class="social-btn social-btn-teams"
-                :disabled="adminOAuthLoading === 'slack' || adminSlackConnected"
+                :disabled="adminOAuthLoading === 'slack'"
                 @click.prevent="startAdminTeamsLogin"
               >
                 <span v-if="adminOAuthLoading === 'teams'" class="spinner-border spinner-border-sm"></span>
@@ -376,18 +443,38 @@
 
 <script>
 import { useAuthStore } from '@/stores/authStore';
-import { markPostLoginSuccess } from '@/utils/postLoginSuccess';
+import { extractClaimInviteToken, isClaimInviteFlow, readClaimInviteToken, setClaimInviteValid, storeClaimInviteToken, currentClaimInviteToken } from '@/utils/claimInvite';
+import { markAdminSetPasswordEmailIfNew, markPostLoginSuccess } from '@/utils/postLoginSuccess';
 import router from '@/router';
 import Swal from 'sweetalert2';
 import teamsIcon from '@/assets/images/teams.png';
 import slackIcon from '@/assets/images/slack.png';
 import {
   buildUserSetPasswordHomeQuery,
+  clearStoredAdminSetPasswordDeepLink,
   clearStoredSetPasswordDeepLink,
+  extractAdminSetPasswordFromRoute,
   extractSetPasswordParams,
+  isAdminSetPasswordDeepLink,
+  isAdminSetPasswordPath,
   isUserSetPasswordDeepLink,
+  readStoredAdminSetPasswordDeepLink,
   readStoredSetPasswordDeepLink,
 } from '@/utils/userSetPasswordDeepLink';
+import {
+  clearPendingMemberFlow,
+  isStoredTeamMember,
+  markPendingMemberFlow,
+  readPendingMemberFlow,
+} from '@/utils/authenticatedHome';
+import {
+  persistTeamsDeepLink,
+  extractTeamsDeepLink,
+  redirectToTeamsTabUrl,
+  landOnTeamsAdminDashboardChannel,
+  openTeamsOAuthPopup,
+} from '@/utils/teamsDeepLink';
+import { consumeAdminPlatformOAuthError } from '@/utils/platformOAuthMessage';
 
 export default {
   name: 'SignUpModal',
@@ -403,6 +490,11 @@ export default {
     },
     /** When preSelectedType is 'user', open this tab first (e.g. email deep-link). */
     userInitialTab: {
+      type: String,
+      default: '',
+      validator: (value) => ['', 'signIn', 'setPassword'].includes(value)
+    },
+    adminInitialTab: {
       type: String,
       default: '',
       validator: (value) => ['', 'signIn', 'setPassword'].includes(value)
@@ -426,6 +518,7 @@ export default {
       slackIcon,
       teamsIcon,
       userPlatform: null,
+      userHasPassword: false,
       platformChecked: false,
       platformLoading: false,
       userOAuthLoading: false,
@@ -438,16 +531,21 @@ export default {
       showForm: false,
       formType: '',
       userActiveTab: 'signIn',
+      adminActiveTab: 'signIn',
       userForm: { email: '', password: '' },
       userSetPasswordForm: { newPassword: '', confirmPassword: '' },
       adminForm: { email: '', password: '' },
+      adminSetPasswordForm: { newPassword: '', confirmPassword: '' },
       showUserPassword: false,
       showUserNewPassword: false,
       showUserConfirmPassword: false,
       showAdminPassword: false,
+      showAdminNewPassword: false,
+      showAdminConfirmPassword: false,
       userLoading: false,
       userSetPasswordLoading: false,
       adminLoading: false,
+      adminSetPasswordLoading: false,
       userErrorMessage: '',
       adminErrorMessage: '',
       userRecaptchaWidgetId: null,
@@ -489,30 +587,64 @@ export default {
     allSetPasswordRulesPass() {
       return Object.values(this.setPasswordRules).every(Boolean);
     },
+    adminSetPasswordRules() {
+      const pwd = this.adminSetPasswordForm.newPassword || '';
+      return {
+        minLength: pwd.length >= 8,
+        uppercase: /[A-Z]/.test(pwd),
+        lowercase: /[a-z]/.test(pwd),
+        number: /[0-9]/.test(pwd),
+        special: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(pwd)
+      };
+    },
+    allAdminSetPasswordRulesPass() {
+      return Object.values(this.adminSetPasswordRules).every(Boolean);
+    },
     hasValidUserEmail() {
       const email = (this.userForm.email || '').trim();
       return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     },
     slackLoginDisabled() {
-      if (!this.hasValidUserEmail) return true;
-      if (this.platformLoading || this.userOAuthLoading === 'teams') return true;
-      if (!this.platformChecked) return false;
-      return this.userPlatform !== 'slack';
+      if (this.userOAuthLoading === 'teams') return true;
+      // Only lock Slack when this mailbox is known to be Teams-only.
+      return this.platformChecked && this.userPlatform === 'microsoft_teams';
     },
     teamsLoginDisabled() {
-      if (!this.hasValidUserEmail) return true;
-      if (this.platformLoading || this.userOAuthLoading === 'slack') return true;
-      if (!this.platformChecked) return false;
-      return this.userPlatform !== 'microsoft_teams';
+      if (this.userOAuthLoading === 'slack') return true;
+      return this.platformChecked && this.userPlatform === 'slack';
     },
-    /** Set Password tab only when invite/email deep-link tokens exist. */
+    showUserPasswordField() {
+      if (!this.platformChecked) return true;
+      if (this.userPlatform === 'slack' || this.userPlatform === 'microsoft_teams') {
+        return this.userHasPassword === true;
+      }
+      return true;
+    },
+    /** Set Password tab only for the User set-password email flow (not magic link / admin). */
     isSetPasswordAllowed() {
+      if (this.preSelectedType === 'admin') return false;
+      if (this.userInitialTab === 'setPassword') return true;
       if (this.setPasswordUidb64 && this.setPasswordToken) return true;
       if (this.$route?.path === '/home' && isUserSetPasswordDeepLink(this.$route.query)) {
         const q = extractSetPasswordParams(this.$route.query);
         if (q.uidb64 && q.token) return true;
       }
       const stored = readStoredSetPasswordDeepLink();
+      return !!(stored?.uidb64 && stored?.token);
+    },
+    isAdminSetPasswordAllowed() {
+      if (this.preSelectedType === 'user') return false;
+      if (isAdminSetPasswordPath(this.$route?.path || '')) {
+        const fromRoute = extractAdminSetPasswordFromRoute(this.$route || {});
+        if (fromRoute?.uidb64 && fromRoute?.token) return true;
+      }
+      if (this.preSelectedType === 'admin' && this.setPasswordUidb64 && this.setPasswordToken) return true;
+      if (isAdminSetPasswordDeepLink(this.$route?.query || {})) {
+        const q = extractSetPasswordParams(this.$route.query);
+        if (q.uidb64 && q.token) return true;
+      }
+      if (this.preSelectedType !== 'admin') return false;
+      const stored = readStoredAdminSetPasswordDeepLink();
       return !!(stored?.uidb64 && stored?.token);
     },
   },
@@ -531,19 +663,44 @@ export default {
         this.$nextTick(() => this.renderUserSetPasswordRecaptcha());
       }
     },
-    show(newVal) {
-      if (newVal) {
-        this.syncModalFromDeepLink();
-        this.syncAdminConnectionState();
-        this.syncUserMemberSessionState();
-      } else {
-        this.resetPlatformState();
+    adminActiveTab(newVal) {
+      if (newVal === 'signIn' && this.showForm && this.formType === 'admin') {
+        this.scheduleAdminRecaptchaRender();
       }
+    },
+    showUserPasswordField(val) {
+      if (val && this.showForm && this.formType === 'user' && this.userActiveTab === 'signIn') {
+        this.scheduleUserRecaptchaRender();
+      }
+    },
+    show: {
+      immediate: true,
+      handler(newVal) {
+        if (newVal) {
+          try {
+            const fromQuery = extractClaimInviteToken(this.$route?.query || {});
+            if (fromQuery) {
+              storeClaimInviteToken(fromQuery);
+              void useAuthStore().validateClaimInvite(fromQuery);
+            }
+          } catch {
+            /* invite is optional on normal sign-in */
+          }
+          this.syncModalFromDeepLink();
+          this.syncAdminConnectionState();
+          this.syncUserMemberSessionState();
+        } else {
+          this.resetPlatformState();
+        }
+      },
     },
     preSelectedType() {
       if (this.show) this.syncModalFromDeepLink();
     },
     userInitialTab() {
+      if (this.show) this.syncModalFromDeepLink();
+    },
+    adminInitialTab() {
       if (this.show) this.syncModalFromDeepLink();
     },
     setPasswordUidb64() {
@@ -557,11 +714,15 @@ export default {
         if (this.show) this.syncModalFromDeepLink();
       },
       deep: true,
+      immediate: true,
     },
     setPasswordEmail(val) {
-      if (val && this.show && this.formType === 'user') {
+      if (!val || !this.show) return;
+      if (this.formType === 'user') {
         this.userForm.email = val;
         this.fetchUserLoginPlatform();
+      } else if (this.formType === 'admin') {
+        this.adminForm.email = val;
       }
     },
     formType(newVal) {
@@ -572,11 +733,14 @@ export default {
         }
       } else if (newVal === 'admin') {
         this.syncAdminConnectionState();
-        if (this.showForm) {
+        if (this.showForm && this.adminActiveTab === 'signIn') {
           this.scheduleAdminRecaptchaRender();
         }
       }
     }
+  },
+  created() {
+    if (this.show) this.syncModalFromDeepLink();
   },
   mounted() {
     this.loadRecaptchaScript();
@@ -585,20 +749,66 @@ export default {
     window.addEventListener('storage', this.onMemberStorageChange);
     window.addEventListener('storage', this.onAdminStorageChange);
     this.syncAdminConnectionState();
+    if (this.show) this.syncModalFromDeepLink();
   },
   methods: {
     onSetPasswordTabClick() {
       if (!this.isSetPasswordAllowed) return;
       this.userActiveTab = 'setPassword';
     },
+    onAdminSetPasswordTabClick() {
+      if (!this.isAdminSetPasswordAllowed) return;
+      this.adminActiveTab = 'setPassword';
+    },
     syncModalFromDeepLink() {
+      const query = this.$route?.query || {};
+      const path = String(this.$route?.path || '').replace(/\/+$/, '') || '/';
+      const onHome = path === '/' || path === '/home';
+
+      // Set-password email must skip "Choose Sign In Type" and open User → Set Password.
+      if (onHome && isUserSetPasswordDeepLink(query) && !isAdminSetPasswordDeepLink(query)) {
+        this.formType = 'user';
+        this.showForm = true;
+        this.userActiveTab = 'setPassword';
+        const q = extractSetPasswordParams(query);
+        const stored = readStoredSetPasswordDeepLink();
+        const email = this.setPasswordEmail || q.email || stored?.email || '';
+        if (email) this.userForm.email = email;
+        return;
+      }
+
+      const isAdminLink =
+        this.preSelectedType === 'admin' ||
+        this.adminInitialTab === 'setPassword' ||
+        isAdminSetPasswordPath(this.$route?.path || '') ||
+        isAdminSetPasswordDeepLink(query);
+
+      if (isAdminLink) {
+        const storedAdmin = readStoredAdminSetPasswordDeepLink();
+        const fromAdminRoute = extractAdminSetPasswordFromRoute(this.$route || {});
+        const hasAdminTokens =
+          !!(this.setPasswordUidb64 && this.setPasswordToken) ||
+          !!(fromAdminRoute?.uidb64 && fromAdminRoute?.token) ||
+          !!(storedAdmin?.uidb64 && storedAdmin?.token);
+
+        this.formType = 'admin';
+        this.showForm = true;
+        this.adminActiveTab = hasAdminTokens || this.adminInitialTab === 'setPassword'
+          ? 'setPassword'
+          : 'signIn';
+        const email = this.setPasswordEmail || fromAdminRoute?.email || storedAdmin?.email || '';
+        if (email) this.adminForm.email = email;
+        if (this.adminActiveTab === 'signIn') this.scheduleAdminRecaptchaRender();
+        return;
+      }
+
       const fromProps =
         !!(this.setPasswordUidb64 && this.setPasswordToken) ||
         (this.preSelectedType === 'user' && this.userInitialTab === 'setPassword');
 
       let fromRoute = false;
       let routeEmail = '';
-      if (this.$route?.path === '/home' && isUserSetPasswordDeepLink(this.$route.query)) {
+      if ((this.$route?.path === '/home' || this.$route?.path === '/') && isUserSetPasswordDeepLink(this.$route.query)) {
         const q = extractSetPasswordParams(this.$route.query);
         fromRoute = !!(q.uidb64 && q.token);
         routeEmail = q.email;
@@ -611,11 +821,12 @@ export default {
         !!(stored?.uidb64 && stored?.token);
 
       const openSetPassword =
-        hasSetPasswordTokens &&
-        (fromProps ||
-          fromRoute ||
-          !!stored ||
-          (this.preSelectedType === 'user' && this.userInitialTab === 'setPassword'));
+        this.userInitialTab === 'setPassword' ||
+        (hasSetPasswordTokens &&
+          (fromProps ||
+            fromRoute ||
+            !!stored ||
+            (this.preSelectedType === 'user' && this.userInitialTab === 'setPassword')));
 
       if (openSetPassword) {
         this.formType = 'user';
@@ -630,8 +841,7 @@ export default {
         this.formType = this.preSelectedType;
         this.showForm = true;
         if (this.preSelectedType === 'user') {
-          // Without invite tokens, only Sign In is available.
-          this.userActiveTab = 'signIn';
+          this.userActiveTab = this.userInitialTab === 'setPassword' ? 'setPassword' : 'signIn';
         }
         if (this.setPasswordEmail) {
           this.userForm.email = this.setPasswordEmail;
@@ -756,10 +966,15 @@ export default {
       }
     },
     async finishAdminOAuthSignIn() {
+      if (this._oauthFinishing) return;
+      this._oauthFinishing = true;
       const hasSession = this.ensureAdminAuthSessionFromOAuth() ||
         !!sessionStorage.getItem('authorization') ||
         sessionStorage.getItem('authenticated') === 'true';
-      if (!hasSession) return;
+      if (!hasSession) {
+        this._oauthFinishing = false;
+        return;
+      }
       const authStore = useAuthStore();
       if (this.adminTeamsConnected || sessionStorage.getItem('admin_teams_connected') === 'true') {
         authStore.setAdminLoginMethod('teams');
@@ -771,6 +986,7 @@ export default {
     },
     resetPlatformState() {
       this.userPlatform = null;
+      this.userHasPassword = false;
       this.platformChecked = false;
       this.platformLoading = false;
       this.userOAuthLoading = false;
@@ -793,6 +1009,7 @@ export default {
         const res = await authStore.getUserLoginPlatform(email);
         this.platformChecked = true;
         const platform = res.data?.platform;
+        this.userHasPassword = res.data?.has_password === true;
         if (platform === 'slack' || platform === 'microsoft_teams') {
           this.userPlatform = platform;
           this.userSlackConnected = platform === 'slack';
@@ -800,12 +1017,15 @@ export default {
           this.syncUserMemberSessionState();
         } else {
           this.userPlatform = 'email';
+          this.userHasPassword = true;
           this.userSlackConnected = false;
           this.userTeamsConnected = false;
         }
       } catch {
-        this.platformChecked = true;
-        this.userPlatform = 'email';
+        // Unknown / API down: keep both Slack and Teams clickable.
+        this.platformChecked = false;
+        this.userPlatform = null;
+        this.userHasPassword = false;
         this.userSlackConnected = false;
         this.userTeamsConnected = false;
       } finally {
@@ -851,6 +1071,7 @@ export default {
         this.userTeamsConnected = false;
         this.userPlatform = 'slack';
         this.platformChecked = true;
+        clearPendingMemberFlow();
         this.redirectUserToDashboard('Signed in with Slack successfully.');
         return;
       }
@@ -860,6 +1081,7 @@ export default {
         localStorage.setItem('member_teams_connected', 'true');
         sessionStorage.removeItem('member_slack_connected');
         localStorage.removeItem('member_slack_connected');
+        clearPendingMemberFlow();
         this.userTeamsConnected = true;
         this.userSlackConnected = false;
         this.userPlatform = 'microsoft_teams';
@@ -868,7 +1090,7 @@ export default {
       }
     },
     onMemberStorageChange(event) {
-      if (event.key === 'microsoft_graph_token' && event.newValue && sessionStorage.getItem('pending_member_flow') === 'teams') {
+      if (event.key === 'microsoft_graph_token' && event.newValue && readPendingMemberFlow() === 'teams') {
         sessionStorage.setItem('member_teams_connected', 'true');
         sessionStorage.removeItem('member_slack_connected');
         this.userTeamsConnected = true;
@@ -887,6 +1109,7 @@ export default {
         await this.finishAdminOAuthSignIn();
         return;
       }
+      clearPendingMemberFlow();
       this.adminOAuthLoading = 'slack';
       try {
         const authStore = useAuthStore();
@@ -917,9 +1140,11 @@ export default {
     async startAdminTeamsLogin() {
       await this.syncAdminConnectionState();
       if (this.adminTeamsConnected) {
+        if (redirectToTeamsTabUrl()) return;
         await this.finishAdminOAuthSignIn();
         return;
       }
+      clearPendingMemberFlow();
       this.adminOAuthLoading = 'teams';
       try {
         const authStore = useAuthStore();
@@ -927,18 +1152,7 @@ export default {
         const redirectUri = `${window.location.origin}/microsoft/callback`;
         const res = await authStore.getMicrosoftOAuthUrl(redirectUri, adminId);
         if (res.status && res.data?.auth_url) {
-          const width = 1000;
-          const height = 700;
-          const left = window.screenX + (window.outerWidth - width) / 2;
-          const top = window.screenY + (window.outerHeight - height) / 2;
-          const popup = window.open(
-            res.data.auth_url,
-            'TeamsOAuth',
-            `width=${width},height=${height},left=${left},top=${top}`
-          );
-          if (!popup) {
-            alert('Popup blocked! Please allow popups for this site.');
-          }
+          openTeamsOAuthPopup(res.data.auth_url);
         } else {
           Swal.fire('Error', 'Failed to start Microsoft Teams login', 'error');
         }
@@ -951,6 +1165,18 @@ export default {
     async handleAdminOAuthMessage(event) {
       const allowed = [window.location.origin, 'https://vaptbackend.secureitlab.com'];
       if (event.origin && !allowed.includes(event.origin)) return;
+      if (readPendingMemberFlow()) return;
+      const platformError = consumeAdminPlatformOAuthError(event.data);
+      if (platformError) {
+        this.adminOAuthLoading = false;
+        Swal.fire({
+          icon: 'error',
+          title: 'Cannot connect',
+          text: platformError,
+          confirmButtonColor: '#241447',
+        });
+        return;
+      }
       if (event.data?.type === 'SLACK_CONNECTED') {
         if (event.data.bot_token) localStorage.setItem('slack_bot_token', event.data.bot_token);
         if (event.data.slack_user_id) localStorage.setItem('slack_user_id', event.data.slack_user_id);
@@ -963,16 +1189,20 @@ export default {
         sessionStorage.removeItem('admin_teams_connected');
         localStorage.removeItem('admin_teams_connected');
         this.ensureAdminAuthSessionFromOAuth(event.data);
-        await Swal.fire({
-          icon: 'success',
-          title: 'Slack connected successfully',
-          timer: 1400,
-          showConfirmButton: false
-        });
+        if (event.data.is_new_user === true) {
+          markAdminSetPasswordEmailIfNew(true);
+        } else {
+          await Swal.fire({
+            icon: 'success',
+            title: 'Slack connected successfully',
+            timer: 1400,
+            showConfirmButton: false
+          });
+        }
         await this.finishAdminOAuthSignIn();
         return;
       }
-      if (event.data?.type === 'TEAMS_CONNECTED' && event.data?.success) {
+      if (event.data?.type === 'TEAMS_CONNECTED' && event.data?.success !== false) {
         const graphToken = event.data.tokens?.access_token;
         const tenantId = event.data.tokens?.tenant_id;
         if (graphToken) localStorage.setItem('microsoft_graph_token', graphToken);
@@ -981,22 +1211,29 @@ export default {
         if (event.data.django_access_token) localStorage.setItem('django_access_token', event.data.django_access_token);
         if (event.data.django_refresh_token) localStorage.setItem('django_refresh_token', event.data.django_refresh_token);
         if (event.data.user) localStorage.setItem('local_user', JSON.stringify(event.data.user));
+        persistTeamsDeepLink(extractTeamsDeepLink(event.data));
         localStorage.setItem('teams_connected', 'true');
         this.adminTeamsConnected = true;
         this.adminSlackConnected = false;
         sessionStorage.setItem('admin_teams_connected', 'true');
         sessionStorage.removeItem('admin_slack_connected');
         this.ensureAdminAuthSessionFromOAuth(event.data);
-        await Swal.fire({
-          icon: 'success',
-          title: 'Microsoft Teams connected successfully',
-          timer: 1400,
-          showConfirmButton: false
-        });
+        landOnTeamsAdminDashboardChannel(event.data, { newTab: true });
+        if (event.data.is_new_user === true) {
+          markAdminSetPasswordEmailIfNew(true);
+        } else {
+          await Swal.fire({
+            icon: 'success',
+            title: 'Microsoft Teams connected successfully',
+            timer: 1400,
+            showConfirmButton: false
+          });
+        }
         await this.finishAdminOAuthSignIn();
       }
     },
     async onAdminStorageChange(event) {
+      if (readPendingMemberFlow()) return;
       if (event.key === 'microsoft_graph_token' && event.newValue) {
         this.adminTeamsConnected = true;
         this.adminSlackConnected = false;
@@ -1006,37 +1243,25 @@ export default {
     },
     async startUserSlackLogin() {
       const email = (this.userForm.email || '').trim();
-      if (!email) {
-        Swal.fire({ icon: 'warning', title: 'Email required', text: 'Enter your email first.', confirmButtonColor: '#241447' });
-        return;
-      }
-      await this.fetchUserLoginPlatform();
-      this.syncUserMemberSessionState();
-      if (this.userSlackConnected && (await this.tryFinishUserOAuthSignIn(email))) {
-        return;
-      }
-      if (this.userPlatform === 'microsoft_teams') {
-        Swal.fire({
-          icon: 'info',
-          title: 'Use Microsoft Teams',
-          text: 'This account signs in with Microsoft Teams. Use the Teams button.',
-          confirmButtonColor: '#241447',
-        });
-        return;
-      }
-      if (this.userPlatform === 'email') {
-        Swal.fire({
-          icon: 'info',
-          title: 'Use email sign in',
-          text: 'This account uses email and password. Sign in below.',
-          confirmButtonColor: '#241447',
-        });
-        return;
+      if (this.hasValidUserEmail) {
+        await this.fetchUserLoginPlatform();
+        this.syncUserMemberSessionState();
+        if (this.userSlackConnected && (await this.tryFinishUserOAuthSignIn(email))) {
+          return;
+        }
+        if (this.userPlatform === 'microsoft_teams') {
+          Swal.fire({
+            icon: 'info',
+            title: 'Use Microsoft Teams',
+            text: 'This account signs in with Microsoft Teams. Use the Teams button.',
+            confirmButtonColor: '#241447',
+          });
+          return;
+        }
       }
 
       this.userOAuthLoading = 'slack';
-      sessionStorage.setItem('pending_member_email', email);
-      sessionStorage.setItem('pending_member_flow', 'slack');
+      markPendingMemberFlow('slack', email);
       try {
         const authStore = useAuthStore();
         const callbackBase = `${window.location.origin}/slack/callback?flow=member`;
@@ -1065,54 +1290,31 @@ export default {
     },
     async startUserTeamsLogin() {
       const email = (this.userForm.email || '').trim();
-      if (!email) {
-        Swal.fire({ icon: 'warning', title: 'Email required', text: 'Enter your email first.', confirmButtonColor: '#241447' });
-        return;
-      }
-      await this.fetchUserLoginPlatform();
-      this.syncUserMemberSessionState();
-      if (this.userTeamsConnected && (await this.tryFinishUserOAuthSignIn(email))) {
-        return;
-      }
-      if (this.userPlatform === 'slack') {
-        Swal.fire({
-          icon: 'info',
-          title: 'Use Slack',
-          text: 'This account signs in with Slack. Use the Slack button.',
-          confirmButtonColor: '#241447',
-        });
-        return;
-      }
-      if (this.userPlatform === 'email') {
-        Swal.fire({
-          icon: 'info',
-          title: 'Use email sign in',
-          text: 'This account uses email and password. Sign in below.',
-          confirmButtonColor: '#241447',
-        });
-        return;
+      if (this.hasValidUserEmail) {
+        await this.fetchUserLoginPlatform();
+        this.syncUserMemberSessionState();
+        if (this.userTeamsConnected && (await this.tryFinishUserOAuthSignIn(email))) {
+          return;
+        }
+        if (this.userPlatform === 'slack') {
+          Swal.fire({
+            icon: 'info',
+            title: 'Use Slack',
+            text: 'This account signs in with Slack. Use the Slack button.',
+            confirmButtonColor: '#241447',
+          });
+          return;
+        }
       }
 
       this.userOAuthLoading = 'teams';
-      sessionStorage.setItem('pending_member_email', email);
-      sessionStorage.setItem('pending_member_flow', 'teams');
+      markPendingMemberFlow('teams', email);
       try {
         const authStore = useAuthStore();
         const redirectUri = `${window.location.origin}/microsoft/callback?flow=member`;
         const res = await authStore.getMicrosoftMemberOAuthUrl(redirectUri, email);
         if (res.status && res.data?.auth_url) {
-          const width = 1000;
-          const height = 700;
-          const left = window.screenX + (window.outerWidth - width) / 2;
-          const top = window.screenY + (window.outerHeight - height) / 2;
-          const popup = window.open(
-            res.data.auth_url,
-            'TeamsMemberOAuth',
-            `width=${width},height=${height},left=${left},top=${top}`
-          );
-          if (!popup) {
-            alert('Popup blocked! Please allow popups for this site.');
-          }
+          openTeamsOAuthPopup(res.data.auth_url);
         } else {
           Swal.fire({ icon: 'error', title: 'Error', text: res.message || 'Failed to start Microsoft Teams login', confirmButtonColor: '#241447' });
         }
@@ -1126,17 +1328,18 @@ export default {
       this.showForm = false;
       this.formType = '';
       this.userActiveTab = 'signIn';
+      this.adminActiveTab = 'signIn';
       this.userErrorMessage = '';
       this.adminErrorMessage = '';
       this.resetPlatformState();
-      sessionStorage.removeItem('pending_member_email');
-      sessionStorage.removeItem('pending_member_flow');
+      clearPendingMemberFlow();
       this.$emit('close');
     },
     goBack() {
       this.showForm = false;
       this.formType = '';
       this.userActiveTab = 'signIn';
+      this.adminActiveTab = 'signIn';
       this.resetForms();
     },
     selectUserSignIn() {
@@ -1149,14 +1352,21 @@ export default {
     selectAdminSignIn() {
       this.formType = 'admin';
       this.showForm = true;
+      this.adminActiveTab = this.isAdminSetPasswordAllowed && this.adminInitialTab === 'setPassword'
+        ? 'setPassword'
+        : 'signIn';
       this.syncAdminConnectionState();
-      this.scheduleAdminRecaptchaRender();
+      if (this.adminActiveTab === 'signIn') this.scheduleAdminRecaptchaRender();
     },
     resetForms() {
       this.userForm = { email: '', password: '' };
       this.adminForm = { email: '', password: '' };
+      this.userSetPasswordForm = { newPassword: '', confirmPassword: '' };
+      this.adminSetPasswordForm = { newPassword: '', confirmPassword: '' };
       this.showUserPassword = false;
       this.showAdminPassword = false;
+      this.showAdminNewPassword = false;
+      this.showAdminConfirmPassword = false;
     },
     loadRecaptchaScript(onReady) {
       const done = () => {
@@ -1269,6 +1479,15 @@ export default {
         Swal.fire({ icon: 'error', title: 'Invalid Email', text: 'Please enter a valid email address', confirmButtonColor: '#241447' });
         return;
       }
+      if (!this.showUserPasswordField) {
+        Swal.fire({
+          icon: 'info',
+          title: 'Use Slack or Teams',
+          text: 'This account does not have a password yet. Sign in with Slack or Microsoft Teams.',
+          confirmButtonColor: '#241447',
+        });
+        return;
+      }
       if (!this.userForm.password || this.userForm.password.trim() === '') {
         Swal.fire({ icon: 'error', title: 'Password Required', text: 'Please enter your password', confirmButtonColor: '#241447' });
         return;
@@ -1322,7 +1541,10 @@ export default {
         await Swal.fire({ icon: 'error', title: 'Password Mismatch', text: 'Passwords do not match. Please check and try again.', confirmButtonColor: '#241447', confirmButtonText: 'OK', allowOutsideClick: false });
         return;
       }
-      const useToken = !!(this.setPasswordUidb64 && this.setPasswordToken);
+      const stored = readStoredSetPasswordDeepLink();
+      const uidb64 = this.setPasswordUidb64 || stored?.uidb64 || '';
+      const token = this.setPasswordToken || stored?.token || '';
+      const useToken = !!(uidb64 && token);
       if (useToken && !this.allSetPasswordRulesPass) {
         await Swal.fire({ icon: 'error', title: 'Weak Password', text: 'Please meet all password requirements shown below.', confirmButtonColor: '#241447', confirmButtonText: 'OK', allowOutsideClick: false });
         return;
@@ -1332,8 +1554,8 @@ export default {
         const authStore = useAuthStore();
         const result = useToken
           ? await authStore.userSetPasswordWithToken({
-              uidb64: this.setPasswordUidb64,
-              token: this.setPasswordToken,
+              uidb64,
+              token,
               password: this.userSetPasswordForm.newPassword,
               confirm_password: this.userSetPasswordForm.confirmPassword
             })
@@ -1344,6 +1566,10 @@ export default {
         if (result.status) {
           this.userSetPasswordForm = { newPassword: '', confirmPassword: '' };
           clearStoredSetPasswordDeepLink();
+          this.$emit('user-password-set');
+          if (this.$route.path === '/home' || this.$route.path === '/') {
+            this.$router.replace({ path: '/home' }).catch(() => {});
+          }
           if (result.loggedIn) {
             await Swal.fire({
               icon: 'success',
@@ -1381,6 +1607,62 @@ export default {
         this.userSetPasswordLoading = false;
       }
     },
+    async handleAdminSetPassword() {
+      if (this.adminSetPasswordForm.newPassword.length < 8) {
+        await Swal.fire({ icon: 'error', title: 'Weak Password', text: 'Password must be at least 8 characters long', confirmButtonColor: '#241447', confirmButtonText: 'OK', allowOutsideClick: false });
+        return;
+      }
+      if (this.adminSetPasswordForm.newPassword !== this.adminSetPasswordForm.confirmPassword) {
+        await Swal.fire({ icon: 'error', title: 'Password Mismatch', text: 'Passwords do not match. Please check and try again.', confirmButtonColor: '#241447', confirmButtonText: 'OK', allowOutsideClick: false });
+        return;
+      }
+      if (!this.allAdminSetPasswordRulesPass) {
+        await Swal.fire({ icon: 'error', title: 'Weak Password', text: 'Please meet all password requirements shown below.', confirmButtonColor: '#241447', confirmButtonText: 'OK', allowOutsideClick: false });
+        return;
+      }
+      const stored = readStoredAdminSetPasswordDeepLink();
+      const uidb64 = this.setPasswordUidb64 || stored?.uidb64 || '';
+      const token = this.setPasswordToken || stored?.token || '';
+      if (!uidb64 || !token) {
+        await Swal.fire({ icon: 'error', title: 'Invalid Link', text: 'Use the set-password link from your email.', confirmButtonColor: '#241447', confirmButtonText: 'OK', allowOutsideClick: false });
+        return;
+      }
+      this.adminSetPasswordLoading = true;
+      try {
+        const authStore = useAuthStore();
+        const result = await authStore.resetPassword({
+          uidb64,
+          token,
+          password: this.adminSetPasswordForm.newPassword,
+          confirm_password: this.adminSetPasswordForm.confirmPassword,
+        });
+        if (result.status) {
+          this.adminSetPasswordForm = { newPassword: '', confirmPassword: '' };
+          clearStoredAdminSetPasswordDeepLink();
+          await Swal.fire({
+            icon: 'success',
+            title: 'Password Set Successfully!',
+            timer: 2000,
+            timerProgressBar: true,
+            showConfirmButton: false,
+            allowOutsideClick: false,
+            didOpen: () => {
+              const container = document.querySelector('.swal2-container');
+              if (container) container.style.zIndex = '10001';
+            }
+          });
+          this.adminActiveTab = 'signIn';
+          this.scheduleAdminRecaptchaRender();
+        } else {
+          await Swal.fire({ icon: 'error', title: 'Failed to Set Password', text: result.message || 'Unable to set password. Please try again.', confirmButtonColor: '#241447', confirmButtonText: 'Try Again', allowOutsideClick: false });
+        }
+      } catch (err) {
+        console.error('Admin set password error:', err);
+        await Swal.fire({ icon: 'error', title: 'Error', text: 'Something went wrong. Please try again.', confirmButtonColor: '#241447', confirmButtonText: 'OK', allowOutsideClick: false });
+      } finally {
+        this.adminSetPasswordLoading = false;
+      }
+    },
     async handleAdminSignIn() {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(this.adminForm.email)) {
@@ -1407,25 +1689,47 @@ export default {
         const result = await authStore.login({
           email: this.adminForm.email,
           password: this.adminForm.password,
-          recaptcha: recaptchaResponse
+          recaptcha: recaptchaResponse,
+          invite_token: currentClaimInviteToken(this.$route?.query || {}),
         });
-        if (result.status) {
-          this.$emit('close');
-          markPostLoginSuccess(result.message);
-          authStore.setAdminLoginMethod('email');
-          await this.checkAndRedirectAdmin();
-        } else {
+        if (!result.status) {
           this.adminErrorMessage = result.message || 'Invalid email or password. Please try again.';
           this.adminForm.password = '';
-          window.grecaptcha?.reset(this.adminRecaptchaWidgetId);
+          this.safeResetAdminRecaptcha();
+          return;
+        }
+        this.$emit('close');
+        markPostLoginSuccess(result.message);
+        authStore.setAdminLoginMethod('email');
+        try {
+          await this.checkAndRedirectAdmin();
+        } catch (redirectErr) {
+          console.error('Admin post-login redirect error:', redirectErr);
         }
       } catch (err) {
         console.error('Admin login error:', err);
-        this.adminErrorMessage = 'Something went wrong. Please try again.';
+        const data = err?.response?.data;
+        const raw =
+          (typeof data?.message === 'string' && data.message) ||
+          (typeof data?.detail === 'string' && data.detail) ||
+          (Array.isArray(data?.non_field_errors) && data.non_field_errors[0]) ||
+          (typeof err?.message === 'string' && !/is not defined|cannot read|undefined is not a function/i.test(err.message)
+            ? err.message
+            : '');
+        this.adminErrorMessage = raw || 'Invalid email or password. Please try again.';
         this.adminForm.password = '';
-        window.grecaptcha?.reset(this.adminRecaptchaWidgetId);
+        this.safeResetAdminRecaptcha();
       } finally {
         this.adminLoading = false;
+      }
+    },
+    safeResetAdminRecaptcha() {
+      try {
+        if (window.grecaptcha && this.adminRecaptchaWidgetId !== null) {
+          window.grecaptcha.reset(this.adminRecaptchaWidgetId);
+        }
+      } catch {
+        this.scheduleAdminRecaptchaRender();
       }
     },
     openAdminSignup() {
@@ -1433,11 +1737,33 @@ export default {
       this.$emit('open-admin-signup');
     },
     async checkAndRedirectAdmin() {
+      if (isStoredTeamMember()) {
+        this.$router.replace('/userdashboard');
+        return;
+      }
       const authStore = useAuthStore();
-      const loggedUser = authStore.user || JSON.parse(localStorage.getItem('user') || 'null') || {};
+      let loggedUser = authStore.user || {};
+      try {
+        const raw = localStorage.getItem('user') || sessionStorage.getItem('user');
+        if ((!loggedUser || !Object.keys(loggedUser).length) && raw && raw !== 'undefined' && raw !== 'null') {
+          loggedUser = JSON.parse(raw) || {};
+        }
+      } catch {
+        loggedUser = authStore.user || {};
+      }
       const userType = String(loggedUser && (loggedUser.user_type || loggedUser.type || loggedUser.role) || '').toLowerCase();
       if (userType === 'user' || userType === 'member' || userType === 'internal' || userType === 'external') {
         this.$router.replace('/userdashboard');
+        return;
+      }
+      if (isClaimInviteFlow()) {
+        setClaimInviteValid(true);
+        authStore.unmarkStepCompleted(1);
+        this.$router.replace('/communication');
+        return;
+      }
+      if (sessionStorage.getItem('isNewUser') === 'true') {
+        this.$router.replace('/admin-upload-report');
         return;
       }
       try {
@@ -1449,6 +1775,7 @@ export default {
     },
     openForgotPassword(type) {
       this.forgotType = type;
+      this.forgotEmail = type === 'admin' ? (this.adminForm.email || '') : (this.userForm.email || '');
       this.showForgotModal = true;
     },
     closeForgotModal() {
@@ -1465,7 +1792,9 @@ export default {
       this.forgotLoading = true;
       try {
         const authStore = useAuthStore();
-        const res = await authStore.userForgotPassword({ email: this.forgotEmail });
+        const res = this.forgotType === 'admin'
+          ? await authStore.forgotPassword({ email: this.forgotEmail })
+          : await authStore.userForgotPassword({ email: this.forgotEmail });
         if (res.status) {
           this.closeForgotModal();
           Swal.fire({ icon: 'success', title: 'Reset Link Sent!', text: 'Please check your email for the password reset link.', timer: 3000, showConfirmButton: false });
@@ -1745,6 +2074,12 @@ export default {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 6px;
+}
+
+.admin-auth-links {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .field-label {

@@ -203,10 +203,18 @@ export default {
       const d = new Date(dateStr);
       return isNaN(d) ? dateStr : d.toLocaleDateString('en-GB');
     },
+    async liveRefreshPage() {
+      const store = useAuthStore();
+      const result = await store.fetchUserClosedVulns(true, store.userSelectedTeam);
+      if (result.status) {
+        this.allRows = result.data.closed_vulnerabilities || [];
+        this.reportId = result.data.report_id;
+      }
+    },
     async loadData() {
       const store = useAuthStore();
       this.loading = true;
-      const result = await store.fetchUserClosedVulns();
+      const result = await store.fetchUserClosedVulns(false, store.userSelectedTeam);
       if (result.status) {
         this.allRows = result.data.closed_vulnerabilities || [];
         this.reportId = result.data.report_id;
