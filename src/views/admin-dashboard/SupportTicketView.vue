@@ -256,6 +256,15 @@ export default {
       const words = desc.split(" ");
       return words.length > 4 ? words.slice(0, 4).join(" ") + "..." : desc;
     },
+    async liveRefreshPage() {
+      if (!this.authStore.latestReportId) {
+        await this.authStore.fetchVulnerabilityRegister(true);
+      }
+      const reportId = this.authStore.latestReportId || localStorage.getItem("reportId");
+      if (!reportId) return;
+      const res = await this.authStore.getTicketsByReport(reportId, true);
+      if (res.status) this.tickets = res.data;
+    },
     async loadAllTickets() {
       if (!this.authStore.latestReportId) {
         await this.authStore.fetchVulnerabilityRegister();

@@ -610,6 +610,21 @@ export default {
       });
     },
 
+    async liveRefreshPage() {
+      const store = useAuthStore();
+      const team     = this.teamsFilter       !== 'All Units' ? this.teamsFilter                          : undefined;
+      const severity = this.criticalityFilter !== 'All Types' ? this.criticalityFilter.toLowerCase() : undefined;
+      const res = await store.fetchUserRiskCriteriaCalendarWithFilters(
+        this.currentYear, this.currentMonth, team, severity,
+      );
+      if (res.status && res.data) {
+        this.apiCalendarData = res.data;
+        const evts = [];
+        this.pushEventsFromCalendarApiData(res.data, this.currentYear, this.currentMonth, evts);
+        this.events = evts;
+      }
+    },
+
     // ── Month view ─────────────────────────────────────────────────────────────
     async loadCalendarData() {
       this.calendarLoading = true;
@@ -929,7 +944,10 @@ export default {
   },
 
   watch: {
-    teamsFilter() {
+    teamsFilter(val) {
+      // Keep the shared, app-wide team selection in sync so every other page
+      // (Dashboard, Assets, Tickets, Exceptions, ...) picks up the change too.
+      useAuthStore().setUserSelectedTeam(val && val !== 'All Units' ? val : 'both');
       if (this.activeView === 'Week') this.loadWeekData();
       else this.loadCalendarData();
     },
@@ -952,6 +970,12 @@ export default {
       this.assignedTeams = Array.isArray(user.Member_role) ? user.Member_role : [];
     } catch {
       this.assignedTeams = [];
+    }
+
+    // Carry over the team picked on Home so Calendar shows the same filtered data by default.
+    const shared = useAuthStore().userSelectedTeam;
+    if (shared && shared !== 'both' && shared !== 'All Teams' && this.assignedTeams.includes(shared)) {
+      this.teamsFilter = shared;
     }
 
     if (this.teamsFilter !== 'All Units' && !this.assignedTeams.includes(this.teamsFilter)) {

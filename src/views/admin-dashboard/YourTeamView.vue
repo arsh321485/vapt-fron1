@@ -365,6 +365,7 @@ import DashboardMenu from '@/components/admin-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/admin-component/DashboardHeader.vue';
 import RoleAssignmentDrawer from '@/components/admin-component/RoleAssignmentDrawer.vue';
 import { useAuthStore } from "@/stores/authStore";
+import { isRealScanHost } from "@/utils/assetDummyData";
 import endpoint from "@/services/apiServices";
 import {
   getTeamColor,
@@ -378,6 +379,8 @@ import {
   clearRoleAssignments,
   resetAllRoleAssignments,
 } from '@/utils/roleAssignmentData';
+import { isFreemiumTeamLimitMessage } from '@/utils/planLimits';
+import Swal from 'sweetalert2';
 
 export default {
   name: 'YourTeamView',
@@ -535,56 +538,65 @@ export default {
     };
 
     this.catalogLoading = true;
-    const res = await this.authStore.fetchReportAssetVulnsByRole(roleFullMap[roleShort]);
-    this.catalogLoading = false;
+    try {
+      const res = await this.authStore.fetchReportAssetVulnsByRole(roleFullMap[roleShort]);
+      if (!res.status || !res.data) {
+        this.roleAssignmentCatalog = {
+          ...this.roleAssignmentCatalog,
+          [roleShort]: { assets: [], vulnerabilities: [] },
+        };
+        return;
+      }
 
-    if (!res.status || !res.data) return;
+      const apiAssets = Array.isArray(res.data.assets) ? res.data.assets : [];
 
-    // API response format:
-    // { assets: [{ host_name, os, vuln_count, vulnerabilities: [{plugin_name, severity, cvss_score}] }] }
-    const apiAssets = res.data.assets || [];
+      const topSeverity = (vulns) => {
+        const order = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+        return vulns.reduce((top, v) => {
+          const s = v.severity || '';
+          return (order[s] ?? 9) < (order[top] ?? 9) ? s : top;
+        }, '');
+      };
 
-    // Helper: highest severity from asset's vuln list
-    const topSeverity = (vulns) => {
-      const order = { Critical: 0, High: 1, Medium: 2, Low: 3 };
-      return vulns.reduce((top, v) => {
-        const s = v.severity || '';
-        return (order[s] ?? 9) < (order[top] ?? 9) ? s : top;
-      }, '');
-    };
+      const catalogAssets = apiAssets.map(a => {
+        const name = String(a.host_name || a.hostname || a.ip || a.name || a.asset || '').trim();
+        return {
+          id: name,
+          name,
+          os: a.os || '',
+          severity: topSeverity(a.vulnerabilities || a.vulns || []),
+        };
+      }).filter(a => a.id && isRealScanHost(a.id));
 
-    // Build asset catalog items — id = host_name (used directly in payload)
-    const catalogAssets = apiAssets.map(a => ({
-      id: String(a.host_name || '').trim(),
-      name: String(a.host_name || '').trim(),
-      os: a.os || '',
-      severity: topSeverity(a.vulnerabilities || []),
-    })).filter(a => a.id);
-
-    // Flatten nested vulns: each asset.vulnerabilities[] → one entry per plugin+host
-    if (!this.vulnIdToData[roleShort]) this.vulnIdToData[roleShort] = {};
-    let vulnIndex = 0;
-    const catalogVulns = [];
-    apiAssets.forEach(a => {
-      const hostName = String(a.host_name || '').trim();
-      (a.vulnerabilities || []).forEach(v => {
-        const pluginName = String(v.plugin_name || '').trim();
-        if (!pluginName || !hostName) return;
-        const id = `${roleShort}-v-${vulnIndex++}`;
-        this.vulnIdToData[roleShort][id] = { plugin_name: pluginName, host_name: hostName };
-        catalogVulns.push({
-          id,
-          name: pluginName,
-          asset: hostName,
-          severity: v.severity || '',
+      if (!this.vulnIdToData[roleShort]) this.vulnIdToData[roleShort] = {};
+      let vulnIndex = 0;
+      const catalogVulns = [];
+      apiAssets.forEach(a => {
+        const hostName = String(a.host_name || a.hostname || a.ip || a.name || a.asset || '').trim();
+        (a.vulnerabilities || a.vulns || []).forEach(v => {
+          const pluginName = String(v.plugin_name || v.name || v.vul_name || '').trim();
+          if (!pluginName || !hostName || !isRealScanHost(hostName)) return;
+          const id = `${roleShort}-v-${vulnIndex++}`;
+          this.vulnIdToData[roleShort][id] = { plugin_name: pluginName, host_name: hostName };
+          catalogVulns.push({
+            id,
+            name: pluginName,
+            asset: hostName,
+            severity: v.severity || '',
+          });
         });
       });
-    });
 
-    this.roleAssignmentCatalog[roleShort] = {
-      assets: catalogAssets,
-      vulnerabilities: catalogVulns,
-    };
+      this.roleAssignmentCatalog = {
+        ...this.roleAssignmentCatalog,
+        [roleShort]: {
+          assets: catalogAssets,
+          vulnerabilities: catalogVulns,
+        },
+      };
+    } finally {
+      this.catalogLoading = false;
+    }
   },
   closeAssignmentModal() {
     this.showAssignmentModal = false;
@@ -619,16 +631,16 @@ export default {
       AF: "Architectural Flaws",
     };
 
-    const memberRoles = this.selectedRoles2.map(
-      short => roleFullMap[short]
-    );
+    const memberRoles = this.selectedRoles2
+      .map(short => roleFullMap[short])
+      .filter(Boolean);
 
     // ❗ Basic validation
     if (
       !this.form.user_type ||
-      !this.form.first_name ||
-      !this.form.last_name ||
-      !this.form.email ||
+      !this.form.first_name?.trim() ||
+      !this.form.last_name?.trim() ||
+      !this.form.email?.trim() ||
       memberRoles.length === 0
     ) {
       Swal.fire("Error", "Please fill all fields", "error");
@@ -655,9 +667,9 @@ export default {
     const payload = {
       admin_id: adminId,
       user_type: this.form.user_type,
-      first_name: this.form.first_name,
-      last_name: this.form.last_name,
-      email: this.form.email,
+      first_name: this.form.first_name.trim(),
+      last_name: this.form.last_name.trim(),
+      email: this.form.email.trim(),
       Member_role: memberRoles,
       ...(Object.keys(role_assignments).length && { role_assignments }),
     };
@@ -665,30 +677,23 @@ export default {
     const res = await this.authStore.addTeamMemberWithPlatformSync(payload);
 
     if (!res.status) {
-      Swal.fire("Error", res.message, "error");
+      const errorMessage = res.message || "Could not add user";
+      const isTeamLimit = isFreemiumTeamLimitMessage(errorMessage)
+        || isFreemiumTeamLimitMessage(res.details?.error)
+        || res.httpStatus === 403 && isFreemiumTeamLimitMessage(JSON.stringify(res.details || {}));
+      Swal.fire({
+        icon: "error",
+        title: isTeamLimit ? undefined : "Error",
+        text: errorMessage,
+        confirmButtonColor: "#5a44ff",
+      });
       return;
     }
 
-    const platformSync = res.platformSync || { status: true, skipped: true };
-
-    const slackSync = res.slack_sync || res.data?.slack_sync;
-    let successText = res.message || "User added successfully";
-
-    if (platform === "teams") {
-      successText = platformSync.status
-        ? "User added and added to Microsoft Teams"
-        : `User created in VaptFix, but Teams sync failed: ${platformSync.message || "unknown"}`;
-    } else if (slackSync?.status === "success") {
-      successText = "User added and invited to Slack channels";
-    } else if (slackSync?.status === "pending_workspace_join") {
-      successText =
-        "User created. Slack workspace invite sent; channel mapping pending.";
-    } else if (platform === "slack" && platformSync.status && !platformSync.skipped) {
-      successText = "User added and invited to Slack channel";
-    }
+    const successText = res.message || "User added successfully";
 
     Swal.fire({
-      icon: platformSync.status === false ? "warning" : "success",
+      icon: "success",
       title: "User Added",
       text: successText,
       timer: 2500,
@@ -1063,6 +1068,10 @@ async deleteRoleFromUser(user, roleToRemove) {
           showConfirmButton: false,
         });
       }
+    },
+    async liveRefreshPage() {
+      const res = await this.authStore.fetchUsersByAdmin(true);
+      if (res.status) this.users = res.data;
     },
   },
   async mounted() {
