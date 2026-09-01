@@ -86,21 +86,21 @@ body {
   font-weight: 600 !important;
 }
 
-/* Soft teal pill + bold brand color (no dots) */
+/* Legal docs — headings match Knowledge Base (tab + underline, no pills) */
 .legal-page-root .ld-doc-title {
   font-family: 'Inter', sans-serif !important;
-  font-size: clamp(1.9rem, 3.2vw, 2.4rem) !important;
+  font-size: clamp(1.9rem, 3.2vw, 2.45rem) !important;
   font-weight: 800 !important;
   color: #241447 !important;
-  letter-spacing: -0.025em !important;
+  letter-spacing: -0.02em !important;
   line-height: 1.2 !important;
-  display: inline-block !important;
-  max-width: 100%;
-  margin: 0 0 10px !important;
-  padding: 10px 18px !important;
-  border: 1px solid rgba(15, 105, 110, 0.18) !important;
-  border-radius: 14px !important;
-  background: linear-gradient(135deg, rgba(15, 105, 110, 0.14), rgba(15, 105, 110, 0.05)) !important;
+  display: block !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: none !important;
   box-shadow: none !important;
 }
 
@@ -111,19 +111,20 @@ body {
 
 .legal-page-root .ld-content h2 {
   font-family: 'Inter', sans-serif !important;
-  font-size: 1.4rem !important;
+  font-size: 1.55rem !important;
   font-weight: 800 !important;
   color: #241447 !important;
   line-height: 1.35 !important;
   letter-spacing: -0.015em !important;
-  margin-top: 1.85rem !important;
+  margin-top: 0.5rem !important;
   margin-bottom: 0.9rem !important;
-  display: inline-block !important;
-  max-width: 100%;
-  padding: 8px 16px !important;
-  border: 1px solid rgba(15, 105, 110, 0.16) !important;
-  border-radius: 999px !important;
-  background: rgba(15, 105, 110, 0.11) !important;
+  display: block !important;
+  max-width: 100% !important;
+  padding: 0 0 0.45rem 0 !important;
+  border: none !important;
+  border-bottom: 2px solid rgba(15, 105, 110, 0.18) !important;
+  border-radius: 0 !important;
+  background: none !important;
   box-shadow: none !important;
 }
 
@@ -134,16 +135,16 @@ body {
 
 .legal-page-root .ld-content h3 {
   font-family: 'Inter', sans-serif !important;
-  font-size: 1.1rem !important;
+  font-size: 1.2rem !important;
   font-weight: 700 !important;
-  color: #0f696e !important;
+  color: #241447 !important;
   margin: 1.4rem 0 0.6rem !important;
-  padding: 6px 14px !important;
-  border: 1px solid rgba(15, 105, 110, 0.14) !important;
-  display: inline-block !important;
-  border-radius: 999px !important;
-  background: rgba(15, 105, 110, 0.08) !important;
-  gap: 0;
+  padding: 0 0 0 12px !important;
+  border: none !important;
+  border-left: 4px solid #0f696e !important;
+  border-radius: 0 !important;
+  background: none !important;
+  display: block !important;
 }
 
 .legal-page-root .ld-content h3::before {
@@ -152,8 +153,34 @@ body {
 }
 
 .legal-page-root .ld-section-number {
-  font-size: 12px !important;
-  font-weight: 700 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 1.2rem !important;
+  font-weight: 800 !important;
+  color: #241447 !important;
+  letter-spacing: 0.04em !important;
+  line-height: 1.35 !important;
+  text-transform: uppercase !important;
+  margin: 0 0 1.35rem !important;
+  padding: 14px 18px !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(15, 105, 110, 0.2) !important;
+  border-left: 5px solid #0f696e !important;
+  background: linear-gradient(90deg, rgba(15, 105, 110, 0.12), rgba(15, 105, 110, 0.03)) !important;
+}
+
+.legal-page-root .ld-content p,
+.legal-page-root .ld-content li,
+.legal-page-root .ld-callout,
+.legal-page-root .ld-callout p {
+  font-size: 16.5px !important;
+  font-weight: 500 !important;
+  line-height: 1.8 !important;
+  color: #334155 !important;
 }
 
 /* navbar */
@@ -1036,7 +1063,7 @@ body {
 .vuln-download-icon-btn--disabled,
 .vuln-download-icon-btn:disabled {
   background: #cbd5e1 !important;
-  color: #94a3b8 !important;
+  color: #64748b !important;
   cursor: not-allowed;
   opacity: 1;
   pointer-events: none;
@@ -1508,11 +1535,12 @@ body {
   width: 400px;
   max-width: 100vw;
   height: 100%;
-  background: #fff;
-  border-left: 1px solid #ddd;
-  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.12);
+  background: #241447;
+  border-left: none;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.18);
   transition: right 0.3s ease-in-out;
   z-index: 10000;
+  overflow: hidden;
 }
 
 .notification-panel.open {
@@ -1929,6 +1957,11 @@ th.sev-low {
   position: relative;
   z-index: 3;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  max-width: 100%;
   background-color: #f2f3f6 !important;
   background-image: none;
   border-bottom: 1px solid #e2e8f0;
@@ -1940,27 +1973,36 @@ th.sev-low {
 }
 
 /* Severity + status badges inline after vuln title */
+.vuln-accordion-header > .d-flex.flex-grow-1,
+.vuln-accordion-header > .flex-grow-1 {
+  min-width: 0;
+  overflow: hidden;
+  flex: 1 1 0%;
+}
+
 .vuln-name-row {
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
-  flex: 1;
+  flex: 1 1 0%;
+  overflow: hidden;
   flex-wrap: nowrap;
 }
 
-.vuln-name-row .vuln-name {
-  flex: 0 1 auto;
+.vuln-name-row .vuln-name,
+.vuln-accordion-header .vuln-name {
+  flex: 1 1 0%;
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  display: block;
+  cursor: default;
 }
 
-.vuln-name-row .sev-badge,
-.vuln-name-row .status-open-badge,
-.vuln-name-row .status-closed-badge {
+.vuln-name-row > *:not(.vuln-name) {
   flex-shrink: 0;
 }
 
@@ -2235,6 +2277,11 @@ th.sev-low {
   font-size: 0.75rem;
   font-weight: 500;
   color: #1e293b;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
 }
 
 .sr-host-name {

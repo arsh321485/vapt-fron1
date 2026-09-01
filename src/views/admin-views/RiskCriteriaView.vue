@@ -6,7 +6,7 @@
       <DashboardHeader />
     </div>
 
-    <div class="rc-page">
+    <div v-if="!redirecting" class="rc-page">
 
       <!-- STEPPER -->
       <div v-if="!isEditMode" class="rc-stepper-row">
@@ -176,6 +176,9 @@
 <script>
 import DashboardHeader from '@/components/admin-component/DashboardHeader.vue';
 import { useAuthStore } from "@/stores/authStore";
+import { isClaimInviteFlow, hasClaimInviteReport } from "@/utils/claimInvite";
+import { isScopeAwaitingScan } from "@/utils/scopeScanGate";
+import { dismissUploadReportModal } from "@/utils/suppressUploadReportModal";
 import Swal from "sweetalert2";
 import { Tooltip } from 'bootstrap'
 
@@ -212,12 +215,20 @@ export default {
       },
       loading: false,
       isLocked: false,
+      editMode: false,
+      redirecting: true,
+      slackWatchTimer: null,
+      slackWatching: false,
     };
   },
   computed: {
     isEditMode() {
-      return !!this.$route.query.returnTo;
-    }
+      return this.editMode;
+    },
+    returnPath() {
+      const r = this.$route.query.returnTo;
+      return typeof r === 'string' && r.startsWith('/') ? r : '';
+    },
   },
   methods: {
     convertToDays(value) {
@@ -256,11 +267,24 @@ export default {
     async submitRiskCriteria() {
       const auth = useAuthStore();
 
-      // normal locked flow
+      // Criteria already saved — go to dashboard (don't re-run onboarding gates).
       if (this.isLocked && !this.isEditMode) {
-        auth.markStepCompleted(2);
-        const route = await auth.getAdminOnboardingRoute();
-        this.$router.push(route);
+        this.loading = true;
+        try {
+          auth.markStepCompleted(2);
+          auth._markOnboardingComplete();
+          if (isClaimInviteFlow() || hasClaimInviteReport()) {
+            await this.$router.push("/admindashboardonboarding");
+            return;
+          }
+          if (!(await auth.hasPaidPlan())) {
+            await this.$router.push("/pricingplan");
+            return;
+          }
+          await this.$router.push("/admindashboardonboarding");
+        } finally {
+          this.loading = false;
+        }
         return;
       }
 
@@ -284,8 +308,9 @@ export default {
               showConfirmButton: false,
             });
 
-            // redirect back
-            this.$router.push(this.$route.query.returnTo || "/admindashboardonboarding");
+            this.$router.push(this.returnPath || "/admindashboardonboarding");
+          } else {
+            Swal.fire("Error", res.message || "Unable to update risk criteria.", "error");
           }
 
           return;
@@ -296,6 +321,7 @@ export default {
 
         if (res.status) {
           auth.markStepCompleted(2);
+          auth._markOnboardingComplete();
 
           await Swal.fire({
             icon: "success",
@@ -305,9 +331,17 @@ export default {
             showConfirmButton: false,
           });
 
-          // Re-check onboarding gate — should now be ready
-          const route = await auth.getAdminOnboardingRoute();
-          this.$router.push(route);
+          if (isClaimInviteFlow() || hasClaimInviteReport()) {
+            await this.$router.push("/admindashboardonboarding");
+            return;
+          }
+          if (!(await auth.hasPaidPlan())) {
+            await this.$router.push("/pricingplan");
+            return;
+          }
+          await this.$router.push("/admindashboardonboarding");
+        } else {
+          Swal.fire("Error", res.message || "Unable to save risk criteria.", "error");
         }
 
       } catch (err) {
@@ -321,71 +355,141 @@ export default {
         const auth = useAuthStore();
         let res = await auth.getRiskCriteriaById();
 
-        // Fallback: if no stored ID or fetch failed, fetch by admin
         if (!res.status) {
           res = await auth.getRiskCriteriaByAdmin();
-          if (res.status && res.data) {
-            const d = res.data?.risk_criteria || res.data;
-            if (d._id) {
-              localStorage.setItem("riskId", d._id);
-              localStorage.setItem("riskCriteriaId", d._id);
-            }
-            if (d.admin_id) localStorage.setItem("adminId", d.admin_id);
-            this.existingForm.critical = d.critical;
-            this.existingForm.high = d.high;
-            this.existingForm.medium = d.medium;
-            this.existingForm.low = d.low;
-            this.newForm.critical = d.critical;
-            this.newForm.high = d.high;
-            this.newForm.medium = d.medium;
-            this.newForm.low = d.low;
-            this.isLocked = !this.isEditMode;
-          }
-          return;
         }
 
-        if (res.status) {
-          const d = res.data?.risk_criteria || res.data;
-
-          if (!d || (!d.critical && !d.high && !d.medium && !d.low)) return;
-
-          this.existingForm.critical = d.critical;
-          this.existingForm.high = d.high;
-          this.existingForm.medium = d.medium;
-          this.existingForm.low = d.low;
-          this.newForm.critical = d.critical;
-          this.newForm.high = d.high;
-          this.newForm.medium = d.medium;
-          this.newForm.low = d.low;
-
-          if (d._id) {
-            localStorage.setItem("riskId", d._id);
-            localStorage.setItem("riskCriteriaId", d._id);
-          }
-          if (d.admin_id) localStorage.setItem("adminId", d.admin_id);
-
-          this.isLocked = !this.isEditMode;
+        if (res.status && res.data) {
+          this.applyFetchedCriteria(res.data?.risk_criteria || res.data);
         }
       } catch (err) {
         console.error("Risk criteria fetch error", err);
       }
     },
+    hasExistingCriteria() {
+      return !!(
+        this.existingForm.critical &&
+        this.existingForm.high &&
+        this.existingForm.medium &&
+        this.existingForm.low
+      );
+    },
+    applyFetchedCriteria(d) {
+      if (!d || (!d.critical && !d.high && !d.medium && !d.low)) return;
+      this.existingForm.critical = d.critical;
+      this.existingForm.high = d.high;
+      this.existingForm.medium = d.medium;
+      this.existingForm.low = d.low;
+      this.newForm.critical = d.critical;
+      this.newForm.high = d.high;
+      this.newForm.medium = d.medium;
+      this.newForm.low = d.low;
+      if (d._id) {
+        localStorage.setItem("riskId", d._id);
+        localStorage.setItem("riskCriteriaId", d._id);
+      }
+      if (d.admin_id) localStorage.setItem("adminId", d.admin_id);
+    },
+    async redirectIfNoReport() {
+      const auth = useAuthStore();
+      const status = await auth.getReportStatus();
+      const claimed = isClaimInviteFlow();
+      const hasFile = !!(status.hasReport || hasClaimInviteReport());
+
+      if (claimed || hasFile) {
+        auth.initCompletedSteps();
+        // Slack/Teams already provision workspace users — do not bounce back to Add Users.
+        if (auth.needsCommunicationStep()) {
+          this.redirecting = true;
+          await this.$router.replace({ path: "/communication" });
+          return true;
+        }
+        return false;
+      }
+
+      if (!(await auth.hasPaidPlan())) {
+        this.redirecting = true;
+        await this.$router.replace({ path: "/admin-upload-report" });
+        return true;
+      }
+
+      if (status.hasReport) return false;
+      if (isScopeAwaitingScan() || (await auth.hasSubmittedScope())) return false;
+      this.redirecting = true;
+      await this.$router.replace({ path: "/admin-upload-report" });
+      return true;
+    },
     async ensureOnboardingGate() {
       // Edit mode from dashboard header should still work when already ready
-      if (this.isEditMode) return;
+      if (this.isEditMode || this.redirecting || this.slackWatching) return false;
 
-      const auth = useAuthStore();
-      const route = await auth.getAdminOnboardingRoute();
-      if (route !== "/riskcriteria") {
-        this.$router.replace(route);
+      this.slackWatching = true;
+      try {
+        const auth = useAuthStore();
+        const route = await auth.getAdminOnboardingRoute();
+        if (route !== "/riskcriteria") {
+          this.redirecting = true;
+          this.stopSlackWatch();
+          await this.$router.replace(route);
+          return true;
+        }
+
+        const res = await auth.getRiskCriteriaByAdmin();
+        const data = res.data?.risk_criteria || res.data;
+        const alreadySet = !!(data && data.critical && data.high && data.medium && data.low);
+        if (res.status && alreadySet) {
+          auth.markStepCompleted(2);
+          this.redirecting = true;
+          this.stopSlackWatch();
+          const next = await auth.getAdminOnboardingRoute();
+          await this.$router.replace(next);
+          return true;
+        }
+      } finally {
+        this.slackWatching = false;
       }
+      return false;
+    },
+    onSlackWatchVisibility() {
+      if (!document.hidden) this.ensureOnboardingGate();
+    },
+    startSlackWatch() {
+      this.stopSlackWatch();
+      if (this.isEditMode) return;
+      this.slackWatchTimer = setInterval(() => {
+        if (!document.hidden && !this.redirecting) this.ensureOnboardingGate();
+      }, 4000);
+      document.addEventListener("visibilitychange", this.onSlackWatchVisibility);
+    },
+    stopSlackWatch() {
+      if (this.slackWatchTimer) {
+        clearInterval(this.slackWatchTimer);
+        this.slackWatchTimer = null;
+      }
+      document.removeEventListener("visibilitychange", this.onSlackWatchVisibility);
     },
   },
-  mounted() {
+  async mounted() {
+    dismissUploadReportModal();
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
     tooltipTriggerList.forEach(el => new Tooltip(el))
-    this.ensureOnboardingGate();
-    this.getRiskCriteria();
+
+    if (await this.redirectIfNoReport()) return;
+
+    await this.getRiskCriteria();
+    this.editMode = !!this.returnPath && this.hasExistingCriteria();
+    this.isLocked = this.hasExistingCriteria() && !this.editMode;
+
+    if (this.editMode) {
+      this.redirecting = false;
+      return;
+    }
+    if (await this.ensureOnboardingGate()) return;
+    this.redirecting = false;
+    this.startSlackWatch();
+  },
+  beforeUnmount() {
+    this.stopSlackWatch();
   },
 };
 </script>

@@ -5,13 +5,21 @@
   <div class="d-flex align-items-center justify-content-between gap-4 py-2 px-4">
 
       <div class="browser-bar">
-        <router-link to="/home">
-          <img src="@/assets/images/vaptfix_white.png" alt="">
+        <router-link to="/userdashboard">
+          <img src="@/assets/images/vaptfix_white.png" alt="VaptFix">
         </router-link>
       </div>
 
     <!-- Right Section -->
     <div class="d-flex align-items-center gap-2">
+      <router-link
+        to="/userdashboard"
+        class="header-team-badge"
+        :title="selectedTeamLabel + ' — change team on Home'"
+      >
+        <i class="bi bi-people"></i>
+        <span class="header-team-badge-label">{{ selectedTeamLabel }}</span>
+      </router-link>
       <NotificationPanel recipient-type="user" />
     <div class="position-relative d-inline-block">
       <div
@@ -42,7 +50,11 @@
         </router-link>
 
         <!-- Upgrade -->
-        <router-link to="/pricingplan" class="btn btn-sm btn-outline-dark w-100 mb-2" @click="showDropdown = false">
+        <router-link
+          :to="{ path: '/pricingplan', query: { returnTo: $route.fullPath } }"
+          class="btn btn-sm btn-outline-dark w-100 mb-2"
+          @click="showDropdown = false"
+        >
           Upgrade Plan
         </router-link>
 
@@ -76,7 +88,14 @@ export default {
       showDropdown: false,
       userEmail: "",
       userInitial: "U",
+      authStore: useAuthStore(),
     };
+  },
+  computed: {
+    selectedTeamLabel() {
+      const team = this.authStore.userSelectedTeam;
+      return !team || team === "both" || team === "All Teams" ? "All Teams" : team;
+    },
   },
   methods: {
     toggleDropdown() {
@@ -168,6 +187,34 @@ body {
   max-width: 148px;
   object-fit: contain;
   object-position: left center;
+}
+
+.header-team-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  line-height: 1.3;
+  max-width: 260px;
+}
+.header-team-badge:hover {
+  background: rgba(255, 255, 255, 0.26);
+  color: #ffffff;
+}
+.header-team-badge i {
+  flex: none;
+}
+.header-team-badge-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dashboard-circle {
