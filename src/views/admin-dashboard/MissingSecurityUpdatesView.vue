@@ -177,6 +177,14 @@ export default {
     exportPDF() {
       window.print();
     },
+    async liveRefreshPage() {
+      const store = useAuthStore();
+      const result = await store.fetchMitigationByTeam(true);
+      if (result.status) {
+        this.mitigationData = result.data;
+        this.reportId = result.data.report_id;
+      }
+    },
     async loadData() {
       const store = useAuthStore();
       this.loading = true;
@@ -360,8 +368,8 @@ export default {
 }
 .msu-sev-critical { background: #f8dede; color: #b42318; }
 .msu-sev-high     { background: #fee2e2; color: #dc2626; }
-.msu-sev-medium   { background: #fef3c7; color: #b45309; }
-.msu-sev-low      { background: #ccfbf1; color: #0f766e; }
+.msu-sev-medium   { background: #fef3c7; color: #f59e0b; }
+.msu-sev-low      { background: #d1fae5; color: #10b981; }
 
 /* Status */
 .msu-status-dot-inline {

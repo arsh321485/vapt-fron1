@@ -136,6 +136,7 @@
 import DashboardMenu from '@/components/user-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/user-component/DashboardHeader.vue';
 import { useAuthStore } from '@/stores/authStore';
+import { getSeverityColor as severityHex } from '@/utils/severityColors';
 
 export default {
   name: 'FixedvulnerabilitiesView',
@@ -181,13 +182,7 @@ export default {
       this.activeFilters = filters.length === 0 ? ['All'] : filters;
     },
     getSeverityColor(sev) {
-      switch (sev?.toLowerCase()) {
-        case 'critical': return 'maroon';
-        case 'high': return '#AD0000';
-        case 'medium': return '#825B00';
-        case 'low': return '#006900';
-        default: return 'inherit';
-      }
+      return severityHex(sev);
     },
     getSeverityClass(sev) {
       switch (sev?.toLowerCase()) {
@@ -203,10 +198,18 @@ export default {
       const d = new Date(dateStr);
       return isNaN(d) ? dateStr : d.toLocaleDateString('en-GB');
     },
+    async liveRefreshPage() {
+      const store = useAuthStore();
+      const result = await store.fetchUserClosedVulns(true, store.userSelectedTeam);
+      if (result.status) {
+        this.allRows = result.data.closed_vulnerabilities || [];
+        this.reportId = result.data.report_id;
+      }
+    },
     async loadData() {
       const store = useAuthStore();
       this.loading = true;
-      const result = await store.fetchUserClosedVulns();
+      const result = await store.fetchUserClosedVulns(false, store.userSelectedTeam);
       if (result.status) {
         this.allRows = result.data.closed_vulnerabilities || [];
         this.reportId = result.data.report_id;
@@ -407,27 +410,27 @@ export default {
 }
 
 .fv-sev-critical {
+  background: #f8dede;
+  color: #b42318;
+  border: 1px solid #fca5a5;
+}
+
+.fv-sev-high {
   background: #fee2e2;
   color: #dc2626;
   border: 1px solid #fca5a5;
 }
 
-.fv-sev-high {
-  background: #f8dede;
-  color: #b42318;
-  border: 1px solid #efb7b1;
-}
-
 .fv-sev-medium {
   background: #fef3c7;
-  color: #b45309;
+  color: #f59e0b;
   border: 1px solid #fcd34d;
 }
 
 .fv-sev-low {
-  background: #ccfbf1;
-  color: #0f766e;
-  border: 1px solid #5eead4;
+  background: #d1fae5;
+  color: #10b981;
+  border: 1px solid #6ee7b7;
 }
 
 .fv-sev-default {

@@ -1,6 +1,14 @@
 <template>
   <div class="callback-loading">
     <p>{{ statusMessage }}</p>
+    <button
+      v-if="teamsOpenUrl"
+      type="button"
+      class="open-teams-btn"
+      @click="openTeamsNow"
+    >
+      Open VAPTFIX in Teams
+    </button>
   </div>
 </template>
 
@@ -13,17 +21,33 @@ import {
   redirectToUserSetPasswordHome,
   storeSetPasswordDeepLink,
 } from "@/utils/userSetPasswordDeepLink";
+import {
+  clearPendingMemberFlow,
+  readPendingMemberEmail,
+  readPendingMemberFlow,
+} from "@/utils/authenticatedHome";
+import {
+  extractTeamsDeepLink,
+  persistTeamsDeepLink,
+  resolveTeamsAdminDashboardUrl,
+  landOnTeamsAdminDashboardChannel,
+  openTeamsAdminDashboard,
+  pickTeamsTabUrl,
+  readStoredTeamsDeepLink,
+} from "@/utils/teamsDeepLink";
 
 export default {
   data() {
     return {
       statusMessage: "Connecting Microsoft Teams...",
+      teamsOpenUrl: "",
     };
   },
   methods: {
     isMemberFlow() {
       const params = new URLSearchParams(window.location.search);
-      return params.get("flow") === "member";
+      if (params.get("flow") === "member") return true;
+      return readPendingMemberFlow() === "teams";
     },
     notifyOpener(payload) {
       if (window.opener) {
@@ -57,11 +81,79 @@ export default {
         hashParams.get("access_token")
       );
     },
+    resolvedTeamsUrl(payload = {}) {
+      return (
+        pickTeamsTabUrl(extractTeamsDeepLink(payload || {})) ||
+        pickTeamsTabUrl(readStoredTeamsDeepLink()) ||
+        ""
+      );
+    },
+    openTeamsNow() {
+      const url = this.teamsOpenUrl;
+      if (!url) return;
+      if (!openTeamsAdminDashboard(url, { newTab: false })) {
+        window.location.assign(url);
+      }
+    },
+    keepTeamsTabOpen(payload = {}) {
+      this.teamsOpenUrl = this.resolvedTeamsUrl(payload);
+      this.statusMessage = this.teamsOpenUrl
+        ? "Teams connected. Click below to open the VAPTFIX admin dashboard channel."
+        : "Teams connected. Waiting for the VAPTFIX admin dashboard channel…";
+    },
+    async landThisTabOnTeams(payload = {}) {
+      const authStore = useAuthStore();
+      try {
+        if (typeof authStore.ensureTeamsChannelsCached === "function") {
+          await authStore.ensureTeamsChannelsCached();
+        }
+      } catch {
+        /* continue with payload channels */
+      }
+      if (landOnTeamsAdminDashboardChannel(payload, { newTab: false })) {
+        return true;
+      }
+      const url = await resolveTeamsAdminDashboardUrl(payload, async () => {
+        try {
+          await authStore.ensureTeamsChannelsCached();
+        } catch {
+          /* ignore */
+        }
+        const statusRes = await authStore.fetchMicrosoftTeamsLoginStatus();
+        return statusRes.data || {};
+      });
+      if (url && openTeamsAdminDashboard(url, { newTab: false })) {
+        return true;
+      }
+      return false;
+    },
+    async finishMemberSuccess(payload = {}) {
+      clearPendingMemberFlow();
+      sessionStorage.setItem("member_teams_connected", "true");
+      localStorage.setItem("member_teams_connected", "true");
+      sessionStorage.removeItem("member_slack_connected");
+      localStorage.removeItem("member_slack_connected");
+      persistTeamsDeepLink(extractTeamsDeepLink(payload || {}));
+      this.notifyOpener({ type: "TEAMS_MEMBER_LOGGED_IN", success: true });
+      this.statusMessage = "Signed in. Opening the VAPTFIX admin dashboard channel...";
+      if (await this.landThisTabOnTeams(payload)) {
+        return;
+      }
+      if (window.opener) {
+        this.keepTeamsTabOpen(payload);
+        return;
+      }
+      if (openTeamsAdminDashboard(this.resolvedTeamsUrl(payload), { newTab: true })) {
+        this.$router.replace("/userdashboard");
+        return;
+      }
+      this.keepTeamsTabOpen(payload);
+    },
     async handleMemberCallback(accessToken) {
       const authStore = useAuthStore();
       const queryParams = new URLSearchParams(window.location.search);
       const email =
-        sessionStorage.getItem("pending_member_email") ||
+        readPendingMemberEmail() ||
         queryParams.get("email") ||
         "";
       const msUserId = queryParams.get("ms_user_id") || queryParams.get("user_id") || "";
@@ -73,13 +165,9 @@ export default {
       });
 
       if (res.status) {
-        localStorage.setItem("microsoft_graph_token", accessToken);
-        localStorage.setItem("teams_connected", "true");
-        sessionStorage.removeItem("pending_member_flow");
-        this.notifyOpener({ type: "TEAMS_MEMBER_LOGGED_IN", success: true });
-        this.statusMessage = "Success! You can close this window.";
-        setTimeout(() => window.close(), 1200);
+        await this.finishMemberSuccess(res.data || {});
       } else if (this.redirectMemberToSetPassword(res.details)) {
+        clearPendingMemberFlow();
         this.statusMessage = "Redirecting to set your password...";
       } else {
         await Swal.fire("Error", res.message || "Microsoft Teams member login failed", "error");
@@ -95,9 +183,12 @@ export default {
       const res = await authStore.microsoftLogin(accessToken);
 
       if (res.status) {
+        const links = extractTeamsDeepLink(res.data);
+        persistTeamsDeepLink(links);
         this.notifyOpener({
           type: "TEAMS_CONNECTED",
           success: true,
+          is_new_user: res.data?.is_new_user === true,
           django_access_token:
             res.data?.django_access_token || localStorage.getItem("access_token"),
           django_refresh_token:
@@ -106,6 +197,11 @@ export default {
           vaptfix_team:
             res.data?.vaptfix_team ||
             JSON.parse(localStorage.getItem("vaptfix_team") || "null"),
+          status: links.status || res.data?.status,
+          teams_tab_url: links.teams_tab_url,
+          teams_tab_url_alt: links.teams_tab_url_alt,
+          teams_desktop_url: links.teams_desktop_url,
+          teams_url: links.teams_url,
           tokens: {
             access_token:
               res.data?.tokens?.access_token ||
@@ -114,10 +210,50 @@ export default {
               res.data?.tokens?.tenant_id || localStorage.getItem("microsoft_tenant_id"),
           },
         });
-        this.$router.push("/settings");
+        this.statusMessage =
+          links.status === "provisioning"
+            ? "Setting up your workspace..."
+            : "Opening the VAPTFIX admin dashboard channel...";
+
+        if (await this.landThisTabOnTeams(res.data)) {
+          return;
+        }
+
+        // VaptFix tab (opener) continues Provide Scope. This tab must stay as Teams — never close it.
+        if (window.opener) {
+          this.keepTeamsTabOpen(res.data);
+          return;
+        }
+
+        const url = this.resolvedTeamsUrl(res.data);
+        if (url && openTeamsAdminDashboard(url, { newTab: true })) {
+          try {
+            const next = await authStore.getAdminOnboardingRoute();
+            this.$router.replace(next);
+          } catch {
+            this.$router.replace("/admin-upload-report");
+          }
+          return;
+        }
+
+        this.keepTeamsTabOpen(res.data);
       } else {
-        await Swal.fire("Error", "Microsoft login failed", "error");
-        this.$router.push("/settings");
+        const message =
+          res.message ||
+          "Microsoft login failed";
+        this.notifyOpener({
+          type: "TEAMS_CONNECTED",
+          success: false,
+          error: message,
+          platform_conflict: /slack/i.test(message),
+        });
+        this.statusMessage = message;
+        if (window.opener) {
+          setTimeout(() => window.close(), 400);
+          return;
+        }
+        await Swal.fire("Error", message, "error");
+        this.$router.push("/home");
       }
     },
   },
@@ -143,7 +279,7 @@ export default {
         if (this.isMemberFlow()) {
           window.close();
         } else {
-          this.$router.push("/settings");
+          this.$router.push("/home");
         }
         return;
       }
@@ -160,9 +296,32 @@ export default {
       if (this.isMemberFlow() && window.opener) {
         window.close();
       } else {
-        this.$router.push("/settings");
+        this.$router.push("/home");
       }
     }
   },
 };
 </script>
+
+<style scoped>
+.callback-loading {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+  text-align: center;
+  font-family: inherit;
+}
+.open-teams-btn {
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 18px;
+  background: #241447;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+</style>

@@ -23,6 +23,8 @@ import UserMissingSecurityUpdatesView from "../views/user-views/UserMissingSecur
 import VulnerabilityCardView from "../views/admin-dashboard/VulnerabilityCardView.vue";
 import YourTeamView from "../views/admin-dashboard/YourTeamView.vue";
 import PricingplansView from "../views/admin-views/PricingplansView.vue";
+import BillingSuccessView from "../views/admin-views/BillingSuccessView.vue";
+import BillingCancelView from "../views/admin-views/BillingCancelView.vue";
 import PartnerView from "../views/admin-views/PartnerView.vue";
 import PartnerLeadPortalView from "../views/admin-views/PartnerLeadPortalView.vue";
 import PartnerLeadThankYouView from "../views/admin-views/PartnerLeadThankYouView.vue";
@@ -31,7 +33,6 @@ import WebinarFormView from "../views/admin-views/WebinarFormView.vue";
 import WebinarThankYouView from "../views/admin-views/WebinarThankYouView.vue";
 import PrivacyPolicyView from "../views/admin-views/PrivacyPolicyView.vue";
 import TermsOfServiceView from "../views/admin-views/TermsOfServiceView.vue";
-import SecurityStatementView from "../views/admin-views/SecurityStatementView.vue";
 import KnowledgeBaseView from "../views/admin-views/KnowledgeBaseView.vue";
 import HowVaptfixWorksView from "../views/admin-views/HowVaptfixWorksView.vue";
 import DataProcessingAgreementView from "../views/admin-views/DataProcessingAgreementView.vue";
@@ -43,7 +44,6 @@ import AdminManageAccountView from "../views/admin-dashboard/AdminManageAccountV
 import AdminSettingsView from "../views/admin-dashboard/AdminSettingsView.vue";
 import UserManageAccountView from "../views/user-views/UserManageAccountView.vue";
 import UserSettingsView from "../views/user-views/UserSettingsView.vue";
-import ResetPasswordView from "../views/admin-views/ResetPasswordView.vue";
 import NotificationPanel from "../components/admin-component/NotificationPanel.vue";
 
 // user import
@@ -79,9 +79,34 @@ import CalendarView from "../views/admin-dashboard/CalendarView.vue";
 import UserCalendarView from "../views/user-views/UserCalendarView.vue";
 import { tryShowPostLoginSuccessAlert } from "../utils/postLoginSuccess";
 import {
+  buildAdminSetPasswordHomeQuery,
   buildUserSetPasswordHomeQuery,
   normalizeUserSetPasswordRoute,
 } from "../utils/userSetPasswordDeepLink";
+import {
+  clearExternalDeepLink,
+  isAuthDeepLink,
+  isPublicHomeLock,
+  isRouteLockExempt,
+  lockedLocation,
+  markExternalDeepLink,
+  readLockedRoute,
+  sameLockedRoute,
+  seedLockFromWindow,
+  writeLockedRoute,
+} from "../utils/routeLock";
+import { extractClaimInviteToken, isClaimInviteFlow, storeClaimInviteToken } from "../utils/claimInvite";
+import { fetchClaimInviteValidate } from "../services/claimInviteApi";
+import { useAuthStore } from "../stores/authStore";
+import { hasAuthSession, isStoredTeamMember } from "../utils/authenticatedHome";
+import {
+  clearHandoffNavigation,
+  hasHandoffError,
+  isHandoffNavigation,
+  markHandoffNavigation,
+  readQueryAdminToken,
+  storeHandoffError,
+} from "../utils/adminHandoff";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -90,7 +115,7 @@ const router = createRouter({
 
     {
       path: "/",
-      redirect: "/home",
+      redirect: (to) => ({ path: "/home", query: to.query, hash: to.hash }),
     },
     {
       path: "/login",
@@ -111,11 +136,6 @@ const router = createRouter({
       path: "/terms",
       name: "terms",
       component: TermsOfServiceView,
-    },
-    {
-      path: "/security",
-      name: "security",
-      component: SecurityStatementView,
     },
     {
       path: "/knowledge-base",
@@ -150,6 +170,16 @@ const router = createRouter({
       path: "/pricingplan",
       name: "pricingplan",
       component: PricingplansView,
+    },
+    {
+      path: "/billing/success",
+      name: "billing-success",
+      component: BillingSuccessView,
+    },
+    {
+      path: "/billing/cancel",
+      name: "billing-cancel",
+      component: BillingCancelView,
     },
     {
       path: "/partner",
@@ -190,7 +220,7 @@ const router = createRouter({
       path: "/communication",
       name: "communication",
       component: LocationView,
-      meta: { requiresAuth: true, requiresAdmin: true },
+      meta: { requiresAuth: true, requiresAdmin: true, requiresPaidPlan: true },
     },
     {
       path: "/microsoft/callback",
@@ -201,7 +231,7 @@ const router = createRouter({
       path: "/riskcriteria",
       name: "riskcriteria",
       component: RiskCriteriaView,
-      meta: { requiresAuth: true, requiresAdmin: true },
+      meta: { requiresAuth: true, requiresAdmin: true, requiresPaidPlan: true },
     },
     // {
     //   path: '/uploadreport',
@@ -218,7 +248,7 @@ const router = createRouter({
       path: "/admindashboardonboarding",
       name: "admindashboardonboarding",
       component: AdminDashboardOnboardingView,
-      meta: { requiresAuth: true, requiresAdmin: true },
+      meta: { requiresAuth: true, requiresAdmin: true, requiresPaidPlan: true },
     },
     {
       path: "/scope",
@@ -380,7 +410,7 @@ const router = createRouter({
       path: "/admin-upload-report",
       name: "admin-upload-report",
       component: AdminUploadReportView,
-      meta: { requiresAuth: true, requiresAdmin: true },
+      meta: { requiresAuth: true, requiresAdmin: true, allowDeepLink: true },
     },
     {
       path: "/scoping-form",
@@ -425,7 +455,14 @@ const router = createRouter({
     {
       path: "/set-password/:uidb64/:token",
       name: "set-password",
-      component: ResetPasswordView,
+      redirect: (to) => ({
+        path: "/home",
+        query: buildAdminSetPasswordHomeQuery(
+          String(to.params.uidb64 ?? ""),
+          String(to.params.token ?? ""),
+          typeof to.query.email === "string" ? to.query.email : "",
+        ),
+      }),
     },
     {
       path: "/user-set-password/:uidb64/:token",
@@ -441,7 +478,7 @@ const router = createRouter({
     {
       path: "/reset-password/:uidb64/:token",
       name: "reset-password",
-      component: ResetPasswordView,
+      component: HomeView,
     },
     {
       path: "/notification",
@@ -592,37 +629,148 @@ const router = createRouter({
   },
 });
 
-router.beforeEach((to, _from, next) => {
+seedLockFromWindow();
+
+router.beforeEach(async (to, from, next) => {
   const normalized = normalizeUserSetPasswordRoute(to);
   if (normalized) {
     return next({ ...normalized, replace: true });
   }
 
+  // Magic link is ?invite= only. Never rewrite ?token= (User/Admin set-password).
+  // /signup?invite= and other auth URLs open Home Get Started.
+  const inviteToken = extractClaimInviteToken(to.query || {});
+  if (inviteToken) {
+    storeClaimInviteToken(inviteToken);
+    try {
+      await fetchClaimInviteValidate(inviteToken);
+    } catch {
+      /* Home modal still re-check */
+    }
+  }
+  const inviteHomePaths = new Set([
+    "/signup",
+    "/signin",
+    "/auth",
+    "/login",
+    "/usersignup",
+    "/how-vaptfix-works",
+  ]);
+  if (inviteToken && inviteHomePaths.has(to.path)) {
+    return next({
+      path: "/home",
+      query: { ...(to.query as Record<string, any>), invite: inviteToken },
+      replace: true,
+    });
+  }
+
+  // Slack / Teams signed admin_token → same JWT exchange as a normal login.
+  const adminToken = readQueryAdminToken(to.query as Record<string, unknown>);
+  if (adminToken) {
+    const strippedQuery = { ...(to.query as Record<string, any>) };
+    delete strippedQuery.admin_token;
+    const authStore = useAuthStore();
+    const result = await authStore.exchangePricingHandoff(adminToken);
+    if (!result.status) {
+      storeHandoffError(
+        result.message || "This link has expired. Go back to Teams and tap the button again.",
+      );
+    }
+    markHandoffNavigation(to.path);
+    markExternalDeepLink(to.path);
+    return next({
+      path: to.path,
+      query: strippedQuery,
+      hash: to.hash,
+      replace: true,
+    });
+  }
+
+  // Public marketing pages must always render (Chrome leftover login used to
+  // bounce /home → dashboard → /home and leave a white screen).
+  const isPublicMarketing = to.path === "/" || to.path === "/home";
+
+  // Typed URL / refresh (no previous in-app route). Stay on the last real page.
+  // Deep links (Teams / Slack / email) skip this lock and use token auth only.
+  const isAddressBarEntry = !from.matched.length;
+  if (isAddressBarEntry && isAuthDeepLink(to)) {
+    markExternalDeepLink(to.path);
+  }
+  if (isAddressBarEntry && !isRouteLockExempt(to) && !isAuthDeepLink(to) && !isPublicMarketing) {
+    const locked = readLockedRoute();
+    if (locked && !sameLockedRoute(locked, to.fullPath)) {
+      // A leftover /home lock must not fight dashboard (or the other way around).
+      if (!(hasAuthSession() && isPublicHomeLock(locked))) {
+        return next(lockedLocation(locked));
+      }
+    }
+    // No lock yet (or HMR missed afterEach) — never open inner pages from the address bar.
+    if (!locked && to.meta.requiresAuth && to.path !== "/home") {
+      return next({ path: "/home", replace: true });
+    }
+  }
+
   if (!to.meta.requiresAuth) return next();
 
   const token = sessionStorage.getItem("authorization") || localStorage.getItem("authorization");
+  const allowHandoffErrorPage =
+    hasHandoffError() &&
+    isHandoffNavigation(to.path) &&
+    (to.path === "/pricingplan" || to.path === "/admin-upload-report");
 
-  if (!token) {
+  if (!token && !allowHandoffErrorPage) {
     return next("/home");
   }
 
-  if (to.meta.requiresAdmin) {
+  if (to.meta.requiresAdmin && token) {
     try {
       const raw = sessionStorage.getItem("user") || localStorage.getItem("user");
       const user = raw ? JSON.parse(raw) : null;
       // Team-member accounts carry a Member_role array; admin accounts do not.
       if (user && Array.isArray(user.Member_role)) {
-        return next("/home");
+        return next({ path: "/userdashboard", replace: true });
       }
     } catch {
       // Unparseable user object — let the page's own API call surface the 401.
     }
   }
 
+  // Signup → upload → choose plan → pay. Magic-link signup (file already attached) skips this.
+  // A scan report on file is not payment — Premium still requires checkout.
+  if (to.meta.requiresPaidPlan && !isClaimInviteFlow()) {
+    if (isStoredTeamMember()) {
+      return next({ path: "/userdashboard", replace: true });
+    }
+    try {
+      const authStore = useAuthStore();
+      const paid = await authStore.hasPaidPlan();
+      if (paid) {
+        return next();
+      }
+      const dest = await authStore.unpaidAdminContinuePath();
+      if (to.path === dest) {
+        return next();
+      }
+      return next({ path: dest, replace: true });
+    } catch {
+      return next({ path: "/admin-upload-report", replace: true });
+    }
+  }
+
   return next();
 });
 
-router.afterEach(() => {
+router.afterEach((to) => {
+  if (!isRouteLockExempt(to)) {
+    // Don't pin public /home while a session exists — that recreates the white-screen bounce.
+    if (!(hasAuthSession() && isPublicHomeLock(to.fullPath))) {
+      writeLockedRoute(to.fullPath);
+    }
+  }
+  if (!isAuthDeepLink(to)) {
+    clearExternalDeepLink();
+  }
+  clearHandoffNavigation();
   tryShowPostLoginSuccessAlert();
 });
 
