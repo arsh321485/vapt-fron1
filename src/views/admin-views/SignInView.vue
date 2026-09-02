@@ -156,7 +156,17 @@
 
 <script>
 import { useAuthStore } from '@/stores/authStore'
-import { markPostLoginSuccess } from '@/utils/postLoginSuccess'
+import { markAdminSetPasswordEmailIfNew, markPostLoginSuccess } from '@/utils/postLoginSuccess'
+import {
+  extractTeamsDeepLink,
+  persistTeamsDeepLink,
+  redirectToTeamsTabUrl,
+  landOnTeamsAdminDashboardChannel,
+  openTeamsOAuthPopup,
+} from '@/utils/teamsDeepLink'
+import { extractClaimInviteToken, readClaimInviteToken, setClaimInviteValid, storeClaimInviteToken, currentClaimInviteToken } from '@/utils/claimInvite'
+import { consumeAdminPlatformOAuthError } from '@/utils/platformOAuthMessage'
+import { extractDjangoOAuthTokens, persistDjangoOAuthTokens } from '@/utils/djangoOAuthTokens'
 import Swal from 'sweetalert2'
 import teamsIcon from '@/assets/images/teams.png'
 import slackIcon from '@/assets/images/slack.png'
@@ -199,30 +209,36 @@ export default {
       }
     },
     ensureOAuthSession(payload = null) {
-      const djangoAccessToken =
-        payload?.django_access_token || localStorage.getItem('django_access_token')
-      const djangoRefreshToken =
-        payload?.django_refresh_token || localStorage.getItem('django_refresh_token')
+      const { access: djangoAccessToken, refresh: djangoRefreshToken } = extractDjangoOAuthTokens(payload)
+      const resolvedAccess =
+        djangoAccessToken || localStorage.getItem('django_access_token')
+      const resolvedRefresh =
+        djangoRefreshToken || localStorage.getItem('django_refresh_token')
       const oauthUser = payload?.user || JSON.parse(localStorage.getItem('local_user') || 'null')
-      if (!djangoAccessToken) return false
+      if (!resolvedAccess) return false
       try {
         const authStore = useAuthStore()
         if (typeof authStore.setAuth === 'function') {
-          authStore.setAuth(djangoAccessToken, oauthUser || authStore.user || {})
+          authStore.setAuth(resolvedAccess, oauthUser || authStore.user || {})
         }
       } catch (e) {
         console.error('Failed to hydrate session from OAuth:', e)
       }
-      sessionStorage.setItem('authorization', djangoAccessToken)
-      if (djangoRefreshToken) sessionStorage.setItem('refreshToken', djangoRefreshToken)
+      sessionStorage.setItem('authorization', resolvedAccess)
+      if (resolvedRefresh) sessionStorage.setItem('refreshToken', resolvedRefresh)
       sessionStorage.setItem('authenticated', 'true')
       return true
     },
     async finishOAuthSignIn() {
+      if (this._oauthFinishing) return
+      this._oauthFinishing = true
       const hasSession = this.ensureOAuthSession() ||
         !!sessionStorage.getItem('authorization') ||
         sessionStorage.getItem('authenticated') === 'true'
-      if (!hasSession) return
+      if (!hasSession) {
+        this._oauthFinishing = false
+        return
+      }
       await this.checkAndRedirect()
     },
     async startSlackLogin() {
@@ -265,6 +281,7 @@ export default {
         try {
           useAuthStore().setAdminLoginMethod('teams')
         } catch (_) { /* ignore */ }
+        if (redirectToTeamsTabUrl()) return
         await this.finishOAuthSignIn()
         return
       }
@@ -275,18 +292,7 @@ export default {
         const redirectUri = `${window.location.origin}/microsoft/callback`
         const res = await authStore.getMicrosoftOAuthUrl(redirectUri, adminId)
         if (res.status && res.data?.auth_url) {
-          const width = 1000
-          const height = 700
-          const left = window.screenX + (window.outerWidth - width) / 2
-          const top = window.screenY + (window.outerHeight - height) / 2
-          const popup = window.open(
-            res.data.auth_url,
-            'TeamsOAuth',
-            `width=${width},height=${height},left=${left},top=${top}`
-          )
-          if (!popup) {
-            alert('Popup blocked! Please allow popups for this site.')
-          }
+          openTeamsOAuthPopup(res.data.auth_url)
         } else {
           Swal.fire('Error', 'Failed to start Microsoft Teams login', 'error')
         }
@@ -299,10 +305,21 @@ export default {
     async handleAdminOAuthMessage(event) {
       const allowed = [window.location.origin, 'https://vaptbackend.secureitlab.com']
       if (event.origin && !allowed.includes(event.origin)) return
+      const platformError = consumeAdminPlatformOAuthError(event.data)
+      if (platformError) {
+        this.oauthLoading = false
+        Swal.fire({
+          icon: 'error',
+          title: 'Cannot connect',
+          text: platformError,
+          confirmButtonColor: '#241447',
+        })
+        return
+      }
       if (event.data?.type === 'SLACK_CONNECTED') {
         if (event.data.bot_token) localStorage.setItem('slack_bot_token', event.data.bot_token)
         if (event.data.slack_user_id) localStorage.setItem('slack_user_id', event.data.slack_user_id)
-        if (event.data.django_access_token) localStorage.setItem('django_access_token', event.data.django_access_token)
+        persistDjangoOAuthTokens(event.data)
         if (event.data.user) localStorage.setItem('local_user', JSON.stringify(event.data.user))
         this.slackConnected = true
         this.teamsConnected = false
@@ -310,18 +327,19 @@ export default {
         try {
           useAuthStore().setAdminLoginMethod('slack')
         } catch (_) { /* ignore */ }
+        markAdminSetPasswordEmailIfNew(event.data.is_new_user === true)
         await this.finishOAuthSignIn()
         return
       }
-      if (event.data?.type === 'TEAMS_CONNECTED' && event.data?.success) {
+      if (event.data?.type === 'TEAMS_CONNECTED' && event.data?.success !== false) {
         const graphToken = event.data.tokens?.access_token
         const tenantId = event.data.tokens?.tenant_id
         if (graphToken) localStorage.setItem('microsoft_graph_token', graphToken)
         if (tenantId) localStorage.setItem('microsoft_tenant_id', tenantId)
         if (event.data.vaptfix_team) localStorage.setItem('vaptfix_team', JSON.stringify(event.data.vaptfix_team))
-        if (event.data.django_access_token) localStorage.setItem('django_access_token', event.data.django_access_token)
-        if (event.data.django_refresh_token) localStorage.setItem('django_refresh_token', event.data.django_refresh_token)
+        persistDjangoOAuthTokens(event.data)
         if (event.data.user) localStorage.setItem('local_user', JSON.stringify(event.data.user))
+        persistTeamsDeepLink(extractTeamsDeepLink(event.data))
         localStorage.setItem('teams_connected', 'true')
         this.teamsConnected = true
         this.slackConnected = false
@@ -329,6 +347,7 @@ export default {
         try {
           useAuthStore().setAdminLoginMethod('teams')
         } catch (_) { /* ignore */ }
+        markAdminSetPasswordEmailIfNew(event.data.is_new_user === true)
         await this.finishOAuthSignIn()
       }
     },
@@ -357,6 +376,7 @@ export default {
           email: this.form.email,
           password: this.form.password,
           recaptcha: recaptchaResponse,
+          invite_token: currentClaimInviteToken(this.$route?.query || {}),
         })
 
         if (result.status) {
@@ -432,6 +452,10 @@ export default {
         return
       }
 
+      if (readClaimInviteToken()) {
+        setClaimInviteValid(true)
+      }
+
       try {
         const route = await authStore.getAdminOnboardingRoute()
         this.$router.replace(route)
@@ -442,6 +466,9 @@ export default {
   },
 
   mounted() {
+    const fromQuery = extractClaimInviteToken(this.$route?.query || {})
+    if (fromQuery) storeClaimInviteToken(fromQuery)
+
     this.syncConnectionState()
     window.addEventListener('message', this.handleAdminOAuthMessage)
     window.addEventListener('storage', this.onOAuthStorageChange)

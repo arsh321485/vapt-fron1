@@ -54,11 +54,12 @@
                           :class="[
                             completedSteps.includes(n) ? 'vc-step-pill-disabled' : '',
                             raisedSupportSteps.includes(n) && !completedSteps.includes(n) ? 'vc-step-pill-raised' : '',
-                            selectedSteps.includes(n) && !completedSteps.includes(n) && !raisedSupportSteps.includes(n) ? 'vc-step-pill-active' : ''
+                            selectedSteps.includes(n) && !completedSteps.includes(n) && !raisedSupportSteps.includes(n) ? 'vc-step-pill-active' : '',
+                            selectedSteps.includes(n) && raisedSupportSteps.includes(n) ? 'vc-step-pill-raised-selected' : '',
                           ]"
-                          :style="(completedSteps.includes(n) || raisedSupportSteps.includes(n)) ? 'cursor:not-allowed;opacity:0.5;' : 'cursor:pointer;'"
-                          :title="completedSteps.includes(n) ? 'Step already completed' : raisedSupportSteps.includes(n) ? 'Support already raised for this step' : ''"
-                          @click="(!completedSteps.includes(n) && !raisedSupportSteps.includes(n)) && toggleStep(n)"
+                          :style="completedSteps.includes(n) ? 'cursor:not-allowed;opacity:0.5;' : 'cursor:pointer;'"
+                          :title="completedSteps.includes(n) ? 'Step already completed' : raisedSupportSteps.includes(n) ? 'Support already raised — click to view' : 'Select this step'"
+                          @click="!completedSteps.includes(n) && toggleStep(n)"
                         >Step {{ n }}</span>
                       </div>
                     </div>
@@ -68,11 +69,11 @@
                       class="vc-textarea"
                       rows="4"
                       placeholder="Write your issue here..."
-                      :disabled="isSupportAlreadyRaised"
+                      :readonly="isSupportAlreadyRaised"
                     ></textarea>
-                    <div v-if="isSupportAlreadyRaised" class="rt-support-raised-note mt-3">
+                    <div v-if="isSupportAlreadyRaised && !supportJustSubmitted" class="rt-support-raised-note mt-3">
                       <i class="bi bi-check-circle-fill me-2" style="color:#0f696e;"></i>
-                      Support request has been raised successfully.
+                      Support request already raised for this step.
                     </div>
                   </div>
                   <div class="modal-footer vc-modal-footer">
@@ -169,20 +170,20 @@
                           <select class="ext-popup-select ext-has-icon" v-model="extPopupExtension">
                             <option value="">— Select Extension —</option>
                             <optgroup label="Days">
-                              <option value="1 Day">1 Day</option>
-                              <option value="2 Days">2 Days</option>
-                              <option value="3 Days">3 Days</option>
-                              <option value="4 Days">4 Days</option>
-                              <option value="5 Days">5 Days</option>
-                              <option value="6 Days">6 Days</option>
+                              <option
+                                v-for="opt in extDeadlineDayOptions"
+                                :key="opt"
+                                :value="opt"
+                                :disabled="isExtDeadlineDisabled(opt)"
+                              >{{ opt }}</option>
                             </optgroup>
                             <optgroup label="Weeks">
-                              <option value="1 Week">1 Week</option>
-                              <option value="2 Weeks">2 Weeks</option>
-                              <option value="3 Weeks">3 Weeks</option>
-                              <option value="4 Weeks">4 Weeks</option>
-                              <option value="5 Weeks">5 Weeks</option>
-                              <option value="6 Weeks">6 Weeks</option>
+                              <option
+                                v-for="opt in extDeadlineWeekOptions"
+                                :key="opt"
+                                :value="opt"
+                                :disabled="isExtDeadlineDisabled(opt)"
+                              >{{ opt }}</option>
                             </optgroup>
                           </select>
                         </div>
@@ -198,7 +199,7 @@
                   </div>
                   <div class="ext-popup-footer">
                     <button type="button" class="mte-btn-secondary" @click="closeExtPopup">Cancel</button>
-                    <button type="button" class="mte-btn-primary ext-submit-btn" @click="submitExtPopup" :disabled="!extPopupAsset || !extPopupVulName || !extPopupExtension || !extPopupReason.trim()">
+                    <button type="button" class="mte-btn-primary ext-submit-btn" @click="submitExtPopup" :disabled="!extPopupAsset || !extPopupVulName || !extPopupExtension || !extPopupReason.trim() || isExtDeadlineDisabled(extPopupExtension)">
                       <i class="bi bi-send-fill"></i> <span style="color:#fff;">Submit Request</span>
                     </button>
                   </div>
@@ -637,6 +638,9 @@ import { useAuthStore } from '@/stores/authStore';
 import { getTeamChipClass, getTeamTextClass } from '@/utils/teamColors';
 import Swal from 'sweetalert2';
 
+const EXT_DEADLINE_DAY_OPTIONS = ["1 Day", "2 Days", "3 Days", "4 Days", "5 Days", "6 Days"];
+const EXT_DEADLINE_WEEK_OPTIONS = ["1 Week", "2 Weeks", "3 Weeks", "4 Weeks", "5 Weeks", "6 Weeks"];
+
 export default {
   name: 'UserRemediationTimelineView',
   components: { DashboardMenu, DashboardHeader },
@@ -664,6 +668,7 @@ export default {
         feedback_comment: '',
       },
       isSupportAlreadyRaised: false,
+      supportJustSubmitted: false,
       selectedSteps: [],
       raisedSupportSteps: [],
       supportRequestsByStep: {},
@@ -763,6 +768,12 @@ export default {
       }
       return "—";
     },
+    extDeadlineDayOptions() {
+      return EXT_DEADLINE_DAY_OPTIONS;
+    },
+    extDeadlineWeekOptions() {
+      return EXT_DEADLINE_WEEK_OPTIONS;
+    },
   },
 
   methods: {
@@ -859,6 +870,7 @@ export default {
       setTimeout(() => document.body.removeChild(toast), 2000);
     },
     toggleStep(step) {
+      this.supportJustSubmitted = false;
       if (this.selectedSteps.includes(step)) {
         this.selectedSteps = [];
         this.isSupportAlreadyRaised = false;
@@ -892,6 +904,7 @@ export default {
     },
     async openSupportModal() {
       this.isSupportAlreadyRaised = false;
+      this.supportJustSubmitted = false;
       this.selectedSteps = [];
       this.supportDescription = '';
       this.supportDetail = null;
@@ -912,6 +925,7 @@ export default {
       modal.show();
     },
     async submitSupport() {
+      if (this.isSupportAlreadyRaised) return;
       if (!this.supportDescription.trim()) return;
       const vulnerabilityId = this.currentVuln?.id;
       if (!vulnerabilityId) {
@@ -932,6 +946,7 @@ export default {
         this.supportDetail = res.data;
         await this.fetchSupportRequestStatus(vulnerabilityId);
         this.isSupportAlreadyRaised = true;
+        this.supportJustSubmitted = true;
         Swal.fire({ icon: 'success', title: 'Support Request Raised', timer: 2000, showConfirmButton: false });
       } else {
         Swal.fire('Error', res.message || 'Failed to raise support request', 'error');
@@ -944,6 +959,7 @@ export default {
       // Keep modal open and switch UI to the next pending step
       this.selectedSteps = [step];
       this.isSupportAlreadyRaised = false;
+      this.supportJustSubmitted = false;
       this.supportDescription = '';
       this.supportDetail = null;
     },
@@ -960,6 +976,17 @@ export default {
       const n = Number(m[1]);
       return m[2].startsWith("week") ? n * 7 : n;
     },
+    isExtDeadlineDisabled(label) {
+      const original = Number(this.extPopupOriginalDeadlineDays);
+      if (!Number.isFinite(original) || original <= 0) return false;
+      const days = this.parseExtensionDays(label);
+      return Number.isFinite(days) && days <= original;
+    },
+    clearInvalidExtDeadline() {
+      if (this.extPopupExtension && this.isExtDeadlineDisabled(this.extPopupExtension)) {
+        this.extPopupExtension = "";
+      }
+    },
     async fetchExtPopupOptions(severity, asset) {
       this.extPopupOptionsLoading = true;
       const res = await this.authStore.fetchUserMitigationTimelineExtensionOptions(
@@ -974,6 +1001,7 @@ export default {
         this.extPopupAssetListApi = res.data.assets || [];
         this.extPopupVulListApi = res.data.vulnerabilities || [];
         this.extPopupOriginalDeadlineDays = res.data.original_deadline_days ?? null;
+        this.clearInvalidExtDeadline();
       } else {
         this.extPopupAssetListApi = [];
         this.extPopupVulListApi = [];
@@ -1022,6 +1050,7 @@ export default {
       if (!this.extPopupAsset || !this.extPopupVulName || !this.extPopupExtension || !this.extPopupReason.trim()) return;
       const requestedDays = this.parseExtensionDays(this.extPopupExtension);
       if (!Number.isFinite(requestedDays) || requestedDays <= 0) return;
+      if (this.isExtDeadlineDisabled(this.extPopupExtension)) return;
       const payload = {
         severity: this.extPopupSeverity,
         asset: this.extPopupAsset,
@@ -1222,6 +1251,11 @@ export default {
       if (icon === 'arrow') return '#0f696e';
       return '#94a3b8';
     },
+    async liveRefreshPage() {
+      const fixVulId = this.currentVuln?.id || this.$route.query.fix_vul_id;
+      if (!fixVulId) return;
+      await this.fetchTimeline(String(fixVulId), true);
+    },
     async fetchTimeline(fixVulId, silent = false) {
       if (!silent) this.timelineLoading = true;
       const res = await this.authStore.fetchUserVulnerabilityTimeline(fixVulId);
@@ -1317,6 +1351,12 @@ export default {
 
       this.totalSteps = s.total_steps || 0;
       const apiSteps = s.steps || [];
+      const previouslyExpandedIds = new Set(
+        (this.expandedTasks || [])
+          .map((idx) => this.subtasks[idx]?.id)
+          .filter((id) => id != null),
+      );
+      const hadTasks = (this.subtasks || []).length > 0;
 
       if (s.next_step) {
         this.currentStep = s.next_step;
@@ -1366,6 +1406,14 @@ export default {
           })),
         };
       });
+
+      if (hadTasks && previouslyExpandedIds.size) {
+        this.expandedTasks = this.subtasks
+          .map((task, idx) => (previouslyExpandedIds.has(task.id) ? idx : -1))
+          .filter((idx) => idx !== -1);
+      } else if (!hadTasks) {
+        this.expandedTasks = this.subtasks.length ? [0] : [];
+      }
 
       this.currentVuln.progress = this.totalSteps > 0
         ? Math.round((this.completedSteps.length / this.totalSteps) * 100)
@@ -1502,8 +1550,8 @@ export default {
 .rt-chip-risk { color: #b42318; background: #f8dede; }
 .rt-chip-risk-critical { color: #b42318; background: #f8dede; }
 .rt-chip-risk-high { color: #dc2626; background: #fee2e2; }
-.rt-chip-risk-medium { color: #b45309; background: #fef3c7; }
-.rt-chip-risk-low { color: #0f766e; background: #ccfbf1; }
+.rt-chip-risk-medium { color: #f59e0b; background: #fef3c7; }
+.rt-chip-risk-low { color: #10b981; background: #d1fae5; }
 .rt-chip-status {
   color: #334155;
   background: #e2e8f0;
@@ -1543,7 +1591,8 @@ export default {
   cursor: pointer; transition: all 0.15s; width: 100%; text-align: center;
 }
 .vc-step-pill-active { background: #e0f2f1; color: #0f696e; border-color: #0f696e; }
-.vc-step-pill-raised { background: #fff7ed; color: #c2410c; border-color: #fdba74; }
+.vc-step-pill-raised { background: #e2e8f0; color: #64748b; border-color: #cbd5e1; }
+.vc-step-pill-raised-selected { background: #e2e8f0; color: #334155; border-color: #0f696e; box-shadow: 0 0 0 2px rgba(15,105,110,0.2); }
 .vc-step-pill-disabled { background: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; }
 .vc-textarea {
   width: 100%; border: 1px solid #e2e8f0; border-radius: 10px;
@@ -1616,10 +1665,10 @@ export default {
 .ext-popup-subtitle { font-size: 12px; color: rgba(255,255,255,0.65); display: flex; align-items: center; gap: 6px; }
 .ext-header-close { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); color: #fff; width: 34px; height: 34px; border-radius: 8px; }
 .ext-sev-pill { display: inline-block; border-radius: 20px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 8px; }
-.ext-sev-critical { background: #fee2e2; color: #b91c1c; }
-.ext-sev-high { background: #fef3c7; color: #b45309; }
-.ext-sev-medium { background: #fefce8; color: #92400e; }
-.ext-sev-low { background: #ccfbf1; color: #0f766e; }
+.ext-sev-critical { background: #f8dede; color: #b42318; }
+.ext-sev-high { background: #fee2e2; color: #dc2626; }
+.ext-sev-medium { background: #fef3c7; color: #f59e0b; }
+.ext-sev-low { background: #d1fae5; color: #10b981; }
 .ext-popup-body { padding: 14px 22px; display: flex; flex-direction: column; gap: 12px; flex: 1; overflow-y: auto; background: #f8fafc; }
 .ext-info-banner { background: #f0fdf9; border: 1px solid #99f6e4; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #0f696e; display: flex; gap: 8px; }
 .ext-section-title { font-size: 11px; font-weight: 700; color: #0f696e; text-transform: uppercase; letter-spacing: 0.06em; display: flex; align-items: center; gap: 6px; }
@@ -1631,6 +1680,7 @@ export default {
 .ext-popup-select.ext-has-icon { padding-left: 32px; }
 .ext-popup-select,.ext-popup-textarea { border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 9px 12px; font-size: 13px; color: #1e293b; background: #f8fafc; outline: none; width: 100%; }
 .ext-popup-select:disabled { appearance: none; -webkit-appearance: none; -moz-appearance: none; cursor: default; }
+.ext-popup-select option:disabled { color: #94a3b8; background: #f1f5f9; }
 .ext-popup-textarea { resize: vertical; min-height: 90px; }
 .ext-deadline-chip { display: flex; align-items: center; gap: 7px; border-radius: 8px; padding: 9px 14px; font-size: 13px; font-weight: 600; border: 1.5px solid #e2e8f0; }
 .ext-deadline-original { background: #f1f5f9; color: #475569; }
