@@ -28,6 +28,11 @@ export interface RetestErrorExtras {
   httpStatus?: number;
 }
 
+export interface PlanHint {
+  count: number;
+  suggested: string;
+}
+
 export function setPremiumEntrySource(source: unknown): void;
 export function peekPremiumEntrySource(): string;
 export function reportLooksLikeUploadedScan(data: unknown): boolean;
@@ -71,7 +76,7 @@ export function clearBillingReturnTo(): void;
 export function markFreemiumActiveNotice(): void;
 export function consumeFreemiumActiveNotice(): boolean;
 export function extraIpCount(total: unknown, limit: unknown): number;
-export function parsePlanHintFromMessage(text: unknown): { count: number; suggested: string };
+export function parsePlanHintFromMessage(text: unknown): PlanHint;
 export function plansThatCoverCount(count: unknown): string[];
 export function localPremiumEstimate(
   assetCount: unknown,
