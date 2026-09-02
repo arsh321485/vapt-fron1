@@ -352,7 +352,7 @@ export default {
       return !!this.signupInviteToken && !this.inviteChecked;
     },
     inviteBannerText() {
-      if (!this.activeInviteToken) return '';
+      if (!this.signupInviteToken) return '';
       if (!this.inviteChecked) return 'Checking invite…';
       if (this.inviteExpired) return 'This invite link has expired.';
       const count = this.inviteReportCount || 1;
@@ -522,21 +522,27 @@ export default {
       this.loading = true;
       try {
         const authStore = useAuthStore();
+        const inviteToken =
+          this.signupInviteToken ||
+          this.inviteToken ||
+          currentClaimInviteToken(this.$route?.query || {});
+        if (inviteToken) storeClaimInviteToken(inviteToken);
         const result = await authStore.signupSendOtp({
           email: this.form.email,
           password: this.form.password,
           confirm_password: this.form.confirm_password,
           recaptcha: this.recaptchaToken,
-          invite_token: this.signupInviteToken || currentClaimInviteToken(this.$route?.query || {}),
+          invite_token: inviteToken,
         });
         if (result.status) {
+          if (result.invite_token) storeClaimInviteToken(result.invite_token);
           this.otpSent = true;
           this.otpDigits = ['', '', '', '', '', ''];
           this.startOtpTimer();
           Swal.fire({ icon: 'success', title: 'OTP Sent!', text: 'Please check your email for the verification code.', timer: 2500, showConfirmButton: false });
           this.$nextTick(() => { if (this.otpRefs[0]) this.otpRefs[0].focus(); });
         } else if (result.already_exists) {
-          const token = String(result.invite_token || this.signupInviteToken || readClaimInviteToken() || '').trim();
+          const token = String(result.invite_token || inviteToken || readClaimInviteToken() || '').trim();
           if (token) storeClaimInviteToken(token);
           this.goToSignIn();
         } else {
@@ -559,8 +565,12 @@ export default {
       this.loading = true;
       try {
         const authStore = useAuthStore();
+        const inviteToken =
+          this.signupInviteToken ||
+          this.inviteToken ||
+          currentClaimInviteToken(this.$route?.query || {});
+        if (inviteToken) storeClaimInviteToken(inviteToken);
         const verifyPayload = { email: this.form.email, otp: this.otp };
-        const inviteToken = this.signupInviteToken || this.inviteToken || currentClaimInviteToken(this.$route?.query || {});
         if (inviteToken) verifyPayload.invite_token = inviteToken;
         const result = await authStore.signupVerifyOtp(verifyPayload);
         if (result.status) {

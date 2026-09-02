@@ -8,6 +8,9 @@ const CLAIM_INVITE_STORED_AT_KEY = "vaptfix_claim_invite_stored_at";
 const CLAIMED_ADMIN_EMAIL_KEY = "vaptfix_claimed_admin_email";
 const CLAIM_INVITE_TTL_MS = 20 * 60 * 1000;
 
+/** In-memory copy so invite survives mid-signup even if storage TTL / URL strip races. */
+let inviteTokenMemory = "";
+
 function pickQueryValue(value: unknown): string {
   if (value === undefined || value === null) return "";
   if (Array.isArray(value)) {
@@ -23,7 +26,9 @@ export function extractClaimInviteToken(query: Record<string, unknown> = {}): st
   return (
     pickQueryValue(query.invite) ||
     pickQueryValue(query.invite_token) ||
-    pickQueryValue(query.inviteToken)
+    pickQueryValue(query.inviteToken) ||
+    pickQueryValue(query.claim_invite) ||
+    pickQueryValue(query.claimInvite)
   );
 }
 
@@ -206,9 +211,13 @@ export function readLiveMagicInvite(query: Record<string, unknown> = {}): string
   return extractClaimInviteToken(query);
 }
 
-/** Live URL first, then the token stored after the link was opened. */
+/** Live URL first, then storage, then in-memory (mid-signup safety). */
 export function resolveSignupInviteToken(query: Record<string, unknown> = {}): string {
-  return (readLiveMagicInvite(query) || readClaimInviteToken()).trim();
+  return (
+    readLiveMagicInvite(query) ||
+    readClaimInviteToken() ||
+    String(inviteTokenMemory || "").trim()
+  ).trim();
 }
 
 /** Persist + return the token that must go on send-otp / verify-otp / login. */
@@ -222,16 +231,14 @@ export function attachInviteTokenToRequestData(data: unknown): unknown {
   const invite = currentClaimInviteToken();
   if (!invite) return data;
   if (typeof FormData !== "undefined" && data instanceof FormData) {
-    if (!String(data.get("invite_token") || "").trim()) {
-      data.append("invite_token", invite);
-    }
+    data.set("invite_token", invite);
     return data;
   }
   if (typeof data === "string") {
     try {
       const parsed = JSON.parse(data);
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-        if (!String(parsed.invite_token || "").trim()) parsed.invite_token = invite;
+        parsed.invite_token = invite;
         return JSON.stringify(parsed);
       }
     } catch {
@@ -240,8 +247,8 @@ export function attachInviteTokenToRequestData(data: unknown): unknown {
     return data;
   }
   if (data && typeof data === "object" && !Array.isArray(data)) {
-    const body = data as Record<string, unknown>;
-    if (!String(body.invite_token || "").trim()) body.invite_token = invite;
+    const body = { ...(data as Record<string, unknown>) };
+    body.invite_token = invite;
     return body;
   }
   if (data == null) return { invite_token: invite };
@@ -251,18 +258,24 @@ export function attachInviteTokenToRequestData(data: unknown): unknown {
 export function storeClaimInviteToken(token: string) {
   const value = String(token || "").trim();
   if (!value) return;
+  inviteTokenMemory = value;
   writeStorage(CLAIM_INVITE_TOKEN_KEY, value);
   writeStorage(CLAIM_INVITE_STORED_AT_KEY, String(Date.now()));
 }
 
 export function readClaimInviteToken(): string {
   const token = readStorage(CLAIM_INVITE_TOKEN_KEY);
-  if (!token) return "";
+  if (!token) {
+    return String(inviteTokenMemory || "").trim();
+  }
   const storedAt = Number(readStorage(CLAIM_INVITE_STORED_AT_KEY)) || 0;
   if (storedAt && Date.now() - storedAt > CLAIM_INVITE_TTL_MS) {
-    clearClaimInvite();
-    return "";
+    // Keep memory token for an in-progress OTP step; only drop expired storage.
+    removeStorage(CLAIM_INVITE_TOKEN_KEY);
+    removeStorage(CLAIM_INVITE_STORED_AT_KEY);
+    return String(inviteTokenMemory || "").trim();
   }
+  inviteTokenMemory = token;
   return token;
 }
 
@@ -347,6 +360,7 @@ export function isClaimInviteFlow(): boolean {
 }
 
 export function clearClaimInvite() {
+  inviteTokenMemory = "";
   removeStorage(CLAIM_INVITE_TOKEN_KEY);
   removeStorage(CLAIM_INVITE_VALID_KEY);
   removeStorage(CLAIM_INVITE_REPORT_COUNT_KEY);

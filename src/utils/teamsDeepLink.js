@@ -42,15 +42,20 @@ export function extractTeamsDeepLink(payload = {}) {
     teams_url: pickFromObjects(sources, ["teams_url", "teamsUrl"]),
   };
   const fromChannels = collectChannelUrls(payload);
+  // Prefer admin-dashboard channel; still keep a valid backend /l/channel link (never wipe → Chat).
+  const backendTab =
+    normalizeAnyChannelDeepLink(links.teams_tab_url, { requireAdminDashboard: true }) ||
+    normalizeAnyChannelDeepLink(links.teams_tab_url_alt, { requireAdminDashboard: true }) ||
+    normalizeAnyChannelDeepLink(links.teams_tab_url, { requireAdminDashboard: false }) ||
+    normalizeAnyChannelDeepLink(links.teams_tab_url_alt, { requireAdminDashboard: false }) ||
+    normalizeAnyChannelDeepLink(links.teams_url, { requireAdminDashboard: false });
   const dashboard =
     buildAdminDashboardChannelUrl(payload) ||
-    fromChannels.find((url) => isAdminDashboardChannelUrl(url)) ||
-    (isAdminDashboardChannelUrl(links.teams_tab_url) ? links.teams_tab_url : "");
-  if (dashboard) {
-    links.teams_tab_url = toTeamsWebChannelUrl(dashboard) || dashboard;
-  } else {
-    links.teams_tab_url = "";
-  }
+    fromChannels
+      .map((url) => normalizeAnyChannelDeepLink(url, { requireAdminDashboard: true }))
+      .find(Boolean) ||
+    backendTab;
+  links.teams_tab_url = dashboard || backendTab || "";
   return links;
 }
 
@@ -272,8 +277,9 @@ function buildChannelLauncherUrl(channelId, channelName, groupId, tenantId) {
   if (groupId) innerParams.set("groupId", groupId);
   if (tenantId) innerParams.set("tenantId", tenantId);
   innerParams.set("ctx", "channel");
-  const innerQs = innerParams.toString() ? `?${innerParams.toString()}` : "";
-  const inner = `/_#/l/channel/${encodeURIComponent(threadId)}/${encodeURIComponent(name)}${innerQs}`;
+  const innerQs = `?${innerParams.toString()}`;
+  // Microsoft launcher expects /l/channel/... (not /_#/…) for type=channel.
+  const inner = `/l/channel/${encodeURIComponent(threadId)}/${encodeURIComponent(name)}${innerQs}`;
   const launcher = new URLSearchParams({
     url: inner,
     type: "channel",
@@ -285,22 +291,33 @@ function buildChannelLauncherUrl(channelId, channelName, groupId, tenantId) {
   return `${TEAMS_DEEP_LINK_ORIGIN}/dl/launcher/launcher.html?${launcher.toString()}`;
 }
 
-/** Turn any Teams URL into the official admin-dashboard (or given channel) deep link. */
-export function toTeamsWebChannelUrl(url) {
+/**
+ * Accept any valid /l/channel/19:... deep link.
+ * Chat / team-directory / bare home → "".
+ */
+function normalizeAnyChannelDeepLink(url, { requireAdminDashboard = false } = {}) {
   const raw = unwrapTeamsLauncherUrl(url);
   if (!raw || isBareTeamsHome(raw) || isTeamsChatOrTeamHomeUrl(raw) || isVaptfixTeamDirectoryUrl(raw)) {
     return "";
   }
   const parsed = parseChannelDeepLink(raw);
   if (!parsed) return "";
-  if (!/admin\s*dashboard/i.test(parsed.channelName) && !/admin\s*dashboard/i.test(decodedUrl(raw))) {
-    return "";
-  }
+  const isAdmin =
+    /admin\s*dashboard/i.test(parsed.channelName) || /admin\s*dashboard/i.test(decodedUrl(raw));
+  if (requireAdminDashboard && !isAdmin) return "";
   return buildOfficialChannelDeepLink(
     parsed.channelId,
-    "vaptfix admin dashboard",
+    isAdmin ? "vaptfix admin dashboard" : parsed.channelName || "vaptfix admin dashboard",
     parsed.groupId,
     parsed.tenantId || tenantIdFrom({}),
+  );
+}
+
+/** Turn any Teams URL into a web channel deep link (prefer admin dashboard). */
+export function toTeamsWebChannelUrl(url) {
+  return (
+    normalizeAnyChannelDeepLink(url, { requireAdminDashboard: true }) ||
+    normalizeAnyChannelDeepLink(url, { requireAdminDashboard: false })
   );
 }
 
@@ -479,7 +496,7 @@ function collectChannelUrls(payload = {}) {
   return urls;
 }
 
-/** Exact "vaptfix admin dashboard" Posts link. Never Chat, General, or the team channel-list page. */
+/** Prefer "vaptfix admin dashboard" Posts link. Never Chat / team directory / bare home. */
 export function pickTeamsTabUrl(links) {
   const payload = links && typeof links === "object" ? links : {};
   const built = buildAdminDashboardChannelUrl(payload);
@@ -492,15 +509,8 @@ export function pickTeamsTabUrl(links) {
   ];
   const all = [...fieldCandidates, ...collectChannelUrls(payload)].filter(Boolean);
   for (const url of all) {
-    const parsed = parseChannelDeepLink(url);
-    if (parsed && /admin\s*dashboard/i.test(parsed.channelName)) {
-      return buildOfficialChannelDeepLink(
-        parsed.channelId,
-        "vaptfix admin dashboard",
-        parsed.groupId || teamGroupIdFrom(payload),
-        parsed.tenantId || tenantIdFrom(payload),
-      );
-    }
+    const admin = normalizeAnyChannelDeepLink(url, { requireAdminDashboard: true });
+    if (admin) return admin;
   }
   const dashboardChannel = collectChannelObjects(payload).find((ch) =>
     /admin\s*dashboard/i.test(channelNameOf(ch)),
@@ -515,6 +525,11 @@ export function pickTeamsTabUrl(links) {
         tenantIdFrom(payload),
       );
     }
+  }
+  // Backend teams_tab_url is authoritative even if channel display name differs slightly.
+  for (const url of fieldCandidates) {
+    const any = normalizeAnyChannelDeepLink(url, { requireAdminDashboard: false });
+    if (any) return any;
   }
   return "";
 }
@@ -573,25 +588,26 @@ function isAdminDashboardChannelHref(url) {
 
 export function openTeamsAdminDashboard(url, { newTab = true } = {}) {
   const parsed = parseChannelDeepLink(url);
-  const launcher = parsed
-    ? buildChannelLauncherUrl(
-        parsed.channelId,
-        parsed.channelName || "vaptfix admin dashboard",
-        parsed.groupId,
-        parsed.tenantId,
-      )
+  const channelId = parsed?.channelId || "";
+  const channelName = parsed?.channelName || "vaptfix admin dashboard";
+  const groupId = parsed?.groupId || "";
+  const tenantId = parsed?.tenantId || tenantIdFrom({});
+
+  const launcher = channelId
+    ? buildChannelLauncherUrl(channelId, channelName, groupId, tenantId)
     : "";
-  const official = toTeamsWebChannelUrl(url);
-  const fallback = String(url || "").trim();
-  const direct =
-    official ||
-    (isAdminDashboardChannelHref(fallback) &&
-    /^https:\/\/(teams\.microsoft\.com|teams\.cloud\.microsoft)\//i.test(fallback)
-      ? fallback.replace("https://teams.microsoft.com", TEAMS_WEB_ORIGIN)
-      : "");
-  // Direct teams.cloud.microsoft URL first — launcher often restores last Chat.
-  const target = direct || launcher;
-  if (!target) return false;
+  const cloud = toTeamsWebChannelUrl(url);
+  // Official Microsoft deep-link host (desktop/web protocol handoff).
+  const classic = cloud
+    ? cloud.replace(TEAMS_WEB_ORIGIN, TEAMS_DEEP_LINK_ORIGIN)
+    : "";
+
+  // Launcher type=channel first — direct cloud assign often restores last Chat.
+  const target = launcher || classic || cloud;
+  if (!target || isBareTeamsHome(target) || isTeamsChatOrTeamHomeUrl(target)) {
+    console.warn("[Teams] Refusing to open non-channel URL:", url || target);
+    return false;
+  }
   if (newTab) {
     const opened = window.open(target, TEAMS_WINDOW_NAME);
     if (!opened) {

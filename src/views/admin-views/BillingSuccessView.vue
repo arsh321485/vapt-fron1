@@ -51,6 +51,7 @@ import Header from '@/components/admin-component/Header.vue';
 import Footer from '@/components/admin-component/Footer.vue';
 import Swal from 'sweetalert2';
 import { formatUsd, getMySubscription } from '@/services/billingApi';
+import { maybeShowReturnToChatPlatformPopup } from '@/utils/adminHandoff';
 import { consumeBillingReturnTo, peekBillingReturnTo, UPLOAD_RETURN_PATH } from '@/utils/planLimits';
 import { setCachedPaidPlan } from '@/utils/authenticatedHome';
 import { useAuthStore } from '@/stores/authStore';
@@ -148,6 +149,7 @@ export default {
               confirmButtonText: 'OK',
               confirmButtonColor: '#241447',
             });
+            await maybeShowReturnToChatPlatformPopup();
             this.$router.replace('/waiting-for-report');
             return;
           }
@@ -159,9 +161,10 @@ export default {
             authStore.unmarkStepCompleted(1);
             this.continuePath = '/communication';
           }
+          await maybeShowReturnToChatPlatformPopup();
           window.setTimeout(() => {
             this.$router.replace(this.continuePath);
-          }, 1200);
+          }, 400);
           return;
         }
         if (this.pollCount >= MAX_POLLS) {

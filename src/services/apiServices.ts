@@ -99,6 +99,7 @@ endpoint.interceptors.request.use(
     }
 
     if (method === "post" && INVITE_CLAIM_POSTS.some((p) => requestUrl.includes(p))) {
+      // Always force-attach invite_token when present (overwrite empty/stale body field).
       config.data = attachInviteTokenToRequestData(config.data);
     }
 

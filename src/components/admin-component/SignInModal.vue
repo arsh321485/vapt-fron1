@@ -417,11 +417,13 @@ export default {
       this.adminLoading = true;
       try {
         const authStore = useAuthStore();
+        const inviteToken = currentClaimInviteToken(this.$route?.query || {});
+        if (inviteToken) storeClaimInviteToken(inviteToken);
         const result = await authStore.login({
           email: this.adminForm.email,
           password: this.adminForm.password,
           recaptcha: recaptchaResponse,
-          invite_token: currentClaimInviteToken(this.$route?.query || {}),
+          invite_token: inviteToken,
         });
 
         if (result.status) {

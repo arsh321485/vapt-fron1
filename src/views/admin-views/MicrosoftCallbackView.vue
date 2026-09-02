@@ -221,6 +221,14 @@ export default {
           return;
         }
 
+        console.warn(
+          "[Teams] Could not build channel deep link from OAuth response. Check teams_tab_url / vaptfix_team.channels.",
+          {
+            teams_tab_url: res.data?.teams_tab_url,
+            channels: res.data?.vaptfix_team?.channels,
+          },
+        );
+
         // VaptFix tab (opener) continues Provide Scope. This tab must stay as Teams — never close it.
         if (window.opener) {
           this.keepTeamsTabOpen(res.data);

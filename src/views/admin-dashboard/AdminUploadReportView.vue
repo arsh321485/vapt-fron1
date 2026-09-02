@@ -870,7 +870,7 @@ import {
   recommendedPaidPlanFromScope,
 } from '@/utils/scopeTargets';
 import { setCachedPaidPlan } from '@/utils/authenticatedHome';
-import { consumeHandoffError } from '@/utils/adminHandoff';
+import { captureChatHandoffSource, consumeHandoffError, maybeShowReturnToChatPlatformPopup } from '@/utils/adminHandoff';
 import { submitScopeFileForAnalysis } from '@/services/scopeFileApi';
 import {
   clearPendingUpload,
@@ -1328,6 +1328,7 @@ export default {
           setCachedPaidPlan(true);
           markFreemiumActiveNotice();
           useAuthStore().unmarkStepCompleted(1);
+          await maybeShowReturnToChatPlatformPopup();
           await this.$router.replace(this.dashboardRoute());
           return;
         }
@@ -1345,6 +1346,7 @@ export default {
           'Your free plan is active. Continue to add your team.',
           1800,
         );
+        await maybeShowReturnToChatPlatformPopup();
         await this.$router.replace(this.dashboardRoute());
       } catch (error) {
         const message = billingErrorMessage(error);
@@ -1365,6 +1367,7 @@ export default {
           markFreemiumActiveNotice();
           await this.loadSubscription();
           useAuthStore().unmarkStepCompleted(1);
+          await maybeShowReturnToChatPlatformPopup();
           await this.$router.replace(this.dashboardRoute());
           return;
         }
@@ -2833,6 +2836,7 @@ export default {
     },
   },
   async mounted() {
+    captureChatHandoffSource(this.$route?.query || {});
     const handoffError = consumeHandoffError();
     if (handoffError) {
       await Swal.fire({

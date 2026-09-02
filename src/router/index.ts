@@ -100,6 +100,7 @@ import { fetchClaimInviteValidate } from "../services/claimInviteApi";
 import { useAuthStore } from "../stores/authStore";
 import { hasAuthSession, isStoredTeamMember } from "../utils/authenticatedHome";
 import {
+  captureChatHandoffSource,
   clearHandoffNavigation,
   hasHandoffError,
   isHandoffNavigation,
@@ -664,11 +665,16 @@ router.beforeEach(async (to, from, next) => {
     });
   }
 
+  // Teams/Slack bot handoff: ?source=teams|slack (keep across upload → pricing → Stripe).
+  captureChatHandoffSource(to.query as Record<string, unknown>);
+
   // Slack / Teams signed admin_token → same JWT exchange as a normal login.
   const adminToken = readQueryAdminToken(to.query as Record<string, unknown>);
   if (adminToken) {
     const strippedQuery = { ...(to.query as Record<string, any>) };
     delete strippedQuery.admin_token;
+    // Keep source=teams|slack in the URL after token exchange.
+    captureChatHandoffSource(strippedQuery);
     const authStore = useAuthStore();
     const result = await authStore.exchangePricingHandoff(adminToken);
     if (!result.status) {

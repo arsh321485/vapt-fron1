@@ -572,6 +572,7 @@ export const useAuthStore = defineStore("auth", {
       recaptcha: string;
       invite_token?: string;
     }) {
+      const invite = String(payload.invite_token || currentClaimInviteToken() || "").trim();
       try {
         const body: {
           email: string;
@@ -585,23 +586,27 @@ export const useAuthStore = defineStore("auth", {
           confirm_password: payload.confirm_password,
           recaptcha: payload.recaptcha,
         };
-        const invite = String(payload.invite_token || currentClaimInviteToken() || "").trim();
         if (invite) {
           storeClaimInviteToken(invite);
           body.invite_token = invite;
         }
         const res = await endpoint.post("/api/admin/users/signup/send-otp/", body);
-        return { status: true, data: res.data, message: res.data.message };
+        // Backend may echo invite_token (esp. already_exists) — keep it for verify/login.
+        const echoed = String(res.data?.invite_token || "").trim();
+        if (echoed) storeClaimInviteToken(echoed);
+        return { status: true, data: res.data, message: res.data.message, invite_token: echoed || invite };
       } catch (error: any) {
         const errorData = error.response?.data;
         const errorMessage =
           errorData?.message || errorData?.error || errorData?.detail || "Failed to send OTP";
+        const echoed = String(errorData?.invite_token || invite || "").trim();
+        if (echoed) storeClaimInviteToken(echoed);
         return {
           status: false,
           message: errorMessage,
           details: errorData || null,
           already_exists: errorData?.already_exists === true,
-          invite_token: String(errorData?.invite_token || "").trim(),
+          invite_token: echoed,
         };
       }
     },
@@ -774,14 +779,28 @@ export const useAuthStore = defineStore("auth", {
         }
         const res = await endpoint.post("/api/admin/users/signup/verify-otp/", body);
 
-        const data = res.data;
+        const raw: any = res.data;
+        // Some deployments wrap under `.data` — unwrap like login().
+        const data =
+          raw &&
+          typeof raw === "object" &&
+          raw.data != null &&
+          typeof raw.data === "object" &&
+          (raw.data.tokens || raw.data.user || raw.data.jwt_tokens)
+            ? { ...raw, ...raw.data }
+            : raw;
+        const tokens = (data && (data.tokens || data.jwt_tokens || data.jwt)) || {};
+        const access = String(
+          tokens.access || data?.access || data?.access_token || "",
+        ).trim();
+        const refresh = String(
+          tokens.refresh || data?.refresh || data?.refresh_token || "",
+        ).trim();
+        const userObj = data?.user ?? data?.profile ?? raw?.user ?? null;
 
-        if (data.tokens?.access && data.user) {
-          this.setAuth(data.tokens.access, data.user);
-
-          if (data.tokens.refresh) {
-            sessionStorage.setItem("refreshToken", data.tokens.refresh);
-          }
+        if (access && userObj) {
+          // Save refresh BEFORE setAuth so console + session stay consistent.
+          this.setAuth(access, userObj, refresh || null);
 
           sessionStorage.setItem("authenticated", "true");
           sessionStorage.setItem("isNewUser", "true");
@@ -806,7 +825,7 @@ export const useAuthStore = defineStore("auth", {
           }
         }
 
-        return { status: true, data, message: data.message };
+        return { status: true, data: raw, message: data?.message || raw?.message };
       } catch (error: any) {
         const errorData = error.response?.data;
         const errorMessage =
@@ -880,10 +899,7 @@ export const useAuthStore = defineStore("auth", {
           };
         }
 
-        this.setAuth(access, userObj && typeof userObj === "object" ? userObj : {});
-        if (refreshToken) {
-          sessionStorage.setItem("refreshToken", refreshToken);
-        }
+        this.setAuth(access, userObj && typeof userObj === "object" ? userObj : {}, refreshToken || null);
         sessionStorage.setItem("isNewUser", "false");
 
         if (invite) {
@@ -925,8 +941,7 @@ export const useAuthStore = defineStore("auth", {
           return { status: false, message: "Google login failed" };
         }
 
-        this.setAuth(data.tokens.access, data.user);
-        sessionStorage.setItem("refreshToken", data.tokens.refresh);
+        this.setAuth(data.tokens.access, data.user, data.tokens.refresh || null);
         localStorage.removeItem("reportId");
         this.reportStatus.state = null;
         this.reportStatus.hasReport = false;
@@ -1907,9 +1922,9 @@ export const useAuthStore = defineStore("auth", {
         // mark Teams connected
         localStorage.setItem("teams_connected", "true");
 
-        const appAccess = data.tokens?.access;
+        const appAccess = data.tokens?.access || djangoTokens.access;
         if (appAccess && data.user) {
-          this.setAuth(appAccess, data.user);
+          this.setAuth(djangoTokens.access || appAccess, data.user, djangoTokens.refresh || null);
           sessionStorage.setItem("authenticated", "true");
           if (data.is_new_user) {
             sessionStorage.setItem("isNewUser", "true");
@@ -7655,7 +7670,7 @@ export const useAuthStore = defineStore("auth", {
     },
 
     // ✅ Set Auth
-    setAuth(token: string, user: any) {
+    setAuth(token: string, user: any, refreshToken?: string | null) {
       const safeUser = user && typeof user === "object" ? user : {};
       this.token = token;
       this.user = safeUser;
@@ -7669,6 +7684,13 @@ export const useAuthStore = defineStore("auth", {
       localStorage.setItem("authorization", token);
       localStorage.setItem("user", userJson);
       localStorage.setItem("authenticated", JSON.stringify(true));
+
+      const refresh = String(refreshToken || "").trim();
+      if (refresh) {
+        sessionStorage.setItem("refreshToken", refresh);
+        localStorage.setItem("refreshToken", refresh);
+        localStorage.setItem("django_refresh_token", refresh);
+      }
 
       this.initCompletedSteps();
 

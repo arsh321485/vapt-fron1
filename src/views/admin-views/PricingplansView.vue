@@ -553,7 +553,7 @@ import {
   UPLOAD_RETURN_PATH,
 } from '@/utils/planLimits';
 import { setCachedPaidPlan } from '@/utils/authenticatedHome';
-import { consumeHandoffError } from '@/utils/adminHandoff';
+import { captureChatHandoffSource, consumeHandoffError, maybeShowReturnToChatPlatformPopup } from '@/utils/adminHandoff';
 import { peekPendingUploadMeta } from '@/utils/pendingUpload';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -925,6 +925,7 @@ export default {
     this.applyRequestedPlanFromRoute();
   },
   async mounted() {
+    captureChatHandoffSource(this.$route?.query || {});
     const handoffError = consumeHandoffError();
     if (handoffError) {
       await Swal.fire({
@@ -1436,6 +1437,7 @@ export default {
           timer: 1800,
           showConfirmButton: false,
         });
+        await maybeShowReturnToChatPlatformPopup();
         this.$router.push(dest);
       } catch (error) {
         const message = billingErrorMessage(error);
@@ -1461,6 +1463,7 @@ export default {
             useAuthStore().unmarkStepCompleted(1);
           }
           if (this.isOnboardingOnlyPath(dest)) markFreemiumActiveNotice();
+          await maybeShowReturnToChatPlatformPopup();
           this.$router.push(dest);
           return;
         }
