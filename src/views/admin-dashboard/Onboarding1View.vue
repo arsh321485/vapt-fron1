@@ -321,22 +321,22 @@
                             <div class="d-flex align-items-center gap-3">
                               <span class="d-flex align-items-center">
                                 <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #b31c1c"></span>
+                                  style="width: 6px; height: 6px; background-color: #b42318"></span>
                                 <span class="text-danger fw-bold">11</span>
                               </span>
                               <span class="d-flex align-items-center">
                                 <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f44336"></span>
+                                  style="width: 6px; height: 6px; background-color: #dc2626"></span>
                                 <span class="text-danger fw-bold">4</span>
                               </span>
                               <span class="d-flex align-items-center">
                                 <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f6b100"></span>
+                                  style="width: 6px; height: 6px; background-color: #f59e0b"></span>
                                 <span class="text-warning fw-bold">8</span>
                               </span>
                               <span class="d-flex align-items-center">
                                 <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #4caf50"></span>
+                                  style="width: 6px; height: 6px; background-color: #10b981"></span>
                                 <span class="text-success fw-bold">0</span>
                               </span>
                             </div>
@@ -349,22 +349,22 @@
                             <div class="d-flex align-items-center gap-3">
                               <span class="d-flex align-items-center">
                                 <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #b31c1c"></span>
+                                  style="width: 6px; height: 6px; background-color: #b42318"></span>
                                 <span class="text-danger fw-bold">11</span>
                               </span>
                               <span class="d-flex align-items-center">
                                 <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f44336"></span>
+                                  style="width: 6px; height: 6px; background-color: #dc2626"></span>
                                 <span class="text-danger fw-bold">4</span>
                               </span>
                               <span class="d-flex align-items-center">
                                 <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f6b100"></span>
+                                  style="width: 6px; height: 6px; background-color: #f59e0b"></span>
                                 <span class="text-warning fw-bold">8</span>
                               </span>
                               <span class="d-flex align-items-center">
                                 <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #4caf50"></span>
+                                  style="width: 6px; height: 6px; background-color: #10b981"></span>
                                 <span class="text-success fw-bold">0</span>
                               </span>
                             </div>
@@ -377,22 +377,22 @@
                             <div class="d-flex align-items-center gap-3">
                               <span class="d-flex align-items-center">
                                 <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #b31c1c"></span>
+                                  style="width: 6px; height: 6px; background-color: #b42318"></span>
                                 <span class="text-danger fw-bold">11</span>
                               </span>
                               <span class="d-flex align-items-center">
                                 <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f44336"></span>
+                                  style="width: 6px; height: 6px; background-color: #dc2626"></span>
                                 <span class="text-danger fw-bold">4</span>
                               </span>
                               <span class="d-flex align-items-center">
                                 <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f6b100"></span>
+                                  style="width: 6px; height: 6px; background-color: #f59e0b"></span>
                                 <span class="text-warning fw-bold">8</span>
                               </span>
                               <span class="d-flex align-items-center">
                                 <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #4caf50"></span>
+                                  style="width: 6px; height: 6px; background-color: #10b981"></span>
                                 <span class="text-success fw-bold">0</span>
                               </span>
                             </div>
@@ -405,22 +405,22 @@
                             <div class="d-flex align-items-center gap-3">
                               <span class="d-flex align-items-center">
                                 <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #b31c1c"></span>
+                                  style="width: 6px; height: 6px; background-color: #b42318"></span>
                                 <span class="text-danger fw-bold">11</span>
                               </span>
                               <span class="d-flex align-items-center">
                                 <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f44336"></span>
+                                  style="width: 6px; height: 6px; background-color: #dc2626"></span>
                                 <span class="text-danger fw-bold">4</span>
                               </span>
                               <span class="d-flex align-items-center">
                                 <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #f6b100"></span>
+                                  style="width: 6px; height: 6px; background-color: #f59e0b"></span>
                                 <span class="text-warning fw-bold">8</span>
                               </span>
                               <span class="d-flex align-items-center">
                                 <span class="rounded-circle me-1"
-                                  style="width: 6px; height: 6px; background-color: #4caf50"></span>
+                                  style="width: 6px; height: 6px; background-color: #10b981"></span>
                                 <span class="text-success fw-bold">0</span>
                               </span>
                             </div>

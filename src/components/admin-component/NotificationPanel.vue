@@ -349,6 +349,9 @@ export default {
       // Always fetch all notifications (read + unread)
       this.fetchNotifications({ silent, includeRead: true });
     },
+    liveRefreshPage() {
+      this.refreshNotifications({ silent: true });
+    },
     handleWindowFocus() {
       this.refreshNotifications();
     },
@@ -381,14 +384,27 @@ export default {
 </script>
 
 <style scoped>
-/* Dashboard palette: purple #241447, teal #0f696e, canvas ~#f4f7fe */
+/* Dashboard palette: purple #241447, teal #0f696e, canvas #f4f7fe */
+.notification-panel {
+  background: #241447;
+}
+
 .notif-drawer {
-  background: #fff;
+  background: #f4f7fe;
+  background-color: #f4f7fe;
+  border: none;
+  border-radius: 0;
+  --bs-card-bg: #f4f7fe;
+  --bs-card-cap-bg: #241447;
+  --bs-card-border-color: transparent;
 }
 
 .notif-drawer-header {
-  background: linear-gradient(135deg, #241447 0%, #1a0f38 100%);
-  padding: 15px;
+  background: #241447;
+  background-color: #241447;
+  padding: 15px 16px;
+  border-radius: 0;
+  margin: 0;
 }
 
 .notif-drawer-title {
@@ -416,7 +432,7 @@ export default {
 }
 
 .notif-drawer-footer {
-  background: #fff;
+  background: #f4f7fe;
   padding: 0.85rem 1rem;
   box-shadow: 0 -4px 20px rgba(36, 20, 71, 0.06);
 }
@@ -460,15 +476,15 @@ export default {
 }
 
 .notif-card--high.notif-card--unread {
-  border-left-color: #ea580c;
+  border-left-color: #dc2626;
 }
 
 .notif-card--medium.notif-card--unread {
-  border-left-color: #ca8a04;
+  border-left-color: #f59e0b;
 }
 
 .notif-card--low.notif-card--unread {
-  border-left-color: #0f696e;
+  border-left-color: #10b981;
 }
 
 .notif-icon-wrap {
@@ -484,13 +500,13 @@ export default {
   background: linear-gradient(145deg, #fecaca 0%, #fca5a5 100%);
 }
 .notif-icon-wrap--high {
-  background: linear-gradient(145deg, #fed7aa 0%, #fdba74 100%);
+  background: linear-gradient(145deg, #fecaca 0%, #fca5a5 100%);
 }
 .notif-icon-wrap--medium {
-  background: linear-gradient(145deg, #fef08a 0%, #fde047 100%);
+  background: linear-gradient(145deg, #fde68a 0%, #fcd34d 100%);
 }
 .notif-icon-wrap--low {
-  background: linear-gradient(145deg, #ccfbf1 0%, #99f6e4 100%);
+  background: linear-gradient(145deg, #d1fae5 0%, #6ee7b7 100%);
 }
 .notif-icon-wrap--deadline {
   background: linear-gradient(145deg, #e0e7ff 0%, #c7d2fe 100%);
@@ -562,13 +578,13 @@ export default {
 }
 .notif-pill-medium {
   background: #fef3c7;
-  color: #b45309;
+  color: #f59e0b;
   border: 1px solid #fcd34d;
 }
 .notif-pill-low {
-  background: #ccfbf1;
-  color: #0f766e;
-  border: 1px solid #5eead4;
+  background: #d1fae5;
+  color: #10b981;
+  border: 1px solid #6ee7b7;
 }
 
 .notif-accent-teal {
