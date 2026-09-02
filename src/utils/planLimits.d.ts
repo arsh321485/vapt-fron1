@@ -51,7 +51,9 @@ export function collectFreemiumTrimmedResults(data: unknown): Record<string, unk
 export function formatFreemiumTrimmedMessage(row?: unknown): string;
 export function billingAssetBreakdown(source: unknown): BillingAssetBreakdown;
 export function billableAssetCount(source: unknown, fallback?: unknown): number;
+export function uniqueIpCountFields(source: unknown): number;
 export function uniqueHostCountFromPayload(source: unknown): number;
+export function fullFileIpCount(source: unknown): number;
 export function detectedFileAssetCount(source: unknown, fallback?: unknown): number;
 export function recommendPlanAssetCount(...sources: unknown[]): number;
 export function fullReportAssetCount(source: unknown, fallback?: unknown): number;

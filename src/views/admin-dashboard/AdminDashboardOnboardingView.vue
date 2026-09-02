@@ -622,7 +622,7 @@
                       <div class="dash-card-label" style="font-size:13px; font-weight:700; color:#1e293b; letter-spacing:0.02em;">Mitigation Timeline Extension</div>
                       <div class="dash-mte-subtitle">Pending requests by team and severity</div>
                     </div>
-                    <button type="button" class="dash-mte-link-btn" @click="openMitigationExtensionModal">
+                    <button type="button" class="dash-mte-link-btn" @click="openMitigationExtensionModal()">
                       View Full Report <i class="bi bi-chevron-right"></i>
                     </button>
                   </div>
@@ -2185,7 +2185,10 @@ export default {
     async openMitigationExtensionModal(team) {
       this.showMitigationExtensionModal = true;
       this.mteOpenSection = null;
-      this.mteSelectedTeam = team || "All";
+      // Guard against a stray DOM event being passed in (e.g. a bare
+      // @click="openMitigationExtensionModal" binding auto-forwards the
+      // native click event as the first argument).
+      this.mteSelectedTeam = typeof team === "string" && team ? team : "All";
       await this.loadAdminMteReportData();
     },
     closeMitigationExtensionModal() {

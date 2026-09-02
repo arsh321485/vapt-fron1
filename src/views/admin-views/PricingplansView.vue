@@ -1074,7 +1074,10 @@ export default {
         }
         return;
       }
-      let detected = detectedFileAssetCount(this.currentSubscription);
+      // Same source of truth as the "This report has N IPs" screen: unique_ip_count,
+      // never host_count. goToPricing() already put the correct unique count on the
+      // URL, so trust that before recomputing anything.
+      let detected = Number(this.$route.query.assets) || detectedFileAssetCount(this.currentSubscription);
       try {
         const authStore = useAuthStore();
         await authStore.fetchAssets(true);
@@ -1092,11 +1095,13 @@ export default {
           mode: 'management',
           billing_cycle: 'annual',
         });
-        const fromEstimate = detectedFileAssetCount(data);
-        if (fromEstimate) {
-          detected = fromEstimate;
-          if (!this.estimate) this.estimate = data;
-        }
+        if (data) this.estimate = data;
+        // /billing/plans/estimate/ isn't one of the fixed unique_ip_count endpoints —
+        // its asset/visible/locked breakdown can still be host_count-based. Only trust
+        // it here if it carries a genuine unique_ip_count field; never let it clobber
+        // the already-correct count with an inflated host count.
+        const fromEstimate = uniqueIpCountFields(data);
+        if (fromEstimate) detected = fromEstimate;
       } catch {
         /* keep assets/subscription count */
       }
@@ -1143,10 +1148,14 @@ export default {
           payload.billing_cycle = this.apiBillingCycle;
         }
       }
+      // billedAssetCount (unique_ip_count-derived) is authoritative — prefer it over
+      // detectedFileAssetCount(this.estimate), whose visible/locked breakdown can be
+      // host_count-based on this endpoint and would otherwise re-inflate the count on
+      // every subsequent estimate call (mode/cycle changes).
       const billable =
+        this.billedAssetCount ||
         detectedFileAssetCount(this.estimate) ||
-        detectedFileAssetCount(this.currentSubscription) ||
-        this.billedAssetCount;
+        detectedFileAssetCount(this.currentSubscription);
       if (billable) {
         payload.asset_count = billable;
       }
@@ -1176,7 +1185,11 @@ export default {
       try {
         const data = await estimatePlan(this.buildEstimatePayload());
         this.estimate = data || null;
-        const detected = detectedFileAssetCount(data);
+        // /billing/plans/estimate/ isn't one of the fixed unique_ip_count endpoints —
+        // its visible/locked breakdown can still be host_count-based, so only trust a
+        // genuine unique_ip_count field here. Never let it overwrite the already-correct
+        // IP count (e.g. from the upload/asset endpoints) with an inflated host count.
+        const detected = uniqueIpCountFields(data);
         if (detected) {
           this.fileAssetCount = detected;
           this.autoSelectedFromAssets = detected;
