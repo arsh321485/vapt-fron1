@@ -357,6 +357,9 @@ export default {
         this.refreshNotifications({ silent: true, includeList: this.showNotifications });
       }, 400);
     },
+    liveRefreshPage() {
+      this.refreshNotifications({ silent: true });
+    },
     handleWindowFocus() {
       this.scheduleFocusRefresh();
     },

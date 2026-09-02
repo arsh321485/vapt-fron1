@@ -2874,6 +2874,8 @@ export default {
 
       const token = Date.now();
       this.dashboardLoadToken = token;
+      const isFirstLoad = !this.mitigationByTeamData;
+      if (isFirstLoad) this.mitigationLoading = true;
       if (!this.hasMitigationGaugeData) this.summaryCardsLoading = true;
 
       this._dashboardLoadInFlight = Promise.allSettled([
@@ -2911,6 +2913,7 @@ export default {
           console.error("❌ Dashboard API error", err);
         })
         .finally(() => {
+          if (this.dashboardLoadToken !== token) return;
           this.mitigationLoading = false;
           this.summaryCardsLoading = false;
           this._dashboardLoadInFlight = null;
@@ -3124,6 +3127,7 @@ mounted() {
       return;
     }
     this.loadDashboardData();
+    this._lastDashboardLoad = Date.now();
   },
 };
 </script>
