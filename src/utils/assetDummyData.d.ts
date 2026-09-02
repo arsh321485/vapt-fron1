@@ -1,17 +1,32 @@
-export const ASSET_TYPE_FILTERS: Array<{ key: string; label: string; assetType: string }>;
-export const API_ASSET_TYPES: string[];
-export const ASSET_TYPE_DISPLAY: Array<{
+export interface AssetTypeFilter {
+  key: string;
+  label: string;
+  assetType: string;
+}
+
+export interface AssetTypeDisplay {
   type: string;
   ui: string;
   code: string;
   label: string;
   emoji: string;
-}>;
+}
+
+export interface AssetTypeCounts {
+  server: number;
+  web_app: number;
+  firewall: number;
+  other: number;
+}
+
+export const ASSET_TYPE_FILTERS: AssetTypeFilter[];
+export const API_ASSET_TYPES: string[];
+export const ASSET_TYPE_DISPLAY: AssetTypeDisplay[];
 
 export function normalizeAssetType(value: unknown): string;
 export function assetTypeFromFilterKey(filterKey: unknown): string;
 export function uiTypeFromAssetType(assetType: unknown): string;
-export function filterAssetsByType(assets: unknown, filterKey: unknown): unknown[];
+export function filterAssetsByType(assets: unknown, filterKey: unknown): any[];
 export function extractAssetRows(payload: unknown): any[];
 export function getAssetHostName(asset: unknown): string;
 export function extractIpAddress(name: unknown): string;
@@ -28,18 +43,13 @@ export function resolveAssetType(asset: unknown): string;
 export function getAssetOs(asset: unknown): string;
 export function getAssetResolvedIp(asset: unknown): string;
 export function assetMatchesQueryHost(asset: unknown, host: unknown): boolean;
-export function findAssetByQueryHost(assets: unknown, host: unknown): unknown;
+export function findAssetByQueryHost(assets: unknown, host: unknown): any;
 export function tabKeyForAsset(asset: unknown): string;
-export function normalizeAssetTypeCounts(raw: unknown): {
-  server: number;
-  web_app: number;
-  firewall: number;
-  other: number;
-};
+export function normalizeAssetTypeCounts(raw: unknown): AssetTypeCounts;
 export function hasAssetTypeCounts(raw: unknown): boolean;
-export function assetTypeCountChips(raw: unknown): Array<Record<string, unknown>>;
+export function assetTypeCountChips(raw: unknown): Array<AssetTypeDisplay & { count: number }>;
 export function assetTypeCountForFilter(raw: unknown, filterKey: unknown): number;
-export function assetTypeBadgeMeta(assetType: unknown): Record<string, unknown> | null;
+export function assetTypeBadgeMeta(assetType: unknown): AssetTypeDisplay | null;
 export function resolveHostAssetType(
   hostName: unknown,
   catalog?: unknown,

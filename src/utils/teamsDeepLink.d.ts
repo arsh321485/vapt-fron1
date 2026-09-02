@@ -7,6 +7,8 @@ export interface TeamsDeepLink {
   [key: string]: unknown;
 }
 
+export const TEAMS_WINDOW_NAME: string;
+
 export function extractTeamsDeepLink(payload?: unknown): any;
 export function persistTeamsDeepLink(links: unknown): void;
 export function readStoredTeamsDeepLink(): any;
@@ -27,7 +29,6 @@ export function resolveTeamsAdminDashboardUrl(
   payload: unknown,
   fetchStatus?: () => Promise<unknown> | unknown,
 ): Promise<string>;
-export const TEAMS_WINDOW_NAME: string;
 export function openTeamsAdminDashboard(
   url: unknown,
   opts?: { newTab?: boolean },
