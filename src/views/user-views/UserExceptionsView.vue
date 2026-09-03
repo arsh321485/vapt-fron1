@@ -53,9 +53,6 @@
                   Closed
                   <span class="st-tab-count">{{ sortedRequests.filter((r) => r.status?.toLowerCase() === 'closed').length }}</span>
                 </button>
-                <button class="st-btn-filter">
-                  <i class="bi bi-funnel me-1"></i> Filter View
-                </button>
                 <button class="st-sort-btn" @click="toggleSort">
                   <i class="bi bi-arrow-down-up me-1"></i>
                   Sort by date
