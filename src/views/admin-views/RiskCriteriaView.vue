@@ -6,7 +6,7 @@
       <DashboardHeader />
     </div>
 
-    <div class="rc-page">
+    <div v-if="!redirecting" class="rc-page">
 
       <!-- STEPPER -->
       <div v-if="!isEditMode" class="rc-stepper-row">
@@ -176,6 +176,9 @@
 <script>
 import DashboardHeader from '@/components/admin-component/DashboardHeader.vue';
 import { useAuthStore } from "@/stores/authStore";
+import { isClaimInviteFlow, hasClaimInviteReport } from "@/utils/claimInvite";
+import { isScopeAwaitingScan } from "@/utils/scopeScanGate";
+import { dismissUploadReportModal } from "@/utils/suppressUploadReportModal";
 import Swal from "sweetalert2";
 import { Tooltip } from 'bootstrap'
 
@@ -212,12 +215,20 @@ export default {
       },
       loading: false,
       isLocked: false,
+      editMode: false,
+      redirecting: true,
+      slackWatchTimer: null,
+      slackWatching: false,
     };
   },
   computed: {
     isEditMode() {
-      return !!this.$route.query.returnTo;
-    }
+      return this.editMode;
+    },
+    returnPath() {
+      const r = this.$route.query.returnTo;
+      return typeof r === 'string' && r.startsWith('/') ? r : '';
+    },
   },
   methods: {
     convertToDays(value) {
@@ -256,11 +267,24 @@ export default {
     async submitRiskCriteria() {
       const auth = useAuthStore();
 
-      // normal locked flow
+      // Criteria already saved — go to dashboard (don't re-run onboarding gates).
       if (this.isLocked && !this.isEditMode) {
-        auth.markStepCompleted(2);
-        const route = await auth.getAdminOnboardingRoute();
-        this.$router.push(route);
+        this.loading = true;
+        try {
+          auth.markStepCompleted(2);
+          auth._markOnboardingComplete();
+          if (isClaimInviteFlow() || hasClaimInviteReport()) {
+            await this.$router.push("/admindashboardonboarding");
+            return;
+          }
+          if (!(await auth.hasPaidPlan())) {
+            await this.$router.push("/pricingplan");
+            return;
+          }
+          await this.$router.push("/admindashboardonboarding");
+        } finally {
+          this.loading = false;
+        }
         return;
       }
 
@@ -284,8 +308,9 @@ export default {
               showConfirmButton: false,
             });
 
-            // redirect back
-            this.$router.push(this.$route.query.returnTo || "/admindashboardonboarding");
+            this.$router.push(this.returnPath || "/admindashboardonboarding");
+          } else {
+            Swal.fire("Error", res.message || "Unable to update risk criteria.", "error");
           }
 
           return;
@@ -296,6 +321,7 @@ export default {
 
         if (res.status) {
           auth.markStepCompleted(2);
+          auth._markOnboardingComplete();
 
           await Swal.fire({
             icon: "success",
@@ -305,9 +331,17 @@ export default {
             showConfirmButton: false,
           });
 
-          // Re-check onboarding gate — should now be ready
-          const route = await auth.getAdminOnboardingRoute();
-          this.$router.push(route);
+          if (isClaimInviteFlow() || hasClaimInviteReport()) {
+            await this.$router.push("/admindashboardonboarding");
+            return;
+          }
+          if (!(await auth.hasPaidPlan())) {
+            await this.$router.push("/pricingplan");
+            return;
+          }
+          await this.$router.push("/admindashboardonboarding");
+        } else {
+          Swal.fire("Error", res.message || "Unable to save risk criteria.", "error");
         }
 
       } catch (err) {
@@ -321,71 +355,152 @@ export default {
         const auth = useAuthStore();
         let res = await auth.getRiskCriteriaById();
 
-        // Fallback: if no stored ID or fetch failed, fetch by admin
         if (!res.status) {
           res = await auth.getRiskCriteriaByAdmin();
-          if (res.status && res.data) {
-            const d = res.data?.risk_criteria || res.data;
-            if (d._id) {
-              localStorage.setItem("riskId", d._id);
-              localStorage.setItem("riskCriteriaId", d._id);
-            }
-            if (d.admin_id) localStorage.setItem("adminId", d.admin_id);
-            this.existingForm.critical = d.critical;
-            this.existingForm.high = d.high;
-            this.existingForm.medium = d.medium;
-            this.existingForm.low = d.low;
-            this.newForm.critical = d.critical;
-            this.newForm.high = d.high;
-            this.newForm.medium = d.medium;
-            this.newForm.low = d.low;
-            this.isLocked = !this.isEditMode;
-          }
-          return;
         }
 
-        if (res.status) {
-          const d = res.data?.risk_criteria || res.data;
-
-          if (!d || (!d.critical && !d.high && !d.medium && !d.low)) return;
-
-          this.existingForm.critical = d.critical;
-          this.existingForm.high = d.high;
-          this.existingForm.medium = d.medium;
-          this.existingForm.low = d.low;
-          this.newForm.critical = d.critical;
-          this.newForm.high = d.high;
-          this.newForm.medium = d.medium;
-          this.newForm.low = d.low;
-
-          if (d._id) {
-            localStorage.setItem("riskId", d._id);
-            localStorage.setItem("riskCriteriaId", d._id);
-          }
-          if (d.admin_id) localStorage.setItem("adminId", d.admin_id);
-
-          this.isLocked = !this.isEditMode;
+        if (res.status && res.data) {
+          this.applyFetchedCriteria(res.data?.risk_criteria || res.data);
         }
       } catch (err) {
         console.error("Risk criteria fetch error", err);
       }
     },
-    async ensureOnboardingGate() {
-      // Edit mode from dashboard header should still work when already ready
-      if (this.isEditMode) return;
-
-      const auth = useAuthStore();
-      const route = await auth.getAdminOnboardingRoute();
-      if (route !== "/riskcriteria") {
-        this.$router.replace(route);
+    hasExistingCriteria() {
+      return !!(
+        this.existingForm.critical &&
+        this.existingForm.high &&
+        this.existingForm.medium &&
+        this.existingForm.low
+      );
+    },
+    applyFetchedCriteria(d) {
+      if (!d || (!d.critical && !d.high && !d.medium && !d.low)) return;
+      this.existingForm.critical = d.critical;
+      this.existingForm.high = d.high;
+      this.existingForm.medium = d.medium;
+      this.existingForm.low = d.low;
+      this.newForm.critical = d.critical;
+      this.newForm.high = d.high;
+      this.newForm.medium = d.medium;
+      this.newForm.low = d.low;
+      if (d._id) {
+        localStorage.setItem("riskId", d._id);
+        localStorage.setItem("riskCriteriaId", d._id);
+      }
+      if (d.admin_id) localStorage.setItem("adminId", d.admin_id);
+    },
+    async leaveIfRedirected(targetPath) {
+      this.redirecting = true;
+      try {
+        await this.$router.replace({ path: targetPath });
+        return this.$route.path !== "/riskcriteria";
+      } catch {
+        this.redirecting = false;
+        return false;
       }
     },
+    async redirectIfNoReport() {
+      const auth = useAuthStore();
+      let status = { hasReport: false };
+      try {
+        status = await auth.getReportStatus();
+      } catch {
+        status = { hasReport: false };
+      }
+      const claimed = isClaimInviteFlow();
+      const hasFile = !!(status.hasReport || hasClaimInviteReport());
+
+      if (claimed || hasFile) {
+        auth.initCompletedSteps();
+        if (auth.needsCommunicationStep()) {
+          return this.leaveIfRedirected("/communication");
+        }
+        return false;
+      }
+
+      if (!(await auth.hasPaidPlan())) {
+        return this.leaveIfRedirected("/admin-upload-report");
+      }
+
+      if (status.hasReport) return false;
+      if (isScopeAwaitingScan() || (await auth.hasSubmittedScope())) return false;
+      return this.leaveIfRedirected("/admin-upload-report");
+    },
+    async ensureOnboardingGate() {
+      // Edit mode from dashboard header should still work when already ready
+      if (this.isEditMode || this.redirecting || this.slackWatching) return false;
+
+      this.slackWatching = true;
+      try {
+        const auth = useAuthStore();
+        const route = await auth.getAdminOnboardingRoute();
+        if (route !== "/riskcriteria") {
+          this.redirecting = true;
+          this.stopSlackWatch();
+          await this.$router.replace(route);
+          return true;
+        }
+
+        const res = await auth.getRiskCriteriaByAdmin();
+        const data = res.data?.risk_criteria || res.data;
+        const alreadySet = !!(data && data.critical && data.high && data.medium && data.low);
+        if (res.status && alreadySet) {
+          auth.markStepCompleted(2);
+          this.redirecting = true;
+          this.stopSlackWatch();
+          const next = await auth.getAdminOnboardingRoute();
+          await this.$router.replace(next);
+          return true;
+        }
+      } finally {
+        this.slackWatching = false;
+      }
+      return false;
+    },
+    onSlackWatchVisibility() {
+      if (!document.hidden) this.ensureOnboardingGate();
+    },
+    startSlackWatch() {
+      this.stopSlackWatch();
+      if (this.isEditMode) return;
+      this.slackWatchTimer = setInterval(() => {
+        if (!document.hidden && !this.redirecting) this.ensureOnboardingGate();
+      }, 4000);
+      document.addEventListener("visibilitychange", this.onSlackWatchVisibility);
+    },
+    stopSlackWatch() {
+      if (this.slackWatchTimer) {
+        clearInterval(this.slackWatchTimer);
+        this.slackWatchTimer = null;
+      }
+      document.removeEventListener("visibilitychange", this.onSlackWatchVisibility);
+    },
   },
-  mounted() {
+  async mounted() {
+    dismissUploadReportModal();
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
     tooltipTriggerList.forEach(el => new Tooltip(el))
-    this.ensureOnboardingGate();
-    this.getRiskCriteria();
+
+    try {
+      this.redirecting = false;
+      if (await this.redirectIfNoReport()) return;
+
+      await this.getRiskCriteria();
+      this.editMode = !!this.returnPath && this.hasExistingCriteria();
+      this.isLocked = this.hasExistingCriteria() && !this.editMode;
+
+      if (this.editMode) return;
+      if (await this.ensureOnboardingGate()) return;
+      this.startSlackWatch();
+    } catch (err) {
+      console.error("Risk criteria page init failed", err);
+    } finally {
+      if (this.$route.path === "/riskcriteria") this.redirecting = false;
+    }
+  },
+  beforeUnmount() {
+    this.stopSlackWatch();
   },
 };
 </script>
@@ -435,9 +550,9 @@ export default {
 .rc-sev-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
 .rc-sev-bar { width: 5px; height: 22px; border-radius: 3px; flex-shrink: 0; }
 .rc-bar-critical { background: #b42318; }
-.rc-bar-high     { background: #f97316; }
+.rc-bar-high     { background: #dc2626; }
 .rc-bar-medium   { background: #f59e0b; }
-.rc-bar-low      { background: #0f696e; }
+.rc-bar-low      { background: #10b981; }
 .rc-sev-name { font-size: 1rem; font-weight: 700; color: #1e293b; }
 
 .rc-field-label {
@@ -474,16 +589,16 @@ export default {
   width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center; font-size: 0.9rem;
 }
-.rc-icon-critical { background: rgba(220,38,38,0.2); color: #fca5a5; }
-.rc-icon-high     { background: rgba(249,115,22,0.2); color: #fdba74; }
+.rc-icon-critical { background: rgba(180,35,24,0.2); color: #fca5a5; }
+.rc-icon-high     { background: rgba(220,38,38,0.2); color: #fca5a5; }
 .rc-icon-medium   { background: rgba(245,158,11,0.2); color: #fcd34d; }
-.rc-icon-low      { background: rgba(15,105,110,0.3); color: #a1ecf2; }
+.rc-icon-low      { background: rgba(16,185,129,0.25); color: #6ee7b7; }
 
 .rc-guide-name { font-size: 0.875rem; font-weight: 700; margin: 0 0 3px; }
 .rc-name-critical { color: #fca5a5; }
-.rc-name-high     { color: #fdba74; }
+.rc-name-high     { color: #fca5a5; }
 .rc-name-medium   { color: #fcd34d; }
-.rc-name-low      { color: #a1ecf2; }
+.rc-name-low      { color: #6ee7b7; }
 
 .rc-guide-desc { font-size: 0.78rem; color: rgba(255,255,255,0.7); margin: 0; line-height: 1.5; }
 

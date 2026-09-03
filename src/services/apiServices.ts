@@ -1,6 +1,10 @@
 import axios from "axios";
 import router from "../router";
 import Swal from "sweetalert2";
+import { notifyLiveData } from "../utils/livePageSync";
+import { attachInviteTokenToRequestData } from "../utils/claimInvite";
+import { stopLivePageSync } from "../utils/livePageSync";
+import { stopNotificationPolling } from "../utils/notificationPolling";
 
 // In dev we rely on Vite's proxy (vite.config.*) for `/api` requests,
 // otherwise browsers block cross-origin calls (CORS).
@@ -11,6 +15,8 @@ const endpoint = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  // Prevent one slow endpoint (e.g. billing) from blocking the whole app for 45s+.
+  timeout: 20000,
 });
 
 /** User-portal routes: do not force /home on 401 (avoids bounce when one call fails right after login). */
@@ -57,22 +63,32 @@ const PUBLIC_URL_PATTERNS = [
   "/api/admin/users/user-login-platform/",
   "/api/admin/users/slack/member-login/",
   "/api/admin/users/teams/member-login/",
+  "/api/admin/users/slack/pricing-handoff/",
   "/api/admin/users/slack/oauth-url/",
   "/api/admin/users/microsoft-teams/oauth-url/",
+  "/api/admin/upload_report/claim-invite/validate/",
+  "/api/admin/report-invite/validate/",
   "/api/webinar/form-options/",
   "/api/webinar/register/",
   "/api/partners/form-options/",
   "/api/partners/apply/",
 ];
-const REALTIME_ENDPOINT_PATTERNS = ["/api/notifications/"];
+const INVITE_CLAIM_POSTS = [
+  "/api/admin/users/signup/send-otp/",
+  "/api/admin/users/signup/verify-otp/",
+  "/api/admin/signup/send-otp/",
+  "/api/admin/signup/verify-otp/",
+  "/api/admin/users/login/",
+  "/api/admin/users/user-login/",
+  "/api/admin/login/",
+];
 
 endpoint.interceptors.request.use(
   (config) => {
     const token = sessionStorage.getItem("authorization") || localStorage.getItem("authorization");
-    const requestUrl = String(config.url || "");
     const isPublic = PUBLIC_URL_PATTERNS.some((p) => config.url?.includes(p));
-    const isRealtime = REALTIME_ENDPOINT_PATTERNS.some((p) => requestUrl.includes(p));
     const method = String(config.method || "get").toLowerCase();
+    const requestUrl = String(config.url || "");
 
     // FormData must use multipart with browser-set boundary.
     // Instance default Content-Type (application/json) would empty request.FILES.
@@ -87,18 +103,49 @@ endpoint.interceptors.request.use(
       }
     }
 
+    if (method === "post" && INVITE_CLAIM_POSTS.some((p) => requestUrl.includes(p))) {
+      // Always force-attach invite_token when present (overwrite empty/stale body field).
+      config.data = attachInviteTokenToRequestData(config.data);
+      // Also mirror on query — some deployments only read query/body one way.
+      try {
+        const body = config.data;
+        let invite = "";
+        if (body && typeof body === "object" && !(body instanceof FormData) && !Array.isArray(body)) {
+          invite = String((body as Record<string, unknown>).invite_token || "").trim();
+        } else if (typeof FormData !== "undefined" && body instanceof FormData) {
+          invite = String(body.get("invite_token") || "").trim();
+        } else if (typeof body === "string") {
+          try {
+            invite = String(JSON.parse(body)?.invite_token || "").trim();
+          } catch {
+            invite = "";
+          }
+        }
+        if (invite) {
+          const params = config.params && typeof config.params === "object" ? { ...config.params } : {};
+          if (!(params as Record<string, unknown>).invite_token) {
+            (params as Record<string, unknown>).invite_token = invite;
+            config.params = params;
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
     // Don't attach token to public endpoints (login, signup, password reset, etc)
     if (token && token !== "null" && token !== "undefined" && !isPublic) {
       config.headers["Authorization"] = `Bearer ${token}`;
     }
 
-    // Do not set Cache-Control / Pragma / Expires on notification calls: they are
-    // non-simple headers and widen CORS preflight; if the API does not list them
-    // in Access-Control-Allow-Headers, the browser fails with HeaderDisallowedByPreflightResponse.
-    // Cache busting for these routes is handled via _ts below.
-
-    // Add cache-buster only for realtime GET requests unless already provided.
-    if (method === "get" && isRealtime) {
+    // Do not set Cache-Control / Pragma / Expires request headers: they are
+    // non-simple headers and widen CORS preflight. Bust Chrome disk-cache with
+    // a query param instead (same-origin + cross-origin safe).
+    // Extra `_ts` can make claim-invite/validate treat the invite as unknown (`valid: false`).
+    const skipCacheBust =
+      String(config.url || "").includes("/claim-invite/validate/") ||
+      String(config.url || "").includes("/report-invite/validate/");
+    if (method === "get" && !skipCacheBust) {
       const params = config.params ?? {};
       if (params instanceof URLSearchParams) {
         if (!params.has("_ts")) {
@@ -132,6 +179,9 @@ const AUTH_ENDPOINTS = [
   "/api/admin/users/forgot-password/",
   "/api/admin/users/reset-password/",
   "/api/admin/users/token/refresh/", // refresh endpoint itself — infinite loop rokne ke liye
+  "/api/admin/users/slack/pricing-handoff/",
+  "/api/admin/upload_report/claim-invite/validate/",
+  "/api/admin/report-invite/validate/",
 ];
 
 // Token refresh queue — agar ek saath kai requests 401 paayein toh sab wait karein
@@ -150,6 +200,8 @@ function clearRefreshQueue() {
 }
 
 function clearAllSessionTokens() {
+  stopNotificationPolling();
+  stopLivePageSync();
   sessionStorage.removeItem("authorization");
   sessionStorage.removeItem("user");
   sessionStorage.removeItem("authenticated");
@@ -163,7 +215,15 @@ function clearAllSessionTokens() {
 }
 
 endpoint.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const method = String(response.config?.method || "get").toLowerCase();
+    const requestUrl = String(response.config?.url || "");
+    const isAuthEndpoint = AUTH_ENDPOINTS.some((ep) => requestUrl.includes(ep));
+    if (["post", "put", "patch", "delete"].includes(method) && !isAuthEndpoint) {
+      notifyLiveData(method);
+    }
+    return response;
+  },
   async (error) => {
     const requestUrl = error.config?.url || "";
     const isAuthEndpoint = AUTH_ENDPOINTS.some((ep) => requestUrl.includes(ep));
@@ -176,6 +236,8 @@ endpoint.interceptors.response.use(
 
     const noRedirect401Paths = new Set([
       "/pricingplan",
+      "/billing/success",
+      "/billing/cancel",
       "/partner",
       "/partner-lead-portal",
       "/partner-lead-thankyou",
@@ -187,6 +249,13 @@ endpoint.interceptors.response.use(
       isAuthScreen || noRedirect401Paths.has(currentPath) || isUserAppRoute(currentPath);
 
     if (error.response?.status === 401 && !isAuthEndpoint && !skip401Redirect) {
+      const failedConfig = error.config;
+      if (failedConfig?._authRetried) {
+        clearAllSessionTokens();
+        router.push("/home");
+        return Promise.reject(error);
+      }
+
       // 🔄 Pehle refresh token try karo
       const storedRefresh =
         sessionStorage.getItem("refreshToken") || localStorage.getItem("django_refresh_token");
@@ -199,6 +268,7 @@ endpoint.interceptors.response.use(
               if (error.config?.headers) {
                 error.config.headers["Authorization"] = `Bearer ${newToken}`;
               }
+              if (error.config) error.config._authRetried = true;
               resolve(endpoint(error.config));
             });
           });
@@ -219,10 +289,11 @@ endpoint.interceptors.response.use(
           isRefreshing = false;
           drainRefreshQueue(newAccessToken);
 
-          // ✅ Original request retry karo naye token ke saath
+          // ✅ Original request retry karo naye token ke saath (once only)
           if (error.config?.headers) {
             error.config.headers["Authorization"] = `Bearer ${newAccessToken}`;
           }
+          if (error.config) error.config._authRetried = true;
           return endpoint(error.config);
         } catch {
           // ❌ Refresh bhi fail → logout

@@ -266,7 +266,7 @@
                       <div v-else class="d-flex flex-column gap-2">
                         <div v-for="item in inProcessItems" :key="item.fix_vulnerability_id" class="in-process-item-row">
                           <div>
-                            <div class="in-process-vuln-name">{{ item.vulnerability_name }}</div>
+                            <div class="in-process-vuln-name" :title="item.vulnerability_name">{{ item.vulnerability_name }}</div>
                             <div class="in-process-asset">Asset: {{ item.asset }}</div>
                           </div>
                           <button class="in-process-action-btn in-process-view-btn" @click="goToUserInProcessTimeline(item)">View</button>
@@ -305,12 +305,12 @@
                         :style="{ height: totalVulnerabilities ? ((vulns.high || 0) / totalVulnerabilities * 66) + 'px' : '4px' }"></div>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
-                      <span style="font-size:12px; font-weight:800; color:#b45309;">{{ vulns.medium || 0 }}</span>
+                      <span style="font-size:12px; font-weight:800; color:#f59e0b;">{{ vulns.medium || 0 }}</span>
                       <div style="width:100%; border-radius:6px 6px 0 0; background:#f59e0b; min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: totalVulnerabilities ? ((vulns.medium || 0) / totalVulnerabilities * 66) + 'px' : '4px' }"></div>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
-                      <span style="font-size:12px; font-weight:800; color:#0f766e;">{{ vulns.low || 0 }}</span>
+                      <span style="font-size:12px; font-weight:800; color:#10b981;">{{ vulns.low || 0 }}</span>
                       <div style="width:100%; border-radius:6px 6px 0 0; background:#10b981; min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: totalVulnerabilities ? ((vulns.low || 0) / totalVulnerabilities * 66) + 'px' : '4px' }"></div>
                     </div>
@@ -319,8 +319,8 @@
                   <div class="d-flex justify-content-around mt-1 flex-wrap px-1">
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#b42318;"></span><span style="color:#b42318;">Critical</span></div>
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#dc2626;"></span><span style="color:#dc2626;">High</span></div>
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#f59e0b;"></span><span style="color:#b45309;">Medium</span></div>
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#10b981;"></span><span style="color:#0f766e;">Low</span></div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#f59e0b;"></span><span style="color:#f59e0b;">Medium</span></div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#10b981;"></span><span style="color:#10b981;">Low</span></div>
                   </div>
                 </div>
               </div>
@@ -340,7 +340,12 @@
                     <span class="info-tooltip" data-tooltip="Displays the remaining remediation time for vulnerabilities based on the defined risk criteria."><i class="bi bi-info-circle dash-info-icon"></i></span>
                   </div>
 
-                  <div v-if="!authStore.mitigationTimeline" class="d-flex flex-column align-items-center justify-content-center py-2" style="opacity:0.55;">
+                  <div v-if="mitigationGaugesLoading" class="d-flex flex-column align-items-center justify-content-center py-3">
+                    <div class="spinner-border spinner-border-sm text-secondary" role="status"></div>
+                    <span style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:8px;">Loading timeline...</span>
+                  </div>
+
+                  <div v-else-if="!hasMitigationGaugeData" class="d-flex flex-column align-items-center justify-content-center py-2" style="opacity:0.55;">
                     <i class="bi bi-clock-history" style="font-size:2rem;color:#cbd5e1;margin-bottom:8px;"></i>
                     <span style="font-size:11px;color:#94a3b8;font-weight:600;">Awaiting timeline data</span>
                   </div>
@@ -532,12 +537,12 @@
                         :style="{ height: vulFixedTotal ? (vulFixedHigh / vulFixedTotal * 64) + 'px' : '4px' }"></div>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
-                      <span style="font-size:12px; font-weight:800; color:#b45309;">{{ vulFixedMedium }}</span>
+                      <span style="font-size:12px; font-weight:800; color:#f59e0b;">{{ vulFixedMedium }}</span>
                       <div style="width:100%; border-radius:6px 6px 0 0; background:#f59e0b; min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: vulFixedTotal ? (vulFixedMedium / vulFixedTotal * 64) + 'px' : '4px' }"></div>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
-                      <span style="font-size:12px; font-weight:800; color:#0f766e;">{{ vulFixedLow }}</span>
+                      <span style="font-size:12px; font-weight:800; color:#10b981;">{{ vulFixedLow }}</span>
                       <div style="width:100%; border-radius:6px 6px 0 0; background:#10b981; min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: vulFixedTotal ? (vulFixedLow / vulFixedTotal * 64) + 'px' : '4px' }"></div>
                     </div>
@@ -546,8 +551,8 @@
                   <div class="d-flex justify-content-around mt-2 flex-wrap px-1">
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#b42318;"></span><span style="color:#b42318;">Critical</span></div>
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#dc2626;"></span><span style="color:#dc2626;">High</span></div>
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#f59e0b;"></span><span style="color:#b45309;">Medium</span></div>
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#10b981;"></span><span style="color:#0f766e;">Low</span></div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#f59e0b;"></span><span style="color:#f59e0b;">Medium</span></div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#10b981;"></span><span style="color:#10b981;">Low</span></div>
                   </div>
                 </div>
               </div>
@@ -1029,7 +1034,10 @@
 import DashboardMenu from '@/components/user-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/user-component/DashboardHeader.vue';
 import { useAuthStore } from '@/stores/authStore';
+import { isRealScanHost } from '@/utils/assetDummyData';
 import { getTeamTextClass } from '@/utils/teamColors';
+import { resolveMitigationDays, resolveMitigationLabel } from '@/utils/mitigationTimeline';
+import { getSeverityColor as severityHex } from '@/utils/severityColors';
 import Swal from 'sweetalert2';
 
 export default {
@@ -1130,6 +1138,15 @@ export default {
   computed: {
     authStore() {
       return useAuthStore();
+    },
+    hasMitigationGaugeData() {
+      return ['critical', 'high', 'medium', 'low'].some((sev) => {
+        const label = this.getMitigationLabel(sev);
+        return label && label !== '--';
+      });
+    },
+    mitigationGaugesLoading() {
+      return this.assetsLoading && !this.hasMitigationGaugeData;
     },
     closedVulnSet() {
       const set = new Set();
@@ -1308,7 +1325,10 @@ export default {
         const medium   = vulns.filter(v => (v.risk_factor || '').toLowerCase() === 'medium').length;
         const low      = vulns.filter(v => (v.risk_factor || '').toLowerCase() === 'low').length;
         const assetsSet = new Set();
-        vulns.forEach(v => { if (Array.isArray(v.assets)) v.assets.forEach(a => assetsSet.add(a)); else if (v.host_name) assetsSet.add(v.host_name); });
+        vulns.forEach(v => {
+          if (Array.isArray(v.assets)) v.assets.forEach(a => { if (isRealScanHost(a)) assetsSet.add(a); });
+          else if (isRealScanHost(v.host_name)) assetsSet.add(v.host_name);
+        });
         return { ...cfg, total, critical, high, medium, low, affectedAssets: assetsSet.size || 0 };
       });
     },
@@ -1597,10 +1617,7 @@ export default {
       this.loadCalendarData();
     },
     getSeverityColor(sev) {
-      if (sev === 'Critical') return 'maroon';
-      if (sev === 'High') return 'red';
-      if (sev === 'Medium') return 'orange';
-      return 'green';
+      return severityHex(sev);
     },
     getSeverityClass(date) {
       const year = this.currentDate.getFullYear();
@@ -1809,6 +1826,7 @@ export default {
     },
     async selectTeam(team) {
       this.selectedTeam = team;
+      this.authStore.setUserSelectedTeam(team);
       if (this.$refs.teamDropdown) {
         this.$refs.teamDropdown.classList.remove('show');
       }
@@ -1825,26 +1843,10 @@ export default {
     },
     getMitigationLabel(sev) {
       const sevData = this.getMitigationSevData(sev);
-      if (sevData && typeof sevData === 'object') {
-        if (sevData.remaining_label) return sevData.remaining_label;
-        if (String(sevData.status || '').toLowerCase() === 'overdue') return 'Overdue';
-        if (sevData.remaining_days != null) return this.formatTimeline({ days: sevData.remaining_days });
-        return this.formatTimeline({ days: sevData.days });
-      }
-      return this.formatTimeline(this.getMitigationValue(sev));
+      return resolveMitigationLabel(sevData, this.getMitigationDays(sev), (value) => this.formatTimeline(value));
     },
     getMitigationDays(sev) {
-      const sevData = this.getMitigationSevData(sev);
-      if (typeof sevData === 'number') return sevData;
-      if (typeof sevData === 'string') {
-        const p = Number(sevData);
-        return Number.isFinite(p) ? p : null;
-      }
-      if (sevData && typeof sevData === 'object') {
-        const r = sevData.remaining_days;
-        return (r !== null && r !== undefined) ? r : (sevData.days ?? null);
-      }
-      return null;
+      return resolveMitigationDays(this.getMitigationSevData(sev), this.riskCriteria?.[sev]);
     },
     getMitigationValue(sev) {
       const days = this.getMitigationDays(sev);
@@ -2113,6 +2115,13 @@ export default {
         this.loadMteExtensionData(),
       ]).catch(() => {});
     },
+    liveRefreshPage(opts = {}) {
+      const source = opts?.source || "mutation";
+      if (source === "poll") {
+        return this.refreshInProcessCount();
+      }
+      return this.runLiveDashboardSync(true);
+    },
     startLiveDashboardSync() {
       if (this._liveDashboardTimer) return;
       this._liveDashboardTimer = setInterval(() => {
@@ -2132,6 +2141,7 @@ export default {
     },
   },
   async mounted() {
+    this._vaptLiveAllowPoll = true;
     window.addEventListener("resize", this.handleWalkthroughViewportChange);
     window.addEventListener("scroll", this.handleWalkthroughViewportChange, true);
 
@@ -2143,11 +2153,9 @@ export default {
       this.userTeams = [];
     }
 
-    const savedTeam = localStorage.getItem('vaptfix_user_preferred_team');
-    this.selectedTeam = savedTeam || 'both';
+    // Shared team filter — carries across Fix/Register/Calendar/Support Request/Fixed too.
+    this.selectedTeam = this.authStore.userSelectedTeam || 'both';
     void this.runLiveDashboardSync(true);
-    this.startLiveDashboardSync();
-    document.addEventListener("visibilitychange", this.handleLiveDashboardVisibility);
 
     // Close dropdown when clicking outside
     document.addEventListener('click', (e) => {
@@ -2159,7 +2167,6 @@ export default {
   },
   activated() {
     void this.runLiveDashboardSync(true);
-    this.startLiveDashboardSync();
   },
   beforeUnmount() {
     document.removeEventListener("mousedown", this.handleCommonWalkthroughDocumentClick);
@@ -2167,7 +2174,6 @@ export default {
     window.removeEventListener("resize", this.handleWalkthroughViewportChange);
     window.removeEventListener("scroll", this.handleWalkthroughViewportChange, true);
     this.stopLiveDashboardSync();
-    document.removeEventListener("visibilitychange", this.handleLiveDashboardVisibility);
   },
 };
 </script>
@@ -2517,7 +2523,7 @@ export default {
 .cv-dot-critical { background: #b42318; }
 .cv-dot-high     { background: #dc2626; }
 .cv-dot-medium   { background: #f59e0b; }
-.cv-dot-low      { background: #0f766e; }
+.cv-dot-low      { background: #10b981; }
 .cv-stat-label { font-size: 11px; color: #64748b; flex: 1; }
 .cv-stat-val { font-size: 12px; font-weight: 700; color: #1e293b; }
 
@@ -2577,8 +2583,8 @@ export default {
 }
 .cv-badge-critical { background: #f8dede; color: #b42318; }
 .cv-badge-high     { background: #fee2e2; color: #dc2626; }
-.cv-badge-medium   { background: #fef3c7; color: #b45309; }
-.cv-badge-low      { background: #ccfbf1; color: #0f766e; }
+.cv-badge-medium   { background: #fef3c7; color: #f59e0b; }
+.cv-badge-low      { background: #d1fae5; color: #10b981; }
 
 /* Tooltip */
 .ud-tooltip {
@@ -3012,8 +3018,8 @@ export default {
 }
 .dash-mte-table th.sev-critical { color: #b42318 !important; background-color: #f8dede !important; }
 .dash-mte-table th.sev-high { color: #dc2626 !important; background-color: #fee2e2 !important; }
-.dash-mte-table th.sev-medium { color: #b45309 !important; background-color: #fef3c7 !important; }
-.dash-mte-table th.sev-low { color: #0f766e !important; background-color: #ccfbf1 !important; }
+.dash-mte-table th.sev-medium { color: #f59e0b !important; background-color: #fef3c7 !important; }
+.dash-mte-table th.sev-low { color: #10b981 !important; background-color: #d1fae5 !important; }
 .dash-mte-pill {
   display: inline-flex;
   align-items: center;
@@ -3028,8 +3034,8 @@ export default {
 }
 .dash-mte-pill.critical { background: #f8dede !important; color: #b42318 !important; border: 1px solid #efb7b1 !important; }
 .dash-mte-pill.high     { background: #fee2e2 !important; color: #dc2626 !important; border: 1px solid #fca5a5 !important; }
-.dash-mte-pill.medium   { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
-.dash-mte-pill.low      { background: #ccfbf1; color: #0f766e; border: 1px solid #5eead4; }
+.dash-mte-pill.medium   { background: #fef3c7; color: #f59e0b; border: 1px solid #fcd34d; }
+.dash-mte-pill.low      { background: #d1fae5; color: #10b981; border: 1px solid #6ee7b7; }
 
 /* MTE Modal */
 .mte-modal-backdrop {
@@ -3125,7 +3131,7 @@ export default {
 .ext-drawer-accent { height: 5px; width: 100%; flex-shrink: 0; }
 .ext-accent-critical { background: linear-gradient(90deg, #9e1b0d, #b42318); }
 .ext-accent-high     { background: linear-gradient(90deg, #c71616, #ef4444); }
-.ext-accent-medium   { background: linear-gradient(90deg, #b45309, #fbbf24); }
+.ext-accent-medium   { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
 .ext-accent-low      { background: linear-gradient(90deg, #0f696e, #14b8a6); }
 .ext-drawer-enter-active .ext-popup-box { animation: extDrawerIn 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
 .ext-drawer-leave-active .ext-popup-box { animation: extDrawerOut 0.22s cubic-bezier(0.55, 0, 1, 0.45); }
@@ -3170,7 +3176,7 @@ export default {
 .ext-sev-critical { background: #f8dede; color: #b42318; }
 .ext-sev-high     { background: #fee2e2; color: #dc2626; }
 .ext-sev-medium   { background: #fefce8; color: #92400e; }
-.ext-sev-low      { background: #ccfbf1; color: #0f766e; }
+.ext-sev-low      { background: #d1fae5; color: #10b981; }
 .ext-drawer-divider { height: 1px; background: #e2e8f0; margin: 0; flex-shrink: 0; }
 .ext-section-title {
   font-size: 11px; font-weight: 700; color: #0f696e;
@@ -3242,10 +3248,10 @@ export default {
   font-size: 18px;
   font-weight: 700;
 }
-.mte-critical .mte-severity-left { color: rgb(180, 35, 24); }
-.mte-high .mte-severity-left { color: rgb(220, 38, 38); }
-.mte-medium .mte-severity-left { color: rgb(245, 158, 11); }
-.mte-low .mte-severity-left { color: rgb(16, 185, 129); }
+.mte-critical .mte-severity-left { color: #b42318; }
+.mte-high .mte-severity-left { color: #dc2626; }
+.mte-medium .mte-severity-left { color: #f59e0b; }
+.mte-low .mte-severity-left { color: #10b981; }
 .mte-critical .mte-severity-head { background: #f8dede; border-bottom: 1px solid #efb7b1; }
 .mte-high .mte-severity-head { background:#fecaca; border-bottom: 1px solid #fca5a5; }
 .mte-medium .mte-severity-head { background: #fef3c7; border-bottom: 1px solid #fcd34d; }
@@ -3286,7 +3292,7 @@ export default {
 .mte-badge.critical { background: #fde8e8; color: #b42318; border: 1px solid #f5c6cb; }
 .mte-badge.high { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
 .mte-badge.medium { background: #f7e4bf; color: #d48806; border: 1px solid #f3d79a; }
-.mte-badge.low { background: #d1fae5; color: #0f766e; border: 1px solid #86efac; }
+.mte-badge.low { background: #d1fae5; color: #10b981; border: 1px solid #86efac; }
 .msu-critical-card { border-color: #fecaca; background: #fff5f5; }
 .msu-high-card { border-color: #fed7aa; background: #fff7ed; }
 .msu-medium-card { border-color: #fde68a; background: #fffdf0; }
@@ -3489,10 +3495,10 @@ export default {
 .msu-modal-sev-critical .msu-modal-sev-dot { background: #b42318; }
 .msu-modal-sev-high { background: #fee2e2; color: #dc2626; }
 .msu-modal-sev-high .msu-modal-sev-dot { background: #dc2626; }
-.msu-modal-sev-medium { background: #fef3c7; color: #b45309; }
-.msu-modal-sev-medium .msu-modal-sev-dot { background: #b45309; }
-.msu-modal-sev-low { background: #ccfbf1; color: #0f766e; }
-.msu-modal-sev-low .msu-modal-sev-dot { background: #0f766e; }
+.msu-modal-sev-medium { background: #fef3c7; color: #f59e0b; }
+.msu-modal-sev-medium .msu-modal-sev-dot { background: #f59e0b; }
+.msu-modal-sev-low { background: #d1fae5; color: #10b981; }
+.msu-modal-sev-low .msu-modal-sev-dot { background: #10b981; }
 .msu-modal-status-badge {
   display: inline-flex;
   align-items: center;
@@ -3596,10 +3602,18 @@ export default {
   border-radius: 10px;
   padding: 10px 12px;
 }
+.in-process-item-row > div:first-child {
+  min-width: 0;
+  flex: 1;
+}
 .in-process-vuln-name {
   font-size: 0.85rem;
   font-weight: 700;
   color: #1e293b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
 }
 .in-process-asset {
   font-size: 0.75rem;

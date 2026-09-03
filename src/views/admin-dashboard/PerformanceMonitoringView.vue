@@ -130,6 +130,14 @@ export default {
       const count = (t.by_risk || {})[severity] || 0;
       return Math.round((count / t.total) * 100);
     },
+    async liveRefreshPage() {
+      const store = useAuthStore();
+      const result = await store.fetchDistributionByTeamDetail(true);
+      if (!result.status) return;
+      const data = result.data;
+      if (data?.teams) this.teamDetail = data.teams;
+      else if (data && typeof data === "object") this.teamDetail = data;
+    },
   },
   async mounted() {
     const store = useAuthStore();
