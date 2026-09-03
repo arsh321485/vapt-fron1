@@ -112,6 +112,9 @@ export default {
     };
   },
   computed: {
+    logoPath() {
+      return getAuthenticatedAppHome();
+    },
     progressPercent() {
       const total = this.pollingData.cards_total || 0;
       if (!total) return 0;

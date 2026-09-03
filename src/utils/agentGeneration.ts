@@ -20,7 +20,7 @@ export type PersistedAgentGeneration = {
   startedAt: number;
 };
 
-function normalizeEmail(email?: string): string {
+function normalizeEmail(email?: string | null): string {
   return String(email || "").trim().toLowerCase();
 }
 
