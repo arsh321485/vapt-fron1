@@ -1,5 +1,6 @@
 import "./assets/main.css";
 import "./assets/responsive.css";
+import "./utils/suppressUploadReportModal";
 
 // Bootstrap dropdowns/collapse require the JS bundle (includes Popper).
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
@@ -10,12 +11,39 @@ import { createPinia } from "pinia";
 import App from "./App.vue";
 import router from "./router";
 import TeamNameText from "./components/common/TeamNameText.vue";
+import { livePageSyncMixin } from "./utils/livePageSync";
+
+if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    regs.forEach((reg) => {
+      void reg.unregister();
+    });
+  }).catch(() => {});
+}
 
 const app = createApp(App);
+app.mixin(livePageSyncMixin);
 
 app.component("TeamNameText", TeamNameText);
 
 app.use(createPinia());
 app.use(router);
 
-app.mount("#app");
+try {
+  app.mount("#app");
+} catch (err) {
+  console.error("App boot failed", err);
+  try {
+    const flag = "vaptfix_boot_recovery";
+    if (!sessionStorage.getItem(flag)) {
+      sessionStorage.setItem(flag, "1");
+      sessionStorage.removeItem("user");
+      sessionStorage.removeItem("authenticated");
+      sessionStorage.removeItem("vaptfix_locked_route");
+      localStorage.removeItem("completedSteps");
+      window.location.replace("/home");
+    }
+  } catch {
+    /* ignore */
+  }
+}

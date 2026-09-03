@@ -89,6 +89,10 @@
 
 <script>
 import { useAuthStore } from "@/stores/authStore";
+import {
+  subscribeNotificationUnreadPolling,
+  requestNotificationUnreadRefresh,
+} from "@/utils/notificationPolling";
 
 export default {
   name: "NotificationPanel",
@@ -108,7 +112,8 @@ export default {
       notifications: [],
       loading: false,
       unreadCount: 0,
-      pollTimer: null,
+      unsubscribePoll: null,
+      focusDebounceTimer: null,
       isTogglingShowAll: false,
       markingAll: false,
     };
@@ -268,7 +273,6 @@ export default {
             severityKey: this.severityFromMessage(n.message),
           };
         });
-        await this.fetchUnreadCount();
       } catch (e) {
         console.warn("Failed to fetch notifications:", e);
         this.notifications = [];
@@ -276,18 +280,12 @@ export default {
         if (!silent) this.loading = false;
       }
     },
-    async fetchUnreadCount() {
-      try {
-        const res =
-          this.recipientType === "user"
-            ? await this.authStore.fetchUserUnreadNotificationCount()
-            : await this.authStore.fetchAdminUnreadNotificationCount();
-        if (res.status) {
-          this.unreadCount = Number(res.data?.unread_count || 0);
-        }
-      } catch (e) {
-        console.warn("Failed to fetch unread count:", e);
-      }
+    onSharedUnreadCount(count) {
+      this.unreadCount = Number(count || 0);
+    },
+    async syncUnreadCount() {
+      const count = await requestNotificationUnreadRefresh(this.recipientType);
+      if (count != null) this.unreadCount = count;
     },
     async handleNotificationClick(notification) {
       if (!notification?.id || notification.is_read) return;
@@ -316,13 +314,12 @@ export default {
       this.unreadCount = 0;
       // Silently re-sync with server to confirm deletions.
       this.fetchNotifications({ silent: true, includeRead: true });
-      this.fetchUnreadCount();
     },
 
     toggleNotificationPanel() {
       this.showNotifications = !this.showNotifications;
       if (this.showNotifications) {
-        this.fetchUnreadCount();
+        this.syncUnreadCount();
         this.fetchNotifications({ includeRead: true });
       }
     },
@@ -344,51 +341,70 @@ export default {
       this.isTogglingShowAll = false;
     },
     refreshNotifications(options = {}) {
-      const { silent = true } = options;
-      this.fetchUnreadCount();
-      // Always fetch all notifications (read + unread)
-      this.fetchNotifications({ silent, includeRead: true });
+      const { silent = true, includeList = false } = options;
+      this.syncUnreadCount();
+      if (includeList || this.showNotifications) {
+        this.fetchNotifications({ silent, includeRead: true });
+      }
+    },
+    liveRefreshPage(opts = {}) {
+      if (opts?.source === "poll") return;
+      this.refreshNotifications({ silent: true, includeList: this.showNotifications });
+    },
+    scheduleFocusRefresh() {
+      if (this.focusDebounceTimer) clearTimeout(this.focusDebounceTimer);
+      this.focusDebounceTimer = setTimeout(() => {
+        this.refreshNotifications({ silent: true, includeList: this.showNotifications });
+      }, 400);
     },
     handleWindowFocus() {
-      this.refreshNotifications();
+      this.scheduleFocusRefresh();
     },
     handleVisibilityChange() {
       if (!document.hidden) {
-        this.refreshNotifications();
+        this.scheduleFocusRefresh();
       }
     },
   },
   mounted() {
-    this.refreshNotifications({ silent: false });
+    this.unsubscribePoll = subscribeNotificationUnreadPolling(
+      this.recipientType,
+      this.onSharedUnreadCount,
+    );
     window.addEventListener("focus", this.handleWindowFocus);
     document.addEventListener("visibilitychange", this.handleVisibilityChange);
   },
   beforeUnmount() {
-    if (this.pollTimer) clearInterval(this.pollTimer);
+    if (this.unsubscribePoll) this.unsubscribePoll();
+    if (this.focusDebounceTimer) clearTimeout(this.focusDebounceTimer);
     window.removeEventListener("focus", this.handleWindowFocus);
     document.removeEventListener("visibilitychange", this.handleVisibilityChange);
-  },
-  created() {
-    this.pollTimer = setInterval(() => {
-      this.fetchUnreadCount();
-      if (this.showNotifications) {
-        // Always fetch all notifications (read + unread)
-        this.fetchNotifications({ silent: true, includeRead: true });
-      }
-    }, 10000);
   },
 };
 </script>
 
 <style scoped>
-/* Dashboard palette: purple #241447, teal #0f696e, canvas ~#f4f7fe */
+/* Dashboard palette: purple #241447, teal #0f696e, canvas #f4f7fe */
+.notification-panel {
+  background: #241447;
+}
+
 .notif-drawer {
-  background: #fff;
+  background: #f4f7fe;
+  background-color: #f4f7fe;
+  border: none;
+  border-radius: 0;
+  --bs-card-bg: #f4f7fe;
+  --bs-card-cap-bg: #241447;
+  --bs-card-border-color: transparent;
 }
 
 .notif-drawer-header {
-  background: linear-gradient(135deg, #241447 0%, #1a0f38 100%);
-  padding: 15px;
+  background: #241447;
+  background-color: #241447;
+  padding: 15px 16px;
+  border-radius: 0;
+  margin: 0;
 }
 
 .notif-drawer-title {
@@ -416,7 +432,7 @@ export default {
 }
 
 .notif-drawer-footer {
-  background: #fff;
+  background: #f4f7fe;
   padding: 0.85rem 1rem;
   box-shadow: 0 -4px 20px rgba(36, 20, 71, 0.06);
 }
@@ -460,15 +476,15 @@ export default {
 }
 
 .notif-card--high.notif-card--unread {
-  border-left-color: #ea580c;
+  border-left-color: #dc2626;
 }
 
 .notif-card--medium.notif-card--unread {
-  border-left-color: #ca8a04;
+  border-left-color: #f59e0b;
 }
 
 .notif-card--low.notif-card--unread {
-  border-left-color: #0f696e;
+  border-left-color: #10b981;
 }
 
 .notif-icon-wrap {
@@ -484,13 +500,13 @@ export default {
   background: linear-gradient(145deg, #fecaca 0%, #fca5a5 100%);
 }
 .notif-icon-wrap--high {
-  background: linear-gradient(145deg, #fed7aa 0%, #fdba74 100%);
+  background: linear-gradient(145deg, #fecaca 0%, #fca5a5 100%);
 }
 .notif-icon-wrap--medium {
-  background: linear-gradient(145deg, #fef08a 0%, #fde047 100%);
+  background: linear-gradient(145deg, #fde68a 0%, #fcd34d 100%);
 }
 .notif-icon-wrap--low {
-  background: linear-gradient(145deg, #ccfbf1 0%, #99f6e4 100%);
+  background: linear-gradient(145deg, #d1fae5 0%, #6ee7b7 100%);
 }
 .notif-icon-wrap--deadline {
   background: linear-gradient(145deg, #e0e7ff 0%, #c7d2fe 100%);
@@ -562,13 +578,13 @@ export default {
 }
 .notif-pill-medium {
   background: #fef3c7;
-  color: #b45309;
+  color: #f59e0b;
   border: 1px solid #fcd34d;
 }
 .notif-pill-low {
-  background: #ccfbf1;
-  color: #0f766e;
-  border: 1px solid #5eead4;
+  background: #d1fae5;
+  color: #10b981;
+  border: 1px solid #6ee7b7;
 }
 
 .notif-accent-teal {

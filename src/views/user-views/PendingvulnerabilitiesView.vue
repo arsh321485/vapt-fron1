@@ -96,12 +96,18 @@ export default {
         });
     },
     methods: {
+        async liveRefreshPage() {
+            const reportId = this.authStore.userLatestReportId;
+            if (!reportId) return;
+            const res = await this.authStore.fetchUserOpenTickets(reportId, true, this.authStore.userSelectedTeam);
+            if (res.status) this.tickets = res.data;
+        },
         async loadTickets() {
             await this.authStore.fetchUserVulnerabilityRegister();
             const reportId = this.authStore.userLatestReportId;
             if (!reportId) return;
             this.loading = true;
-            const res = await this.authStore.fetchUserOpenTickets(reportId);
+            const res = await this.authStore.fetchUserOpenTickets(reportId, false, this.authStore.userSelectedTeam);
             this.loading = false;
             if (res.status) {
                 this.tickets = res.data;
