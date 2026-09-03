@@ -1,4 +1,9 @@
 import Swal from "sweetalert2";
+import {
+  openTeamsAdminDashboard,
+  pickTeamsTabUrl,
+  readStoredTeamsDeepLink,
+} from "@/utils/teamsDeepLink";
 
 const HANDOFF_ERROR_KEY = "vaptfix_handoff_error";
 const HANDOFF_NAV_KEY = "vaptfix_handoff_nav";
@@ -60,28 +65,68 @@ function platformLabel(source: ChatHandoffSource): string {
   return source === "slack" ? "Slack" : "Microsoft Teams";
 }
 
+function resolveSlackOpenUrl(): string {
+  try {
+    const raw = localStorage.getItem("slack_team");
+    if (raw) {
+      const team = JSON.parse(raw);
+      if (team?.url) return String(team.url);
+      if (team?.domain) return `https://${team.domain}.slack.com`;
+    }
+  } catch {
+    /* ignore */
+  }
+  const teamId = String(localStorage.getItem("slack_team_id") || "").trim();
+  if (teamId) return `https://app.slack.com/client/${teamId}`;
+  return "https://app.slack.com/client";
+}
+
+function openChatPlatform(source: ChatHandoffSource) {
+  if (source === "slack") {
+    window.open(resolveSlackOpenUrl(), "_blank", "noopener,noreferrer");
+    return;
+  }
+  const stored = pickTeamsTabUrl(readStoredTeamsDeepLink());
+  if (stored && openTeamsAdminDashboard(stored, { newTab: true })) return;
+  // Never open bare teams.cloud.microsoft — that restores Chat tab.
+  void Swal.fire({
+    icon: "info",
+    title: "Open Microsoft Teams",
+    text: "Your VaptFix channel link is not ready yet. Open Microsoft Teams manually and go to VaptFix → vaptfix admin dashboard.",
+    confirmButtonText: "OK",
+    confirmButtonColor: "#241447",
+  });
+}
+
 /**
  * After Freemium or paid checkout completes for a Teams/Slack bot handoff.
- * Toast only — Teams/Slack is already open in another tab; no re-open needed.
+ * Returns true if the user chose to open Teams/Slack.
  */
 export async function maybeShowReturnToChatPlatformPopup(): Promise<boolean> {
   const source = readChatHandoffSource();
   if (!source) return false;
 
   const platform = platformLabel(source);
-  await Swal.fire({
+  const result = await Swal.fire({
     icon: "success",
     title: "You're all set!",
     html: `Head back to <strong>${platform}</strong> to see your dashboard and start fixing vulnerabilities.`,
-    showConfirmButton: false,
-    showCancelButton: false,
-    timer: 3500,
-    timerProgressBar: true,
-    allowOutsideClick: true,
+    confirmButtonText: `Open ${platform}`,
+    showCancelButton: true,
+    cancelButtonText: "Continue on the website instead",
+    confirmButtonColor: "#241447",
+    cancelButtonColor: "#64748b",
+    allowOutsideClick: false,
     allowEscapeKey: true,
+    reverseButtons: true,
   });
 
   clearChatHandoffSource();
+
+  if (result.isConfirmed) {
+    openChatPlatform(source);
+    return true;
+  }
   return false;
 }
 
