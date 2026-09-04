@@ -3,7 +3,6 @@
     <div v-if="!embedded" class="ma-page-header">
       <div>
         <h2 class="ma-title">Manage Account</h2>
-        <p class="ma-subtitle">Update your profile, security settings, and workspace preferences.</p>
       </div>
       <router-link :to="dashboardRoute" class="ma-back-link">
         <i class="bi bi-arrow-left"></i> Back to Dashboard
@@ -34,19 +33,7 @@
           </button>
         </nav>
 
-        <div class="ma-quick-links">
-          <p class="ma-quick-label">Quick Links</p>
-          <router-link
-            v-if="mode === 'admin'"
-            :to="{ path: '/riskcriteria', query: { returnTo: $route.fullPath } }"
-            class="ma-quick-link"
-          >
-            <i class="bi bi-sliders"></i> Update Risk Criteria
-          </router-link>
-          <router-link to="/pricingplan" class="ma-quick-link">
-            <i class="bi bi-stars"></i> Upgrade Plan
-          </router-link>
-        </div>
+
       </aside>
 
       <section :class="embedded ? 'ma-embedded-content' : 'ma-content card shadow-sm'">
@@ -64,55 +51,70 @@
           </button>
         </nav>
 
-        <!-- Profile -->
+        <!-- Profile (read-only GET) -->
         <div v-if="activeTab === 'profile'" class="ma-section">
           <h3 class="ma-section-title">Profile Information</h3>
-          <p class="ma-section-desc">Keep your account details up to date.</p>
+          <p class="ma-section-desc">Your account details from the logged-in profile.</p>
 
           <div class="row g-3">
             <div class="col-md-6">
               <label class="ma-label">First Name</label>
-              <input v-model="firstName" type="text" class="form-control ma-input" placeholder="First name" />
+              <input :value="firstName" type="text" class="form-control ma-input" placeholder="-" disabled readonly />
             </div>
             <div class="col-md-6">
               <label class="ma-label">Last Name</label>
-              <input v-model="lastName" type="text" class="form-control ma-input" placeholder="Last name" />
+              <input :value="lastName" type="text" class="form-control ma-input" placeholder="-" disabled readonly />
             </div>
             <div class="col-12">
               <label class="ma-label">Email</label>
-              <input :value="userEmail" type="email" class="form-control ma-input" disabled />
+              <input :value="userEmail" type="email" class="form-control ma-input" disabled readonly />
             </div>
-            <template v-if="mode === 'admin'">
-              <div class="col-md-6">
-                <label class="ma-label">Organization Name</label>
-                <input v-model="orgName" type="text" class="form-control ma-input" placeholder="Organization" />
-              </div>
-              <div class="col-md-6">
-                <label class="ma-label">Organization URL</label>
-                <input v-model="orgUrl" type="url" class="form-control ma-input" placeholder="https://example.com" />
-              </div>
-            </template>
-            <div v-if="isMember && memberRoles.length" class="col-12">
-              <label class="ma-label">Assigned Roles</label>
+            <div v-if="memberRoles.length" class="col-12">
+              <label class="ma-label">Assigned teams</label>
               <div class="ma-role-chips">
                 <span v-for="role in memberRoles" :key="role" class="ma-role-chip">{{ role }}</span>
               </div>
             </div>
+            <div v-else-if="mode === 'user'" class="col-12">
+              <label class="ma-label">Assigned teams</label>
+              <p class="ma-hint mb-0">No teams assigned.</p>
+            </div>
           </div>
 
-          <div class="ma-actions">
-            <button type="button" class="btn ma-btn-primary" :disabled="profileSaving" @click="saveProfile">
-              <span v-if="profileSaving" class="spinner-border spinner-border-sm me-1"></span>
-              Save Profile
-            </button>
+          <div v-if="mode === 'admin'" class="ma-connect-block">
+            <h4 class="ma-connect-title">Connect Slack / Teams</h4>
+            <p class="ma-section-desc mb-3">Email-signup admins can also connect Slack or Microsoft Teams to this account.</p>
+            <div class="ma-connect-actions">
+              <button type="button" class="btn ma-btn-outline" :disabled="oauthLoading === 'slack'" @click="connectSlack">
+                <span v-if="oauthLoading === 'slack'" class="spinner-border spinner-border-sm me-1"></span>
+                {{ slackConnected ? 'Slack connected' : 'Connect Slack' }}
+              </button>
+              <button type="button" class="btn ma-btn-outline" :disabled="oauthLoading === 'teams'" @click="connectTeams">
+                <span v-if="oauthLoading === 'teams'" class="spinner-border spinner-border-sm me-1"></span>
+                {{ teamsConnected ? 'Teams connected' : 'Connect Teams' }}
+              </button>
+            </div>
           </div>
         </div>
 
         <!-- Password -->
         <div v-else-if="activeTab === 'password'" class="ma-section">
-          <h3 class="ma-section-title">Change Password</h3>
-          <p class="ma-section-desc">Use a strong password with at least 8 characters.</p>
+          <h3 class="ma-section-title">{{ needsSetPassword ? 'Password' : 'Change Password' }}</h3>
+          <p class="ma-section-desc">
+            {{ needsSetPassword
+              ? 'You signed up with Slack or Teams. Set a password to also sign in with email.'
+              : 'Use a strong password with at least 8 characters.' }}
+          </p>
 
+          <div v-if="needsSetPassword" class="ma-set-password-card">
+            <p class="ma-hint mb-3">We’ll email a set-password link to <strong>{{ userEmail }}</strong>.</p>
+            <button type="button" class="btn ma-btn-primary" :disabled="setPasswordSending" @click="sendSetPasswordLink">
+              <span v-if="setPasswordSending" class="spinner-border spinner-border-sm me-1"></span>
+              Set Password
+            </button>
+          </div>
+
+          <template v-else>
           <div class="row g-3">
             <div class="col-12">
               <label class="ma-label">Current Password</label>
@@ -174,6 +176,7 @@
               Update Password
             </button>
           </div>
+          </template>
         </div>
 
         <!-- Projects / Team -->
@@ -203,6 +206,67 @@
           </div>
         </div>
 
+        <!-- Billing -->
+        <div v-else-if="activeTab === 'billing'" class="ma-section">
+          <h3 class="ma-section-title">Billing & Subscription</h3>
+          <p class="ma-section-desc">Current plan, invoices, and cancellation.</p>
+
+          <div v-if="billingLoading" class="text-center py-4">
+            <span class="spinner-border spinner-border-sm me-2"></span>
+            Loading subscription…
+          </div>
+
+          <template v-else>
+            <div v-if="billingError" class="alert alert-danger py-2">{{ billingError }}</div>
+
+            <div class="ma-security-card">
+              <div>
+                <h6 class="mb-1">{{ billingPlanLabel }}</h6>
+                <p class="ma-hint mb-0">
+                  <template v-if="subscription">
+                    Status: <strong class="text-capitalize">{{ subscription.status }}</strong>
+                    <span v-if="subscription.mode"> · {{ billingModeLabel }}</span>
+                    <span v-if="subscription.billing_cycle"> · {{ billingCycleLabel }}</span>
+                    <span v-if="subscription.asset_count != null"> · {{ subscription.asset_count }} assets</span>
+                  </template>
+                  <template v-else>No subscription yet.</template>
+                </p>
+              </div>
+              <router-link to="/pricingplan" class="btn btn-outline-dark btn-sm">
+                {{ subscription ? 'Change plan' : 'Choose a plan' }}
+              </router-link>
+            </div>
+
+            <div v-if="subscription && ['active', 'trialing', 'past_due'].includes(subscription.status)" class="ma-security-card">
+              <div>
+                <h6 class="mb-1">Cancel subscription</h6>
+                <p class="ma-hint mb-0">Cancels at the end of the current billing period. You keep access until then.</p>
+              </div>
+              <button type="button" class="btn btn-outline-danger btn-sm" :disabled="canceling" @click="cancelPlan">
+                <span v-if="canceling" class="spinner-border spinner-border-sm me-1"></span>
+                Cancel
+              </button>
+            </div>
+
+            <div v-if="invoices.length" class="mt-4">
+              <h6 class="ma-section-title" style="font-size: 16px;">Invoices</h6>
+              <div v-for="invoice in invoices" :key="invoice.stripe_invoice_id || invoice.created_at" class="ma-invoice-row">
+                <div>
+                  <strong>{{ formatUsd(invoice.amount, invoice.currency) }}</strong>
+                  <span class="ma-hint d-block text-capitalize">{{ invoice.status }} · {{ formatInvoiceDate(invoice.created_at) }}</span>
+                </div>
+                <a
+                  v-if="invoice.hosted_invoice_url"
+                  :href="invoice.hosted_invoice_url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="btn btn-outline-dark btn-sm"
+                >View invoice</a>
+              </div>
+            </div>
+          </template>
+        </div>
+
         <!-- Security / Session -->
         <div v-else-if="activeTab === 'security'" class="ma-section">
           <h3 class="ma-section-title">Security & Session</h3>
@@ -216,7 +280,7 @@
             <button type="button" class="btn btn-danger btn-sm" @click="handleLogout">Logout</button>
           </div>
 
-          <div class="ma-security-card">
+          <div v-if="mode === 'admin'" class="ma-security-card">
             <div>
               <h6 class="mb-1">Subscription</h6>
               <p class="ma-hint mb-0">View plans and upgrade your VaptFix subscription.</p>
@@ -234,6 +298,9 @@ import { useAuthStore } from '@/stores/authStore';
 import Swal from 'sweetalert2';
 import router from '@/router';
 import AdminProjectField from '@/components/admin-component/AdminProjectField.vue';
+import { billingErrorMessage, cancelSubscription, formatUsd, getMySubscription } from '@/services/billingApi';
+import { consumeAdminPlatformOAuthError } from '@/utils/platformOAuthMessage';
+import { openTeamsOAuthPopup } from '@/utils/teamsDeepLink';
 
 const USER_TEAM_KEY = 'vaptfix_user_preferred_team';
 
@@ -278,9 +345,19 @@ export default {
       showPasswordRules: false,
       passwordRules: { minLength: false, uppercase: false, special: false },
       passwordSaving: false,
+      setPasswordSending: false,
+      adminHasPassword: false,
+      oauthLoading: false,
+      slackConnected: false,
+      teamsConnected: false,
       activeProjectName: localStorage.getItem('activeProjectName') || '',
       preferredTeam: localStorage.getItem(USER_TEAM_KEY) || 'both',
       userTeams: [],
+      subscription: null,
+      invoices: [],
+      billingLoading: false,
+      billingError: '',
+      canceling: false,
     };
   },
   computed: {
@@ -293,13 +370,33 @@ export default {
       return [
         { id: 'profile', label: 'Profile', icon: 'bi bi-person' },
         { id: 'password', label: 'Password', icon: 'bi bi-key' },
-        { id: 'workspace', label: this.mode === 'admin' ? 'Projects' : 'Team', icon: 'bi bi-folder2' },
-        { id: 'security', label: 'Security', icon: 'bi bi-shield-lock' },
       ];
     },
     visibleNavItems() {
       if (!this.allowedTabs?.length) return this.navItems;
       return this.navItems.filter(item => this.allowedTabs.includes(item.id));
+    },
+    billingPlanLabel() {
+      if (!this.subscription?.plan) return 'No plan';
+      const plan = String(this.subscription.plan);
+      return plan.charAt(0).toUpperCase() + plan.slice(1);
+    },
+    billingModeLabel() {
+      if (this.subscription?.mode === 'management_testing') return 'Management + Testing';
+      if (this.subscription?.mode === 'management') return 'Management';
+      return this.subscription?.mode || '';
+    },
+    billingCycleLabel() {
+      const cycle = this.subscription?.billing_cycle;
+      if (cycle === 'semi_annual') return 'Semi-annual';
+      if (!cycle) return '';
+      return String(cycle).charAt(0).toUpperCase() + String(cycle).slice(1);
+    },
+    isSlackOrTeamsAdmin() {
+      return this.mode === 'admin' && this.authStore.isSlackOrTeamsLogin();
+    },
+    needsSetPassword() {
+      return this.isSlackOrTeamsAdmin && this.adminHasPassword !== true;
     },
   },
   watch: {
@@ -311,14 +408,82 @@ export default {
         }
       },
     },
+    activeTab(tab) {
+      if (tab === 'billing' && this.mode === 'admin') this.loadBilling();
+    },
   },
   async mounted() {
     await this.loadProfile();
     if (this.mode === 'user') {
       await this.loadUserTeams();
     }
+    if (this.mode === 'admin') {
+      await this.refreshAdminPasswordState();
+      await this.loadBilling();
+      this.syncConnectionState();
+      window.addEventListener('message', this.onOAuthMessage);
+    }
+  },
+  beforeUnmount() {
+    window.removeEventListener('message', this.onOAuthMessage);
   },
   methods: {
+    formatUsd,
+    formatInvoiceDate(value) {
+      if (!value) return '';
+      try {
+        return new Date(value).toLocaleDateString();
+      } catch {
+        return value;
+      }
+    },
+    async loadBilling() {
+      this.billingLoading = true;
+      this.billingError = '';
+      try {
+        const data = await getMySubscription();
+        this.subscription = data?.subscription || null;
+        this.invoices = Array.isArray(data?.invoices) ? data.invoices : [];
+      } catch (error) {
+        this.subscription = null;
+        this.invoices = [];
+        this.billingError = billingErrorMessage(error, 'Unable to load billing details.');
+      } finally {
+        this.billingLoading = false;
+      }
+    },
+    async cancelPlan() {
+      const confirm = await Swal.fire({
+        icon: 'warning',
+        title: 'Cancel subscription?',
+        text: 'Access continues until the end of the current billing period.',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, cancel',
+        cancelButtonText: 'Keep plan',
+        confirmButtonColor: '#dc3545',
+      });
+      if (!confirm.isConfirmed) return;
+      this.canceling = true;
+      try {
+        const data = await cancelSubscription();
+        await Swal.fire({
+          icon: 'success',
+          title: 'Cancellation scheduled',
+          text: data?.detail || 'Subscription will cancel at the end of the current period.',
+          confirmButtonColor: '#241447',
+        });
+        await this.loadBilling();
+      } catch (error) {
+        await Swal.fire({
+          icon: 'error',
+          title: 'Could not cancel',
+          text: billingErrorMessage(error),
+          confirmButtonColor: '#241447',
+        });
+      } finally {
+        this.canceling = false;
+      }
+    },
     async loadProfile() {
       if (this.mode === 'user') {
         const res = await this.authStore.getMemberProfile();
@@ -331,28 +496,127 @@ export default {
 
       const res = await this.authStore.getUserProfile();
       if (res.status) {
-        this.applyUser(res.data.user);
+        const user =
+          res.data?.user ||
+          res.data?.data?.user ||
+          res.data?.data ||
+          res.data;
+        this.applyUser(user);
+        // If API returned email-only, merge any richer local profile fields.
+        if (!this.firstName && !this.lastName) {
+          this.mergeStoredNameFallback();
+        }
       } else {
-        const stored = JSON.parse(localStorage.getItem('user') || 'null');
-        if (stored) this.applyUser(stored);
+        this.mergeStoredNameFallback(true);
+      }
+    },
+    mergeStoredNameFallback(force = false) {
+      const sources = [];
+      try {
+        sources.push(JSON.parse(localStorage.getItem('user') || 'null'));
+      } catch { /* ignore */ }
+      try {
+        sources.push(JSON.parse(sessionStorage.getItem('user') || 'null'));
+      } catch { /* ignore */ }
+      try {
+        sources.push(JSON.parse(localStorage.getItem('local_user') || 'null'));
+      } catch { /* ignore */ }
+      try {
+        sources.push(this.authStore?.user || null);
+      } catch { /* ignore */ }
+
+      for (const stored of sources) {
+        if (!stored || typeof stored !== 'object') continue;
+        if (force) {
+          this.applyUser(stored);
+          if (this.firstName || this.lastName || this.userEmail) return;
+          continue;
+        }
+        const first = String(
+          stored.firstname || stored.first_name || stored.firstName || stored.given_name || '',
+        ).trim();
+        const last = String(
+          stored.lastname || stored.last_name || stored.lastName || stored.family_name || '',
+        ).trim();
+        const full = String(stored.full_name || stored.name || stored.display_name || '').trim();
+        if (first || last) {
+          this.firstName = this.firstName || first;
+          this.lastName = this.lastName || last;
+        } else if (full && !this.firstName && !this.lastName) {
+          const parts = full.split(/\s+/).filter(Boolean);
+          this.firstName = parts[0] || '';
+          this.lastName = parts.slice(1).join(' ');
+        }
+        if (!this.userEmail) {
+          this.userEmail = stored.email || stored.work_email || '';
+        }
+        if (this.firstName || this.lastName) {
+          this.displayName =
+            [this.firstName, this.lastName].filter(Boolean).join(' ') || this.userEmail;
+          const initialSource = this.firstName || this.userEmail || 'U';
+          this.userInitial = initialSource.trim().charAt(0).toUpperCase();
+          return;
+        }
       }
     },
     applyUser(user) {
       if (!user) return;
-      this.isMember = Array.isArray(user.Member_role);
-      this.memberRoles = this.isMember
-        ? user.Member_role.map(r => String(r))
-        : [];
-      this.userEmail = user.email || '';
-      this.firstName = user.firstname || user.first_name || '';
-      this.lastName = user.lastname || user.last_name || '';
-      this.orgName = user.organisation_name || '';
-      this.orgUrl = user.organisation_url || '';
-      this.displayName = user.full_name
+      const rolesRaw =
+        user.Member_role ??
+        user.member_role ??
+        user.member_teams ??
+        user.assigned_teams ??
+        user.teams ??
+        [];
+      const rolesList = Array.isArray(rolesRaw) ? rolesRaw : rolesRaw ? [rolesRaw] : [];
+      this.memberRoles = rolesList.map((r) => String(r || '').trim()).filter(Boolean);
+      this.isMember = this.mode === 'user' || this.memberRoles.length > 0;
+      this.userEmail = user.email || user.work_email || user.user_email || '';
+
+      let first = String(
+        user.firstname || user.first_name || user.firstName || user.given_name || '',
+      ).trim();
+      let last = String(
+        user.lastname || user.last_name || user.lastName || user.family_name || '',
+      ).trim();
+
+      // Some profiles only return full_name / name — split for First / Last fields.
+      if (!first && !last) {
+        const full = String(user.full_name || user.name || user.display_name || '').trim();
+        if (full) {
+          const parts = full.split(/\s+/).filter(Boolean);
+          first = parts[0] || '';
+          last = parts.slice(1).join(' ');
+        }
+      }
+
+      this.firstName = first;
+      this.lastName = last;
+      this.orgName = user.organisation_name || user.organization_name || user.company_name || '';
+      this.orgUrl = user.organisation_url || user.organization_url || '';
+      this.displayName = String(user.full_name || user.name || '').trim()
         || [this.firstName, this.lastName].filter(Boolean).join(' ')
         || this.userEmail;
       const initialSource = this.firstName || this.userEmail || 'U';
       this.userInitial = initialSource.trim().charAt(0).toUpperCase();
+    },
+    async refreshAdminPasswordState() {
+      if (this.mode !== 'admin') return;
+      const email = (this.userEmail || '').trim();
+      if (!email) {
+        this.adminHasPassword = !this.isSlackOrTeamsAdmin;
+        return;
+      }
+      try {
+        const res = await this.authStore.getUserLoginPlatform(email);
+        if (res.data && typeof res.data.has_password === 'boolean') {
+          this.adminHasPassword = res.data.has_password === true;
+        } else {
+          this.adminHasPassword = !this.isSlackOrTeamsAdmin;
+        }
+      } catch {
+        this.adminHasPassword = !this.isSlackOrTeamsAdmin;
+      }
     },
     async loadUserTeams() {
       const res = await this.authStore.fetchUserMitigationByTeam();
@@ -405,6 +669,112 @@ export default {
       this.passwordRules.minLength = pwd.length >= 8;
       this.passwordRules.uppercase = /[A-Z]/.test(pwd);
       this.passwordRules.special = /[!@#$%^&*(),.?":{}|<>]/.test(pwd);
+    },
+    syncConnectionState() {
+      this.slackConnected = !!(
+        localStorage.getItem('slack_bot_token') ||
+        sessionStorage.getItem('admin_slack_connected') === 'true'
+      );
+      this.teamsConnected = !!(
+        localStorage.getItem('teams_connected') === 'true' ||
+        localStorage.getItem('microsoft_graph_token') ||
+        sessionStorage.getItem('admin_teams_connected') === 'true'
+      );
+    },
+    async sendSetPasswordLink() {
+      this.setPasswordSending = true;
+      try {
+        const res = await this.authStore.sendSetPasswordEmail();
+        if (res.status) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Set-password link sent',
+            text: res.message || 'Please check your email.',
+            confirmButtonColor: '#241447',
+          });
+        } else if (res.alreadySet) {
+          this.adminHasPassword = true;
+          Swal.fire({
+            icon: 'info',
+            title: 'Password already set',
+            text: res.message || 'A password is already set for this account.',
+            confirmButtonColor: '#241447',
+          });
+        } else {
+          Swal.fire({ icon: 'error', title: 'Error', text: res.message || 'Unable to send set-password link.', confirmButtonColor: '#241447' });
+        }
+      } catch {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to send set-password link.', confirmButtonColor: '#241447' });
+      } finally {
+        this.setPasswordSending = false;
+      }
+    },
+    async connectSlack() {
+      this.oauthLoading = 'slack';
+      try {
+        const adminId = this.authStore.user?._id || this.authStore.user?.id || null;
+        const res = await this.authStore.getSlackOAuthUrl('https://vaptbackend.secureitlab.com', adminId);
+        if (res.status && res.data?.auth_url) {
+          const width = 1000;
+          const height = 700;
+          const left = window.screenX + (window.outerWidth - width) / 2;
+          const top = window.screenY + (window.outerHeight - height) / 2;
+          const popup = window.open(res.data.auth_url, 'SlackOAuth', `width=${width},height=${height},left=${left},top=${top}`);
+          if (!popup) {
+            Swal.fire({ icon: 'warning', title: 'Popup blocked', text: 'Please allow popups for this site.', confirmButtonColor: '#241447' });
+          }
+        } else {
+          Swal.fire({ icon: 'error', title: 'Error', text: 'Unable to start Slack connection.', confirmButtonColor: '#241447' });
+        }
+      } catch {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Something went wrong while connecting Slack.', confirmButtonColor: '#241447' });
+      } finally {
+        this.oauthLoading = false;
+      }
+    },
+    async connectTeams() {
+      this.oauthLoading = 'teams';
+      try {
+        const adminId = this.authStore.user?._id || this.authStore.user?.id || null;
+        const redirectUri = `${window.location.origin}/microsoft/callback`;
+        const res = await this.authStore.getMicrosoftOAuthUrl(redirectUri, adminId);
+        if (res.status && res.data?.auth_url) {
+          if (!openTeamsOAuthPopup(res.data.auth_url)) {
+            Swal.fire({ icon: 'warning', title: 'Popup blocked', text: 'Please allow popups for this site.', confirmButtonColor: '#241447' });
+          }
+        } else {
+          Swal.fire({ icon: 'error', title: 'Error', text: 'Unable to start Teams connection.', confirmButtonColor: '#241447' });
+        }
+      } catch {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Something went wrong while connecting Teams.', confirmButtonColor: '#241447' });
+      } finally {
+        this.oauthLoading = false;
+      }
+    },
+    onOAuthMessage(event) {
+      const allowed = [window.location.origin, 'https://vaptbackend.secureitlab.com'];
+      if (event.origin && !allowed.includes(event.origin)) return;
+      const platformError = consumeAdminPlatformOAuthError(event.data);
+      if (platformError) {
+        this.oauthLoading = false;
+        Swal.fire({
+          icon: 'error',
+          title: 'Cannot connect',
+          text: platformError,
+          confirmButtonColor: '#241447',
+        });
+        return;
+      }
+      if (event.data?.success === false) return;
+      if (event.data?.type === 'SLACK_CONNECTED' || event.data?.slack_bot_token || event.data?.bot_access_token) {
+        this.slackConnected = true;
+        sessionStorage.setItem('admin_slack_connected', 'true');
+      }
+      if (event.data?.type === 'TEAMS_CONNECTED' || event.data?.vaptfix_team || event.data?.django_access_token) {
+        this.teamsConnected = true;
+        localStorage.setItem('teams_connected', 'true');
+        sessionStorage.setItem('admin_teams_connected', 'true');
+      }
     },
     async savePassword() {
       if (!this.oldPassword || !this.newPassword || !this.confirmPassword) {
@@ -755,6 +1125,41 @@ export default {
   border-top: 1px solid #f1f5f9;
 }
 
+.ma-connect-block {
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.ma-connect-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #241447;
+  margin: 0 0 4px;
+}
+
+.ma-connect-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ma-btn-outline {
+  border: 1px solid rgba(15, 105, 110, 0.35);
+  background: #fff;
+  color: #0f696e;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+}
+
+.ma-set-password-card {
+  background: #f8fafc;
+  border: 1px solid rgba(15, 105, 110, 0.12);
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+
 .ma-btn-primary {
   background: #0f696e;
   border: none;
@@ -875,5 +1280,14 @@ export default {
   background: #0f696e;
   border-color: #0f696e;
   color: #fff;
+}
+
+.ma-invoice-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f1f5f9;
 }
 </style>

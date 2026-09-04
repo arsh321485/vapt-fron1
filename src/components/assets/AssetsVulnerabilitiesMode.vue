@@ -5,13 +5,29 @@
       <div class="av-left-header left-panel-header">
         <div class="d-flex justify-content-between align-items-center mb-2">
           <h2 class="av-left-title assets-title">All Vulnerabilities</h2>
-          <span class="av-count-badge assets-count-badge">{{ filteredVulns.length }} Vulns</span>
+          <span class="av-count-badge assets-count-badge">{{ filteredVulns.length }} {{ filteredVulns.length === 1 ? 'Vul' : 'Vulns' }}</span>
+        </div>
+        <div class="asset-type-filters mb-3">
+          <button
+            v-for="filter in assetTypeFilters"
+            :key="filter.key"
+            type="button"
+            class="asset-type-filter-btn"
+            :class="[
+              'asset-type-filter-btn-' + filter.key,
+              { 'asset-type-filter-btn-active': assetTypeFilter === filter.key },
+            ]"
+            @click="setAssetTypeFilter(filter.key)"
+          >
+            {{ filter.label }}
+            <span class="asset-type-filter-count">{{ assetTypeTabCount(filter.key) }}</span>
+          </button>
         </div>
         <div class="d-flex gap-3 mb-3">
           <i
             class="bi bi-trash action-icon"
             :class="{ 'text-muted': activeAction !== '' && activeAction !== 'delete' }"
-            title="Remove assets for selected vulnerabilities"
+            title="Delete selected vulnerabilities"
             role="button"
             @click.stop="handleDeleteClick"
           ></i>
@@ -39,22 +55,19 @@
           v-for="item in filteredVulns"
           :key="item._key"
           class="asset-item-new"
-          :class="{ 'asset-item-active': selectedKey === item._key && !showCheckboxes && !showHoldCheckboxes }"
+          :class="{
+            'asset-item-active': selectedKey === item._key && !showCheckboxes && !showHoldCheckboxes,
+            'asset-item-checked': (showCheckboxes || showHoldCheckboxes) && isVulnChecked(item._key),
+          }"
           @click="selectVulnFromList(item)"
         >
           <div class="av-list-item-primary d-flex align-items-start gap-2">
             <input
-              v-if="showCheckboxes"
+              v-if="showCheckboxes || showHoldCheckboxes"
               type="checkbox"
-              v-model="item.selected"
               class="form-check-input flex-shrink-0 mt-1"
-              @click.stop
-            />
-            <input
-              v-if="showHoldCheckboxes"
-              type="checkbox"
-              v-model="item.selected"
-              class="form-check-input flex-shrink-0 mt-1"
+              :value="item._key"
+              v-model="selectedVulnKeys"
               @click.stop
             />
             <span class="asset-ip av-vuln-list-name">{{ item.vul_name }}</span>
@@ -65,14 +78,30 @@
               <span :class="getStatusDotClass(item.status)"></span>
               {{ getStatusLabel(item.status) }}
             </span>
+            <span
+              v-if="assetTypeCountChips(item).length"
+              class="av-type-count-row"
+              :title="assetTypeCountTitle(item)"
+            >
+              <template v-for="(chip, idx) in assetTypeCountChips(item)" :key="chip.type">
+                <span v-if="idx" class="av-type-count-sep" aria-hidden="true">·</span>
+                <span
+                  class="av-type-count-chip"
+                  :class="'asset-type-label-' + chip.ui"
+                >{{ chip.emoji }} {{ chip.count }}</span>
+              </template>
+            </span>
           </div>
-          <!-- Expandable asset list -->
-          <div class="av-assets-toggle" @click.stop="toggleVulnAssetExpand(item._key)">
-            <i class="bi" :class="expandedVulnAssets === item._key ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+          <!-- Asset count + always-expanded host list -->
+          <div
+            v-if="item.assets?.length"
+            class="av-assets-toggle av-assets-toggle--static"
+            aria-hidden="true"
+          >
+            <i class="bi bi-chevron-up"></i>
             <span>{{ item.assets.length }} asset{{ item.assets.length === 1 ? '' : 's' }}</span>
           </div>
-          <!-- Nested asset IPs -->
-          <div v-if="expandedVulnAssets === item._key" class="av-nested-assets" @click.stop>
+          <div v-if="item.assets?.length" class="av-nested-assets" @click.stop>
             <div
               v-for="assetIp in item.assets"
               :key="assetIp"
@@ -82,14 +111,20 @@
             >
               <i class="bi bi-hdd-network av-nested-ip-icon"></i>
               <span class="av-nested-ip">{{ assetIp }}</span>
+              <span
+                v-if="nestedAssetBadge(item, assetIp)"
+                class="asset-type-badge asset-type-badge-sm"
+                :class="'asset-type-badge-' + nestedAssetBadge(item, assetIp).ui"
+                :title="nestedAssetBadge(item, assetIp).label"
+              >{{ nestedAssetBadge(item, assetIp).code }}</span>
             </div>
           </div>
         </div>
         <p v-if="!filteredVulns.length" class="av-empty-list">No vulnerabilities found.</p>
       </div>
 
-      <!-- Mitigation on Hold (same APIs as All Assets) -->
-      <div v-if="showHeld && heldAssets.length" class="mitigation-hold-section">
+      <!-- Mitigation on Hold -->
+      <div v-if="heldAssetsForType.length" class="mitigation-hold-section">
         <div class="d-flex align-items-center justify-content-between mb-3">
           <h3 class="hold-title">Mitigation on hold</h3>
           <i
@@ -100,19 +135,23 @@
             @click="toggleUnholdMode"
           ></i>
         </div>
-        <div v-for="(held, i) in heldAssets" :key="held.asset || i" class="hold-item">
-          <div>
+        <div
+          v-for="(held, i) in heldAssetsForType"
+          :key="(held.plugin_name || held.vul_name || '') + '::' + (held.host_name || held.asset || i)"
+          class="hold-item"
+        >
+          <div class="hold-item-text">
             <div class="d-flex align-items-center gap-2">
               <input
                 v-if="showUnholdCheckboxes"
                 v-model="held.selected"
                 type="checkbox"
-                class="form-check-input"
+                class="form-check-input flex-shrink-0"
                 @click.stop
               />
-              <p class="hold-ip mb-0">{{ held.asset }}</p>
+              <p class="hold-ip mb-0">{{ held.vul_name || held.plugin_name || held.asset }}</p>
             </div>
-            <p class="hold-sub">{{ held.member_type || 'Awaiting resolution' }}</p>
+            <p class="hold-sub">{{ heldHostLabel(held) }}</p>
           </div>
           <span
             v-if="getHeldPrioritySeverity(held)"
@@ -124,6 +163,7 @@
         </div>
       </div>
 
+      <teleport to="body">
       <!-- Delete Modal (same layout as All Assets #deleteModal) -->
       <div class="modal fade assets-action-modal" id="avDeleteModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -132,7 +172,7 @@
               <h5 class="modal-title">Confirm Delete</h5>
               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" @click="cancelDelete"></button>
             </div>
-            <div class="modal-body">Are you sure you want to delete the selected assets?</div>
+            <div class="modal-body">Are you sure you want to delete the selected vulnerabilities?</div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @click="cancelDelete">Cancel</button>
               <button type="button" class="btn btn-danger" data-bs-dismiss="modal" @click="confirmDelete">OK</button>
@@ -153,6 +193,7 @@
           </div>
         </div>
       </div>
+      </teleport>
     </div>
 
     <!-- Right: same layout as All Assets (title header + tabs in body card + scroll) -->
@@ -257,7 +298,7 @@
             :ref="'vuln-' + v._key"
           >
             <div class="vuln-accordion-header" role="button" @click="toggleAccordion(i)">
-              <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
+              <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0 overflow-hidden">
                 <i
                   class="bi bi-exclamation-triangle-fill vuln-icon flex-shrink-0"
                   :class="{
@@ -268,15 +309,11 @@
                   }"
                 ></i>
                 <div class="vuln-name-row">
-                  <span class="vuln-name" :title="v.vul_name">{{ v.vul_name }}</span>
+                  <TruncatedVulnName class="vuln-name" :text="v.vul_name" />
                   <span class="sev-badge" :class="'sev-' + (v.severity?.toLowerCase() || '')">{{ v.severity }}</span>
                   <span :class="getStatusBadgeClass(v.status)">
                     <span :class="getStatusDotClass(v.status)"></span>{{ getStatusLabel(v.status) }}
                   </span>
-                  <!-- Team badge hidden — shown inside Manual Fix -->
-                  <!-- <span :class="getVulnTeamChipClass(v.assigned_team, v.vul_name)" style="font-size:0.68rem; padding:2px 8px;">
-                    {{ getVulnTeamLabel(v.assigned_team, v.vul_name) }}
-                  </span> -->
                 </div>
               </div>
               <div class="d-flex align-items-center gap-3 flex-shrink-0 vuln-accordion-actions">
@@ -284,28 +321,35 @@
                   :severity="v.severity"
                   :asset-ip="v.assets?.[0]"
                   :asset-index="panelVulnDemoIndex(v)"
+                  :automation-matched="resolveAutomationMatched(v)"
                 />
+                <span
+                  v-if="hasAutomationScript(v)"
+                  class="vuln-download-wrap"
+                  :title="automationDownloadLocked ? (authStore.automationPremiumMessage || 'Automation scripts are not available on the Freemium plan. Upgrade to Premium.') : 'Download fix'"
+                >
                 <button
                   type="button"
                   class="vuln-download-icon-btn"
-                  :class="{ 'vuln-download-icon-btn--disabled': isVulnAutomationNo(v, i) }"
-                  :disabled="isVulnAutomationNo(v, i)"
-                  :title="isVulnAutomationNo(v, i) ? 'Script not available — automation not possible' : 'Download fix'"
-                  :aria-label="isVulnAutomationNo(v, i) ? 'Script download not available' : 'Download fix'"
-                  @click.stop="!isVulnAutomationNo(v, i) && downloadAutomationScript()"
+                  :class="{ 'vuln-download-icon-btn--disabled': automationDownloadLocked }"
+                  :disabled="automationDownloadLocked"
+                  :aria-label="automationDownloadLocked ? 'Upgrade to Premium to download automation scripts' : 'Download fix'"
+                  @click.stop="downloadAutomationScript()"
                 >
                   <i class="bi bi-download"></i>
                 </button>
+                </span>
                 <i class="bi text-muted" :class="expandedVulnIndex === i ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
               </div>
             </div>
-            <div v-show="expandedVulnIndex === i" class="vuln-accordion-expand">
+            <div v-if="expandedVulnIndex === i" class="vuln-accordion-expand">
               <div class="vuln-accordion-body">
+                <div class="vuln-accordion-static">
                 <div class="av-description-block">
                   <div class="av-db-label">DESCRIPTION</div>
-                  <p class="av-db-text">{{ getDisplayDescription(v.description, v._key) }}</p>
+                  <p class="av-db-text">{{ getDisplayDescription(v, v._key) }}</p>
                   <button
-                    v-if="(v.description || '').length > descriptionPreviewLimit"
+                    v-if="resolveGroupedDescription(v._key, v, ...(v.rows || [])).length > descriptionPreviewLimit"
                     type="button"
                     class="av-read-more"
                     @click="toggleDescription(v._key)"
@@ -330,7 +374,7 @@
                     :class="{ active: currentVulnTab === 'auto' }"
                     @click="setVulnDetailTab('auto')"
                   >
-                    <span class="av-dtab-emoji" aria-hidden="true">🤖</span>
+                    <i class="bi bi-robot av-dtab-emoji" aria-hidden="true"></i>
                     Automated Fix
                   </button>
                   <button
@@ -339,22 +383,25 @@
                     :class="{ active: currentVulnTab === 'manual' }"
                     @click="setVulnDetailTab('manual')"
                   >
-                    <span class="av-dtab-emoji" aria-hidden="true">📋</span>
+                    <i class="bi bi-clipboard-check av-dtab-emoji" aria-hidden="true"></i>
                     Manual Fix
                   </button>
+                </div>
                 </div>
 
                 <div class="av-detail-tab-content">
                   <!-- Affected Assets content hidden -->
 
-                  <div v-if="currentVulnTab === 'auto'" class="av-auto-tab">
-                    <AutomationNotSafeBanner v-if="isVulnAutomationNo(v, i)" />
+                  <div v-show="currentVulnTab === 'auto'" class="av-auto-tab">
                     <AutomatedFixPanel
-                      v-else
                       :key="v._key + '-' + i + '-' + panelAssetKey"
                       :severity="v.severity"
+                      :vuln-name="v.vul_name"
                       :asset-ip="selectedPanelAsset || v.assets?.[0]"
                       :asset-index="panelVulnDemoIndex(v)"
+                      :is-user="isUser"
+                      :automation-data="getAutomationForVuln(v)"
+                      :match-loading="loadingAutomation"
                       :can-automate="canAutomate"
                       :must-manual="mustManual"
                       :recommended-text="recommendedText"
@@ -362,22 +409,24 @@
                     />
                   </div>
 
-                  <div v-else-if="currentVulnTab === 'manual'" class="av-manual-tab">
+                  <div v-show="currentVulnTab === 'manual'" class="av-manual-tab">
                     <div v-for="asset in (selectedPanelAsset ? [selectedPanelAsset] : v.assets)" :key="asset" class="av-asset-section">
                       <div class="av-asset-label">
                         <span class="av-asset-os-lbl">{{ assetMetaFor(v, asset).os }}</span>
                       </div>
                       <ManualRemediationStepsPanel
                         :is-user="isUser"
-                        :key="v.vul_name + '-' + asset + '-' + panelAssetKey"
+                        :key="String(v.plugin_id || v.nessus_plugin_id || v.vulnerability_id || v.id || v.vul_name) + '-' + asset + '-' + panelAssetKey"
                         :vuln-name="v.vul_name"
                         :asset-ip="asset"
                         :severity="v.severity"
-                        :vuln-id="String(v.fix_vulnerability_id || v.id || '')"
+                        :vuln-id="String(v.plugin_id || v.nessus_plugin_id || v.vulnerability_id || v.id || '')"
                         :fix-id="String(v.fix_vulnerability_id || '')"
                         :asset-os="assetMetaFor(v, asset).os || ''"
-                        @open-support-modal="$emit('open-support-modal', $event)"
+                        @open-support-modal="onManualFixSupportModal"
                         @team-resolved="onPanelTeamResolved"
+                        @description-resolved="onVulnDescriptionResolved"
+                        @vulnerability-status-changed="onVulnStatusChanged"
                       />
                     </div>
                   </div>
@@ -386,6 +435,145 @@
             </div>
           </div>
         </div>
+
+                    <!-- Fixed Recently: closed vulns / closed hosts only -->
+                    <div v-if="closedRecentlyItems.length" class="mt-5">
+                      <div class="d-flex align-items-center mb-3">
+                        <h3 class="section-label">Fixed Recently</h3>
+                        <div class="fixed-divider flex-grow-1 ms-3"></div>
+                      </div>
+                      <div class="fixed-recently-scroll">
+                        <div
+                          v-for="(item, i) in closedRecentlyItems"
+                          :key="item._id || item.fix_vulnerability_id || (item.vulnerability_name + '-' + item.host_name + '-' + i)"
+                          class="vuln-accordion-item"
+                          :class="{ 'vuln-accordion-item--expanded': expandedClosedIndex === i }"
+                        >
+                          <div class="vuln-accordion-header" role="button" @click="toggleClosedAccordion(i)">
+                            <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0 overflow-hidden">
+                              <i class="bi bi-check-circle-fill fixed-check-icon flex-shrink-0"></i>
+                              <div class="vuln-name-row">
+                                <TruncatedVulnName class="vuln-name" :text="closedItemAsVuln(item).vul_name" />
+                                <span
+                                  v-if="closedItemAsVuln(item).severity"
+                                  class="sev-badge"
+                                  :class="'sev-' + (closedItemAsVuln(item).severity?.toLowerCase() || '')"
+                                >{{ closedItemAsVuln(item).severity }}</span>
+                                <span :class="getStatusBadgeClass('closed')">
+                                  <span :class="getStatusDotClass('closed')"></span>{{ getStatusLabel('closed') }}
+                                </span>
+                              </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-3 flex-shrink-0 vuln-accordion-actions">
+                              <FixAvailableIndicator
+                                :severity="closedItemAsVuln(item).severity"
+                                :asset-ip="closedItemAsVuln(item).assets?.[0]"
+                                :asset-index="i % 3"
+                                :automation-matched="resolveAutomationMatched(closedItemAsVuln(item))"
+                              />
+                              <span
+                                v-if="hasAutomationScript(closedItemAsVuln(item))"
+                                class="vuln-download-wrap"
+                                :title="automationDownloadLocked ? (authStore.automationPremiumMessage || 'Automation scripts are not available on the Freemium plan. Upgrade to Premium.') : 'Download fix'"
+                              >
+                                <button
+                                  type="button"
+                                  class="vuln-download-icon-btn"
+                                  :class="{ 'vuln-download-icon-btn--disabled': automationDownloadLocked }"
+                                  :disabled="automationDownloadLocked"
+                                  :aria-label="automationDownloadLocked ? 'Upgrade to Premium to download automation scripts' : 'Download fix'"
+                                  @click.stop="downloadAutomationScript()"
+                                >
+                                  <i class="bi bi-download"></i>
+                                </button>
+                              </span>
+                              <i class="bi text-muted" :class="expandedClosedIndex === i ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                            </div>
+                          </div>
+                          <div v-if="expandedClosedIndex === i" class="vuln-accordion-expand">
+                            <div class="vuln-accordion-body">
+                              <div class="vuln-accordion-static">
+                                <div class="av-description-block">
+                                  <div class="av-db-label">DESCRIPTION</div>
+                                  <p class="av-db-text">{{ getDisplayDescription(closedItemAsVuln(item), closedDescKey(item, i)) }}</p>
+                                  <button
+                                    v-if="resolveGroupedDescription(closedDescKey(item, i), closedItemAsVuln(item)).length > descriptionPreviewLimit"
+                                    type="button"
+                                    class="av-read-more"
+                                    @click="toggleDescription(closedDescKey(item, i))"
+                                  >
+                                    {{ isDescriptionExpanded(closedDescKey(item, i)) ? 'Read less' : 'Read more' }}
+                                  </button>
+                                </div>
+                                <div class="av-detail-tabs">
+                                  <button
+                                    type="button"
+                                    class="av-dtab"
+                                    :class="{ active: currentVulnTab === 'auto' }"
+                                    @click="setVulnDetailTab('auto')"
+                                  >
+                                    <i class="bi bi-robot av-dtab-emoji" aria-hidden="true"></i>
+                                    Automated Fix
+                                  </button>
+                                  <button
+                                    type="button"
+                                    class="av-dtab"
+                                    :class="{ active: currentVulnTab === 'manual' }"
+                                    @click="setVulnDetailTab('manual')"
+                                  >
+                                    <i class="bi bi-clipboard-check av-dtab-emoji" aria-hidden="true"></i>
+                                    Manual Fix
+                                  </button>
+                                </div>
+                              </div>
+                              <div class="av-detail-tab-content">
+                                <div v-show="currentVulnTab === 'auto'" class="av-auto-tab">
+                                  <AutomatedFixPanel
+                                    :key="'closed-' + closedDescKey(item, i)"
+                                    :severity="closedItemAsVuln(item).severity"
+                                    :vuln-name="closedItemAsVuln(item).vul_name"
+                                    :asset-ip="selectedPanelAsset || closedItemAsVuln(item).assets?.[0]"
+                                    :asset-index="i % 3"
+                                    :is-user="isUser"
+                                    :automation-data="getAutomationForVuln(closedItemAsVuln(item))"
+                                    :match-loading="loadingAutomation"
+                                    :can-automate="canAutomate"
+                                    :must-manual="mustManual"
+                                    :recommended-text="recommendedText"
+                                    @view-code="showCodeModal = true"
+                                  />
+                                </div>
+                                <div v-show="currentVulnTab === 'manual'" class="av-manual-tab">
+                                  <div
+                                    v-for="asset in (closedItemAsVuln(item).assets || [])"
+                                    :key="'closed-' + asset"
+                                    class="av-asset-section"
+                                  >
+                                    <div class="av-asset-label">
+                                      <span class="av-asset-os-lbl">{{ assetMetaFor(closedItemAsVuln(item), asset).os }}</span>
+                                    </div>
+                                    <ManualRemediationStepsPanel
+                                      :is-user="isUser"
+                                      :key="'closed-mf-' + String(closedItemAsVuln(item).plugin_id || closedItemAsVuln(item).fix_vulnerability_id || closedItemAsVuln(item).vul_name) + '-' + asset"
+                                      :vuln-name="closedItemAsVuln(item).vul_name"
+                                      :asset-ip="asset"
+                                      :severity="closedItemAsVuln(item).severity"
+                                      :vuln-id="String(closedItemAsVuln(item).plugin_id || closedItemAsVuln(item).nessus_plugin_id || closedItemAsVuln(item).vulnerability_id || closedItemAsVuln(item).id || '')"
+                                      :fix-id="String(closedItemAsVuln(item).fix_vulnerability_id || '')"
+                                      :asset-os="assetMetaFor(closedItemAsVuln(item), asset).os || ''"
+                                      @open-support-modal="onManualFixSupportModal"
+                                      @team-resolved="onPanelTeamResolved"
+                                      @description-resolved="onVulnDescriptionResolved"
+                                      @vulnerability-status-changed="onVulnStatusChanged"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
         </div>
 
         <!-- Support Requests Tab -->
@@ -405,7 +593,7 @@
               <div class="d-flex align-items-center gap-3 flex-wrap">
                 <div class="sr-index-circle">{{ i + 1 }}</div>
                 <div>
-                  <p class="sr-vul-name mb-0">{{ req.vul_name }}</p>
+                  <p class="sr-vul-name mb-0" :title="req.vul_name">{{ req.vul_name }}</p>
                   <p v-if="req.host_name" class="sr-host-name mb-0">{{ req.host_name }}</p>
                 </div>
               </div>
@@ -426,7 +614,7 @@
     </div>
 
     <!-- Support request detail modals -->
-    <div class="modal fade" id="avAdminSupportModal" tabindex="-1" aria-hidden="true">
+    <div class="modal fade sr-view-modal" id="avAdminSupportModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="false">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content sr-modal-content">
           <div class="modal-header sr-modal-header">
@@ -465,7 +653,7 @@
       </div>
     </div>
 
-    <div class="modal fade" id="avUserSupportModal" tabindex="-1" aria-hidden="true">
+    <div class="modal fade sr-view-modal" id="avUserSupportModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="false">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content sr-modal-content">
           <div class="modal-header sr-modal-header">
@@ -552,31 +740,45 @@
         <div class="modal-body p-4">
           <p class="vc-modal-section-label mb-1">Vulnerability</p>
           <p class="fw-semibold mb-3" style="font-size:14px;">{{ selectedVuln?.vul_name }}</p>
-          <p v-if="selectedVuln?.assets?.length > 1" class="vc-modal-section-label mb-2">Select Asset <span class="text-danger">*</span></p>
-          <select v-if="selectedVuln?.assets?.length > 1" v-model="vulnSrAsset" class="vc-textarea mb-3" style="resize:none;padding:8px 12px;cursor:pointer;">
-            <option value="">-- Select Asset --</option>
-            <option v-for="a in selectedVuln.assets" :key="a" :value="a">{{ a }}</option>
-          </select>
+          <template v-if="vulnSrAsset">
+            <p class="vc-modal-section-label mb-1">Asset</p>
+            <p class="fw-semibold mb-3" style="font-size:14px;">{{ vulnSrAsset }}</p>
+          </template>
+          <template v-else-if="selectedVuln?.assets?.length > 1">
+            <p class="vc-modal-section-label mb-2">Select Asset <span class="text-danger">*</span></p>
+            <select v-model="vulnSrAsset" class="vc-textarea mb-3" style="resize:none;padding:8px 12px;cursor:pointer;">
+              <option value="">-- Select Asset --</option>
+              <option v-for="a in selectedVuln.assets" :key="a" :value="a">{{ a }}</option>
+            </select>
+          </template>
           <h6 class="vc-modal-section-label mb-3">Choose the step for which you want support</h6>
           <div class="row g-2 mt-1">
             <div class="col-4" v-for="n in 6" :key="n">
               <span
                 class="vc-step-pill"
                 :class="[
+                  isVulnSrStepCompleted(n) ? 'vc-step-pill-disabled' : '',
                   vulnSrRaisedSteps.includes(n) ? 'vc-step-pill-raised' : '',
-                  vulnSrStep === n && !vulnSrRaisedSteps.includes(n) ? 'vc-step-pill-active' : ''
+                  vulnSrStep === n && !vulnSrRaisedSteps.includes(n) && !isVulnSrStepCompleted(n) ? 'vc-step-pill-active' : '',
+                  vulnSrStep === n && vulnSrRaisedSteps.includes(n) ? 'vc-step-pill-raised-selected' : '',
                 ]"
-                :style="vulnSrRaisedSteps.includes(n) ? 'cursor:not-allowed;opacity:0.6;' : 'cursor:pointer;'"
-                :title="vulnSrRaisedSteps.includes(n) ? 'Support already raised for this step' : ''"
-                @click="!vulnSrRaisedSteps.includes(n) && (vulnSrStep = n)"
+                :style="isVulnSrStepCompleted(n) ? 'cursor:not-allowed;opacity:0.5;' : ''"
+                :title="isVulnSrStepCompleted(n) ? 'Step already completed' : (vulnSrRaisedSteps.includes(n) ? 'Support already raised — click to view' : 'Select this step')"
+                @click="!isVulnSrStepCompleted(n) && selectVulnSrStep(n)"
               >Step {{ n }}</span>
             </div>
           </div>
-          <p class="vc-modal-section-label mt-4 mb-2">Description <span class="text-danger">*</span></p>
-          <textarea v-model="vulnSrDescription" class="vc-textarea" rows="4" placeholder="Write your issue here..."></textarea>
-          <div v-if="vulnSrRaised" class="rt-support-raised-note mt-3">
+          <p class="vc-modal-section-label mt-4 mb-2">Description <span v-if="!vulnSrRaisedSteps.includes(vulnSrStep)" class="text-danger">*</span></p>
+          <textarea
+            v-model="vulnSrDescription"
+            class="vc-textarea"
+            rows="4"
+            :placeholder="vulnSrRaisedSteps.includes(vulnSrStep) ? 'Previously raised request' : 'Write your issue here...'"
+            :readonly="vulnSrRaisedSteps.includes(vulnSrStep)"
+          ></textarea>
+          <div v-if="vulnSrRaised && !vulnSrJustSubmitted" class="rt-support-raised-note mt-3">
             <i class="bi bi-check-circle-fill me-2" style="color:#0f696e;"></i>
-            Support request has been raised successfully.
+            Support request already raised for this step.
           </div>
         </div>
         <div class="modal-footer vc-modal-footer">
@@ -614,7 +816,36 @@ import PythonInstallGuideModal from '@/components/assets/PythonInstallGuideModal
 import FixAvailableIndicator from '@/components/assets/FixAvailableIndicator.vue';
 import AutomationNotSafeBanner from '@/components/assets/AutomationNotSafeBanner.vue';
 import FixPanelHeaderAlerts from '@/components/assets/FixPanelHeaderAlerts.vue';
-import { isAutomationNotAvailable, matchesVulnStatusFilter } from '@/utils/assetVulnerabilities';
+import TruncatedVulnName from '@/components/common/TruncatedVulnName.vue';
+import { isAutomationNotAvailable, matchesVulnStatusFilter, isActiveVulnStatus, rowStatusValue, closedVulnHostKey, closedRecordVulnName, closedRecordHostName, buildClosedVulnHostSet, normalizeReportVulnerability, pickVulnDescription, lookupFixVulnerabilityId, extractFixVulnerabilityId, vulnNameKey } from '@/utils/assetVulnerabilities';
+import {
+  ASSET_TYPE_FILTERS,
+  assetTypeFromFilterKey,
+  resolveHostAssetType,
+  resolveAssetType,
+  normalizeAssetTypeCounts,
+  hasAssetTypeCounts,
+  assetTypeCountChips as buildAssetTypeCountChips,
+  assetTypeCountForFilter,
+  assetTypeBadgeMeta,
+  isRealScanHost,
+  heldItemAssetType,
+  stampHeldItemAssetType,
+  clearHeldItemAssetType,
+  heldVulnTypeKey,
+  loadHeldItemTypeMap,
+} from '@/utils/assetDummyData';
+import { filterSupportRequestsByVuln, mapSupportRequestsByStep } from '@/utils/supportRequests';
+import { resolveVulnPluginId as lookupVulnPluginId } from '@/utils/automationScriptDownload';
+import {
+  isNessusPluginId,
+  vulnMatchName,
+  vulnMatchNameKey,
+  matchAutomationScriptsForVulns,
+  mergeMatchResultsIntoMap,
+  getMatchedAutomation,
+  isPositiveAutomationMatch,
+} from '@/utils/automationScriptMatch';
 
 const DESC_LIMIT = 280;
 
@@ -627,6 +858,7 @@ export default {
     FixAvailableIndicator,
     AutomationNotSafeBanner,
     FixPanelHeaderAlerts,
+    TruncatedVulnName,
   },
   props: {
     isUser: {
@@ -642,21 +874,29 @@ export default {
       default: false,
     },
   },
-  emits: ['close-python-alert', 'close-verified-alert'],
+  emits: ['close-python-alert', 'close-verified-alert', 'vuln-assets-deleted', 'held-changed'],
   data() {
     return {
       authStore: useAuthStore(),
       loading: false,
       vulnQuery: '',
+      assetTypeFilter: 'assets',
+      assetTypeFilters: ASSET_TYPE_FILTERS,
       activeFilters: ['All'],
       statusFilter: [],
       selectedKey: null,
       expandedVulnIndex: null,
-      expandedVulnAssets: null,
+      expandedClosedIndex: null,
+      automationScriptMap: {},
+      singleFetchedIds: [],
+      downloadingScript: false,
+      loadingAutomation: false,
+      vulnAssetRowsByKey: {},
       selectedPanelAsset: null,
       panelAssetKey: 0,
       currentVulnTab: 'auto',
       expandedDescriptions: {},
+      hydratedDescriptions: {},
       descriptionPreviewLimit: DESC_LIMIT,
       pythonGuideSeverity: 'Medium',
       affectedAssetsData: [
@@ -707,9 +947,12 @@ export default {
       showCheckboxes: false,
       showHoldCheckboxes: false,
       showUnholdCheckboxes: false,
+      selectedVulnKeys: [],
       activeAction: '',
       heldAssets: [],
       showHeld: false,
+      hostAssetTypeMap: loadHeldItemTypeMap(),
+      didAutoSelectType: false,
       supportRequestsForVuln: [],
       supportRequestCount: 0,
       loadingSupportRequests: false,
@@ -721,13 +964,21 @@ export default {
       vulnSrDescription: '',
       vulnSrSubmitting: false,
       vulnSrRaised: false,
+      vulnSrJustSubmitted: false,
       vulnSrRaisedSteps: [],
+      vulnSrCompletedSteps: [],
+      vulnSrRequestsByStep: {},
       vulnSrFixVulnId: null,
+      closedFixRecords: [],
+      loadingClosedFix: false,
       codeCopied: false,
       automationCode: `import paramiko\nimport requests\nimport subprocess\nimport re\nfrom datetime import import datetime\n\nclass TLSConfigurator:\n    def __init__(self, host, username, password):\n        self.host = host\n        self.username = username\n        self.password = password\n        self.ssh_client = paramiko.SSHClient()\n        self.log = []\n\n    def connect(self):\n        """Establish SSH connection to target host"""\n        self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())\n        try:\n            self.ssh_client.connect(self.host, username=self.username, password=self.password)\n            self.log_action("SSH connection established")\n            return True\n        except Exception as e:\n            self.log_action(f"Connection failed: {str(e)}")\n            return False`,
     };
   },
   computed: {
+    automationDownloadLocked() {
+      return !!this.authStore.automationPremiumRequired;
+    },
     rawRows() {
       if (this.isUser) {
         return this.authStore.cachedUserVulnRegister || [];
@@ -737,6 +988,10 @@ export default {
     reportId() {
       return this.isUser ? this.authStore.userLatestReportId : this.authStore.latestReportId;
     },
+    assetCatalog() {
+      if (this.isUser) return this.authStore.cachedUserAssets || [];
+      return this.authStore.assetRows || [];
+    },
     groupedVulns() {
       const map = new Map();
       const sevCounters = { critical: 0, high: 0, medium: 0, low: 0 };
@@ -745,42 +1000,219 @@ export default {
         const name = String(row.vul_name || row.plugin_name || row.vulnerability_name || '').trim();
         const key = name.toLowerCase() || `row-${row.id || index}`;
         const asset = row.asset || row.host_name || '';
+        if (asset && !isRealScanHost(asset)) return;
         const sevKey = String(row.severity || row.risk_factor || 'medium').toLowerCase();
         const bucket = sevKey === 'critical' || sevKey === 'high' || sevKey === 'medium' || sevKey === 'low' ? sevKey : 'medium';
         if (!map.has(key)) {
           sevCounters[bucket] = (sevCounters[bucket] || 0) + 1;
           const prefix = sevPrefix[bucket] || 'V';
+          const rowOpen = isActiveVulnStatus(rowStatusValue(row) || 'open');
           map.set(key, {
             _key: key,
             displayId: `${prefix}${sevCounters[bucket]}`,
             id: row.id,
             vul_name: name || 'Unnamed vulnerability',
             severity: row.severity || row.risk_factor || 'Medium',
-            status: row.status || 'open',
-            description: row.description || '',
+            status: rowOpen ? 'open' : 'closed',
+            description: this.resolveGroupedDescription(key, row),
             cvss_score: row.cvss_score ?? row.cvss ?? null,
             cve: row.cve || row.cve_id || '',
             exposure: row.exposure || '',
             first_observation: row.first_observation,
-            assets: asset ? [asset] : [],
+            plugin_id: row.plugin_id || row.nessus_plugin_id || null,
+            nessus_plugin_id: row.nessus_plugin_id || row.plugin_id || null,
+            assigned_team: row.assigned_team || '',
+            assets: asset && rowOpen ? [asset] : [],
             rows: [row],
             selected: false,
           });
         } else {
           const g = map.get(key);
-          if (asset && !g.assets.includes(asset)) g.assets.push(asset);
+          if (asset && isActiveVulnStatus(rowStatusValue(row) || 'open') && !g.assets.includes(asset)) g.assets.push(asset);
+          if (g.assets.length) g.status = 'open';
           g.rows.push(row);
-          if (!g.description && row.description) g.description = row.description;
+          if (!g.description && pickVulnDescription(row)) g.description = pickVulnDescription(row);
           if (!g.cve && (row.cve || row.cve_id)) g.cve = row.cve || row.cve_id;
+          if (!g.plugin_id && (row.plugin_id || row.nessus_plugin_id)) {
+            g.plugin_id = row.plugin_id || row.nessus_plugin_id;
+            g.nessus_plugin_id = row.nessus_plugin_id || row.plugin_id;
+          }
+          if (!g.assigned_team && row.assigned_team) g.assigned_team = row.assigned_team;
           if ((g.cvss_score == null || g.cvss_score === '') && (row.cvss_score ?? row.cvss)) {
             g.cvss_score = row.cvss_score ?? row.cvss;
           }
         }
       });
-      return Array.from(map.values());
+      const reportRows = this.isUser
+        ? this.authStore.userAllReportVulnerabilities
+        : this.authStore.allReportVulnerabilities;
+      const reportByKey = new Map();
+      (reportRows || []).forEach((row) => {
+        const name = String(row.plugin_name || row.vul_name || '').trim();
+        if (name) reportByKey.set(name.toLowerCase(), row);
+      });
+      const merged = Array.from(map.values()).map((g) => {
+        const report = reportByKey.get(g._key);
+        const description = this.resolveGroupedDescription(g._key, g, report, ...(g.rows || []));
+        if (!report) return { ...g, description };
+        const openCount = report.open_count != null ? Number(report.open_count) : (g.assets || []).length;
+        return {
+          ...g,
+          description,
+          asset_type_counts: normalizeAssetTypeCounts(report.asset_type_counts),
+          total_assets: report.total_assets ?? g.total_assets,
+          open_count: openCount,
+          status: openCount > 0 ? 'open' : 'closed',
+          // Keep only open hosts in the active assets list when report says fully closed
+          assets: openCount > 0 ? g.assets : [],
+        };
+      });
+      reportByKey.forEach((report, key) => {
+        if (map.has(key)) return;
+        const normalized = normalizeReportVulnerability(report);
+        if (!normalized) return;
+        merged.push({
+          ...normalized,
+          description: this.resolveGroupedDescription(key, normalized, report),
+          displayId: String(normalized.severity || 'V').charAt(0),
+          rows: [],
+          selected: false,
+          asset_type_counts: normalizeAssetTypeCounts(report.asset_type_counts),
+        });
+      });
+      return merged;
+    },
+    heldVulnHostSet() {
+      const set = new Set();
+      const add = (plugin, host) => {
+        const p = String(plugin || '').trim().toLowerCase();
+        const h = String(host || '').trim().toLowerCase();
+        if (p && h) set.add(`${p}::${h}`);
+      };
+      (this.heldAssets || []).forEach((held) => {
+        add(held.plugin_name || held.vul_name, held.host_name || held.asset || held.ip);
+      });
+      const storeHeld = this.isUser
+        ? this.authStore.userHeldVulnerabilityAssets
+        : this.authStore.heldVulnerabilityAssets;
+      (storeHeld || []).forEach((held) => {
+        add(held.plugin_name || held.vul_name, held.host_name || held.asset || held.ip);
+      });
+      return set;
+    },
+    deletedVulnHostSet() {
+      const set = new Set();
+      const add = (plugin, host) => {
+        const p = String(plugin || '').trim().toLowerCase();
+        const h = String(host || '').trim().toLowerCase();
+        if (p && h) set.add(`${p}::${h}`);
+      };
+      const rows = this.isUser
+        ? this.authStore.userDeletedVulnerabilityAssets
+        : this.authStore.deletedVulnerabilityAssets;
+      (rows || []).forEach((row) => {
+        add(row.plugin_name || row.vul_name, row.host_name || row.asset || row.ip);
+      });
+      return set;
+    },
+    closedVulnHostSet() {
+      const set = buildClosedVulnHostSet(this.closedFixRecords);
+      // Also include register rows that already look closed
+      (this.groupedVulns || []).forEach((v) => {
+        const name = v.vul_name || v.plugin_name || '';
+        (v.rows || []).forEach((row) => {
+          if (isActiveVulnStatus(rowStatusValue(row) || 'open')) return;
+          const host = String(row.asset || row.host_name || '').trim();
+          if (!host) return;
+          set.add(closedVulnHostKey(name, host));
+        });
+      });
+      return set;
+    },
+    activeGroupedVulns() {
+      // Open threats only: drop closed hosts (fix API / register) — those go to Fixed Recently.
+      const closedSet = this.closedVulnHostSet;
+      return this.groupedVulns
+        .map((v) => {
+          const name = v.vul_name || v.plugin_name || '';
+          const key = v._key || String(name).toLowerCase();
+          const openAssets = (v.assets || []).filter((ip) => {
+            if (this.isVulnHostHeld(v, ip) || this.isVulnHostDeleted(v, ip)) return false;
+            if (closedSet.has(closedVulnHostKey(name, ip))) return false;
+            if (closedSet.has(closedVulnHostKey(key, ip))) return false;
+            // Fuzzy: any closed fix record for this host + same vuln name key
+            if (this.isHostClosedInFixRecords(name, ip)) return false;
+            const rowsForHost = (v.rows || []).filter(
+              (r) => String(r.asset || r.host_name || '').trim().toLowerCase() === String(ip).trim().toLowerCase(),
+            );
+            if (rowsForHost.some((r) => !isActiveVulnStatus(rowStatusValue(r) || 'open'))) return false;
+            return true;
+          });
+          const reportOpen = v.open_count != null ? Number(v.open_count) : null;
+          const assets = reportOpen === 0 ? [] : openAssets;
+          return {
+            ...v,
+            assets,
+            open_count: assets.length,
+            status: assets.length > 0 ? 'open' : 'closed',
+          };
+        })
+        .filter((v) => (v.assets || []).length > 0 && isActiveVulnStatus(v.status));
+    },
+    closedRecentlyItems() {
+      const items = [];
+      const seen = new Set();
+      const pushItem = (name, host, rec = null) => {
+        const key = closedVulnHostKey(name, host);
+        if (!name || seen.has(key)) return;
+        seen.add(key);
+        const pluginId = rec?.plugin_id || rec?.nessus_plugin_id || null;
+        const fixId = extractFixVulnerabilityId(rec) || null;
+        items.push({
+          _id: fixId || key,
+          fix_vulnerability_id: fixId,
+          vulnerability_name: name,
+          plugin_name: name,
+          host_name: host,
+          status: 'closed',
+          severity: this.canonSeverity(rec?.severity || rec?.risk_factor || ''),
+          plugin_id: pluginId,
+          nessus_plugin_id: rec?.nessus_plugin_id || pluginId || null,
+          vulnerability_id: rec?.vulnerability_id || rec?.id || null,
+          id: rec?.id || null,
+          description: pickVulnDescription(rec),
+        });
+      };
+      // Authoritative: closed fix API records
+      (this.closedFixRecords || []).forEach((rec) => {
+        const status = rowStatusValue(rec);
+        if (status && isActiveVulnStatus(status)) return;
+        const name = closedRecordVulnName(rec);
+        const host = closedRecordHostName(rec);
+        if (!name || !host || !isRealScanHost(host)) return;
+        pushItem(name, host, rec);
+      });
+      // Fallback: register rows marked closed
+      (this.groupedVulns || []).forEach((v) => {
+        const name = v.vul_name || v.plugin_name || '';
+        (v.rows || []).forEach((row) => {
+          if (isActiveVulnStatus(rowStatusValue(row) || 'open')) return;
+          const host = String(row.asset || row.host_name || '').trim();
+          if (!host || !isRealScanHost(host)) return;
+          pushItem(name, host, row);
+        });
+      });
+      return items;
+    },
+    vulnsForCurrentType() {
+      return this.vulnsGroupedByType(this.assetTypeFilter);
+    },
+    heldAssetsForType() {
+      const wanted = assetTypeFromFilterKey(this.assetTypeFilter);
+      return (this.heldAssets || []).filter((held) => (held.asset_type || 'other') === wanted);
     },
     vulnsAfterSearch() {
-      let list = [...this.groupedVulns];
+      let list = [...this.vulnsForCurrentType];
       const q = this.vulnQuery.trim().toLowerCase();
       if (q) {
         list = list.filter(v =>
@@ -805,7 +1237,7 @@ export default {
       return this.vulnsForStatusCounts.filter(v => matchesVulnStatusFilter(v, ['open'])).length;
     },
     statusCountClosed() {
-      return this.vulnsForStatusCounts.filter(v => matchesVulnStatusFilter(v, ['closed'])).length;
+      return this.closedRecentlyItems.length;
     },
     nextVulnSrStep() {
       for (let s = 1; s <= 6; s++) {
@@ -818,7 +1250,15 @@ export default {
     },
     filteredVulns() {
       let list = this.vulnsForStatusCounts;
-      list = list.filter(v => matchesVulnStatusFilter(v, this.statusFilter));
+      // Default / All / Open → active open vulns only (closed live under Fixed Recently)
+      if (!this.statusFilter.length || this.statusFilter.includes('open')) {
+        list = list.filter((v) => matchesVulnStatusFilter(v, ['open']));
+      } else if (this.statusFilter.includes('closed') && !this.statusFilter.includes('open')) {
+        // Closed tab: empty active list — use Fixed Recently below
+        list = [];
+      } else {
+        list = list.filter((v) => matchesVulnStatusFilter(v, this.statusFilter));
+      }
       const rank = { critical: 0, high: 1, medium: 2, low: 3 };
       list.sort((a, b) => {
         const ar = rank[String(a.severity).toLowerCase()] ?? 9;
@@ -834,7 +1274,9 @@ export default {
     panelVulns() {
       if (!this.selectedKey) return [];
       const vuln = this.filteredVulns.find(v => v._key === this.selectedKey);
-      return vuln ? [vuln] : [];
+      // Active Threats never includes closed
+      if (!vuln || !matchesVulnStatusFilter(vuln, ['open'])) return [];
+      return [vuln];
     },
     canAutomate() {
       return [
@@ -861,17 +1303,189 @@ export default {
         this.expandedVulnIndex = null;
         return;
       }
+      this.ensureVisibleVulnAssetRows();
       const idx = list.findIndex(v => v._key === this.selectedKey);
       if (idx === -1) {
         this.selectVulnFromList(list[0]);
       }
     },
+    vulnSrAsset() {
+      this.loadVulnSrRequests();
+    },
   },
   async mounted() {
+    if (this.isUser) {
+      await this.authStore.fetchUserAssets(false, this.authStore.userSelectedTeam);
+    } else {
+      await this.authStore.fetchAssets(false);
+    }
     await Promise.all([this.loadVulnerabilities(), this.loadHeldAssets()]);
+    await this.authStore.refreshAutomationPremiumLock(this.isUser);
   },
   methods: {
+    isVulnHostDeleted(vuln, ip) {
+      const plugin = String(vuln?._key || vuln?.vul_name || vuln?.plugin_name || '')
+        .trim()
+        .toLowerCase();
+      const host = String(ip || '').trim().toLowerCase();
+      if (!plugin || !host) return false;
+      return this.deletedVulnHostSet.has(`${plugin}::${host}`);
+    },
+    isVulnHostHeld(vuln, ip) {
+      const plugin = String(vuln?._key || vuln?.vul_name || vuln?.plugin_name || '')
+        .trim()
+        .toLowerCase();
+      const host = String(ip || '').trim().toLowerCase();
+      if (!plugin || !host) return false;
+      return this.heldVulnHostSet.has(`${plugin}::${host}`);
+    },
+    isHostClosedInFixRecords(vulnName, ip) {
+      const host = String(ip || '').trim().toLowerCase();
+      const want = String(vulnName || '').trim().toLowerCase();
+      if (!host || !want) return false;
+      return (this.closedFixRecords || []).some((rec) => {
+        const status = rowStatusValue(rec);
+        if (status && isActiveVulnStatus(status)) return false;
+        if (closedRecordHostName(rec).toLowerCase() !== host) return false;
+        const names = [
+          rec.vulnerability_name,
+          rec.plugin_name,
+          rec.vul_name,
+          rec.vulnerability,
+        ]
+          .map((n) => String(n || '').trim().toLowerCase())
+          .filter(Boolean);
+        return names.some((n) => n === want || n.includes(want) || want.includes(n));
+      });
+    },
+    heldHostLabel(held) {
+      const host = String(held?.host_name || held?.asset || held?.ip || '').trim();
+      const kind = String(held?.member_type || '').trim();
+      if (host && kind && kind.toLowerCase() !== host.toLowerCase()) return `${host} · ${kind}`;
+      return host || kind || 'Awaiting resolution';
+    },
+    vulnsGroupedByType(filterKey) {
+      const wanted = assetTypeFromFilterKey(filterKey);
+      return this.activeGroupedVulns
+        .map((v) => {
+          const assets = this.assetsForVulnType(v, wanted);
+          return { ...v, assets };
+        })
+        .filter((v) => v.assets.length > 0 && this.vulnBelongsToType(v, wanted, filterKey));
+    },
+    hostAssetType(ip, vuln) {
+      const target = String(ip || '').trim().toLowerCase();
+      const fetched = (this.vulnAssetRowsByKey[vuln?._key] || []).find((row) =>
+        String(row.host_name || row.asset || row.host || '').trim().toLowerCase() === target,
+      );
+      if (fetched) {
+        return resolveAssetType(fetched);
+      }
+      const row = (vuln?.rows || []).find((r) =>
+        String(r.asset || r.host_name || '').trim().toLowerCase() === target,
+      );
+      return resolveHostAssetType(ip, this.assetCatalog, row);
+    },
+    assetTypeTabCount(type) {
+      return this.vulnsGroupedByType(type).length;
+    },
+    assetsForVulnType(vuln, wanted) {
+      // vuln.assets is already open-only (closed hosts stripped in activeGroupedVulns)
+      const openIps = new Set(
+        (vuln?.assets || []).map((ip) => String(ip || '').trim().toLowerCase()).filter(Boolean),
+      );
+      const name = vuln?.vul_name || vuln?.plugin_name || '';
+      const keepOpen = (ip) => {
+        const host = String(ip || '').trim();
+        if (!host) return false;
+        const lower = host.toLowerCase();
+        if (openIps.size && !openIps.has(lower)) return false;
+        if (this.closedVulnHostSet.has(closedVulnHostKey(name, host))) return false;
+        return true;
+      };
+      const fetched = this.vulnAssetRowsByKey[vuln?._key];
+      if (Array.isArray(fetched) && fetched.length) {
+        return fetched
+          .filter((row) => resolveAssetType(row) === wanted)
+          .map((row) => row.host_name || row.asset || row.host)
+          .filter((ip) => keepOpen(ip));
+      }
+      if (hasAssetTypeCounts(vuln?.asset_type_counts)) {
+        const counts = normalizeAssetTypeCounts(vuln.asset_type_counts);
+        if ((counts[wanted] || 0) <= 0) return [];
+        const onlyThisType = ['server', 'web_app', 'firewall', 'other'].every(
+          (type) => type === wanted || (counts[type] || 0) <= 0,
+        );
+        if (onlyThisType) return (vuln?.assets || []).filter((ip) => keepOpen(ip));
+      }
+      return (vuln?.assets || []).filter(
+        (ip) => keepOpen(ip) && this.hostAssetType(ip, vuln) === wanted,
+      );
+    },
+    vulnBelongsToType(vuln, wanted, filterKey) {
+      if (hasAssetTypeCounts(vuln?.asset_type_counts)) {
+        return assetTypeCountForFilter(vuln.asset_type_counts, filterKey || wanted) > 0;
+      }
+      return this.assetsForVulnType(vuln, wanted).length > 0;
+    },
+    assetTypeCountChips(item) {
+      return buildAssetTypeCountChips(item?.asset_type_counts);
+    },
+    assetTypeCountTitle(item) {
+      return this.assetTypeCountChips(item)
+        .map((chip) => `${chip.label}: ${chip.count}`)
+        .join(' · ');
+    },
+    nestedAssetBadge(item, assetIp) {
+      return assetTypeBadgeMeta(this.hostAssetType(assetIp, item));
+    },
+    async ensureVulnAssetRows(vuln) {
+      const key = vuln?._key;
+      if (!key || this.vulnAssetRowsByKey[key]) return;
+      const plugin = vuln.plugin_name || vuln.vul_name;
+      if (!plugin) return;
+      const res = this.isUser
+        ? await this.authStore.fetchUserVulnerabilityAssets(plugin, this.authStore.userSelectedTeam)
+        : await this.authStore.fetchVulnerabilityAssets(plugin);
+      if (!res?.status) return;
+      const name = vuln.vul_name || vuln.plugin_name || plugin;
+      const openOnly = new Set(
+        (vuln.assets || []).map((ip) => String(ip || '').trim().toLowerCase()).filter(Boolean),
+      );
+      const rows = (res?.assets || [])
+        .map((row) => ({
+          host_name: row.host_name || row.asset || row.host || '',
+          asset_type: resolveAssetType(row),
+          severity: row.severity || '',
+          status: row.status || '',
+          operating_system: row.operating_system || row.os || '',
+        }))
+        .filter((row) => {
+          if (!isRealScanHost(row.host_name)) return false;
+          const host = String(row.host_name || '').trim();
+          const lower = host.toLowerCase();
+          if (openOnly.size && !openOnly.has(lower)) return false;
+          if (this.closedVulnHostSet.has(closedVulnHostKey(name, host))) return false;
+          if (this.closedVulnHostSet.has(closedVulnHostKey(key, host))) return false;
+          if (!isActiveVulnStatus(rowStatusValue(row) || 'open')) return false;
+          return true;
+        });
+      this.vulnAssetRowsByKey = { ...this.vulnAssetRowsByKey, [key]: rows };
+    },
+    setAssetTypeFilter(type) {
+      if (this.assetTypeFilter === type) return;
+      this.assetTypeFilter = type;
+    },
+    selectFirstNonEmptyType() {
+      if (this.didAutoSelectType) return;
+      this.didAutoSelectType = true;
+      if (this.assetTypeTabCount(this.assetTypeFilter)) return;
+      const first = this.assetTypeFilters.find((filter) => this.assetTypeTabCount(filter.key) > 0);
+      if (first) this.assetTypeFilter = first.key;
+    },
     getHeldPrioritySeverity(held) {
+      const direct = String(held?.severity || '').trim();
+      if (direct) return this.canonSeverity(direct);
       const s = held?.severity_counts || {};
       if ((s.critical ?? 0) > 0) return 'Critical';
       if ((s.high ?? 0) > 0) return 'High';
@@ -879,8 +1493,22 @@ export default {
       if ((s.low ?? 0) > 0) return 'Low';
       return '';
     },
+    isVulnChecked(key) {
+      return this.selectedVulnKeys.includes(key);
+    },
+    toggleVulnChecked(key) {
+      if (!key) return;
+      if (this.selectedVulnKeys.includes(key)) {
+        this.selectedVulnKeys = this.selectedVulnKeys.filter((item) => item !== key);
+      } else {
+        this.selectedVulnKeys = [...this.selectedVulnKeys, key];
+      }
+    },
     getSelectedVulnItems() {
-      return this.filteredVulns.filter(v => v.selected);
+      const keys = new Set(this.selectedVulnKeys);
+      const fromVisible = this.filteredVulns.filter((v) => keys.has(v._key));
+      if (fromVisible.length) return fromVisible;
+      return this.activeGroupedVulns.filter((v) => keys.has(v._key));
     },
     collectAssetIpsFromVulns(vulns) {
       const ips = new Set();
@@ -892,27 +1520,36 @@ export default {
       return [...ips];
     },
     clearVulnSelections() {
+      this.selectedVulnKeys = [];
       this.groupedVulns.forEach(v => { v.selected = false; });
     },
+    getBootstrapModal() {
+      return (typeof bootstrap !== 'undefined' && bootstrap.Modal) || window.bootstrap?.Modal || null;
+    },
     showModal(id) {
-      const el = document.getElementById(id);
-      if (el && typeof bootstrap !== 'undefined') {
-        bootstrap.Modal.getOrCreateInstance(el).show();
-      }
+      this.$nextTick(() => {
+        const el = document.getElementById(id);
+        const Modal = this.getBootstrapModal();
+        if (!el || !Modal) return;
+        const existing = Modal.getInstance(el);
+        if (existing) {
+          try { existing.dispose(); } catch (_) { /* ignore stale instance */ }
+        }
+        const modal = new Modal(el);
+        modal.show();
+      });
     },
     handleDeleteClick() {
       if (this.activeAction === 'hold') return;
       this.activeAction = 'delete';
       if (!this.showCheckboxes) {
+        this.selectedVulnKeys = this.selectedKey ? [this.selectedKey] : [];
         this.showCheckboxes = true;
         return;
       }
       const selected = this.getSelectedVulnItems();
       if (selected.length > 0) {
         this.showModal('avDeleteModal');
-      } else {
-        this.showCheckboxes = false;
-        this.resetActions();
       }
     },
     cancelDelete() {
@@ -921,21 +1558,25 @@ export default {
       this.resetActions();
     },
     async confirmDelete() {
-      const ips = this.collectAssetIpsFromVulns(this.getSelectedVulnItems());
-      if (!ips.length) {
+      const selected = this.getSelectedVulnItems();
+      if (!selected.length) {
         this.cancelDelete();
         return;
       }
-      const reportId = this.isUser ? this.authStore.userLatestReportId : this.authStore.latestReportId;
-      for (const ip of ips) {
+      for (const vuln of selected) {
+        const pluginName = String(vuln.vul_name || vuln.plugin_name || '').trim();
+        const hosts = (vuln.assets || []).map((ip) => String(ip || '').trim()).filter(Boolean);
+        if (!pluginName || !hosts.length) continue;
         if (this.isUser) {
-          if (!reportId) continue;
-          await this.authStore.deleteUserAsset(ip, reportId);
+          await this.authStore.deleteUserVulnerabilityAssets(pluginName, hosts);
         } else {
-          await this.authStore.deleteAsset(ip);
+          await this.authStore.deleteVulnerabilityAssets(pluginName, hosts);
         }
       }
       await this.reloadAfterAssetActions();
+      this.$emit('vuln-assets-deleted', {
+        hostNames: selected.flatMap((v) => v.assets || []),
+      });
       this.showCheckboxes = false;
       this.resetActions();
     },
@@ -946,12 +1587,10 @@ export default {
         const selected = this.getSelectedVulnItems();
         if (selected.length > 0) {
           this.showModal('avHoldConfirmModal');
-        } else {
-          this.showHoldCheckboxes = false;
-          this.resetActions();
         }
         return;
       }
+      this.selectedVulnKeys = this.selectedKey ? [this.selectedKey] : [];
       this.showHoldCheckboxes = true;
     },
     cancelHold() {
@@ -960,34 +1599,48 @@ export default {
       this.resetActions();
     },
     async confirmHold() {
-      const ips = this.collectAssetIpsFromVulns(this.getSelectedVulnItems());
-      if (!ips.length) {
+      const selected = this.getSelectedVulnItems();
+      if (!selected.length) {
         this.cancelHold();
         return;
       }
-      for (const ip of ips) {
+      const wanted = assetTypeFromFilterKey(this.assetTypeFilter);
+      const optimistic = [];
+      for (const vuln of selected) {
+        const pluginName = String(vuln.vul_name || vuln.plugin_name || '').trim();
+        const hosts = (vuln.assets || []).map((ip) => String(ip || '').trim()).filter(Boolean);
+        if (!pluginName || !hosts.length) continue;
         const res = this.isUser
-          ? await this.authStore.holdUserAsset(ip)
-          : await this.authStore.holdAsset(ip);
+          ? await this.authStore.holdUserVulnerabilityAssets(pluginName, hosts)
+          : await this.authStore.holdVulnerabilityAssets(pluginName, hosts);
         if (!res?.status) continue;
-        if (!this.isUser && res.heldAsset) {
-          const a = res.heldAsset;
-          const exists = this.heldAssets.some(h => h.asset === a.asset);
-          if (!exists) {
-            this.heldAssets.push({
-              asset: a.asset,
-              ip: a.asset,
-              member_type: a.member_type,
-              severity_counts: a.severity_counts,
-              host_information: a.host_information,
-              selected: false,
-            });
-          }
-          const idx = this.authStore.assetRows?.findIndex(x => x.asset === ip);
-          if (idx !== undefined && idx !== -1) {
-            this.authStore.assetRows.splice(idx, 1);
-          }
-        }
+        hosts.forEach((host) => {
+          this.hostAssetTypeMap = stampHeldItemAssetType(
+            this.hostAssetTypeMap,
+            pluginName,
+            host,
+            wanted,
+          );
+          optimistic.push({
+            plugin_name: pluginName,
+            vul_name: pluginName,
+            host_name: host,
+            asset: host,
+            ip: host,
+            member_type: '',
+            asset_type: wanted,
+            severity: vuln.severity || '',
+            selected: false,
+          });
+        });
+      }
+      if (optimistic.length) {
+        const keys = new Set(optimistic.map((row) => heldVulnTypeKey(row.plugin_name, row.host_name)));
+        this.heldAssets = [
+          ...optimistic,
+          ...this.heldAssets.filter((row) => !keys.has(heldVulnTypeKey(row.plugin_name, row.host_name))),
+        ];
+        this.showHeld = true;
       }
       await this.reloadAfterAssetActions();
       this.showHoldCheckboxes = false;
@@ -1000,28 +1653,25 @@ export default {
         this.showUnholdCheckboxes = true;
         return;
       }
-      const selected = this.heldAssets.filter(a => a.selected);
+      const selected = this.heldAssetsForType.filter(a => a.selected);
       if (!selected.length) {
         this.resetActions();
         return;
       }
-      for (const item of selected) {
-        const ip = item.asset || item.ip;
-        const res = this.isUser
-          ? await this.authStore.unholdUserAsset(ip)
-          : await this.authStore.unholdAsset(ip);
-        if (!res?.status) continue;
-        if (!this.isUser && res.restoredAsset) {
-          const a = res.restoredAsset;
-          this.authStore.assetRows?.unshift({
-            asset: a.asset,
-            name: a.host_information?.['DNS Name'] || '',
-            severity_counts: a.severity_counts,
-            host_information: a.host_information,
-            isInternal: true,
-            held: false,
-            selected: false,
-          });
+      const byPlugin = new Map();
+      selected.forEach((item) => {
+        const pluginName = String(item.plugin_name || item.vul_name || '').trim();
+        const host = String(item.host_name || item.asset || item.ip || '').trim();
+        if (!pluginName || !host) return;
+        this.hostAssetTypeMap = clearHeldItemAssetType(this.hostAssetTypeMap, pluginName, host);
+        if (!byPlugin.has(pluginName)) byPlugin.set(pluginName, []);
+        byPlugin.get(pluginName).push(host);
+      });
+      for (const [pluginName, hosts] of byPlugin.entries()) {
+        if (this.isUser) {
+          await this.authStore.unholdUserVulnerabilityAssets(pluginName, hosts);
+        } else {
+          await this.authStore.unholdVulnerabilityAssets(pluginName, hosts);
         }
       }
       await this.reloadAfterAssetActions();
@@ -1037,48 +1687,132 @@ export default {
     },
     async loadHeldAssets() {
       const res = this.isUser
-        ? await this.authStore.fetchUserHeldAssets(true)
-        : await this.authStore.fetchHeldAssets();
-      if (res.status && res.assets?.length) {
-        this.heldAssets = res.assets.map(a => ({
-          asset: a.asset,
-          ip: a.asset,
-          member_type: a.member_type,
-          name: a.host_information?.['DNS Name'] || '',
-          severity_counts: a.severity_counts,
-          host_information: a.host_information,
-          selected: false,
-        }));
-        this.showHeld = true;
-        if (!this.isUser && Array.isArray(this.authStore.assetRows)) {
-          this.authStore.assetRows = this.authStore.assetRows.filter(
-            a => !this.heldAssets.some(h => h.asset === a.asset),
+        ? await this.authStore.fetchUserHeldVulnerabilityAssets(true, this.authStore.userSelectedTeam)
+        : await this.authStore.fetchHeldVulnerabilityAssets(true);
+      const rows = res?.data || [];
+      this.hostAssetTypeMap = { ...loadHeldItemTypeMap(), ...this.hostAssetTypeMap };
+      const prevTypes = {};
+      (this.heldAssets || []).forEach((held) => {
+        const key = heldVulnTypeKey(held.plugin_name || held.vul_name, held.host_name || held.asset);
+        if (key && held.asset_type) prevTypes[key] = held.asset_type;
+      });
+      this.heldAssets = rows.map((a) => {
+        const hostName = String(a.host_name || a.asset || a.ip || '').trim();
+        const pluginName = String(a.plugin_name || a.vul_name || '').trim();
+        const key = heldVulnTypeKey(pluginName, hostName);
+        const assetType =
+          prevTypes[key] ||
+          heldItemAssetType(
+            { plugin_name: pluginName, host_name: hostName, asset: hostName },
+            this.hostAssetTypeMap,
           );
-        }
-      } else {
-        this.showHeld = false;
-        this.heldAssets = [];
-      }
+        return {
+          plugin_name: pluginName,
+          vul_name: pluginName,
+          host_name: hostName,
+          asset: hostName,
+          ip: hostName,
+          member_type: a.member_type || '',
+          asset_type: assetType,
+          severity: a.severity || '',
+          selected: false,
+        };
+      }).filter((row) => row.plugin_name && row.host_name);
+      this.showHeld = this.heldAssets.length > 0;
     },
     async reloadAfterAssetActions() {
       if (this.isUser) {
-        await this.authStore.fetchUserAssets(true);
+        await this.authStore.fetchUserAssets(true, this.authStore.userSelectedTeam);
       } else {
         await this.authStore.fetchAssets(true);
       }
       await this.loadVulnerabilities();
       await this.loadHeldAssets();
+      this.$emit('held-changed');
+    },
+    async liveRefreshPage() {
+      if (this.activeAction) return;
+      if (this.currentVulnTab === 'manual' || this.currentVulnTab === 'auto') return;
+      if (this.isUser) {
+        const team = this.authStore.userSelectedTeam;
+        await Promise.all([
+          this.authStore.fetchUserVulnerabilityRegister(true, team),
+          this.authStore.fetchUserAllReportVulnerabilities(true, team),
+          this.authStore.fetchUserAssets(true, team),
+        ]);
+      } else {
+        await Promise.all([
+          this.authStore.fetchVulnerabilityRegister(true),
+          this.authStore.fetchAllReportVulnerabilities(true),
+          this.authStore.fetchAssets(true),
+        ]);
+      }
     },
     async loadVulnerabilities() {
       this.loading = true;
       if (this.isUser) {
-        await this.authStore.fetchUserVulnerabilityRegister(true);
+        await Promise.all([
+          this.authStore.fetchUserVulnerabilityRegister(true, this.authStore.userSelectedTeam),
+          this.authStore.fetchUserAllReportVulnerabilities(true, this.authStore.userSelectedTeam),
+        ]);
       } else {
-        await this.authStore.fetchVulnerabilityRegister(true);
+        await Promise.all([
+          this.authStore.fetchVulnerabilityRegister(true),
+          this.authStore.fetchAllReportVulnerabilities(true),
+        ]);
       }
       this.loading = false;
+      await this.loadClosedFixRecords();
+      await this.loadAutomationScripts();
+      this.selectFirstNonEmptyType();
       if (this.filteredVulns.length) {
         this.selectVulnFromList(this.filteredVulns[0]);
+      }
+    },
+    async loadClosedFixRecords() {
+      this.loadingClosedFix = true;
+      try {
+        if (this.isUser) {
+          const res = await this.authStore.fetchUserClosedVulns(true, this.authStore.userSelectedTeam);
+          const rows =
+            res?.data?.closed_vulnerabilities ||
+            res?.data?.results ||
+            (Array.isArray(res?.data) ? res.data : []);
+          this.closedFixRecords = Array.isArray(rows) ? rows : [];
+          return;
+        }
+        const reportId = this.reportId;
+        if (!reportId) {
+          this.closedFixRecords = [];
+          return;
+        }
+        const hosts = [
+          ...new Set(
+            (this.rawRows || [])
+              .map((r) => String(r.asset || r.host_name || '').trim())
+              .filter((h) => h && isRealScanHost(h)),
+          ),
+        ];
+        const collected = [];
+        for (let i = 0; i < hosts.length; i += 8) {
+          const slice = hosts.slice(i, i + 8);
+          const parts = await Promise.all(
+            slice.map(async (host) => {
+              const res = await this.authStore.getClosedVulnerabilities(reportId, host);
+              return res.status && Array.isArray(res.data?.results) ? res.data.results : [];
+            }),
+          );
+          parts.forEach((list) => collected.push(...list));
+        }
+        this.closedFixRecords = collected;
+      } catch (e) {
+        console.warn('loadClosedFixRecords failed', e);
+        this.closedFixRecords = [];
+      } finally {
+        this.loadingClosedFix = false;
+        // Force asset lists to rebuild without closed hosts
+        this.vulnAssetRowsByKey = {};
+        this.ensureVisibleVulnAssetRows();
       }
     },
     canonSeverity(sev) {
@@ -1092,6 +1826,7 @@ export default {
     },
     setSeverityFilter(type) {
       this.expandedVulnIndex = null;
+      this.expandedClosedIndex = null;
       if (type === 'All') {
         this.activeFilters = ['All'];
         return;
@@ -1107,6 +1842,7 @@ export default {
     },
     toggleStatusTab(status) {
       this.expandedVulnIndex = null;
+      this.expandedClosedIndex = null;
       if (status === 'all') {
         this.statusFilter = [];
         return;
@@ -1123,36 +1859,103 @@ export default {
       return idx >= 0 ? idx % 3 : 0;
     },
     selectVulnFromList(item, assetIp = null) {
-      if (this.showCheckboxes || this.showHoldCheckboxes) return;
+      if (this.showCheckboxes || this.showHoldCheckboxes) {
+        this.toggleVulnChecked(item._key);
+        return;
+      }
       const idx = this.filteredVulns.findIndex(v => v._key === item._key);
       if (idx < 0) return;
       this.selectedKey = item._key;
       this.selectedPanelAsset = assetIp; // set directly — null means show all
       this.expandedVulnIndex = assetIp ? 0 : null;
-      this.currentVulnTab = 'auto';
+      this.currentVulnTab = this.defaultFixTab();
       this.activeDetailTab = 'vulnerabilities';
       this.supportRequestsForVuln = [];
       this.supportRequestCount = 0;
+      this.ensureVulnAssetRows(item);
+      this.hydrateVulnDescription(item);
       this.$nextTick(() => this.scrollToAccordion(item._key));
     },
-    openVulnSupportModal() {
+    async openVulnSupportModal() {
       this.vulnSrStep = null;
       this.vulnSrAsset = this.selectedVuln?.assets?.length === 1 ? this.selectedVuln.assets[0] : '';
       this.vulnSrDescription = '';
       this.vulnSrRaised = false;
+      this.vulnSrJustSubmitted = false;
       this.vulnSrRaisedSteps = [];
+      this.vulnSrCompletedSteps = [];
+      this.vulnSrRequestsByStep = {};
       this.vulnSrFixVulnId = null;
       const modal = new bootstrap.Modal(document.getElementById('vulnSrModal'));
       modal.show();
+      await this.loadVulnSrRequests();
+    },
+    async onManualFixSupportModal({ vulnName, step, completedSteps = [] } = {}) {
+      this.vulnSrStep = step || null;
+      // Lock to the asset/vuln context where Support Request was clicked
+      this.vulnSrAsset = this.selectedPanelAsset
+        || (this.selectedVuln?.assets?.length === 1 ? this.selectedVuln.assets[0] : '')
+        || '';
+      this.vulnSrDescription = '';
+      this.vulnSrRaised = false;
+      this.vulnSrJustSubmitted = false;
+      this.vulnSrRaisedSteps = [];
+      this.vulnSrCompletedSteps = (completedSteps || []).map(Number).filter((n) => Number.isFinite(n));
+      this.vulnSrRequestsByStep = {};
+      this.vulnSrFixVulnId = null;
+      if (!this.selectedVuln?.vul_name && !vulnName) {
+        return;
+      }
+      const el = document.getElementById('vulnSrModal');
+      if (el) {
+        const modal = bootstrap.Modal.getOrCreateInstance(el);
+        modal.show();
+      }
+      await this.loadVulnSrRequests();
+      if (this.vulnSrStep && !this.isVulnSrStepCompleted(this.vulnSrStep)) {
+        this.selectVulnSrStep(this.vulnSrStep);
+      } else {
+        this.vulnSrStep = null;
+      }
+    },
+    isVulnSrStepCompleted(step) {
+      return this.vulnSrCompletedSteps.includes(Number(step));
+    },
+    selectVulnSrStep(step) {
+      const n = Number(step);
+      if (this.isVulnSrStepCompleted(n)) return;
+      this.vulnSrStep = n;
+      this.vulnSrJustSubmitted = false;
+      const existing = this.vulnSrRequestsByStep[n];
+      if (existing) {
+        this.vulnSrRaised = true;
+        this.vulnSrDescription = existing.description || existing.issue || '';
+      } else {
+        this.vulnSrRaised = false;
+        this.vulnSrDescription = '';
+      }
+    },
+    async loadVulnSrRequests() {
+      this.vulnSrRequestsByStep = {};
+      this.vulnSrRaisedSteps = [];
+      const host = this.vulnSrAsset || this.selectedVuln?.assets?.[0];
+      const vulnName = this.selectedVuln?.vul_name;
+      if (!host || !vulnName) return;
+      const res = this.isUser
+        ? await this.authStore.getUserSupportRequestsByHost(host, this.authStore.userSelectedTeam)
+        : await this.authStore.getSupportRequestsByHost(host);
+      const matching = filterSupportRequestsByVuln(res.status ? res.data : [], vulnName);
+      this.vulnSrRequestsByStep = mapSupportRequestsByStep(matching);
+      this.vulnSrRaisedSteps = Object.keys(this.vulnSrRequestsByStep).map(Number);
     },
     prepareAnotherVulnSr() {
       const step = this.nextVulnSrStep;
       if (!step) return;
-      this.vulnSrStep = step;
-      this.vulnSrRaised = false;
-      this.vulnSrDescription = '';
+      this.selectVulnSrStep(step);
     },
     async submitVulnSr() {
+      if (this.vulnSrRaisedSteps.includes(this.vulnSrStep)) return;
+      if (this.isVulnSrStepCompleted(this.vulnSrStep)) return;
       if (!this.vulnSrStep || !this.vulnSrDescription.trim()) return;
       const asset = this.vulnSrAsset || (this.selectedVuln?.assets?.[0] ?? '');
       if (!asset) { Swal.fire('Error', 'Asset not found', 'error'); return; }
@@ -1189,7 +1992,12 @@ export default {
       this.vulnSrSubmitting = false;
       if (res.status) {
         this.vulnSrRaisedSteps.push(this.vulnSrStep);
+        this.vulnSrRequestsByStep = {
+          ...this.vulnSrRequestsByStep,
+          [this.vulnSrStep]: { step_number: this.vulnSrStep, description: this.vulnSrDescription },
+        };
         this.vulnSrRaised = true;
+        this.vulnSrJustSubmitted = true;
         Swal.fire({ icon: 'success', title: 'Support Request Raised', timer: 2000, showConfirmButton: false });
       } else {
         Swal.fire('Error', res.message || 'Failed to raise support request', 'error');
@@ -1211,7 +2019,7 @@ export default {
       const merged = [];
       for (const host of vuln.assets) {
         const res = this.isUser
-          ? await this.authStore.getUserSupportRequestsByHost(host)
+          ? await this.authStore.getUserSupportRequestsByHost(host, this.authStore.userSelectedTeam)
           : await this.authStore.getSupportRequestsByHost(host);
         if (!res.status || !Array.isArray(res.data)) continue;
         for (const req of res.data) {
@@ -1234,12 +2042,93 @@ export default {
     toggleAccordion(index) {
       const isOpening = this.expandedVulnIndex !== index;
       this.expandedVulnIndex = this.expandedVulnIndex === index ? null : index;
+      if (isOpening) this.expandedClosedIndex = null;
       const item = this.panelVulns[index];
       if (item) {
         this.selectedKey = item._key;
       }
       if (isOpening && item) {
+        this.hydrateVulnDescription(item);
+        this.currentVulnTab = this.defaultFixTab();
         this.$nextTick(() => this.scrollToAccordion(item._key));
+        this.fetchAutomationForVulnItem(item);
+      }
+    },
+    closedDescKey(item, i) {
+      const mapped = this.closedItemAsVuln(item);
+      return vulnNameKey(mapped) || vulnNameKey(item) || ('closed-' + (item?._id || item?.fix_vulnerability_id || i));
+    },
+    closedItemAsVuln(item) {
+      if (!item) return { vul_name: '', severity: '', status: 'closed', assets: [] };
+      const name = item.vulnerability_name || item.plugin_name || item.vul_name || '';
+      const host = item.host_name || item.asset || item.host || '';
+      const pluginId = item.plugin_id || item.nessus_plugin_id || null;
+      return {
+        ...item,
+        vul_name: name,
+        plugin_name: item.plugin_name || name,
+        vulnerability_name: item.vulnerability_name || name,
+        severity: this.canonSeverity(item.severity || item.risk_factor || ''),
+        status: 'closed',
+        assets: host ? [host] : [],
+        plugin_id: pluginId,
+        nessus_plugin_id: item.nessus_plugin_id || pluginId || null,
+        fix_vulnerability_id: item.fix_vulnerability_id || extractFixVulnerabilityId(item) || null,
+        vulnerability_id: item.vulnerability_id || item.id || null,
+        id: item.id || item.vulnerability_id || null,
+      };
+    },
+    toggleClosedAccordion(index) {
+      const opening = this.expandedClosedIndex !== index;
+      this.expandedClosedIndex = opening ? index : null;
+      if (!opening) return;
+      this.expandedVulnIndex = null;
+      const item = this.closedRecentlyItems[index];
+      const mapped = this.closedItemAsVuln(item);
+      if (mapped) {
+        this.hydrateVulnDescription(mapped);
+        this.currentVulnTab = this.defaultFixTab();
+        this.fetchAutomationForVulnItem(mapped);
+      }
+      this.$nextTick(() => {
+        const el = this.$el?.querySelector?.(
+          '.fixed-recently-scroll .vuln-accordion-item--expanded .vuln-accordion-expand',
+        );
+        if (el) {
+          el.scrollTop = 0;
+          el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      });
+    },
+    fetchAutomationForVulnItem(item) {
+      if (!item) return;
+      const already = this.getAutomationForVuln(item);
+      if (already) return;
+      const id = this.resolveVulnPluginId(item);
+      if (isNessusPluginId(id) && !this.singleFetchedIds.includes(id)) {
+        this.singleFetchedIds = [...this.singleFetchedIds, id];
+        const fetchMatch = this.isUser
+          ? this.authStore.fetchAutomationScriptSingle(id)
+          : this.authStore.fetchAutomationScriptSingleAdmin(id);
+        fetchMatch.then((res) => {
+          if (res.status && res.data) {
+            this.automationScriptMap = mergeMatchResultsIntoMap(this.automationScriptMap, [res.data]);
+          }
+        });
+        return;
+      }
+      const name = vulnMatchName(item);
+      const nameKey = `name:${vulnMatchNameKey(item)}`;
+      if (name && !this.singleFetchedIds.includes(nameKey)) {
+        this.singleFetchedIds = [...this.singleFetchedIds, nameKey];
+        const fetchMatch = this.isUser
+          ? this.authStore.fetchAutomationScriptsByName([name])
+          : this.authStore.fetchAutomationScriptsByNameAdmin([name]);
+        fetchMatch.then((res) => {
+          if (res.status && Array.isArray(res.results)) {
+            this.automationScriptMap = mergeMatchResultsIntoMap(this.automationScriptMap, res.results);
+          }
+        });
       }
     },
     scrollToAccordion(refKey) {
@@ -1249,12 +2138,16 @@ export default {
         el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
     },
+    defaultFixTab() {
+      return 'auto';
+    },
     setVulnDetailTab(tab) {
       this.currentVulnTab = tab;
     },
     getStatusLabel(status) {
-      const normalized = String(status || '').toLowerCase();
-      if (normalized === 'closed' || normalized === 'resolved') return 'Closed';
+      const normalized = String(status || '').toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+      if (normalized === 'closed' || normalized === 'resolved' || normalized === 'fixed') return 'Closed';
+      if (normalized === 'in progress' || normalized === 'inprogress') return 'In Progress';
       return 'Open';
     },
     getStatusBadgeClass(status) {
@@ -1264,14 +2157,20 @@ export default {
       return this.getStatusLabel(status) === 'Closed' ? 'status-dot-closed' : 'status-dot-open';
     },
     toggleVulnAssetExpand(key) {
-      this.expandedVulnAssets = this.expandedVulnAssets === key ? null : key;
+      // Assets stay expanded by default; keep method for any legacy callers.
+      const vuln = this.groupedVulns.find((v) => v._key === key);
+      if (vuln) this.ensureVulnAssetRows(vuln);
+    },
+    ensureVisibleVulnAssetRows() {
+      (this.filteredVulns || []).forEach((v) => this.ensureVulnAssetRows(v));
     },
     onNestedAssetClick(item, assetIp) {
       this.panelAssetKey++; // force remount always
       if (this.selectedKey === item._key) {
         this.selectedPanelAsset = assetIp;
         this.expandedVulnIndex = 0;
-        this.currentVulnTab = 'auto';
+        this.currentVulnTab = this.defaultFixTab();
+        this.hydrateVulnDescription(item);
       } else {
         this.selectVulnFromList(item, assetIp);
       }
@@ -1285,6 +2184,96 @@ export default {
           v.assigned_team = team;
         }
       });
+    },
+    async onVulnStatusChanged({ vulnName, assetIp, status }) {
+      if (!vulnName || !assetIp) return;
+      if (isActiveVulnStatus(status || 'closed')) return;
+      // Optimistically hide closed host from active list + show in Fixed Recently
+      const name = String(vulnName).trim();
+      const host = String(assetIp).trim();
+      const exists = (this.closedFixRecords || []).some(
+        (r) =>
+          closedVulnHostKey(closedRecordVulnName(r), closedRecordHostName(r)) ===
+          closedVulnHostKey(name, host),
+      );
+      if (!exists) {
+        this.closedFixRecords = [
+          {
+            vulnerability_name: name,
+            plugin_name: name,
+            host_name: host,
+            asset: host,
+            status: 'closed',
+          },
+          ...(this.closedFixRecords || []),
+        ];
+      }
+      // Mark matching register rows closed so grouping stays in sync
+      (this.rawRows || []).forEach((row) => {
+        const rowName = String(row.vul_name || row.plugin_name || row.vulnerability_name || '')
+          .trim()
+          .toLowerCase();
+        const rowHost = String(row.asset || row.host_name || '').trim().toLowerCase();
+        if (rowName === name.toLowerCase() && rowHost === host.toLowerCase()) {
+          row.status = 'closed';
+        }
+      });
+      await this.loadClosedFixRecords();
+    },
+    resolveGroupedDescription(key, ...sources) {
+      const cacheKey = String(key || '').toLowerCase().trim();
+      const fromAsset = (this.authStore.selectedAssetVulnerabilities || []).find(
+        (v) => vulnNameKey(v) === cacheKey,
+      );
+      return pickVulnDescription(
+        this.hydratedDescriptions[cacheKey],
+        this.authStore.vulnDescriptionCache?.[cacheKey],
+        fromAsset,
+        ...sources,
+      );
+    },
+    onVulnDescriptionResolved(description) {
+      const idx = this.expandedVulnIndex;
+      const item = idx != null ? this.panelVulns[idx] : null;
+      const key = item?._key || String(item?.vul_name || '').toLowerCase().trim();
+      this.patchHydratedDescription(key, description);
+    },
+    patchHydratedDescription(key, description) {
+      const cacheKey = String(key || '').toLowerCase().trim();
+      const text = pickVulnDescription(description);
+      if (!cacheKey || !text) return;
+      this.authStore.rememberVulnDescription(cacheKey, text);
+      if (this.hydratedDescriptions[cacheKey] === text) return;
+      this.hydratedDescriptions = { ...this.hydratedDescriptions, [cacheKey]: text };
+    },
+    async hydrateVulnDescription(vuln) {
+      if (!vuln) return;
+      const key = vuln._key || vulnNameKey(vuln);
+      const isUseful = (text) => {
+        const value = pickVulnDescription(text);
+        if (!value) return false;
+        return value.toLowerCase() !== String(vuln.vul_name || '').toLowerCase().trim();
+      };
+      if (isUseful(this.resolveGroupedDescription(key, vuln, ...(vuln.rows || [])))) return;
+
+      const assetIp = vuln.assets?.[0] || '';
+      const fixId =
+        lookupFixVulnerabilityId(this.rawRows, vuln, assetIp) ||
+        extractFixVulnerabilityId(vuln) ||
+        extractFixVulnerabilityId(vuln.rows?.[0]);
+      if (fixId) {
+        const res = this.isUser
+          ? await this.authStore.getUserFixVulnerabilitySteps(fixId, 'windows')
+          : await this.authStore.getFixVulnerabilitySteps(fixId);
+        if (res?.status) {
+          this.patchHydratedDescription(key, pickVulnDescription(res.data));
+        }
+      }
+      if (isUseful(this.resolveGroupedDescription(key, vuln, ...(vuln.rows || [])))) return;
+      if (!assetIp) return;
+      const assetVulns = await this.authStore.fetchAndCacheAssetVulnDescriptions(assetIp, this.isUser);
+      const match = (assetVulns || []).find((v) => vulnNameKey(v) === key);
+      this.patchHydratedDescription(key, pickVulnDescription(match));
     },
     getVulnTeamLabel(assignedTeam, vulnName) {
       // 1st priority: use real assigned_team from API data
@@ -1333,8 +2322,12 @@ export default {
         [key]: !this.expandedDescriptions[key],
       };
     },
-    getDisplayDescription(description, key) {
-      const fullText = this.cleanText(description) || 'No description available for this vulnerability.';
+    descriptionText(vulnOrText) {
+      return pickVulnDescription(vulnOrText);
+    },
+    getDisplayDescription(vuln, key) {
+      const fullText = this.resolveGroupedDescription(key || vuln?._key, vuln, ...(vuln?.rows || []))
+        || 'No description available for this vulnerability.';
       if (this.isDescriptionExpanded(key) || fullText.length <= this.descriptionPreviewLimit) {
         return fullText;
       }
@@ -1382,8 +2375,9 @@ export default {
       return 'sev-l';
     },
     statusLabel(status) {
-      const n = String(status || 'open').toLowerCase();
-      if (n === 'closed' || n === 'resolved') return 'Closed';
+      const n = String(status || 'open').toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+      if (n === 'closed' || n === 'resolved' || n === 'fixed') return 'Closed';
+      if (n === 'in progress' || n === 'inprogress') return 'In Progress';
       if (n === 'overdue') return 'Overdue';
       return 'Open';
     },
@@ -1423,7 +2417,37 @@ export default {
         }, 2000);
       });
     },
+    resolveVulnPluginId(vuln) {
+      return lookupVulnPluginId(vuln, {
+        registerRows: this.rawRows || [],
+        automationScriptMap: this.automationScriptMap,
+      });
+    },
+    getAutomationForVuln(vuln) {
+      return getMatchedAutomation(vuln, this.automationScriptMap);
+    },
+    hasAutomationScript(vuln) {
+      return isPositiveAutomationMatch(this.getAutomationForVuln(vuln));
+    },
+    resolveAutomationMatched(vuln) {
+      const data = this.getAutomationForVuln(vuln);
+      if (!data) return null;
+      if (typeof data.matched === 'boolean') return data.matched;
+      return this.hasAutomationScript(vuln);
+    },
+    async loadAutomationScripts() {
+      const vulns = this.groupedVulns || [];
+      this.loadingAutomation = true;
+      const map = await matchAutomationScriptsForVulns({
+        authStore: this.authStore,
+        isUser: this.isUser,
+        vulns,
+      });
+      this.loadingAutomation = false;
+      this.automationScriptMap = map;
+    },
     downloadAutomationScript() {
+      if (this.automationDownloadLocked) return;
       const blob = new Blob([this.automationCode], { type: 'text/x-python' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -1483,6 +2507,60 @@ export default {
   color: #475569;
 }
 
+.av-left .asset-type-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.av-left .asset-type-filter-btn {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.av-left .asset-type-filter-count {
+  font-size: 0.62rem;
+  font-weight: 700;
+  opacity: 0.85;
+}
+
+.av-left .asset-type-filter-btn:hover {
+  color: #1e293b;
+  border-color: #cbd5e1;
+}
+
+.av-left .asset-type-filter-btn-active.asset-type-filter-btn-assets,
+.av-left .asset-type-filter-btn-active.asset-type-filter-btn-webapp {
+  background: #0f696e;
+  border-color: #0f696e;
+  color: #fff;
+  font-weight: 700;
+}
+
+.av-left .asset-type-filter-btn-active.asset-type-filter-btn-firewall {
+  background: #fff8f0;
+  border-color: #e65100;
+  color: #c45c00;
+  font-weight: 700;
+}
+
+.av-left .asset-type-filter-btn-active.asset-type-filter-btn-server {
+  background: #ede7f6;
+  border-color: #9575cd;
+  color: #5e35b1;
+  font-weight: 700;
+}
+
 .av-left .action-icon {
   font-size: 0.95rem;
   cursor: pointer;
@@ -1533,10 +2611,18 @@ export default {
   border-left: 3px solid #7a7580;
 }
 
+.av-left .hold-item-text {
+  min-width: 0;
+  flex: 1;
+  padding-right: 8px;
+}
+
 .av-left .hold-ip {
   font-size: 0.75rem;
-  font-weight: 500;
+  font-weight: 600;
   color: #1e293b;
+  line-height: 1.3;
+  word-break: break-word;
 }
 
 .av-left .hold-sub {
@@ -1677,7 +2763,7 @@ export default {
 .sev-c, .av-vi-sev.sev-c { background: #f8dede !important; color: #b42318 !important; }
 .sev-h, .av-vi-sev.sev-h { background: #fee2e2 !important; color: #dc2626 !important; }
 .sev-m, .av-vi-sev.sev-m { background: #fef3c7 !important; color: #f59e0b !important; }
-.sev-l, .av-vi-sev.sev-l { background: #ccfbf1 !important; color: #0f766e !important; }
+.sev-l, .av-vi-sev.sev-l { background: #d1fae5 !important; color: #10b981 !important; }
 
 .av-vi-status {
   font-size: 0.68rem;
@@ -1843,7 +2929,7 @@ export default {
 .av-detail-sev.sev-c { background: #f8dede !important; color: #b42318 !important; }
 .av-detail-sev.sev-h { background: #fee2e2 !important; color: #dc2626 !important; }
 .av-detail-sev.sev-m { background: #fef3c7 !important; color: #f59e0b !important; }
-.av-detail-sev.sev-l { background: #ccfbf1 !important; color: #0f766e !important; }
+.av-detail-sev.sev-l { background: #d1fae5 !important; color: #10b981 !important; }
 
 .av-detail-status {
   font-size: 0.68rem;
@@ -1965,16 +3051,31 @@ export default {
   border-bottom-color: #0f172a;
 }
 
-.av-dtab:hover:not(.active) {
+.av-dtab:hover:not(.active):not(.av-dtab--disabled):not(:disabled) {
   color: #1e293b;
   background: #f8fafc;
 }
 
+.av-dtab--disabled,
+.av-dtab:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.av-dtab--disabled:hover,
+.av-dtab:disabled:hover {
+  color: #64748b;
+  background: transparent;
+}
+
 .av-detail-tab-content {
   padding: 14px 20px 28px;
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   min-height: 0;
   height: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   background: #f8fafc;
   box-sizing: border-box;
 }
@@ -2828,73 +3929,6 @@ export default {
   flex-shrink: 0;
 }
 
-/* All Assets–style confirm modals (do not use global .btn-primary gradient here) */
-.assets-action-modal .modal-body p {
-  margin: 0;
-}
-
-.assets-action-modal .modal-footer {
-  display: flex;
-  flex-wrap: nowrap;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  border-top: 1px solid #dee2e6;
-}
-
-.assets-action-modal .modal-footer .btn {
-  width: auto;
-  min-width: auto;
-  height: auto;
-  padding: 0.375rem 0.75rem;
-  font-size: 0.875rem;
-  font-weight: 400;
-  line-height: 1.5;
-  border-radius: 0.375rem;
-  transform: none;
-  box-shadow: none;
-  display: inline-block;
-}
-
-.assets-hold-modal .modal-footer .btn-primary {
-  background-color: #0d6efd;
-  border: 1px solid #0d6efd;
-  background-image: none;
-  color: #fff;
-}
-
-.assets-hold-modal .modal-footer .btn-primary:hover {
-  background-color: #0b5ed7;
-  border-color: #0a58ca;
-  transform: none;
-  box-shadow: none;
-}
-
-.assets-hold-modal .modal-footer .btn-secondary {
-  background-color: #6c757d;
-  border-color: #6c757d;
-  color: #fff;
-}
-
-.assets-hold-modal .modal-footer .btn-secondary:hover {
-  background-color: #5c636a;
-  border-color: #565e64;
-  color: #fff;
-}
-
-.assets-action-modal .modal-footer .btn-danger {
-  background-color: #dc3545;
-  border-color: #dc3545;
-  color: #fff;
-}
-
-.assets-action-modal .modal-footer .btn-danger:hover {
-  background-color: #bb2d3b;
-  border-color: #b02a37;
-  color: #fff;
-}
-
 /* Match Assets tab list + accordion */
 .asset-list-scroll {
   flex: 1;
@@ -2925,6 +3959,22 @@ export default {
   background: #f0fdf4;
 }
 
+.asset-item-checked {
+  background: #eff6ff;
+  border-left-color: #2563eb !important;
+}
+
+.asset-item-checked:hover {
+  background: #eff6ff;
+}
+
+.asset-item-new .form-check-input {
+  width: 1.05rem;
+  height: 1.05rem;
+  cursor: pointer;
+  accent-color: #2563eb;
+}
+
 .asset-item-top {
   margin-bottom: 3px;
 }
@@ -2941,6 +3991,83 @@ export default {
 
 .av-list-item-badges {
   margin-bottom: 6px;
+}
+
+.av-type-count-row {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.av-type-count-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px;
+  border-radius: 20px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.av-type-count-sep {
+  color: #94a3b8;
+  font-weight: 700;
+  font-size: 0.7rem;
+}
+
+.asset-type-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.asset-type-badge-sm {
+  width: 22px;
+  height: 22px;
+  font-size: 0.5rem;
+}
+
+.asset-type-badge-webapp,
+.asset-type-label-webapp {
+  background: #0f696e;
+  color: #fff;
+  border: 1px solid #0f696e;
+}
+
+.asset-type-badge-firewall,
+.asset-type-label-firewall {
+  background: #fff8f0;
+  color: #c45c00;
+  border: 1px solid #e65100;
+}
+
+.asset-type-badge-server,
+.asset-type-label-server {
+  background: #ede7f6;
+  color: #5e35b1;
+  border: 1px solid #9575cd;
+}
+
+.asset-type-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
 .av-vuln-list-name {
@@ -2960,16 +4087,17 @@ export default {
   font-size: 0.72rem;
   font-weight: 600;
   color: #0f696e;
-  cursor: pointer;
   padding: 3px 8px;
   border-radius: 99px;
   background: rgba(15,105,110,0.07);
   border: 1px solid rgba(15,105,110,0.15);
-  transition: background 0.15s;
   margin-top: 4px;
 }
 
-.av-assets-toggle:hover { background: rgba(15,105,110,0.12); }
+.av-assets-toggle--static {
+  cursor: default;
+  pointer-events: none;
+}
 
 .av-nested-assets {
   display: flex;
@@ -2978,6 +4106,20 @@ export default {
   margin-top: 6px;
   padding-left: 4px;
   border-left: 2px solid rgba(15,105,110,0.15);
+  max-height: 160px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.av-nested-assets::-webkit-scrollbar {
+  width: 4px;
+}
+
+.av-nested-assets::-webkit-scrollbar-thumb {
+  background: #cbc4d0;
+  border-radius: 10px;
 }
 
 .av-nested-asset-row {
@@ -3026,7 +4168,7 @@ export default {
 .sev-critical { background: #f8dede !important; color: #b42318 !important; }
 .sev-high { background: #fee2e2 !important; color: #dc2626 !important; }
 .sev-medium { background: #fef3c7 !important; color: #f59e0b !important; }
-.sev-low { background: #ccfbf1 !important; color: #0f766e !important; }
+.sev-low { background: #d1fae5 !important; color: #10b981 !important; }
 
 .section-label {
   font-size: 0.62rem;
@@ -3097,8 +4239,10 @@ export default {
 }
 
 .vuln-accordion-item--expanded {
-  height: min(calc(100vh - 260px), 520px);
-  max-height: min(calc(100vh - 260px), 520px);
+  height: calc(100vh - 220px);
+  height: calc(100dvh - 220px);
+  max-height: calc(100vh - 220px);
+  max-height: calc(100dvh - 220px);
   min-height: 280px;
 }
 
@@ -3115,7 +4259,7 @@ export default {
   align-items: center;
   cursor: pointer;
   gap: 12px;
-  z-index: 2;
+  min-width: 0;
 }
 
 .vuln-accordion-header:hover {
@@ -3135,6 +4279,12 @@ export default {
   font-size: 0.75rem;
   font-weight: 500;
   color: #1e293b;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+  cursor: default;
 }
 
 .vuln-accordion-expand {
@@ -3142,13 +4292,13 @@ export default {
   z-index: 1;
   flex: 1 1 auto;
   min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   -webkit-overflow-scrolling: touch;
   background: #fff;
   box-sizing: border-box;
-  padding-bottom: 28px;
-  scroll-padding-bottom: 28px;
+  padding-bottom: 0;
 }
 
 .vuln-accordion-expand::-webkit-scrollbar {
@@ -3161,8 +4311,20 @@ export default {
 }
 
 .vuln-accordion-body {
-  padding: 14px 16px 20px;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  padding: 14px 16px 0;
   font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.vuln-accordion-static {
+  flex: 0 0 auto;
+  background: #fff;
+  z-index: 2;
+  position: relative;
 }
 
 .vuln-accordion-body .av-description-block {
@@ -3176,6 +4338,11 @@ export default {
 }
 
 .vuln-accordion-body .av-detail-tab-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   padding-bottom: 28px !important;
 }
 
@@ -3237,11 +4404,191 @@ export default {
 .vc-modal-footer   { border-top: 1px solid #f1f5f9; padding: 14px 24px; display: flex; justify-content: flex-end; gap: 10px; }
 .vc-step-pill { display: inline-flex; align-items: center; justify-content: center; padding: 6px 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; color: #475569; background: #f1f5f9; border: 1.5px solid #e2e8f0; cursor: pointer; transition: all 0.15s; width: 100%; text-align: center; }
 .vc-step-pill-active { background: #e0f2f1; color: #0f696e; border-color: #0f696e; }
-.vc-step-pill-raised { background: #fff7ed; color: #c2410c; border-color: #fdba74; }
+.vc-step-pill-raised { background: #e2e8f0; color: #64748b; border-color: #cbd5e1; opacity: 0.85; }
+.vc-step-pill-raised-selected { background: #e2e8f0; color: #334155; border-color: #0f696e; opacity: 1; box-shadow: 0 0 0 2px rgba(15,105,110,0.2); }
+.vc-step-pill-disabled { background: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; }
+.vc-textarea[readonly] { background: #f1f5f9; color: #475569; cursor: default; }
 .vc-textarea { width: 100%; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; font-size: 0.875rem; color: #1e293b; background: #f8f9fc; outline: none; resize: vertical; font-family: inherit; }
 .vc-textarea:focus { box-shadow: 0 0 0 2px rgba(15,105,110,0.2); border-color: #0f696e; }
 .vc-btn-primary { background: #241447; color: white; border: none; border-radius: 8px; padding: 8px 18px; font-size: 0.875rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
 .vc-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 .vc-btn-secondary { background: white; color: #241447; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 18px; font-size: 0.875rem; font-weight: 600; cursor: pointer; }
 .rt-support-raised-note { font-size: 0.84rem; color: #0f696e; display: flex; align-items: center; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px; }
+
+/* Fixed Recently */
+.fixed-divider { height: 1px; background: rgba(203, 196, 208, 0.25); }
+.fixed-recently-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: min(70vh, 36rem);
+  overflow-y: auto;
+  padding-right: 4px;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.fixed-recently-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.fixed-recently-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+.fixed-recently-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+
+/* Fixed Recently: when expanded, ONE clear scroller on the expand panel (steps visible) */
+.fixed-recently-scroll:has(.vuln-accordion-item--expanded) {
+  max-height: none;
+  overflow: visible;
+}
+
+.fixed-recently-scroll .vuln-accordion-item--expanded {
+  height: auto !important;
+  max-height: none !important;
+  min-height: 0;
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+.fixed-recently-scroll .vuln-accordion-item--expanded .vuln-accordion-expand {
+  display: block !important;
+  flex: none !important;
+  max-height: min(62vh, 38rem) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  min-height: 12rem;
+}
+
+.fixed-recently-scroll .vuln-accordion-item--expanded .vuln-accordion-body {
+  display: block !important;
+  flex: none !important;
+  overflow: visible !important;
+  min-height: 0 !important;
+  height: auto !important;
+  padding-bottom: 20px;
+}
+
+.fixed-recently-scroll .vuln-accordion-item--expanded .av-detail-tab-content {
+  display: block !important;
+  flex: none !important;
+  overflow: visible !important;
+  min-height: 0 !important;
+  height: auto !important;
+  max-height: none !important;
+  padding-bottom: 32px !important;
+}
+
+.fixed-recently-scroll .vuln-accordion-item--expanded .vuln-accordion-expand::-webkit-scrollbar {
+  width: 8px;
+}
+
+.fixed-recently-scroll .vuln-accordion-item--expanded .vuln-accordion-expand::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 10px;
+}
+
+.fixed-recently-scroll .vuln-accordion-item--expanded .vuln-accordion-expand::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+.fixed-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f2f3f6;
+  border-radius: 8px;
+  padding: 12px 16px;
+  flex-shrink: 0;
+}
+.fixed-check-icon { color: #16a34a; font-size: 1.1rem; }
+.fixed-vuln-name {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #1e293b;
+  margin: 0 0 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 420px;
+}
+.fixed-vuln-host {
+  font-size: 0.7rem;
+  color: #64748b;
+  margin: 0 0 6px;
+}
+</style>
+
+<style>
+/* Teleported to body — cannot use scoped selectors */
+.assets-action-modal .modal-body p {
+  margin: 0;
+}
+
+.assets-action-modal .modal-footer {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-top: 1px solid #dee2e6;
+}
+
+.assets-action-modal .modal-footer .btn {
+  width: auto;
+  min-width: auto;
+  height: auto;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.5;
+  border-radius: 0.375rem;
+  transform: none;
+  box-shadow: none;
+  display: inline-block;
+}
+
+.assets-hold-modal .modal-footer .btn-primary {
+  background-color: #0d6efd;
+  border: 1px solid #0d6efd;
+  background-image: none;
+  color: #fff;
+}
+
+.assets-hold-modal .modal-footer .btn-primary:hover {
+  background-color: #0b5ed7;
+  border-color: #0a58ca;
+  transform: none;
+  box-shadow: none;
+}
+
+.assets-hold-modal .modal-footer .btn-secondary {
+  background-color: #6c757d;
+  border-color: #6c757d;
+  color: #fff;
+}
+
+.assets-hold-modal .modal-footer .btn-secondary:hover {
+  background-color: #5c636a;
+  border-color: #565e64;
+  color: #fff;
+}
+
+.assets-action-modal .modal-footer .btn-danger {
+  background-color: #dc3545;
+  border-color: #dc3545;
+  color: #fff;
+}
+
+.assets-action-modal .modal-footer .btn-danger:hover {
+  background-color: #bb2d3b;
+  border-color: #b02a37;
+  color: #fff;
+}
 </style>

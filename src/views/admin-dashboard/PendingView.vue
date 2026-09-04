@@ -77,7 +77,7 @@
                       <td class="pv-td">
                         <span class="pv-status-badge" :class="ticket.status === 'open' ? 'pv-status-open' : 'pv-status-closed'">
                           <span class="pv-status-dot"></span>
-                          {{ ticket.status }}
+                          {{ formatStatusLabel(ticket.status) }}
                         </span>
                       </td>
                       <td class="pv-td pv-td-date">{{ new Date(ticket.created_at).toLocaleDateString() }}</td>
@@ -206,6 +206,7 @@
 import DashboardMenu from '@/components/admin-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/admin-component/DashboardHeader.vue';
 import { useAuthStore } from "@/stores/authStore";
+import { formatStatusLabel } from "@/utils/statusLabel";
 
 export default {
   name: 'PendingView',
@@ -244,6 +245,7 @@ export default {
     }
   },
   methods: {
+    formatStatusLabel,
     getShortText(text, limit = 4) {
       if (!text) return "";
       const words = text.split(" ");
@@ -258,6 +260,13 @@ export default {
     },
     openDescriptionModal(desc) {
       this.selectedDescription = desc;
+    },
+    async liveRefreshPage() {
+      if (!this.reportId) {
+        await this.authStore.fetchVulnerabilityRegister(true);
+        this.reportId = this.authStore.latestReportId;
+      }
+      if (this.reportId) await this.loadOpenTickets();
     },
     async loadOpenTickets() {
       if (!this.reportId) {

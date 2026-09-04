@@ -29,7 +29,19 @@ export interface NormalizedAssetVulnerability {
 export function canonSeverity(sev: unknown): string;
 export function vulnDisplayName(v: Record<string, unknown> | null | undefined): string;
 export function vulnNameKey(v: Record<string, unknown> | null | undefined): string;
+export function pickVulnDescription(
+  ...sources: Array<string | Record<string, unknown> | null | undefined>
+): string;
+export function mergeDescriptionsIntoVulns(
+  vulns: unknown,
+  ...extraLists: unknown[]
+): NormalizedAssetVulnerability[];
 export function isActiveVulnStatus(status: unknown): boolean;
+export function rowStatusValue(row: unknown): string;
+export function closedVulnHostKey(vulnName: unknown, host: unknown): string;
+export function closedRecordVulnName(rec: unknown): string;
+export function closedRecordHostName(rec: unknown): string;
+export function buildClosedVulnHostSet(closedRecords?: unknown): Set<string>;
 export function normalizeAssetVulnerability(
   v: Record<string, unknown> | null | undefined,
 ): NormalizedAssetVulnerability | null;
@@ -99,10 +111,22 @@ export function normalizeHeldVulnerabilityAssetList(
 export function mergeAssetThreatVulnerabilities(
   activeVulns: unknown,
   closedFixVulns?: unknown,
+  host?: string,
 ): NormalizedAssetVulnerability[];
 export function filterOpenAssetVulnerabilities(
   vulns: unknown,
   closedFixVulns?: unknown,
+  host?: string,
+): NormalizedAssetVulnerability[];
+export function isActiveThreatVulnerability(
+  vuln: unknown,
+  closedFixVulns?: unknown,
+  host?: string,
+): boolean;
+export function filterActiveThreatVulnerabilities(
+  vulns: unknown,
+  closedFixVulns?: unknown,
+  host?: string,
 ): NormalizedAssetVulnerability[];
 export function severityMatchesFilter(
   severity: unknown,

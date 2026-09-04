@@ -14,6 +14,9 @@
         />
         <link rel="apple-touch-icon" href="/favicon.svg?v=1" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+        <meta http-equiv="Pragma" content="no-cache" />
+        <meta http-equiv="Expires" content="0" />
 
         <!-- Google Fonts -->
         <link href="https://fonts.googleapis.com" rel="preconnect" />
@@ -66,6 +69,28 @@
         ></script>
 
         <title>VaptFix</title>
+        <script>
+            (function () {
+                function dropBad(storage, key) {
+                    try {
+                        var raw = storage.getItem(key);
+                        if (!raw) return;
+                        JSON.parse(raw);
+                    } catch (e) {
+                        try {
+                            storage.removeItem(key);
+                        } catch (e2) {}
+                    }
+                }
+                try {
+                    dropBad(sessionStorage, "user");
+                    dropBad(sessionStorage, "authenticated");
+                    dropBad(localStorage, "user");
+                    dropBad(localStorage, "authenticated");
+                    dropBad(localStorage, "completedSteps");
+                } catch (e) {}
+            })();
+        </script>
     </head>
     <body data-bs-theme="light">
         <div id="app"></div>
