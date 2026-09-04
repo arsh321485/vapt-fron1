@@ -3415,6 +3415,9 @@ export default {
           'Unsupported file type. Allowed: .nessus, .xml, .html, .htm, .csv, .xlsx, .xls, .pdf, .docx, .doc';
         return;
       }
+      this.planLimitResolved = false;
+      this.planSuggestResolved = false;
+      this.fileDetectedIpCount = 0;
 
       this.lastUploadFileCount = files.length;
       this.lastUploadFileNames = files.map((file) => String(file?.name || '').trim()).filter(Boolean);

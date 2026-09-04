@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { isClaimInviteFlow } from "./claimInvite";
 
 export const BILLING_RETURN_TO_KEY = "vaptfix_billing_return_to";

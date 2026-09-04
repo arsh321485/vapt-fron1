@@ -8185,18 +8185,32 @@ export const useAuthStore = defineStore("auth", {
         return "/riskcriteria";
       }
 
-      // HARD GATE: normal email/Slack/Teams signup — no report ⇒ never Add Users / Risk Criteria.
-      // Upload (or wait for Super Admin scan) first; /communication only after has_report.
-      if (!res.hasReport) {
-        if (this._isOnboardingComplete(res)) {
+      // Report already on file — never wait on billing/subscription/me (often 30–45s).
+      if (res.hasReport) {
+        clearScopeFileAwaitingSuperadmin();
+        if (this._isOnboardingComplete(res) || res.hasRiskCriteria) {
           this._markOnboardingComplete();
           return "/admindashboardonboarding";
         }
-
-        if (!(await this.hasPaidPlan())) {
-          return "/admin-upload-report";
+        if (this.needsCommunicationStep()) {
+          return "/communication";
         }
+        return "/riskcriteria";
+      }
 
+      // HARD GATE: normal email/Slack/Teams signup — no report ⇒ never Add Users / Risk Criteria.
+      // Upload (or wait for Super Admin scan) first; /communication only after has_report.
+      if (this._isOnboardingComplete(res)) {
+        this._markOnboardingComplete();
+        return "/admindashboardonboarding";
+      }
+
+      if (!(await this.hasPaidPlan())) {
+        return "/admin-upload-report";
+      }
+
+      {
+        const email = readStoredAdminEmail();
         const analysis = await fetchScopeAnalysisStatus();
         if (isScopeAnalysisReady(analysis)) {
           clearScopeFileAwaitingSuperadmin();
@@ -8218,16 +8232,6 @@ export const useAuthStore = defineStore("auth", {
         return "/admin-upload-report";
       }
 
-      // Report already on file — never wait on billing/subscription/me (often 30–45s).
-      clearScopeFileAwaitingSuperadmin();
-      if (this._isOnboardingComplete(res) || res.hasRiskCriteria) {
-        this._markOnboardingComplete();
-        return "/admindashboardonboarding";
-      }
-      if (this.needsCommunicationStep()) {
-        return "/communication";
-      }
-      return "/riskcriteria";
     },
     async getClosedVulnerabilities(reportId: string, asset: string) {
       try {

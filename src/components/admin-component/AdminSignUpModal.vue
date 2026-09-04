@@ -462,6 +462,11 @@ export default {
         this.$router.replace('/communication');
         return;
       }
+      if (authStore.needsCommunicationStep()) {
+        authStore.unmarkStepCompleted(1);
+        this.$router.replace('/communication');
+        return;
+      }
       // Normal email/Slack/Teams signup: upload / provide scope first, then Add Users.
       authStore.unmarkStepCompleted(1);
       this.$router.replace('/admin-upload-report');

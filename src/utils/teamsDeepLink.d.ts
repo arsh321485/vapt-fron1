@@ -1,4 +1,4 @@
-export interface TeamsDeepLink {
+export interface TeamsDeepLinkLinks {
   status: string;
   teams_tab_url: string;
   teams_tab_url_alt: string;
@@ -9,9 +9,9 @@ export interface TeamsDeepLink {
 
 export const TEAMS_WINDOW_NAME: string;
 
-export function extractTeamsDeepLink(payload?: unknown): TeamsDeepLink;
+export function extractTeamsDeepLink(payload?: unknown): TeamsDeepLinkLinks;
 export function persistTeamsDeepLink(links: unknown): void;
-export function readStoredTeamsDeepLink(): TeamsDeepLink;
+export function readStoredTeamsDeepLink(): TeamsDeepLinkLinks;
 export function unwrapTeamsLauncherUrl(url: unknown): string;
 export function isBareTeamsHome(url: unknown): boolean;
 export function isTeamsChatOrTeamHomeUrl(url: unknown): boolean;

@@ -483,6 +483,12 @@ if __name__ == "__main__":
         this.selectCommonVuln(list[0]);
       }
     },
+    automationDownloadLocked: {
+      handler(locked) {
+        if (locked && this.fixMethodTab === 'auto') this.setFixMethodTab('manual');
+      },
+      immediate: true,
+    },
   },
   async mounted() {
     await this.authStore.refreshAutomationPremiumLock(this.isUser);

@@ -4,7 +4,9 @@ export function stopLivePageSync(): void;
 
 export function notifyLiveData(reason?: string): void;
 
-export function isUnsafeToLiveRefresh(opts?: { source?: string }): boolean;
+export function isUnsafeToLiveRefresh(opts?: {
+  source?: string;
+}): boolean;
 
 export const livePageSyncMixin: {
   mounted(this: unknown): void;

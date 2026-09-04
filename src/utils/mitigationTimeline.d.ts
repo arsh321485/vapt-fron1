@@ -1,6 +1,5 @@
 export function parseDurationToDays(value: unknown): number | null;
 
-/** Dashboard/summary payloads are loosely shaped from the API. */
 export function unwrapSummaryPayload(raw: unknown): any;
 
 export function extractMitigationTimeline(payload: unknown): any;
