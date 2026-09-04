@@ -1761,8 +1761,8 @@ export default {
 
 .v-crit { color: #b42318; }
 .v-high { color: #dc2626; }
-.v-med { color: #b45309; }
-.v-low { color: #0f766e; }
+.v-med { color: #f59e0b; }
+.v-low { color: #10b981; }
 
 .vuln-bar {
   width: 100%;

@@ -53,9 +53,6 @@
                   Closed
                   <span class="st-tab-count">{{ sortedRequests.filter((r) => r.status?.toLowerCase() === 'closed').length }}</span>
                 </button>
-                <button class="st-btn-filter">
-                  <i class="bi bi-funnel me-1"></i> Filter View
-                </button>
                 <button class="st-sort-btn" @click="toggleSort">
                   <i class="bi bi-arrow-down-up me-1"></i>
                   Sort by date
@@ -87,11 +84,10 @@
                       <th class="st-th">Requested by</th>
                       <th class="st-th">Support Raised</th>
                       <th class="st-th">Status</th>
-                      <th class="st-th">Action</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="(req, i) in paginatedRequests" :key="req._id" class="st-tr">
+                    <tr v-for="req in paginatedRequests" :key="req._id" class="st-tr">
                       <td class="st-td">
                         <div class="st-asset-cell">
                           <span class="st-asset-ip">{{ req.host_name || '-' }}</span>
@@ -124,17 +120,9 @@
                           {{ req.status || 'Open' }}
                         </span>
                       </td>
-                      <td class="st-td">
-                        <button
-                          class="st-view-btn"
-                          @click="openSlideOver(req, (currentPage - 1) * itemsPerPage + i)"
-                        >
-                          View
-                        </button>
-                      </td>
                     </tr>
                     <tr v-if="!filteredRequests.length">
-                      <td colspan="7" class="st-empty-row">
+                      <td colspan="6" class="st-empty-row">
                         <i class="bi bi-inbox st-empty-icon"></i>
                         <p class="mb-0">No support requests found.</p>
                       </td>
@@ -162,180 +150,6 @@
               </div>
             </div>
 
-
-
-            <div class="modal fade" id="viewRequestsModal" tabindex="-1" aria-labelledby="viewRequestsModalLabel" aria-hidden="true">
-              <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content st-modal-content">
-                  <div class="modal-header st-modal-header">
-                    <h5 class="modal-title st-modal-title" id="viewRequestsModalLabel">Issues Raised for Support</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                  </div>
-                  <div class="modal-body p-4" v-if="selectedRequest">
-                    <div class="mb-3">
-                      <p class="st-modal-section-label mb-1">Vulnerability</p>
-                      <p class="fw-semibold mb-0">{{ selectedRequest.vul_name || '-' }}</p>
-                    </div>
-                    <div class="mb-3">
-                      <p class="st-modal-section-label mb-1">Asset</p>
-                      <p class="fw-semibold mb-0">{{ selectedRequest.host_name || '-' }}</p>
-                    </div>
-                    <div class="mb-3">
-                      <p class="st-modal-section-label mb-1">Requested by</p>
-                      <p class="fw-semibold mb-0">{{ selectedRequest.requested_by || '-' }}</p>
-                    </div>
-                    <div class="mb-3">
-                      <p class="st-modal-section-label mb-2">Steps requested</p>
-                      <div v-if="selectedRequest.step_requested?.toLowerCase() === 'all'" class="d-flex flex-wrap gap-2">
-                        <span class="st-step-chip">All Steps</span>
-                      </div>
-                      <div v-else class="d-flex flex-wrap gap-2">
-                        <span
-                          v-for="step in selectedRequest.step_requested?.split(',') || []"
-                          :key="step"
-                          class="st-step-chip"
-                        >
-                          Step {{ step.trim() }}
-                        </span>
-                      </div>
-                    </div>
-                    <h6 class="st-modal-section-label mt-3">Description</h6>
-                    <textarea class="st-desc-textarea" rows="4" readonly>{{ selectedRequest.description }}</textarea>
-                  </div>
-                  <div class="modal-footer st-modal-footer">
-                    <button type="button" class="st-close-btn" data-bs-dismiss="modal">Close</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div v-if="showSlideOver" class="st-slideover-backdrop" @click.self="closeSlideOver">
-              <div class="st-slideover">
-                <div class="st-so-header">
-                  <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div class="d-flex align-items-center gap-2">
-                      <button class="st-so-close-btn" @click="closeSlideOver"><i class="bi bi-x-lg"></i></button>
-                      <span class="st-so-label">SUPPORT REQUEST DETAILS</span>
-                    </div>
-
-                  </div>
-                  <h2 class="st-so-title">{{ selectedSupportRequest?.vul_name || '-' }}</h2>
-                  <div class="d-flex flex-wrap gap-2 mt-3">
-                    <span class="st-so-badge" :class="getStatusSlideBadgeClass(selectedSupportRequest)">
-                      <span class="st-so-dot" :class="getStatusDotClass(selectedSupportRequest)"></span>
-                      STATUS: {{ getStatusLabel(selectedSupportRequest) }}
-                    </span>
-                    <span class="st-so-badge" :class="getSeveritySlideBadgeClass(selectedSupportRequest)">
-                      <span class="st-so-dot" :class="getSeverityDotClass(selectedSupportRequest)"></span>
-                      CRITICALITY: {{ getSeverityLabel(selectedSupportRequest) }}
-                    </span>
-                  </div>
-                </div>
-
-                <div class="st-so-body">
-                  <div class="st-so-summary">
-                    <div>
-                      <p class="st-so-meta-label">DATE RAISED</p>
-                      <p class="st-so-meta-val">{{ formatDate(selectedSupportRequest?.requested_at) || '-' }}</p>
-                    </div>
-                    <div>
-                      <p class="st-so-meta-label">ASSET</p>
-                      <p class="st-so-meta-val">{{ selectedSupportRequest?.host_name || '-' }}</p>
-                    </div>
-                    <div>
-                      <p class="st-so-meta-label">REQUESTED BY</p>
-                      <div class="d-flex align-items-center gap-2">
-                        <div class="st-so-avatar">{{ (selectedSupportRequest?.requested_by || 'U').charAt(0).toUpperCase() }}</div>
-                        <p class="st-so-meta-val mb-0">{{ selectedSupportRequest?.requested_by || '-' }}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="st-so-section">
-                    <h3 class="st-so-section-title">
-                      <i class="bi bi-clock-history me-2"></i>Lifecycle Timeline
-                    </h3>
-                    <div class="st-so-timeline">
-                      <div class="st-so-tl-line"></div>
-
-                      <div class="st-so-tl-item">
-                        <div class="st-so-tl-dot st-so-dot-done"><i class="bi bi-check-lg"></i></div>
-                        <div class="st-so-tl-content">
-                          <div class="d-flex justify-content-between">
-                            <p class="st-so-tl-title">Ticket Raised</p>
-                            <span class="st-so-tl-time">{{ formatDate(selectedSupportRequest?.requested_at) || '-' }}</span>
-                          </div>
-                          <p class="st-so-tl-desc">Support request submitted by {{ selectedSupportRequest?.requested_by || 'user' }}.</p>
-                        </div>
-                      </div>
-
-                      <div class="st-so-tl-item">
-                        <div class="st-so-tl-dot st-so-dot-done"><i class="bi bi-check-lg"></i></div>
-                        <div class="st-so-tl-content">
-                          <div class="d-flex justify-content-between">
-                            <p class="st-so-tl-title">Acknowledged</p>
-                            <span class="st-so-tl-time">Pending review</span>
-                          </div>
-                          <p class="st-so-tl-desc">Ticket assigned and under triage.</p>
-                        </div>
-                      </div>
-
-                      <div class="st-so-tl-item">
-                        <div class="st-so-tl-dot st-so-dot-eye"><img src="@/assets/images/3-removebg-preview.png" class="st-eye-img" alt="investigation" /></div>
-                        <div class="st-so-tl-content st-so-tl-active-card">
-                          <div class="d-flex justify-content-between">
-                            <p class="st-so-tl-title">Investigation Started</p>
-                            <span class="st-so-tl-time">In progress</span>
-                          </div>
-                          <p class="st-so-tl-desc-italic">"{{ selectedSupportRequest?.description || '-' }}"</p>
-                          <span class="st-so-tl-author">— {{ (selectedSupportRequest?.requested_by || '').toUpperCase() }}</span>
-                        </div>
-                      </div>
-
-                      <div class="st-so-tl-item">
-                        <div class="st-so-tl-dot st-so-dot-comment"><i class="bi bi-chat-left-text"></i></div>
-                        <div class="st-so-tl-content st-so-tl-comment-card">
-                          <div class="d-flex justify-content-between">
-                            <p class="st-so-tl-title">Steps Requested</p>
-                            <span class="st-so-tl-time">Awaiting</span>
-                          </div>
-                          <p class="st-so-tl-desc">Steps: {{ selectedSupportRequest?.step_requested || '-' }}.</p>
-                        </div>
-                      </div>
-
-                      <!-- Admin messages shown to user — inside timeline for proper dot/line -->
-                      <div v-for="(msg, mi) in localMessages.filter(m => m.sender === 'admin')" :key="'msg-'+mi" class="st-so-tl-item">
-                        <div class="st-so-tl-dot st-so-dot-comment"><i class="bi bi-chat-left-text"></i></div>
-                        <div class="st-so-tl-content st-so-tl-comment-card">
-                          <div class="d-flex justify-content-between">
-                            <p class="st-so-tl-title">By Admin</p>
-                            <span class="st-so-tl-time">{{ formatMsgTime(msg.sent_at) }}</span>
-                          </div>
-                          <p class="st-so-tl-desc">&quot;{{ msg.text }}&quot;</p>
-                          <span class="st-so-tl-author">— {{ msg.sender_email.toUpperCase() }}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="st-so-footer">
-                  <div class="st-so-textarea-wrap">
-                    <textarea v-model="slideOverNote" class="st-so-textarea" placeholder="Type your reply..." rows="3"></textarea>
-                    <div class="st-so-textarea-actions">
-                      <button class="st-so-icon-btn"><i class="bi bi-paperclip"></i></button>
-                      <button class="st-so-icon-btn"><i class="bi bi-at"></i></button>
-                    </div>
-                  </div>
-                  <div class="d-flex justify-content-end align-items-center mt-3">
-                    <button class="st-so-send-btn" :disabled="sendingMessage || !slideOverNote.trim()" @click="sendUserMessage">
-                      <span v-if="sendingMessage" class="spinner-border spinner-border-sm me-1"></span>
-                      Send Update <i v-if="!sendingMessage" class="bi bi-send ms-1"></i>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -359,18 +173,11 @@ export default {
             authStore: useAuthStore(),
             supportRequests: [],
             loading: false,
-            selectedRequest: null,
-            selectedSupportRequest: null,
             sortOrder: 'desc',
             activeTab: 'all',
             selectedTeam: 'all',
             currentPage: 1,
             itemsPerPage: 6,
-            showSlideOver: false,
-            slideOverIndex: 0,
-            slideOverNote: '',
-            sendingMessage: false,
-            localMessages: [],
         };
     },
     computed: {
@@ -446,21 +253,6 @@ export default {
         this.initTooltips();
     },
     methods: {
-        getStatusLabel(req) {
-            const s = String(req?.status || '').toLowerCase();
-            if (s === 'closed' || s === 'resolved' || s === 'fixed') return 'CLOSED';
-            return 'OPEN';
-        },
-        getStatusSlideBadgeClass(req) {
-            const s = String(req?.status || '').toLowerCase();
-            if (s === 'closed' || s === 'resolved' || s === 'fixed') return 'st-so-badge-closed';
-            return 'st-so-badge-open';
-        },
-        getStatusDotClass(req) {
-            const s = String(req?.status || '').toLowerCase();
-            if (s === 'closed' || s === 'resolved' || s === 'fixed') return 'st-so-dot-closed';
-            return 'st-so-dot-open';
-        },
         getSeverityRaw(req) {
             if (!req) return '';
             return String(req.risk_factor || req.severity || req.criticality || '').trim().toLowerCase();
@@ -479,32 +271,24 @@ export default {
             if (sev === 'low') return 'st-crit-low';
             return 'st-crit-critical';
         },
-        getSeveritySlideBadgeClass(req) {
-            const sev = this.getSeverityRaw(req);
-            if (sev === 'high') return 'st-so-badge-high';
-            if (sev === 'medium') return 'st-so-badge-medium';
-            if (sev === 'low') return 'st-so-badge-low';
-            return 'st-so-badge-critical';
-        },
-        getSeverityDotClass(req) {
-            const sev = this.getSeverityRaw(req);
-            if (sev === 'high') return 'st-so-dot-high';
-            if (sev === 'medium') return 'st-so-dot-medium';
-            if (sev === 'low') return 'st-so-dot-low';
-            return 'st-so-dot-critical';
-        },
         initTooltips() {
             this.$nextTick(() => {
                 const tooltipEls = document.querySelectorAll('[data-bs-toggle="tooltip"]');
                 [...tooltipEls].forEach((el) => new bootstrap.Tooltip(el));
             });
         },
+        async liveRefreshPage() {
+            const reportId = this.authStore.userLatestReportId;
+            if (!reportId) return;
+            const res = await this.authStore.fetchUserSupportRequestsByReport(reportId, true, this.authStore.userSelectedTeam);
+            if (res.status) this.supportRequests = res.data;
+        },
         async loadSupportRequests() {
             await this.authStore.fetchUserVulnerabilityRegister();
             const reportId = this.authStore.userLatestReportId;
             if (!reportId) return;
             this.loading = true;
-            const res = await this.authStore.fetchUserSupportRequestsByReport(reportId);
+            const res = await this.authStore.fetchUserSupportRequestsByReport(reportId, false, this.authStore.userSelectedTeam);
             this.loading = false;
             if (res.status) {
                 this.supportRequests = res.data;
@@ -522,59 +306,6 @@ export default {
         },
         goToNextPage() {
             if (this.currentPage < this.totalPages) this.currentPage += 1;
-        },
-        viewRequest(req) {
-            this.selectedRequest = req;
-            this.$nextTick(() => {
-                const modal = new bootstrap.Modal(document.getElementById('viewRequestsModal'));
-                modal.show();
-            });
-        },
-        openSlideOver(req, index) {
-            if (!req) return;
-            this.selectedSupportRequest = req;
-            this.slideOverIndex = index;
-            this.showSlideOver = true;
-            this.slideOverNote = '';
-            this.localMessages = Array.isArray(req?.messages) ? [...req.messages] : [];
-        },
-        closeSlideOver() {
-            this.showSlideOver = false;
-            this.localMessages = [];
-        },
-        formatMsgTime(dateStr) {
-            if (!dateStr) return '';
-            const d = new Date(dateStr);
-            return d.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-        },
-        async sendUserMessage() {
-            const text = (this.slideOverNote || '').trim();
-            if (!text || this.sendingMessage) return;
-            await this.authStore.fetchUserVulnerabilityRegister();
-            const reportId = this.authStore.userLatestReportId;
-            const requestId = this.selectedSupportRequest?._id || this.selectedSupportRequest?.id;
-            if (!reportId || !requestId) return;
-            this.sendingMessage = true;
-            try {
-                const res = await this.authStore.sendUserSupportMessage(reportId, requestId, text);
-                if (res.status) {
-                    const userEmail = this.authStore.userEmail || '';
-                    this.localMessages.push({ sender: 'user', sender_email: userEmail, text, visibility: 'customer', sent_at: new Date().toISOString() });
-                    this.slideOverNote = '';
-                    // Refresh cache so reopening modal shows latest messages
-                    this.authStore.cachedUserSupportRequests = {};
-                    this.loadSupportRequests();
-                } else {
-                    alert(res.message || 'Failed to send message');
-                }
-            } finally {
-                this.sendingMessage = false;
-            }
-        },
-        formatDate(dateStr) {
-            if (!dateStr) return '';
-            const d = new Date(dateStr);
-            return d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' });
         },
     },
 };
@@ -887,21 +618,6 @@ export default {
   white-space: nowrap;
 }
 
-.st-view-btn {
-  border: none;
-  background: transparent;
-  color: #0f696e;
-  font-size: 0.82rem;
-  font-weight: 700;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-}
-
-.st-view-btn:hover {
-  opacity: 0.8;
-}
-
 .st-status-badge {
   display: inline-flex;
   align-items: center;
@@ -953,7 +669,7 @@ export default {
 }
 .st-crit-critical { background: #f8dede; color: #b42318; }
 .st-crit-high { background: #fee2e2; color: #dc2626; }
-.st-crit-medium { background: #fff4cc; color: #a16207; }
+.st-crit-medium { background: #fef3c7; color: #f59e0b; }
 .st-crit-low { background: #d1fae5; color: #10b981; }
 
 .st-empty-row {
@@ -967,76 +683,6 @@ export default {
   color: #cbd5e1;
   display: block;
   margin-bottom: 8px;
-}
-
-.st-modal-content {
-  border-radius: 16px;
-  overflow: hidden;
-  border: none;
-}
-
-.st-modal-header {
-  background: #241447;
-  padding: 16px 20px;
-}
-
-.st-modal-title {
-  color: #ffffff;
-  font-size: 1rem;
-  font-weight: 700;
-  margin: 0;
-}
-
-.st-modal-section-label {
-  font-size: 0.8rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #49454f;
-}
-
-.st-step-chip {
-  display: inline-flex;
-  align-items: center;
-  background: #f0ecff;
-  color: #4e3e73;
-  border-radius: 50px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 5px 12px;
-}
-
-.st-desc-textarea {
-  width: 100%;
-  border: 1px solid rgba(203, 196, 208, 0.4);
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 0.875rem;
-  color: #191c1e;
-  resize: none;
-  background: #f8f9fc;
-  outline: none;
-}
-
-.st-modal-footer {
-  background: #f8f9fc;
-  border-top: 1px solid rgba(203, 196, 208, 0.2);
-  padding: 12px 20px;
-}
-
-.st-close-btn {
-  background: #241447;
-  color: #ffffff;
-  border: none;
-  border-radius: 8px;
-  padding: 7px 20px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.st-close-btn:hover {
-  opacity: 0.88;
 }
 
 .st-pagination {
@@ -1161,375 +807,4 @@ export default {
   background: #0f696e;
   border-radius: 999px;
 }
-
-.st-slideover-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  background: rgba(36, 20, 71, 0.4);
-  backdrop-filter: blur(4px);
-  display: flex;
-  justify-content: flex-end;
-}
-
-.st-slideover {
-  width: min(680px, 100vw);
-  height: 100vh;
-  background: #ffffff;
-  display: flex;
-  flex-direction: column;
-  box-shadow: -8px 0 40px rgba(0, 0, 0, 0.18);
-  overflow: hidden;
-}
-
-.st-so-header {
-  padding: 28px 32px 24px;
-  background: #f2f3f6;
-  border-bottom: 1px solid rgba(203, 196, 208, 0.2);
-  flex-shrink: 0;
-}
-
-.st-so-label {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: #49454f;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.st-so-close-btn,
-.st-so-icon-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #49454f;
-  font-size: 1rem;
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.st-so-close-btn:hover,
-.st-so-icon-btn:hover {
-  background: #e2e8f0;
-}
-
-.st-so-title {
-  font-size: 1.4rem;
-  font-weight: 800;
-  color: #241447;
-  margin: 0;
-  line-height: 1.2;
-}
-
-.st-so-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
-  border-radius: 999px;
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.st-so-badge-open   { background: #a1ecf2; color: #002022; }
-.st-so-badge-closed { background: #dcfce7; color: #166534; }
-.st-so-dot-open     { background: #22c55e !important; }
-.st-so-dot-closed   { background: #0f696e !important; }
-
-
-.st-so-badge-critical {
-  background: #f8dede;
-  color: #b42318;
-}
-.st-so-badge-high {
-  background: #fee2e2;
-  color: #dc2626;
-}
-.st-so-badge-medium {
-  background: #fff4cc;
-  color: #a16207;
-}
-.st-so-badge-low {
-  background: #d1fae5;
-  color: #10b981;
-}
-
-.st-so-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  display: inline-block;
-}
-.st-so-dot-critical { background: #b42318; }
-.st-so-dot-high { background: #dc2626; }
-.st-so-dot-medium { background: #f2c94c; }
-.st-so-dot-low { background: #10b981; }
-
-.st-so-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 28px 32px;
-}
-
-.st-so-summary {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  background: #f2f3f6;
-  border-radius: 12px;
-  padding: 20px 24px;
-  margin-bottom: 28px;
-}
-
-.st-so-meta-label {
-  font-size: 0.6rem;
-  font-weight: 700;
-  color: #49454f;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin: 0 0 4px;
-}
-
-.st-so-meta-val {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #241447;
-  margin: 0;
-}
-
-.st-so-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #3a2a5e;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.7rem;
-  font-weight: 700;
-}
-
-.st-so-section-title {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #241447;
-  margin: 0 0 20px;
-  display: flex;
-  align-items: center;
-}
-
-.st-so-timeline {
-  position: relative;
-  padding-left: 32px;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.st-so-tl-line {
-  position: absolute;
-  left: 11px;
-  top: 8px;
-  bottom: 8px;
-  width: 2px;
-  background: rgba(203, 196, 208, 0.3);
-}
-
-.st-so-tl-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  position: relative;
-}
-
-.st-so-tl-dot {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.72rem;
-  position: absolute;
-  left: -32px;
-  z-index: 1;
-}
-
-.st-so-dot-done {
-  background: #0f696e;
-  color: #fff;
-}
-
-.st-so-dot-active {
-  background: #241447;
-  border: 2px solid #fff;
-  box-shadow: 0 0 0 2px #241447;
-  width: 24px;
-  height: 24px;
-  left: -32px;
-  color: #fff;
-}
-
-.st-so-dot-eye {
-  width: 30px;
-  height: 30px;
-  left: -35px;
-  background: #ffffff;
-  border: 3px solid #241447;
-  color: #241447;
-  box-shadow: 0 0 0 2px #ffffff;
-  font-size: 0.95rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.st-eye-img {
-  width: 56px;
-  height: 180px;
-  padding-top: 10px;
-  display: block;
-  object-fit: contain;
-}
-
-.st-so-dot-comment {
-  background: #e2e8f0;
-  color: #49454f;
-}
-
-.st-so-tl-title {
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: #241447;
-  margin: 0 0 4px;
-}
-
-.st-so-tl-time {
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: #49454f;
-  white-space: nowrap;
-}
-
-.st-so-tl-desc {
-  font-size: 0.82rem;
-  color: #49454f;
-  margin: 0;
-  line-height: 1.5;
-}
-
-.st-so-tl-desc-italic {
-  font-size: 0.82rem;
-  color: #191c1e;
-  font-style: italic;
-  margin: 0 0 6px;
-  line-height: 1.5;
-}
-
-.st-so-tl-author {
-  font-size: 0.68rem;
-  font-weight: 700;
-  color: #0f696e;
-  text-transform: uppercase;
-}
-
-.st-so-tl-active-card {
-  background: #f2f3f6;
-  border-radius: 8px;
-  padding: 14px 16px;
-}
-
-.st-so-tl-comment-card {
-  background: rgba(36, 20, 71, 0.03);
-  border-left: 4px solid #0f696e;
-  border-radius: 0 8px 8px 0;
-  padding: 14px 16px;
-}
-
-.st-so-footer {
-  padding: 20px 32px 24px;
-  background: #ffffff;
-  border-top: 1px solid rgba(203, 196, 208, 0.15);
-  flex-shrink: 0;
-}
-
-.st-so-textarea-wrap {
-  position: relative;
-}
-
-.st-so-textarea {
-  width: 100%;
-  background: #f2f3f6;
-  border: none;
-  border-radius: 12px;
-  padding: 14px 50px 14px 16px;
-  font-size: 0.875rem;
-  color: #191c1e;
-  resize: none;
-  outline: none;
-}
-
-.st-so-textarea-actions {
-  position: absolute;
-  bottom: 10px;
-  right: 10px;
-  display: flex;
-  gap: 4px;
-}
-
-.st-so-note-btn,
-.st-so-visible-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 0.75rem;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 10px;
-  border-radius: 8px;
-}
-
-.st-so-note-btn {
-  color: #49454f;
-}
-
-.st-so-visible-btn {
-  color: #0f696e;
-}
-
-.st-so-dot-sm {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  display: inline-block;
-}
-
-.st-so-send-btn {
-  background: #241447;
-  color: #fff;
-  border: none;
-  border-radius: 999px;
-  padding: 10px 24px;
-  font-size: 0.875rem;
-  font-weight: 700;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.st-so-msg-email { font-size:0.72rem; color:#64748b; font-weight:400; }
-.st-so-msg-meta  { display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px; }
-.st-so-msg-tag   { font-size:0.68rem;font-weight:700;border-radius:999px;padding:2px 8px;text-transform:uppercase; }
-.st-so-tag-admin { background:#dbeafe;color:#1d4ed8; }
-.st-so-tag-user  { background:#dcfce7;color:#166534; }
-.st-so-msg-email { font-size:0.72rem;color:#64748b; }
-.st-so-msg-time  { font-size:0.68rem;color:#94a3b8; }
-.st-so-msg-text  { margin:0;font-size:0.85rem;color:#1e293b;line-height:1.5; }
 </style>

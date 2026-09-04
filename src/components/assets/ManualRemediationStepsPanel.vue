@@ -2,13 +2,13 @@
   <div class="mf-panel">
 
     <!-- Loading state while fetching fix details -->
-    <div v-if="loadingFixVuln" class="mf-fix-loading">
+    <div v-if="showFixLoading" class="mf-fix-loading">
       <span class="spinner-border spinner-border-sm text-primary me-2"></span>
       <span>Loading fix details…</span>
     </div>
 
     <!-- Admin: fix not started — only show in All Assets tab, not All Vulns tab -->
-    <div v-if="!isUser && fixNotStarted && !loadingFixVuln && assetIp" class="mf-not-started">
+    <div v-if="!isUser && fixNotStarted && !showFixLoading && assetIp" class="mf-not-started">
       <i class="bi bi-hourglass-split mf-not-started-icon" aria-hidden="true"></i>
       <div class="mf-not-started-text">
         <span class="mf-not-started-title">Fix Not Started</span>
@@ -17,7 +17,7 @@
     </div>
 
     <!-- Fix info from API: solution + assigned team -->
-    <div v-if="fixVulnData && !loadingFixVuln" class="mf-fix-info-card">
+    <div v-if="fixVulnData && !showFixLoading" class="mf-fix-info-card">
       <div v-if="fixVulnData.solution" class="mf-fix-info-row">
         <div class="mf-label">SOLUTION</div>
         <p class="mf-value mf-pretext">{{ fixVulnData.solution }}</p>
@@ -35,7 +35,7 @@
       </div>
     </div>
 
-    <div v-if="!loadingFixVuln" class="mf-subtasks-bar">
+    <div v-if="!showFixLoading" class="mf-subtasks-bar">
       <span class="mf-subtasks-title">Remediation Sub-Tasks ({{ displaySubtasks.length }})</span>
       <span class="mf-subtasks-done">{{ completedSubtasksCount }} tasks completed</span>
     </div>
@@ -234,10 +234,24 @@ import Swal from 'sweetalert2';
 import { MOCK_MANUAL_STEPS } from '@/constants/mockManualRemediationSteps';
 import { getTeamColor } from '@/utils/teamColors';
 import { useAuthStore } from '@/stores/authStore';
+import { FREEMIUM_RETEST_MESSAGE } from '@/utils/planLimits';
+import { pickVulnDescription } from '@/utils/assetVulnerabilities';
+
+/** Keep manual-fix steps in memory so tab switches / remounts do not replay the loader. */
+const fixPanelCache = new Map();
+
+function buildFixCacheKey({ isUser, assetIp, vulnName, fixId }) {
+  return [
+    isUser ? 'u' : 'a',
+    String(assetIp || '').trim().toLowerCase(),
+    String(vulnName || '').trim().toLowerCase(),
+    String(fixId || '').trim(),
+  ].join('::');
+}
 
 export default {
   name: 'ManualRemediationStepsPanel',
-  emits: ['support-request-raised', 'open-support-modal', 'team-resolved', 'vulnerability-status-changed'],
+  emits: ['support-request-raised', 'open-support-modal', 'team-resolved', 'vulnerability-status-changed', 'description-resolved'],
   props: {
     isUser: {
       type: Boolean,
@@ -284,9 +298,14 @@ export default {
       vulnerabilityStatus: '',
       allStepsCompletedFlag: false,
       requestingRetest: false,
+      _fixInitSeq: 0,
+      _loadedFixCacheKey: '',
     };
   },
   computed: {
+    showFixLoading() {
+      return this.loadingFixVuln && !this.subtasks.length && !this.fixNotStarted;
+    },
     displaySubtasks() {
       if (!this.fixVulnData) return this.subtasks;
       const team = this.fixVulnData.assigned_team || null;
@@ -307,6 +326,11 @@ export default {
         assignedTeam: step.assignedTeam || team || '',
         members: (step.members && step.members.length) ? step.members : (members || []),
       }));
+    },
+    firstIncompleteStep() {
+      return [...this.subtasks]
+        .sort((a, b) => Number(a.id) - Number(b.id))
+        .find((t) => t.status !== 'completed') || null;
     },
     completedSubtasksCount() {
       // Always derive from actual rendered step statuses so admin and user
@@ -375,6 +399,72 @@ export default {
     }
   },
   methods: {
+    fixCacheKey(fixId = '') {
+      return buildFixCacheKey({
+        isUser: this.isUser,
+        assetIp: this.assetIp,
+        vulnName: this.vulnName,
+        fixId: fixId || this.fixId || this.fixVulnerabilityId || '',
+      });
+    },
+    applyCachedFixState(cached) {
+      this.fixVulnerabilityId = cached.fixVulnerabilityId || null;
+      this.fixVulnData = cached.fixVulnData || null;
+      this.fixNotStarted = !!cached.fixNotStarted;
+      this.subtasks = Array.isArray(cached.subtasks) ? [...cached.subtasks] : [];
+      this.vulnerabilityStatus = cached.vulnerabilityStatus || '';
+      this.allStepsCompletedFlag = !!cached.allStepsCompletedFlag;
+      this.apiCompletedSteps = cached.apiCompletedSteps || 0;
+      if (cached.selectedOs) this.selectedOs = cached.selectedOs;
+      this._loadedFixCacheKey = cached.cacheKey || this.fixCacheKey(this.fixVulnerabilityId);
+    },
+    persistFixCache() {
+      const cacheKey = this.fixCacheKey(this.fixVulnerabilityId);
+      this._loadedFixCacheKey = cacheKey;
+      fixPanelCache.set(cacheKey, {
+        cacheKey,
+        fixVulnerabilityId: this.fixVulnerabilityId,
+        fixVulnData: this.fixVulnData,
+        fixNotStarted: this.fixNotStarted,
+        subtasks: this.subtasks,
+        vulnerabilityStatus: this.vulnerabilityStatus,
+        allStepsCompletedFlag: this.allStepsCompletedFlag,
+        apiCompletedSteps: this.apiCompletedSteps,
+        selectedOs: this.selectedOs,
+      });
+    },
+    restoreCachedFixIfReady(fixId = '') {
+      const cacheKey = this.fixCacheKey(fixId);
+      if (cacheKey === this._loadedFixCacheKey && (this.subtasks.length || this.fixNotStarted)) {
+        return true;
+      }
+      const cached = fixPanelCache.get(cacheKey);
+      if (!cached || (!cached.subtasks?.length && !cached.fixNotStarted)) return false;
+      this.applyCachedFixState(cached);
+      return true;
+    },
+    async refreshAdminFixSilent(seq, fixId) {
+      if (!fixId || seq !== this._fixInitSeq) return;
+      try {
+        const stepsRes = await this.authStore.getFixVulnerabilitySteps(fixId);
+        if (seq !== this._fixInitSeq) return;
+        if (stepsRes.status && Array.isArray(stepsRes.data?.steps) && stepsRes.data.steps.length) {
+          if (stepsRes.status) this.emitDescriptionIfPresent(stepsRes.data);
+          this.fixNotStarted = false;
+          this.fixVulnData = {
+            ...(this.fixVulnData || {}),
+            assigned_team: stepsRes.data.assigned_team || this.fixVulnData?.assigned_team || '',
+            assigned_team_members:
+              stepsRes.data.steps[0]?.assigned_team_members
+              || this.fixVulnData?.assigned_team_members
+              || [],
+          };
+          this.applyStepsFromApi(stepsRes.data);
+        }
+      } catch {
+        /* keep cached UI */
+      }
+    },
     getTeamColor,
     resolveOsKey(value) {
       const normalized = String(value || 'windows').toLowerCase();
@@ -388,10 +478,20 @@ export default {
       return 'pending';
     },
     isStepCompleted(stepNumber, nextStep, rawStatus) {
-      if (nextStep != null) {
-        return stepNumber < nextStep;
-      }
       return this.normalizeStepStatus(rawStatus) === 'completed';
+    },
+    syncCurrentAndLocks({ preserveExpanded = null } = {}) {
+      const firstPendingId = this.firstIncompleteStep?.id ?? null;
+      this.subtasks.forEach((task) => {
+        const isDone = task.status === 'completed';
+        task.isCurrent = !isDone && firstPendingId != null && task.id === firstPendingId;
+        task.isLocked = this.isUser && !isDone && firstPendingId != null && task.id > firstPendingId;
+        if (preserveExpanded) {
+          task.isExpanded = preserveExpanded.has(task.id);
+        } else if (task.isCurrent) {
+          task.isExpanded = true;
+        }
+      });
     },
     resolveEffectiveNextStep(apiSteps, nextStep) {
       if (nextStep == null) return null;
@@ -444,7 +544,7 @@ export default {
         });
       }
     },
-    applyStepProgressFromPost(res) {
+    applyStepProgressFromPost(res, completedTaskId = null) {
       const nextStep = res.next_step ?? null;
       this.syncVulnerabilityStatusFromPayload(res);
 
@@ -470,29 +570,11 @@ export default {
         return;
       }
 
-      if (nextStep == null) {
-        if (
-          res.completed_steps != null
-          && this.subtasks.length > 0
-          && res.completed_steps >= this.subtasks.length
-        ) {
-          this.subtasks.forEach(task => {
-            task.status = 'completed';
-            task.isCurrent = false;
-            task.isLocked = false;
-            task.isExpanded = false;
-          });
-        }
-        return;
+      if (completedTaskId != null) {
+        const done = this.subtasks.find((task) => task.id === completedTaskId);
+        if (done) done.status = 'completed';
       }
-
-      this.subtasks.forEach(task => {
-        const completed = task.id < nextStep;
-        task.status = completed ? 'completed' : 'pending';
-        task.isCurrent = task.id === nextStep;
-        task.isExpanded = task.id === nextStep;
-        task.isLocked = task.id > nextStep;
-      });
+      this.syncCurrentAndLocks();
     },
     applyStepsFromApi(data, postOverride = null) {
       const osKey = this.resolveOsKey(data.operating_system || this.assetOs || this.selectedOs);
@@ -503,6 +585,7 @@ export default {
       if (resolvedTeam) {
         this.$emit('team-resolved', { vulnName: this.vulnName, team: resolvedTeam });
       }
+      this.emitDescriptionIfPresent(data);
 
       // Prefer post-complete payload for status (may already be "closed" / "open/review")
       this.syncVulnerabilityStatusFromPayload(data);
@@ -540,30 +623,38 @@ export default {
 
       this.apiCompletedSteps = completedCount;
 
-      this.subtasks = apiSteps.map(s => {
+      const previouslyExpanded = new Set(
+        (this.subtasks || []).filter((t) => t.isExpanded).map((t) => t.id),
+      );
+      const hadTasks = (this.subtasks || []).length > 0;
+      const submittingById = Object.fromEntries(
+        (this.subtasks || []).filter((t) => t.submitting).map((t) => [t.id, true]),
+      );
+
+      this.subtasks = apiSteps.map((s) => {
         const task = this.mapApiStepToPanel(s, osKey);
         const completed = this.isStepCompleted(s.step_number, nextStep, s.status);
         task.status = completed ? 'completed' : 'pending';
-        task.isLocked = false; // Allow all steps to be interactable
-
-        if (nextStep != null) {
-          task.isCurrent = s.step_number === nextStep && !completed;
-          task.isExpanded = task.isCurrent;
-        } else {
-          task.isCurrent = !!s.is_current;
-          task.isExpanded = !!s.is_current;
-        }
-
+        if (submittingById[task.id]) task.submitting = true;
         return task;
       });
 
-      if (nextStep == null && this.subtasks.some(t => t.status !== 'completed')) {
-        const firstPending = this.subtasks.find(t => t.status !== 'completed');
-        if (firstPending) {
-          firstPending.isCurrent = true;
-          firstPending.isExpanded = true;
-        }
+      this.syncCurrentAndLocks({
+        preserveExpanded: hadTasks ? previouslyExpanded : null,
+      });
+      if (!hadTasks && !this.subtasks.some((t) => t.isExpanded) && this.firstIncompleteStep) {
+        this.firstIncompleteStep.isExpanded = true;
       }
+      this.persistFixCache();
+    },
+    emitDescriptionIfPresent(...payloads) {
+      const description = pickVulnDescription(...payloads);
+      if (!description) return;
+      this.$emit('description-resolved', description);
+    },
+    async liveRefreshPage() {
+      if (!this.fixVulnerabilityId) return;
+      await this.refreshStepsFromApi();
     },
     async refreshStepsFromApi(postOverride = null) {
       if (!this.fixVulnerabilityId) return;
@@ -584,6 +675,8 @@ export default {
     },
     async initFixVuln() {
       if (!this.isUser || !this.vulnName || !this.assetIp) return;
+      if (this.restoreCachedFixIfReady()) return;
+
       this.loadingFixVuln = true;
       this.fixVulnerabilityId = null;
       this.fixVulnData = null;
@@ -608,6 +701,7 @@ export default {
           fixId = d._id || d.fix_vulnerability_id || d.id || d.data?._id || d.data?.fix_vulnerability_id || null;
           if (!fixId && typeof d === 'string') fixId = d;
           this.fixVulnData = d;
+          this.emitDescriptionIfPresent(d);
           // Check if create response itself has steps
           if (d.steps?.length) {
             console.log('[ManualFix] Steps found in createRes:', d.steps.length);
@@ -642,6 +736,7 @@ export default {
           }
         }
 
+        if (stepsRes.status) this.emitDescriptionIfPresent(stepsRes.data);
         if (stepsRes.status && Array.isArray(stepsRes.data?.steps) && stepsRes.data.steps.length) {
           this.fixVulnData = {
             ...this.fixVulnData,
@@ -663,7 +758,15 @@ export default {
     async initAdminFixVuln() {
       if (this.isUser || !this.vulnName || !this.assetIp) return;
 
-      const knownFixId = this.fixId || this.fixVulnerabilityId;
+      const seq = ++this._fixInitSeq;
+      const knownFixId = this.fixId || this.fixVulnerabilityId || '';
+      if (this.restoreCachedFixIfReady(knownFixId)) {
+        if (this.fixVulnerabilityId) {
+          this.refreshAdminFixSilent(seq, this.fixVulnerabilityId);
+        }
+        return;
+      }
+
       this.loadingFixVuln = true;
       this.fixNotStarted = false;
       if (!knownFixId) {
@@ -675,6 +778,7 @@ export default {
       try {
         // Ensure we create/lookup against the latest uploaded report (not a stale localStorage id).
         await this.authStore.resolveReportId();
+        if (seq !== this._fixInitSeq) return;
 
         let preloadedId = this.fixId || '';
         if (!preloadedId) {
@@ -699,19 +803,27 @@ export default {
             },
           );
         }
+        if (seq !== this._fixInitSeq) return;
 
         if (!preloadedId) {
           this.fixNotStarted = true;
+          this.persistFixCache();
           return;
         }
 
         if (this.fixVulnerabilityId === preloadedId && this.subtasks.length) {
+          this.persistFixCache();
           return;
         }
 
         this.fixVulnerabilityId = preloadedId;
 
-        const stepsRes = await this.authStore.getFixVulnerabilitySteps(preloadedId);
+        const [stepsRes, cardRes] = await Promise.all([
+          this.authStore.getFixVulnerabilitySteps(preloadedId),
+          this.authStore.fetchFixVulnerabilityCardDetails(preloadedId),
+        ]);
+        if (seq !== this._fixInitSeq) return;
+        if (stepsRes.status) this.emitDescriptionIfPresent(stepsRes.data);
         if (stepsRes.status && Array.isArray(stepsRes.data?.steps) && stepsRes.data.steps.length) {
           this.fixNotStarted = false;
           this.fixVulnData = {
@@ -722,9 +834,8 @@ export default {
           return;
         }
 
-        // Fallback: card endpoint often has agent-generated remediation when step-complete is empty/404.
-        const cardRes = await this.authStore.fetchFixVulnerabilityCardDetails(preloadedId);
         const cardData = cardRes.status ? cardRes.data : null;
+        this.emitDescriptionIfPresent(cardData);
         const cardSteps = Array.isArray(cardData?.steps) ? cardData.steps : [];
         if (cardSteps.length) {
           this.fixNotStarted = false;
@@ -756,8 +867,9 @@ export default {
             };
           }
         }
+        this.persistFixCache();
       } finally {
-        this.loadingFixVuln = false;
+        if (seq === this._fixInitSeq) this.loadingFixVuln = false;
       }
     },
     mapApiStepToPanel(step, osKey = this.selectedOs) {
@@ -894,6 +1006,22 @@ export default {
         return;
       }
 
+      if (this.isUser) {
+        const previous = [...this.subtasks]
+          .filter((s) => Number(s.id) < Number(task.id) && s.status !== 'completed')
+          .sort((a, b) => Number(a.id) - Number(b.id));
+        if (previous.length) {
+          const nextRequired = previous[0];
+          await Swal.fire({
+            icon: 'warning',
+            title: 'Complete the previous step first',
+            text: `Please complete Step ${nextRequired.id} first, then go to the next step.`,
+            confirmButtonText: 'OK',
+          });
+          return;
+        }
+      }
+
       const taskIdx = this.subtasks.findIndex(s => s.id === task.id);
       if (taskIdx < 0) return;
 
@@ -918,7 +1046,7 @@ export default {
         if (res.status) {
           step.submitting = false;
           if (this.isUser) {
-            this.applyStepProgressFromPost(res);
+            this.applyStepProgressFromPost(res, task.id);
           }
           await this.refreshStepsFromApi(this.isUser ? res : null);
           if (
@@ -936,11 +1064,18 @@ export default {
           }
         } else {
           step.submitting = false;
-          Swal.fire({ icon: 'error', title: 'Failed', text: res.message || 'Failed to complete step', timer: 2000, showConfirmButton: false });
+          // Race / already-done / generic miss — data still loads, don't flash this popup.
+          const msg = String(res.message || '');
+          const skipPopup =
+            !msg ||
+            /^failed to complete step$/i.test(msg) ||
+            /already (completed|done|saved|marked)|step already|already closed|not found/i.test(msg);
+          if (!skipPopup) {
+            Swal.fire({ icon: 'error', title: 'Failed', text: msg, timer: 2000, showConfirmButton: false });
+          }
         }
       } catch {
         step.submitting = false;
-        Swal.fire({ icon: 'error', title: 'Error', text: 'Network error — please try again.', timer: 2000, showConfirmButton: false });
       }
     },
     async completeAllSteps() {
@@ -996,6 +1131,15 @@ export default {
         return;
       }
       if (!this.showSendForRetest) return;
+      if (this.authStore.automationPremiumRequired) {
+        Swal.fire({
+          icon: 'info',
+          title: 'Retest not allowed',
+          text: FREEMIUM_RETEST_MESSAGE,
+          confirmButtonColor: '#241447',
+        });
+        return;
+      }
       this.requestingRetest = true;
       try {
         const res = await this.authStore.sendUserFixVerification(this.fixVulnerabilityId);
@@ -1018,7 +1162,12 @@ export default {
             showConfirmButton: false,
           });
         } else {
-          Swal.fire({ icon: 'error', title: 'Failed', text: res.message || 'Failed to send for retest', timer: 2500, showConfirmButton: false });
+          Swal.fire({
+            icon: 'error',
+            title: 'Retest not allowed',
+            text: res.message || FREEMIUM_RETEST_MESSAGE,
+            confirmButtonColor: '#241447',
+          });
         }
       } catch {
         Swal.fire({ icon: 'error', title: 'Error', text: 'Network error — please try again.', timer: 2000, showConfirmButton: false });
@@ -1034,7 +1183,7 @@ export default {
         this.raisedSupportSteps = [];
         return;
       }
-      const res = await this.authStore.getUserSupportRequestsByHost(this.assetIp);
+      const res = await this.authStore.getUserSupportRequestsByHost(this.assetIp, this.authStore.userSelectedTeam);
       if (!res.status || !Array.isArray(res.data)) {
         this.raisedSupportSteps = [];
         return;
@@ -1048,13 +1197,16 @@ export default {
         .filter((n) => Number.isFinite(n));
     },
     openStepSupportModal(task) {
-      if (this.isStepSupportRaised(task.id)) return;
-      // Emit to parent so the parent's modal opens with vuln + step pre-filled
       const completedSteps = this.subtasks
         .filter(t => t.status === 'completed')
         .map(t => Number(t.id))
         .filter(n => Number.isFinite(n));
-      this.$emit('open-support-modal', { vulnName: this.vulnName, step: task.id, completedSteps });
+      this.$emit('open-support-modal', {
+        vulnName: this.vulnName,
+        step: task.id,
+        completedSteps,
+        raisedSupportSteps: this.raisedSupportSteps,
+      });
     },
   },
 };
