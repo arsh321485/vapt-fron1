@@ -3434,6 +3434,27 @@ export default {
           'Unsupported file type. Allowed: .nessus, .xml, .html, .htm, .csv, .xlsx, .xls, .pdf, .docx, .doc';
         return;
       }
+      this.planLimitResolved = false;
+      this.planSuggestResolved = false;
+      this.fileDetectedIpCount = 0;
+
+      this.lastUploadFileCount = files.length;
+      this.lastUploadFileNames = files.map((file) => String(file?.name || '').trim()).filter(Boolean);
+      rememberUploadedScanFiles(this.lastUploadFileNames);
+
+      // Only block multi-file when Freemium is already active OR user already picked Freemium.
+      // New / unpaid users must upload first, then choose a plan — Freemium alert comes after that.
+      const pendingFreemium = String(this.pendingPlan || this.planSuggestActivePlan || '').toLowerCase() === 'freemium';
+      if (
+        (hasFreemiumRestrictions(this.subscription) || pendingFreemium) &&
+        !(await this.guardFreemiumMultiFile(pendingFreemium ? 'freemium' : ''))
+      ) {
+        return;
+      }
+
+      this.planLimitResolved = false;
+      this.planSuggestResolved = false;
+      this.fileDetectedIpCount = 0;
 
       this.lastUploadFileCount = files.length;
       this.lastUploadFileNames = files.map((file) => String(file?.name || '').trim()).filter(Boolean);

@@ -23,6 +23,22 @@
             <span class="asset-type-filter-count">{{ assetTypeTabCount(filter.key) }}</span>
           </button>
         </div>
+        <div class="asset-type-filters mb-3">
+          <button
+            v-for="filter in assetTypeFilters"
+            :key="filter.key"
+            type="button"
+            class="asset-type-filter-btn"
+            :class="[
+              'asset-type-filter-btn-' + filter.key,
+              { 'asset-type-filter-btn-active': assetTypeFilter === filter.key },
+            ]"
+            @click="setAssetTypeFilter(filter.key)"
+          >
+            {{ filter.label }}
+            <span class="asset-type-filter-count">{{ assetTypeTabCount(filter.key) }}</span>
+          </button>
+        </div>
         <div class="d-flex gap-3 mb-3">
           <i
             class="bi bi-trash action-icon"
@@ -891,6 +907,7 @@ export default {
       singleFetchedIds: [],
       downloadingScript: false,
       loadingAutomation: false,
+      expandedVulnAssets: null,
       vulnAssetRowsByKey: {},
       selectedPanelAsset: null,
       panelAssetKey: 0,
@@ -1475,6 +1492,7 @@ export default {
     setAssetTypeFilter(type) {
       if (this.assetTypeFilter === type) return;
       this.assetTypeFilter = type;
+      this.expandedVulnAssets = null;
     },
     selectFirstNonEmptyType() {
       if (this.didAutoSelectType) return;
@@ -4521,6 +4539,75 @@ export default {
   font-size: 0.7rem;
   color: #64748b;
   margin: 0 0 6px;
+}
+</style>
+
+<style>
+/* Teleported to body — cannot use scoped selectors */
+.assets-action-modal .modal-body p {
+  margin: 0;
+}
+
+.assets-action-modal .modal-footer {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-top: 1px solid #dee2e6;
+}
+
+.assets-action-modal .modal-footer .btn {
+  width: auto;
+  min-width: auto;
+  height: auto;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.5;
+  border-radius: 0.375rem;
+  transform: none;
+  box-shadow: none;
+  display: inline-block;
+}
+
+.assets-hold-modal .modal-footer .btn-primary {
+  background-color: #0d6efd;
+  border: 1px solid #0d6efd;
+  background-image: none;
+  color: #fff;
+}
+
+.assets-hold-modal .modal-footer .btn-primary:hover {
+  background-color: #0b5ed7;
+  border-color: #0a58ca;
+  transform: none;
+  box-shadow: none;
+}
+
+.assets-hold-modal .modal-footer .btn-secondary {
+  background-color: #6c757d;
+  border-color: #6c757d;
+  color: #fff;
+}
+
+.assets-hold-modal .modal-footer .btn-secondary:hover {
+  background-color: #5c636a;
+  border-color: #565e64;
+  color: #fff;
+}
+
+.assets-action-modal .modal-footer .btn-danger {
+  background-color: #dc3545;
+  border-color: #dc3545;
+  color: #fff;
+}
+
+.assets-action-modal .modal-footer .btn-danger:hover {
+  background-color: #bb2d3b;
+  border-color: #b02a37;
+  color: #fff;
 }
 </style>
 

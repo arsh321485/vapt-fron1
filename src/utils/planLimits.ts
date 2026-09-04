@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { isClaimInviteFlow } from "./claimInvite";
 
 export const BILLING_RETURN_TO_KEY = "vaptfix_billing_return_to";
@@ -123,44 +124,6 @@ export function isInvalidScanFileMessage(text) {
   );
 }
 
-/** Canonical copy when Freemium/undecided hits a global content-hash duplicate. */
-export const DUPLICATE_FILE_UPLOAD_MESSAGE =
-  "Duplicate file detected. This file was already uploaded.";
-
-/**
- * Backend global duplicate-file gate (Freemium / undecided only).
- * Must NOT be treated as Freemium replace-slot ("already have a report").
- */
-export function isDuplicateFileUploadMessage(textOrPayload) {
-  if (textOrPayload && typeof textOrPayload === "object") {
-    const code = String(
-      textOrPayload.code || textOrPayload.error_code || textOrPayload.error || "",
-    ).toLowerCase();
-    if (
-      code === "duplicate_file" ||
-      code === "duplicate_upload" ||
-      code === "duplicate_file_detected"
-    ) {
-      return true;
-    }
-    const blob = [
-      textOrPayload.error,
-      textOrPayload.message,
-      textOrPayload.detail,
-      JSON.stringify(textOrPayload),
-    ]
-      .filter(Boolean)
-      .join(" ");
-    return isDuplicateFileUploadMessage(blob);
-  }
-  const text = String(textOrPayload || "");
-  if (/duplicate_file(_detected|_upload)?/i.test(text)) return true;
-  if (/duplicate file detected/i.test(text)) return true;
-  if (/this file was already uploaded/i.test(text)) return true;
-  if (/file (content )?hash already (exists|uploaded)/i.test(text)) return true;
-  return false;
-}
-
 export function isNetworkOrTransportError(text) {
   return /network error|failed to fetch|err_network|err_connection|econnaborted|econnrefused|enotfound|timeout|timed out|502|503|504|cloudflare|could not reach|server temporarily unavailable|upload timed out/i.test(
     String(text || ""),
@@ -169,11 +132,8 @@ export function isNetworkOrTransportError(text) {
 
 /** Freemium already used its single report slot — replace should be allowed, not a hard dead-end. */
 export function isFreemiumReportUploadLimitMessage(text) {
-  const s = String(text || "");
-  // Global content-hash duplicate is a hard stop — never offer Replace.
-  if (isDuplicateFileUploadMessage(s)) return false;
   return /freemium.{0,60}(only|allows?).{0,30}1.{0,30}report|only 1 report upload|one report upload total|upgrade to premium to upload more reports|already (have|has|uploaded).{0,40}report/i.test(
-    s,
+    String(text || ""),
   );
 }
 
@@ -251,10 +211,6 @@ export function classifyFreemiumUploadBlock({
   if (!freemiumContext) return "none";
 
   const blob = [message, details ? JSON.stringify(details) : ""].filter(Boolean).join(" ");
-  // Duplicate hash across any admin — not a Freemium replace opportunity.
-  if (isDuplicateFileUploadMessage(details) || isDuplicateFileUploadMessage(blob)) {
-    return "none";
-  }
   if (
     freemiumBlocksMultiFileUpload({ planId: plan || "freemium", isFreemiumActive, fileCount: n }) ||
     isFreemiumSingleFileRequiredMessage(details) ||

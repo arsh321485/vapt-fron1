@@ -95,6 +95,21 @@
               </button>
             </div>
           </div>
+
+          <div v-if="mode === 'admin'" class="ma-connect-block">
+            <h4 class="ma-connect-title">Connect Slack / Teams</h4>
+            <p class="ma-section-desc mb-3">Email-signup admins can also connect Slack or Microsoft Teams to this account.</p>
+            <div class="ma-connect-actions">
+              <button type="button" class="btn ma-btn-outline" :disabled="oauthLoading === 'slack'" @click="connectSlack">
+                <span v-if="oauthLoading === 'slack'" class="spinner-border spinner-border-sm me-1"></span>
+                {{ slackConnected ? 'Slack connected' : 'Connect Slack' }}
+              </button>
+              <button type="button" class="btn ma-btn-outline" :disabled="oauthLoading === 'teams'" @click="connectTeams">
+                <span v-if="oauthLoading === 'teams'" class="spinner-border spinner-border-sm me-1"></span>
+                {{ teamsConnected ? 'Teams connected' : 'Connect Teams' }}
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- Password -->
@@ -367,10 +382,16 @@ export default {
       return this.mode === 'admin' ? '/admindashboardonboarding' : '/userdashboard';
     },
     navItems() {
-      return [
+      const items = [
         { id: 'profile', label: 'Profile', icon: 'bi bi-person' },
         { id: 'password', label: 'Password', icon: 'bi bi-key' },
+        { id: 'workspace', label: this.mode === 'admin' ? 'Projects' : 'Team', icon: 'bi bi-folder2' },
       ];
+      if (this.mode === 'admin') {
+        items.push({ id: 'billing', label: 'Billing', icon: 'bi bi-credit-card' });
+      }
+      items.push({ id: 'security', label: 'Security', icon: 'bi bi-shield-lock' });
+      return items;
     },
     visibleNavItems() {
       if (!this.allowedTabs?.length) return this.navItems;
