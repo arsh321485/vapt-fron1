@@ -98,7 +98,7 @@
                                                 <span
                                                     class="badge rounded-pill px-3 py-2"
                                                     :class="ticket.status === 'open' ? 'bg-danger' : 'bg-success'"
-                                                >{{ ticket.status }}</span>
+                                                >{{ formatStatusLabel(ticket.status) }}</span>
                                             </td>
                                             <td>{{ formatDate(ticket.created_at) }}</td>
                                         </tr>
@@ -139,8 +139,11 @@
 import DashboardMenu from '@/components/user-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/user-component/DashboardHeader.vue';
 import { useAuthStore } from '@/stores/authStore';
+import userTeamFilterWatch from '@/utils/userTeamFilterWatch';
+import { formatStatusLabel } from '@/utils/statusLabel';
 
 export default {
+  mixins: [userTeamFilterWatch],
     name: 'UserTicketsView',
     components: {
         DashboardMenu,
@@ -196,15 +199,25 @@ export default {
         });
     },
     methods: {
+    formatStatusLabel,
+    async onUserSelectedTeamChanged(team) {
+      if (typeof this.loadTickets === "function") await this.loadTickets();
+    },
         toggleSort() {
             this.sortOrder = this.sortOrder === 'desc' ? 'asc' : 'desc';
+        },
+        async liveRefreshPage() {
+            const reportId = this.authStore.userLatestReportId;
+            if (!reportId) return;
+            const res = await this.authStore.fetchUserAllTickets(reportId, true, this.authStore.userSelectedTeam);
+            if (res.status) this.tickets = res.data;
         },
         async loadTickets() {
             await this.authStore.fetchUserVulnerabilityRegister();
             const reportId = this.authStore.userLatestReportId;
             if (!reportId) return;
             this.loading = true;
-            const res = await this.authStore.fetchUserAllTickets(reportId);
+            const res = await this.authStore.fetchUserAllTickets(reportId, false, this.authStore.userSelectedTeam);
             this.loading = false;
             if (res.status) this.tickets = res.data;
         },

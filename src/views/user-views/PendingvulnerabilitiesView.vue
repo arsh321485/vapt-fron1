@@ -74,8 +74,10 @@
 import DashboardMenu from '@/components/user-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/user-component/DashboardHeader.vue';
 import { useAuthStore } from '@/stores/authStore';
+import userTeamFilterWatch from '@/utils/userTeamFilterWatch';
 
 export default {
+  mixins: [userTeamFilterWatch],
     name: 'PendingvulnerabilitiesView',
     components: {
         DashboardMenu,
@@ -96,12 +98,21 @@ export default {
         });
     },
     methods: {
+    async onUserSelectedTeamChanged(team) {
+      if (typeof this.loadTickets === "function") await this.loadTickets();
+    },
+        async liveRefreshPage() {
+            const reportId = this.authStore.userLatestReportId;
+            if (!reportId) return;
+            const res = await this.authStore.fetchUserOpenTickets(reportId, true, this.authStore.userSelectedTeam);
+            if (res.status) this.tickets = res.data;
+        },
         async loadTickets() {
             await this.authStore.fetchUserVulnerabilityRegister();
             const reportId = this.authStore.userLatestReportId;
             if (!reportId) return;
             this.loading = true;
-            const res = await this.authStore.fetchUserOpenTickets(reportId);
+            const res = await this.authStore.fetchUserOpenTickets(reportId, false, this.authStore.userSelectedTeam);
             this.loading = false;
             if (res.status) {
                 this.tickets = res.data;

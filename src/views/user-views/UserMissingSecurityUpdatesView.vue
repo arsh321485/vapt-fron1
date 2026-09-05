@@ -74,7 +74,7 @@
                             <span class="msu-status-badge"
                               :class="(vuln.status?.toLowerCase() === 'open') ? 'msu-status-open' : 'msu-status-closed'">
                               <span class="msu-status-dot"></span>
-                              <span class="text-capitalize">{{ vuln.status }}</span>
+                              <span class="text-capitalize">{{ formatStatusLabel(vuln.status) }}</span>
                             </span>
                           </td>
                           <td>
@@ -108,6 +108,7 @@ import DashboardMenu from '@/components/user-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/user-component/DashboardHeader.vue';
 import { useAuthStore } from '@/stores/authStore';
 import { getTeamTextClass } from '@/utils/teamColors';
+import { formatStatusLabel } from '@/utils/statusLabel';
 
 export default {
   name: 'UserMissingSecurityUpdatesView',
@@ -145,8 +146,17 @@ export default {
     },
   },
   methods: {
+    formatStatusLabel,
     teamTextClass(team) {
       return getTeamTextClass(team);
+    },
+    async liveRefreshPage() {
+      const store = useAuthStore();
+      const result = await store.fetchUserMitigationByTeam(true);
+      if (result.status) {
+        this.mitigationData = result.data;
+        this.reportId = result.data.report_id;
+      }
     },
     async loadData() {
       const store = useAuthStore();
@@ -341,14 +351,14 @@ export default {
   border-radius: 50%;
   flex-shrink: 0;
 }
-.msu-sev-critical { background: #fef2f2; color: #9b1c1c; }
-.msu-sev-critical .msu-sev-dot { background: #9b1c1c; }
-.msu-sev-high { background: #fff7ed; color: #c2410c; }
-.msu-sev-high .msu-sev-dot { background: #c2410c; }
-.msu-sev-medium { background: #fefce8; color: #a16207; }
-.msu-sev-medium .msu-sev-dot { background: #a16207; }
-.msu-sev-low { background: #f0fdf4; color: #15803d; }
-.msu-sev-low .msu-sev-dot { background: #15803d; }
+.msu-sev-critical { background: #f8dede; color: #b42318; }
+.msu-sev-critical .msu-sev-dot { background: #b42318; }
+.msu-sev-high { background: #fee2e2; color: #dc2626; }
+.msu-sev-high .msu-sev-dot { background: #dc2626; }
+.msu-sev-medium { background: #fef3c7; color: #f59e0b; }
+.msu-sev-medium .msu-sev-dot { background: #f59e0b; }
+.msu-sev-low { background: #d1fae5; color: #10b981; }
+.msu-sev-low .msu-sev-dot { background: #10b981; }
 
 /* Status badge */
 .msu-status-badge {

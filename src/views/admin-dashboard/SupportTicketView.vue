@@ -83,7 +83,7 @@
                       <td class="st-td">
                         <span class="st-status-badge" :class="ticket.status?.toLowerCase() === 'open' ? 'st-status-open' : 'st-status-closed'">
                           <span class="st-status-dot"></span>
-                          {{ ticket.status }}
+                          {{ formatStatusLabel(ticket.status) }}
                         </span>
                       </td>
                       <td class="st-td st-td-date">{{ new Date(ticket.created_at).toLocaleDateString() }}</td>
@@ -210,6 +210,7 @@
 import DashboardMenu from '@/components/admin-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/admin-component/DashboardHeader.vue';
 import { useAuthStore } from "@/stores/authStore";
+import { formatStatusLabel } from "@/utils/statusLabel";
 
 export default {
   name: 'SupportTicketView',
@@ -251,10 +252,20 @@ export default {
     }
   },
   methods: {
+    formatStatusLabel,
     getShortDescription(desc) {
       if (!desc) return "";
       const words = desc.split(" ");
       return words.length > 4 ? words.slice(0, 4).join(" ") + "..." : desc;
+    },
+    async liveRefreshPage() {
+      if (!this.authStore.latestReportId) {
+        await this.authStore.fetchVulnerabilityRegister(true);
+      }
+      const reportId = this.authStore.latestReportId || localStorage.getItem("reportId");
+      if (!reportId) return;
+      const res = await this.authStore.getTicketsByReport(reportId, true);
+      if (res.status) this.tickets = res.data;
     },
     async loadAllTickets() {
       if (!this.authStore.latestReportId) {
