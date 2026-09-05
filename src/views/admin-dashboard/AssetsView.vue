@@ -518,6 +518,7 @@
                                   <i class="bi bi-download"></i>
                                 </button>
                               </span>
+                              <i class="bi text-muted" :class="expandedClosedIndex === i ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
                             </div>
                           </div>
                           <div v-show="expandedClosedIndex === i" class="vuln-accordion-expand">

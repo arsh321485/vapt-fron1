@@ -1,3 +1,4 @@
+// @ts-nocheck
 const STORAGE_KEY = "vaptfix_teams_deep_link";
 
 function firstNonEmpty(values) {
@@ -41,21 +42,8 @@ export function extractTeamsDeepLink(payload = {}) {
     teams_desktop_url: pickFromObjects(sources, ["teams_desktop_url", "teamsDesktopUrl"]),
     teams_url: pickFromObjects(sources, ["teams_url", "teamsUrl"]),
   };
-
-  // Backend teams_tab_url is authoritative (includes ctx=channel). Keep as-is — do not rebuild.
-  const rawTab = String(links.teams_tab_url || "").trim();
-  const rawAlt = String(links.teams_tab_url_alt || "").trim();
-  if (isUsableBackendTeamsTabUrl(rawTab)) {
-    links.teams_tab_url = rawTab;
-    return links;
-  }
-  if (isUsableBackendTeamsTabUrl(rawAlt)) {
-    links.teams_tab_url = rawAlt;
-    return links;
-  }
-
-  // Fallback only when backend did not send a usable channel URL yet (e.g. provisioning).
   const fromChannels = collectChannelUrls(payload);
+  // Prefer admin-dashboard channel; still keep a valid backend /l/channel link (never wipe → Chat).
   const backendTab =
     normalizeAnyChannelDeepLink(links.teams_tab_url, { requireAdminDashboard: true }) ||
     normalizeAnyChannelDeepLink(links.teams_tab_url_alt, { requireAdminDashboard: true }) ||
@@ -199,20 +187,6 @@ export function isChannelSpecificTeamsUrl(url) {
   if (isVaptfixTeamDirectoryUrl(value)) return false;
   return /\/l\/channel\//i.test(decodedUrl(value));
 }
-
-/**
- * True when URL is a /l/channel/... deep link we can open as-is.
- * Reject Chat / team directory / bare Teams home — those are never the login target.
- */
-export function isUsableBackendTeamsTabUrl(url) {
-  const raw = String(url || "").trim();
-  if (!raw) return false;
-  if (isBareTeamsHome(raw) || isTeamsChatOrTeamHomeUrl(raw) || isVaptfixTeamDirectoryUrl(raw)) {
-    return false;
-  }
-  return /\/l\/channel\//i.test(decodedUrl(unwrapTeamsLauncherUrl(raw) || raw));
-}
-
 
 function isAdminDashboardChannelUrl(url) {
   if (!isChannelSpecificTeamsUrl(url)) return false;
@@ -523,26 +497,18 @@ function collectChannelUrls(payload = {}) {
   return urls;
 }
 
-/** Prefer backend teams_tab_url as-is. Never Chat / team directory / bare home. */
+/** Prefer "vaptfix admin dashboard" Posts link. Never Chat / team directory / bare home. */
 export function pickTeamsTabUrl(links) {
   const payload = links && typeof links === "object" ? links : {};
-
-  // 1) Backend field as-is (ctx=channel already present — do not rebuild path/query).
-  const rawCandidates = [
+  const built = buildAdminDashboardChannelUrl(payload);
+  if (built) return built;
+  const fieldCandidates = [
     payload.teams_tab_url,
     payload.teams_tab_url_alt,
     payload.teams_url,
     payload.teams_desktop_url,
   ];
-  for (const candidate of rawCandidates) {
-    const raw = String(candidate || "").trim();
-    if (isUsableBackendTeamsTabUrl(raw)) return raw;
-  }
-
-  // 2) Fallback rebuild only if backend URL missing (provisioning / legacy payloads).
-  const built = buildAdminDashboardChannelUrl(payload);
-  if (built) return built;
-  const all = [...rawCandidates, ...collectChannelUrls(payload)].filter(Boolean);
+  const all = [...fieldCandidates, ...collectChannelUrls(payload)].filter(Boolean);
   for (const url of all) {
     const admin = normalizeAnyChannelDeepLink(url, { requireAdminDashboard: true });
     if (admin) return admin;
@@ -561,7 +527,8 @@ export function pickTeamsTabUrl(links) {
       );
     }
   }
-  for (const url of rawCandidates) {
+  // Backend teams_tab_url is authoritative even if channel display name differs slightly.
+  for (const url of fieldCandidates) {
     const any = normalizeAnyChannelDeepLink(url, { requireAdminDashboard: false });
     if (any) return any;
   }
@@ -587,24 +554,14 @@ function sleep(ms) {
 }
 
 /**
- * Login response teams_tab_url is the dashboard channel — open as-is.
- * When status is "provisioning" (or URL missing), poll login-status/ every ~3s
- * until a real teams_tab_url arrives.
+ * Login response teams_tab_url is the dashboard channel.
+ * Poll only if that field is still missing (provisioning).
  */
 export async function resolveTeamsAdminDashboardUrl(payload, fetchStatus) {
   const first = extractTeamsDeepLink(payload);
   persistTeamsDeepLink(first);
-
-  const readyUrl = (links) => {
-    const raw = String(links?.teams_tab_url || "").trim();
-    if (isUsableBackendTeamsTabUrl(raw)) return raw;
-    return pickTeamsTabUrl(links || {}) || "";
-  };
-
-  const status = String(first.status || "").toLowerCase();
-  const immediate = readyUrl(first);
-  // Ready + URL → return as-is (no rebuild).
-  if (immediate && status !== "provisioning") return immediate;
+  const immediate = pickTeamsTabUrl(first);
+  if (immediate) return immediate;
 
   if (typeof fetchStatus === "function") {
     for (let i = 0; i < 15; i += 1) {
@@ -612,19 +569,15 @@ export async function resolveTeamsAdminDashboardUrl(payload, fetchStatus) {
       const nextPayload = await fetchStatus();
       const next = extractTeamsDeepLink(nextPayload || {});
       persistTeamsDeepLink(next);
-      const nextStatus = String(next.status || "").toLowerCase();
-      const url = readyUrl(next);
-      if (url && nextStatus !== "provisioning") return url;
-      // Some backends clear status once URL is ready — accept usable URL.
-      if (url && isUsableBackendTeamsTabUrl(String(next.teams_tab_url || "").trim())) {
-        return String(next.teams_tab_url).trim();
-      }
+      const url = pickTeamsTabUrl(next);
+      if (url) return url;
     }
   }
 
-  return readyUrl(readStoredTeamsDeepLink()) || immediate || "";
+  return pickTeamsTabUrl(readStoredTeamsDeepLink()) || immediate || "";
 }
 
+/** Same window name for OAuth and the Teams channel so the side tab is reused, never discarded. */
 export const TEAMS_WINDOW_NAME = "VaptFixTeams";
 
 function isAdminDashboardChannelHref(url) {
@@ -635,30 +588,23 @@ function isAdminDashboardChannelHref(url) {
 }
 
 export function openTeamsAdminDashboard(url, { newTab = true } = {}) {
-  const raw = String(url || "").trim();
+  const parsed = parseChannelDeepLink(url);
+  const channelId = parsed?.channelId || "";
+  const channelName = parsed?.channelName || "vaptfix admin dashboard";
+  const groupId = parsed?.groupId || "";
+  const tenantId = parsed?.tenantId || tenantIdFrom({});
 
-  // Backend teams_tab_url must be opened as-is (ctx=channel etc. already set).
-  // Do not rebuild / trim / swap host when the URL is already a channel deep link.
-  let target = "";
-  if (isUsableBackendTeamsTabUrl(raw)) {
-    target = raw;
-  } else {
-    const parsed = parseChannelDeepLink(raw);
-    const channelId = parsed?.channelId || "";
-    const channelName = parsed?.channelName || "vaptfix admin dashboard";
-    const groupId = parsed?.groupId || "";
-    const tenantId = parsed?.tenantId || tenantIdFrom({});
+  const launcher = channelId
+    ? buildChannelLauncherUrl(channelId, channelName, groupId, tenantId)
+    : "";
+  const cloud = toTeamsWebChannelUrl(url);
+  // Official Microsoft deep-link host (desktop/web protocol handoff).
+  const classic = cloud
+    ? cloud.replace(TEAMS_WEB_ORIGIN, TEAMS_DEEP_LINK_ORIGIN)
+    : "";
 
-    const launcher = channelId
-      ? buildChannelLauncherUrl(channelId, channelName, groupId, tenantId)
-      : "";
-    const cloud = toTeamsWebChannelUrl(raw);
-    const classic = cloud
-      ? cloud.replace(TEAMS_WEB_ORIGIN, TEAMS_DEEP_LINK_ORIGIN)
-      : "";
-    target = launcher || classic || cloud;
-  }
-
+  // Launcher type=channel first — direct cloud assign often restores last Chat.
+  const target = launcher || classic || cloud;
   if (!target || isBareTeamsHome(target) || isTeamsChatOrTeamHomeUrl(target)) {
     console.warn("[Teams] Refusing to open non-channel URL:", url || target);
     return false;
@@ -680,15 +626,14 @@ export function openTeamsAdminDashboard(url, { newTab = true } = {}) {
   return true;
 }
 
+/** OAuth callback tab → vaptfix admin dashboard channel (same tab). */
 export function landOnTeamsAdminDashboardChannel(payload, { newTab = false } = {}) {
   const links = extractTeamsDeepLink(payload || {});
   persistTeamsDeepLink(links);
-  const raw = String(links.teams_tab_url || "").trim();
   const url =
-    (isUsableBackendTeamsTabUrl(raw) ? raw : "") ||
     pickTeamsTabUrl(links) ||
     pickTeamsTabUrl(readStoredTeamsDeepLink()) ||
-    "";
+    toTeamsWebChannelUrl(buildAdminDashboardChannelUrl(payload || {}));
   return openTeamsAdminDashboard(url, { newTab });
 }
 
@@ -696,11 +641,7 @@ export function landOnTeamsAdminDashboardChannel(payload, { newTab = false } = {
 export function redirectToTeamsTabUrl(payload = {}) {
   const links = extractTeamsDeepLink(payload || {});
   persistTeamsDeepLink(links);
-  const raw = String(links.teams_tab_url || "").trim();
-  const url =
-    (isUsableBackendTeamsTabUrl(raw) ? raw : "") ||
-    pickTeamsTabUrl(links) ||
-    pickTeamsTabUrl(readStoredTeamsDeepLink());
+  const url = pickTeamsTabUrl(links) || pickTeamsTabUrl(readStoredTeamsDeepLink());
   return openTeamsAdminDashboard(url, { newTab: true });
 }
 

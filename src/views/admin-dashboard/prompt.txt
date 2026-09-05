@@ -1,1 +1,5 @@
-Fixed recently me agr fixed hio vgya hai to vo drop down hi uska open mat krao bs closed hi dikhao uski accordian ke uoer ka dropdown mat open kro closed vale ka admin user dono side
+Fixed recently me agr fixed ho gya hai to vo drop down hi uska open mat krao bs closed hi dikhao uski accordian ke uoer ka dropdown mat open kro closed vale ka admin user dono side
+
+more details button yha nhi add krna hai second image me yha card ate hai agr kisi me common vulnerabilty ata hai n card usme more details ki bitton chahiye mujhe
+
+inke liye Use case and iska expected result bhi dal do

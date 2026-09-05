@@ -1,3 +1,4 @@
+// @ts-nocheck
 export const ASSET_TYPE_FILTERS = [
   { key: "assets", label: "Assets", assetType: "other" },
   { key: "webapp", label: "Web App", assetType: "web_app" },

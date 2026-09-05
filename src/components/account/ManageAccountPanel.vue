@@ -367,10 +367,16 @@ export default {
       return this.mode === 'admin' ? '/admindashboardonboarding' : '/userdashboard';
     },
     navItems() {
-      return [
+      const items = [
         { id: 'profile', label: 'Profile', icon: 'bi bi-person' },
         { id: 'password', label: 'Password', icon: 'bi bi-key' },
+        { id: 'workspace', label: this.mode === 'admin' ? 'Projects' : 'Team', icon: 'bi bi-folder2' },
       ];
+      if (this.mode === 'admin') {
+        items.push({ id: 'billing', label: 'Billing', icon: 'bi bi-credit-card' });
+      }
+      items.push({ id: 'security', label: 'Security', icon: 'bi bi-shield-lock' });
+      return items;
     },
     visibleNavItems() {
       if (!this.allowedTabs?.length) return this.navItems;
