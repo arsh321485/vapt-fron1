@@ -528,6 +528,10 @@
 <script>
 import Swal from 'sweetalert2';
 import { useAuthStore } from '@/stores/authStore';
+import {
+  captureChatHandoffSource,
+  maybeShowReturnToChatPlatformPopup,
+} from '@/utils/adminHandoff';
 
 const ALLOWED_EXTENSIONS = [
   '.nessus',
@@ -1071,6 +1075,8 @@ export default {
       if (primaryReportId) {
         authStore.setActiveReportId(primaryReportId);
       }
+      // Teams/Slack handoff: text-only alert (no Open Teams / Continue website buttons).
+      await maybeShowReturnToChatPlatformPopup();
       const route = authStore.isSlackOrTeamsLogin() ? '/riskcriteria' : '/communication';
       this.$router.replace(route);
     },
@@ -1146,6 +1152,7 @@ export default {
     },
   },
   async mounted() {
+    captureChatHandoffSource(this.$route?.query || {});
     this.applyRouteMode();
     // Prefetch previously uploaded scope + report for Current boards
     await Promise.all([this.loadExistingScope(), this.loadExistingReport()]);

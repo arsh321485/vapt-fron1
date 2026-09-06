@@ -10,6 +10,7 @@ import {
   lookupFixVulnerabilityId,
   normalizeAssetVulnerabilityList,
 } from "@/utils/assetVulnerabilities";
+import { persistTeamsDeepLink, extractTeamsDeepLink } from "@/utils/teamsDeepLink";
 
 interface RoleAssignmentEntry {
   assets: string[];
@@ -1340,8 +1341,11 @@ export const useAuthStore = defineStore("auth", {
 
         const data = response.data;
 
-        // basic validation
-        if (!data || !data.tokens || !data.user) {
+        // Accept either app JWT (tokens) or Django JWT — backend may send either shape.
+        const hasUser = !!(data && data.user);
+        const hasAppTokens = !!(data?.tokens?.access || data?.tokens?.refresh);
+        const hasDjangoTokens = !!(data?.django_access_token || data?.access_token);
+        if (!data || !hasUser || (!hasAppTokens && !hasDjangoTokens)) {
           return { status: false, message: "Invalid login response" };
         }
 
@@ -1379,6 +1383,9 @@ export const useAuthStore = defineStore("auth", {
         // mark Teams connected
         localStorage.setItem("teams_connected", "true");
 
+        // Persist backend teams_tab_url byte-for-byte (includes ctx=channel).
+        persistTeamsDeepLink(extractTeamsDeepLink(data));
+
         const appAccess = data.tokens?.access;
         if (appAccess && data.user) {
           this.setAuth(appAccess, data.user);
@@ -1395,6 +1402,17 @@ export const useAuthStore = defineStore("auth", {
       } catch (error) {
         console.error("Microsoft login API error:", error);
         return { status: false, message: "Microsoft login failed" };
+      }
+    },
+    async fetchMicrosoftTeamsLoginStatus() {
+      try {
+        const res = await endpoint.get("/api/admin/users/microsoft-teams/login-status/");
+        const data = res.data || {};
+        persistTeamsDeepLink(extractTeamsDeepLink(data));
+        return { status: true, data };
+      } catch (error) {
+        console.error("Microsoft Teams login-status error:", error);
+        return { status: false, data: null };
       }
     },
     // async microsoftLogin(accessToken: string) {
@@ -3720,6 +3738,8 @@ export const useAuthStore = defineStore("auth", {
         const body = res.data;
         const inner = body?.data ?? body;
         if (body?.success !== false && this._applyMemberAuthFromResponse(inner || body)) {
+          persistTeamsDeepLink(extractTeamsDeepLink(body || {}));
+          persistTeamsDeepLink(extractTeamsDeepLink(inner || {}));
           return { status: true, data: body, message: body?.message };
         }
         return {

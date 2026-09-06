@@ -388,6 +388,7 @@ import {
   isUserSetPasswordDeepLink,
   readStoredSetPasswordDeepLink,
 } from '@/utils/userSetPasswordDeepLink';
+import { extractTeamsDeepLink, persistTeamsDeepLink } from '@/utils/teamsDeepLink';
 
 export default {
   name: 'SignUpModal',
@@ -981,6 +982,8 @@ export default {
         if (event.data.django_access_token) localStorage.setItem('django_access_token', event.data.django_access_token);
         if (event.data.django_refresh_token) localStorage.setItem('django_refresh_token', event.data.django_refresh_token);
         if (event.data.user) localStorage.setItem('local_user', JSON.stringify(event.data.user));
+        // Backend teams_tab_url as-is — used when opening Teams later.
+        persistTeamsDeepLink(extractTeamsDeepLink(event.data || {}));
         localStorage.setItem('teams_connected', 'true');
         this.adminTeamsConnected = true;
         this.adminSlackConnected = false;

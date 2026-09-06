@@ -217,6 +217,16 @@ import { useAuthStore } from '@/stores/authStore';
 import Swal from 'sweetalert2';
 import teamsIcon from '@/assets/images/teams.png';
 import slackIcon from '@/assets/images/slack.png';
+import {
+  extractTeamsDeepLink,
+  persistTeamsDeepLink,
+  pickTeamsTabUrl,
+  readStoredTeamsDeepLink,
+  redirectToTeamsTabUrl,
+  resolveTeamsAdminDashboardUrl,
+  openTeamsAdminDashboard,
+  isUsableBackendTeamsTabUrl,
+} from '@/utils/teamsDeepLink';
 
 export default {
   name: 'AdminSignUpModal',
@@ -489,9 +499,34 @@ export default {
       }
     },
   // —— Slack / Teams: same as LocationView (/communication) ——
+    async openStoredTeamsDashboard() {
+      // Never open bare https://teams.cloud.microsoft/ — use backend teams_tab_url only.
+      const stored = readStoredTeamsDeepLink();
+      const raw = String(stored.teams_tab_url || pickTeamsTabUrl(stored) || '').trim();
+      if (raw && isUsableBackendTeamsTabUrl(raw) && openTeamsAdminDashboard(raw, { newTab: true })) {
+        return true;
+      }
+      if (typeof this.authStore.fetchMicrosoftTeamsLoginStatus === 'function') {
+        const statusRes = await this.authStore.fetchMicrosoftTeamsLoginStatus();
+        const url = await resolveTeamsAdminDashboardUrl(statusRes.data || {}, async () => {
+          const next = await this.authStore.fetchMicrosoftTeamsLoginStatus();
+          return next.data || {};
+        });
+        if (url && openTeamsAdminDashboard(url, { newTab: true })) return true;
+      }
+      return redirectToTeamsTabUrl();
+    },
     async startMicrosoftLogin() {
       if (this.teamsConnected) {
-        window.open('https://teams.microsoft.com/', '_blank');
+        const opened = await this.openStoredTeamsDashboard();
+        if (!opened) {
+          Swal.fire({
+            icon: 'info',
+            title: 'Teams channel not ready',
+            text: 'Could not open the VAPTFIX admin dashboard channel yet. Try signing in with Teams again.',
+            confirmButtonColor: '#241447',
+          });
+        }
         return;
       }
       if (this.isTeamsDisabled && !this.teamsConnected) return;
@@ -538,6 +573,9 @@ export default {
         const channels = teamObj.channels || [];
         localStorage.setItem('vaptfix_channels', JSON.stringify(channels));
       }
+
+      // Persist backend teams_tab_url as-is (ctx=channel) — never invent a URL.
+      persistTeamsDeepLink(extractTeamsDeepLink(event.data || {}));
 
       localStorage.setItem('teams_connected', 'true');
       this.teamsConnected = true;

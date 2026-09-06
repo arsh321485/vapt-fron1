@@ -82,6 +82,7 @@ import {
   buildUserSetPasswordHomeQuery,
   normalizeUserSetPasswordRoute,
 } from "../utils/userSetPasswordDeepLink";
+import { captureChatHandoffSource } from "../utils/adminHandoff";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -593,6 +594,9 @@ const router = createRouter({
 });
 
 router.beforeEach((to, _from, next) => {
+  // Teams/Slack bot handoff: remember ?source=teams|slack across wizard steps.
+  captureChatHandoffSource(to.query as Record<string, unknown>);
+
   const normalized = normalizeUserSetPasswordRoute(to);
   if (normalized) {
     return next({ ...normalized, replace: true });
