@@ -144,9 +144,7 @@ export default {
 
     isCompleted(step) {
       if (!this.authStore) return false;
-      // A step is completed if it's in the completedSteps array
-      // OR if it's the current active step (always show blue for current)
-      return this.authStore.completedSteps.includes(step) || this.currentStep === step;
+      return this.authStore.completedSteps.includes(step);
     },
 
     isLineCompleted(step) {

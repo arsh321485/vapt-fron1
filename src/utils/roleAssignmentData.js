@@ -1,3 +1,5 @@
+import { extractIpAddress } from "@/utils/assetDummyData";
+
 export const ROLE_ASSIGNMENT_CATALOG = {
   PM: {
     assets: [
@@ -58,13 +60,57 @@ export function createEmptyRoleAssignments() {
   };
 }
 
-export function getAssignmentSummaryText(selectedRoles, roleAssignments) {
-  let assets = 0;
+export function assignmentAssetKey(assetOrId) {
+  if (assetOrId && typeof assetOrId === "object") {
+    const ip = extractIpAddress(
+      assetOrId.ip || assetOrId.host_ip || assetOrId.name || assetOrId.id || assetOrId.host_name || "",
+    );
+    if (ip) return ip;
+    const name = String(assetOrId.name || assetOrId.id || assetOrId.host_name || "").trim();
+    return name.toLowerCase();
+  }
+  const raw = String(assetOrId || "").trim();
+  return extractIpAddress(raw) || raw.toLowerCase();
+}
+
+/** One row per unique IP — duplicate Nessus hostnames for the same IP are dropped. */
+export function uniqueCatalogAssets(assets) {
+  const seen = new Set();
+  const out = [];
+  (assets || []).forEach((asset) => {
+    const key = assignmentAssetKey(asset);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    const id = extractIpAddress(asset?.name || asset?.id) || asset.id;
+    out.push({ ...asset, id: id || asset.id });
+  });
+  return out;
+}
+
+export function countUniqueAssignmentAssets(selectedIds, catalogAssets = []) {
+  const seen = new Set();
+  (selectedIds || []).forEach((id) => {
+    const asset = (catalogAssets || []).find((item) => item.id === id);
+    const key = assignmentAssetKey(asset || id);
+    if (key) seen.add(key);
+  });
+  return seen.size;
+}
+
+export function getAssignmentSummaryText(selectedRoles, roleAssignments, catalog = {}) {
+  const ips = new Set();
   let vulns = 0;
   selectedRoles.forEach((roleShort) => {
-    assets += roleAssignments[roleShort]?.assets?.length || 0;
+    const selectedIds = roleAssignments[roleShort]?.assets || [];
+    const catalogAssets = catalog[roleShort]?.assets || [];
+    selectedIds.forEach((id) => {
+      const asset = catalogAssets.find((item) => item.id === id);
+      const key = assignmentAssetKey(asset || id);
+      if (key) ips.add(key);
+    });
     vulns += roleAssignments[roleShort]?.vulnerabilities?.length || 0;
   });
+  const assets = ips.size;
   return `${assets} asset${assets === 1 ? "" : "s"}, ${vulns} vul${vulns === 1 ? "" : "s"} selected`;
 }
 

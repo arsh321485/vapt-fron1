@@ -17,12 +17,27 @@ export default defineConfig({
         },
     },
     server: {
+        headers: {
+            'Cache-Control': 'no-store',
+        },
         proxy: {
             '/api': {
-                target: 'https://vaptbackend.secureitlab.com',
+                target: process.env.VITE_DEV_API_PROXY || 'https://vaptbackend.secureitlab.com',
                 changeOrigin: true,
-                secure: true,
+                secure: false,
+                configure: (proxy) => {
+                    proxy.on('proxyRes', (proxyRes) => {
+                        proxyRes.headers['cache-control'] = 'no-store, no-cache, must-revalidate, max-age=0';
+                        proxyRes.headers['pragma'] = 'no-cache';
+                        proxyRes.headers['expires'] = '0';
+                    });
+                },
             },
+        },
+    },
+    preview: {
+        headers: {
+            'Cache-Control': 'no-store',
         },
     },
 });

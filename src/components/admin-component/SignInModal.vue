@@ -216,6 +216,7 @@
 <script>
 import { useAuthStore } from '@/stores/authStore';
 import { markPostLoginSuccess } from '@/utils/postLoginSuccess';
+import { extractClaimInviteToken, readClaimInviteToken, setClaimInviteValid, storeClaimInviteToken, currentClaimInviteToken, ensureClaimInviteCaptured } from '@/utils/claimInvite';
 import Swal from 'sweetalert2';
 
 export default {
@@ -269,6 +270,8 @@ export default {
   watch: {
     show(newVal) {
       if (newVal) {
+        const fromQuery = extractClaimInviteToken(this.$route?.query || {});
+        if (fromQuery) storeClaimInviteToken(fromQuery);
         this.activeTab = this.defaultTab;
         this.$nextTick(() => {
           if (this.activeTab === 'admin') {
@@ -414,10 +417,13 @@ export default {
       this.adminLoading = true;
       try {
         const authStore = useAuthStore();
+        const inviteToken = ensureClaimInviteCaptured(this.$route?.query || {}) || currentClaimInviteToken(this.$route?.query || {});
+        if (inviteToken) storeClaimInviteToken(inviteToken);
         const result = await authStore.login({
           email: this.adminForm.email,
           password: this.adminForm.password,
-          recaptcha: recaptchaResponse
+          recaptcha: recaptchaResponse,
+          invite_token: inviteToken,
         });
 
         if (result.status) {
@@ -434,7 +440,11 @@ export default {
             confirmButtonColor: '#241447'
           });
           this.adminForm.password = '';
-          window.grecaptcha?.reset(this.recaptchaWidgetId);
+          try {
+            window.grecaptcha?.reset(this.recaptchaWidgetId);
+          } catch {
+            /* ignore stale widget */
+          }
         }
       } catch (err) {
         console.error('Admin login error:', err);
@@ -460,6 +470,10 @@ export default {
       if (userType === 'user' || userType === 'member' || userType === 'internal' || userType === 'external') {
         this.$router.replace('/userdashboard');
         return;
+      }
+
+      if (readClaimInviteToken()) {
+        setClaimInviteValid(true);
       }
 
       try {

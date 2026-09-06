@@ -1,4 +1,10 @@
 import Swal from "sweetalert2";
+import {
+  openTeamsAdminDashboard,
+  pickTeamsTabUrl,
+  readStoredTeamsDeepLink,
+  redirectToTeamsTabUrl,
+} from "./teamsDeepLink";
 
 const HANDOFF_ERROR_KEY = "vaptfix_handoff_error";
 const HANDOFF_NAV_KEY = "vaptfix_handoff_nav";
@@ -64,29 +70,78 @@ function platformLabel(source: ChatHandoffSource): string {
   return source === "slack" ? "Slack" : "Microsoft Teams";
 }
 
+function openSlackWorkspace() {
+  try {
+    const raw = localStorage.getItem("slack_team");
+    if (raw) {
+      const team = JSON.parse(raw);
+      const url =
+        String(team?.url || team?.workspace_url || team?.team_url || "").trim() ||
+        (team?.domain
+          ? `https://${String(team.domain).replace(/\.slack\.com$/i, "")}.slack.com`
+          : "");
+      if (url) {
+        window.open(url, "_blank", "noopener,noreferrer");
+        return true;
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  const teamId = String(localStorage.getItem("slack_team_id") || "").trim();
+  if (teamId) {
+    window.open(
+      `https://app.slack.com/client/${encodeURIComponent(teamId)}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
+    return true;
+  }
+  window.open("https://app.slack.com", "_blank", "noopener,noreferrer");
+  return true;
+}
+
+function openChatPlatform(source: ChatHandoffSource) {
+  if (source === "slack") {
+    openSlackWorkspace();
+    return;
+  }
+  if (redirectToTeamsTabUrl()) return;
+  const stored = pickTeamsTabUrl(readStoredTeamsDeepLink());
+  if (stored && openTeamsAdminDashboard(stored, { newTab: true })) return;
+  window.open("https://teams.microsoft.com", "_blank", "noopener,noreferrer");
+}
+
 /**
  * After Freemium or paid checkout completes for a Teams/Slack bot handoff.
- * Text-only alert — no buttons (Teams/Slack already open; avoid duplicate open errors).
+ * Page-agnostic: any flow that captured source=teams|slack shows this once.
  */
 export async function maybeShowReturnToChatPlatformPopup(): Promise<boolean> {
   const source = readChatHandoffSource();
   if (!source) return false;
 
   const platform = platformLabel(source);
-  await Swal.fire({
+  const result = await Swal.fire({
     icon: "success",
     title: "You're all set!",
     html: `Head back to <strong>${platform}</strong> to see your dashboard and start fixing vulnerabilities.`,
-    showConfirmButton: false,
-    showCancelButton: false,
-    showDenyButton: false,
-    timer: 3500,
-    timerProgressBar: true,
-    allowOutsideClick: true,
+    showConfirmButton: true,
+    showCancelButton: true,
+    confirmButtonText: `Open ${platform}`,
+    cancelButtonText: "Continue on the website instead",
+    confirmButtonColor: "#241447",
+    cancelButtonColor: "#94a3b8",
+    allowOutsideClick: false,
     allowEscapeKey: true,
+    reverseButtons: true,
   });
 
   clearChatHandoffSource();
+
+  if (result.isConfirmed) {
+    openChatPlatform(source);
+    return true;
+  }
   return false;
 }
 

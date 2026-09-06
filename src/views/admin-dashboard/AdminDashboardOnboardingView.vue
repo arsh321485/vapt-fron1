@@ -31,6 +31,13 @@
                   :class="{ 'dashboard-walkthrough-popup-bottom': walkthroughPopupPlacement === 'bottom' }"
                   :style="walkthroughPopupStyle"
                 >
+                  <button
+                    type="button"
+                    class="dashboard-walkthrough-skip-corner"
+                    @click="skipDashboardWalkthrough"
+                  >
+                    Skip
+                  </button>
                   <div class="dashboard-walkthrough-step">STEP {{ walkthroughStepIndex + 1 }} OF {{ walkthroughSteps.length }}</div>
                   <h3 class="dashboard-walkthrough-title">{{ currentWalkthroughStep?.title }}</h3>
                   <p class="dashboard-walkthrough-text">{{ walkthroughDescriptionText }}</p>
@@ -151,6 +158,19 @@
               </div>
             </div>
 
+            <div
+              v-if="freemiumUpgradeBanner"
+              class="freemium-upgrade-banner d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3"
+            >
+              <div class="d-flex align-items-start gap-2 flex-grow-1">
+                <i class="bi bi-unlock-fill flex-shrink-0"></i>
+                <p class="mb-0">{{ freemiumUpgradeBanner.message }}</p>
+              </div>
+              <button type="button" class="freemium-upgrade-btn flex-shrink-0" @click="goFreemiumUpgrade">
+                Upgrade to Premium
+              </button>
+            </div>
+
             <!-- ===== 6-CARD ANALYTICS GRID ===== -->
             <!-- ROW 1: Assets + MTTR | Vulnerabilities | Mitigation Timeline -->
             <div class="row g-2 mb-3 align-items-stretch">
@@ -230,7 +250,7 @@
                       </div>
 
                       <div class="d-flex justify-content-between align-items-center pt-2" style="border-top:1px solid #f1f5f9; margin-top:8px;">
-                        <span style="font-size:9px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Avg. remediation</span>
+                        <span style="font-size:9px;color:#94a3b8;font-weight:600;letter-spacing:0.02em;">Mitigation in progress</span>
                         <button
                           class="in-process-count-btn"
                           :disabled="!inProcessCount"
@@ -251,7 +271,7 @@
                   <div class="modal-content sr-modal-content">
                     <div class="modal-header sr-modal-header">
                       <h5 class="modal-title sr-modal-title in-process-modal-title">
-                        <i class="bi bi-hourglass-split me-2 in-process-modal-icon"></i>In-Process Vulnerabilities
+                        <i class="bi bi-hourglass-split me-2 in-process-modal-icon"></i>Mitigation in progress
                       </h5>
                       <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter: brightness(0);"></button>
                     </div>
@@ -260,10 +280,10 @@
                       <div v-else class="d-flex flex-column gap-2">
                         <div v-for="item in inProcessItems" :key="item.fix_vulnerability_id" class="in-process-item-row">
                           <div>
-                            <div class="in-process-vuln-name">{{ item.vulnerability_name }}</div>
+                            <div class="in-process-vuln-name" :title="item.vulnerability_name">{{ item.vulnerability_name }}</div>
                             <div class="in-process-asset">Asset: {{ item.asset }}</div>
                           </div>
-                          <button class="in-process-action-btn in-process-view-btn" @click="goToInProcessTimeline(item)">View</button>
+                          <button class="in-process-action-btn in-process-view-btn" @click="goToInProcessTimeline(item)">Fix now</button>
                         </div>
                       </div>
                     </div>
@@ -304,14 +324,14 @@
                     </div>
                     <!-- Medium -->
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
-                      <span style="font-size:12px; font-weight:800; color:#b45309;">{{ authStore.vulnerabilities.medium || 0 }}</span>
+                      <span style="font-size:12px; font-weight:800; color:#f59e0b;">{{ authStore.vulnerabilities.medium || 0 }}</span>
                       <div style="width:100%; border-radius:6px 6px 0 0; background:#f59e0b; min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: totalVulnerabilities ? ((authStore.vulnerabilities.medium || 0) / totalVulnerabilities * 66) + 'px' : '4px' }">
                       </div>
                     </div>
                     <!-- Low -->
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
-                      <span style="font-size:12px; font-weight:800; color:#0f766e;">{{ authStore.vulnerabilities.low || 0 }}</span>
+                      <span style="font-size:12px; font-weight:800; color:#10b981;">{{ authStore.vulnerabilities.low || 0 }}</span>
                       <div style="width:100%; border-radius:6px 6px 0 0; background:#10b981; min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: totalVulnerabilities ? ((authStore.vulnerabilities.low || 0) / totalVulnerabilities * 66) + 'px' : '4px' }">
                       </div>
@@ -324,16 +344,21 @@
                   <div class="d-flex justify-content-around mt-1 flex-wrap px-1">
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#b42318;"></span><span style="color:#b42318;">Critical</span></div>
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#dc2626;"></span><span style="color:#dc2626;">High</span></div>
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#f59e0b;"></span><span style="color:#b45309;">Medium</span></div>
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#0f766e;"></span><span style="color:#0f766e;">Low</span></div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#f59e0b;"></span><span style="color:#f59e0b;">Medium</span></div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#10b981;"></span><span style="color:#10b981;">Low</span></div>
                   </div>
                 </div>
               </div>
 
-              <!-- Card 3: Mitigation Timeline -->
+              <!-- Card 3: Mitigation Timeline — same flow as header "Update Risk Criteria" -->
               <div class="col-4">
+                <router-link
+                  :to="{ path: '/riskcriteria', query: { returnTo: $route.fullPath } }"
+                  class="text-decoration-none d-block h-100"
+                  title="Update Risk Criteria"
+                >
                 <div
-                  class="dash-card dash-card-tight dash-card-analytics row1-equal-card h-100 walkthrough-target"
+                  class="dash-card dash-card-tight dash-card-analytics row1-equal-card h-100 walkthrough-target dash-card-clickable"
                   :class="{ 'walkthrough-target-active': walkthroughActive && activeWalkthroughTarget === 'mitigationCriteria' }"
                   data-walkthrough-target="mitigationCriteria"
                 >
@@ -342,11 +367,19 @@
                       <i class="bi bi-clock-history dash-icon-teal" style="font-size:14px;"></i>
                     </div>
                     <span class="dash-card-label">Mitigation Criteria Timeline</span>
+                    <span class="dash-card-action-hint ms-auto">
+                      <i class="bi bi-sliders"></i> Update Risk Criteria
+                    </span>
                     <!-- <span class="info-tooltip" data-tooltip="Displays the remaining remediation time for vulnerabilities based on the defined risk criteria."><i class="bi bi-info-circle dash-info-icon"></i></span> -->
                   </div>
 
+                  <div v-if="mitigationGaugesLoading" class="d-flex flex-column align-items-center justify-content-center py-3">
+                    <div class="spinner-border spinner-border-sm text-secondary" role="status"></div>
+                    <span style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:8px;">Loading timeline...</span>
+                  </div>
+
                   <!-- No-data state -->
-                  <div v-if="!authStore.mitigationTimeline" class="d-flex flex-column align-items-center justify-content-center py-2" style="opacity:0.55;">
+                  <div v-else-if="!hasMitigationGaugeData" class="d-flex flex-column align-items-center justify-content-center py-2" style="opacity:0.55;">
                     <i class="bi bi-clock-history" style="font-size:2rem;color:#cbd5e1;margin-bottom:8px;"></i>
                     <span style="font-size:11px;color:#94a3b8;font-weight:600;">Awaiting timeline data</span>
                   </div>
@@ -449,6 +482,7 @@
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#d1d5db;"></span>Non-Compliance</div>
                   </div>
                 </div>
+                </router-link>
               </div>
 
 
@@ -558,7 +592,7 @@
                   </div>
                   <div class="d-flex align-items-center gap-2 mb-2">
                     <span class="dash-big-num" style="font-size:2.6rem;">{{ String(vulFixedTotal).padStart(2, '0') }}</span>
-                    <span style="font-size:10px; font-weight:700; color:#10b981; background:#f0fdf4; padding:3px 9px; border-radius:20px; letter-spacing:0.03em;">Remediated</span>
+                    
                   </div>
                   <div class="d-flex align-items-end justify-content-around gap-2 px-3" style="height:80px;">
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
@@ -572,12 +606,12 @@
                         :style="{ height: vulFixedTotal ? (vulFixedHigh / vulFixedTotal * 64) + 'px' : '4px' }"></div>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
-                      <span style="font-size:12px; font-weight:800; color:#b45309;">{{ vulFixedMedium }}</span>
+                      <span style="font-size:12px; font-weight:800; color:#f59e0b;">{{ vulFixedMedium }}</span>
                       <div style="width:100%; border-radius:6px 6px 0 0; background:#f59e0b; min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: vulFixedTotal ? (vulFixedMedium / vulFixedTotal * 64) + 'px' : '4px' }"></div>
                     </div>
                     <div class="d-flex flex-column align-items-center gap-1" style="flex:1; max-width:52px;">
-                      <span style="font-size:12px; font-weight:800; color:#0f766e;">{{ vulFixedLow }}</span>
+                      <span style="font-size:12px; font-weight:800; color:#10b981;">{{ vulFixedLow }}</span>
                       <div style="width:100%; border-radius:6px 6px 0 0; background:#10b981; min-height:4px; transition:height 0.5s ease;"
                         :style="{ height: vulFixedTotal ? (vulFixedLow / vulFixedTotal * 64) + 'px' : '4px' }"></div>
                     </div>
@@ -586,8 +620,8 @@
                   <div class="d-flex justify-content-around mt-2 flex-wrap px-1">
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#b42318;"></span><span style="color:#b42318;">Critical</span></div>
                     <div class="dash-legend-item"><span class="dash-dot" style="background:#dc2626;"></span><span style="color:#dc2626;">High</span></div>
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#f59e0b;"></span><span style="color:#b45309;">Medium</span></div>
-                    <div class="dash-legend-item"><span class="dash-dot" style="background:#0f766e;"></span><span style="color:#0f766e;">Low</span></div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#f59e0b;"></span><span style="color:#f59e0b;">Medium</span></div>
+                    <div class="dash-legend-item"><span class="dash-dot" style="background:#10b981;"></span><span style="color:#10b981;">Low</span></div>
                   </div>
                 </div>
               </div>
@@ -604,7 +638,7 @@
                       <div class="dash-card-label" style="font-size:13px; font-weight:700; color:#1e293b; letter-spacing:0.02em;">Mitigation Timeline Extension</div>
                       <div class="dash-mte-subtitle">Pending requests by team and severity</div>
                     </div>
-                    <button type="button" class="dash-mte-link-btn" @click="openMitigationExtensionModal">
+                    <button type="button" class="dash-mte-link-btn" @click="openMitigationExtensionModal()">
                       View Full Report <i class="bi bi-chevron-right"></i>
                     </button>
                   </div>
@@ -634,7 +668,8 @@
                             <span
                               v-if="teamHasPendingRequests(row)"
                               class="dash-mte-team-alert"
-                              title="Pending timeline extension request received"
+                              title="New timeline extension request — click to review"
+                              @click.stop="openMitigationExtensionForTeam(row.team)"
                             >*</span>
                           </td>
                           <td><span class="dash-mte-pill critical">{{ String(row.critical || 0).padStart(2,'0') }}</span></td>
@@ -668,6 +703,13 @@
                     <i class="bi bi-info-circle"></i>
                   </button>
                   <div v-if="commonWalkthroughActive" class="common-walkthrough-popup">
+                    <button
+                      type="button"
+                      class="dashboard-walkthrough-skip-corner"
+                      @click="skipCommonWalkthrough"
+                    >
+                      Skip
+                    </button>
                     <div class="dashboard-walkthrough-step">STEP {{ commonWalkthroughStepIndex + 1 }} OF {{ commonWalkthroughSteps.length }}</div>
                     <h3 class="dashboard-walkthrough-title">{{ currentCommonWalkthroughStep?.title }}</h3>
                     <p class="dashboard-walkthrough-text">{{ currentCommonWalkthroughStep?.description }}</p>
@@ -740,13 +782,12 @@
               <!-- Vulnerabilities for selected team -->
               <div class="d-flex justify-content-between align-items-center mb-3">
                 <h6 class="cv-vuln-heading mb-0">Vulnerabilities ({{ mitigationActiveTab }}) — {{ uniqueMitigationVulns.length }}</h6>
-                <button type="button" @click="openCommonVulnModal" style="background:none; border:none; padding:0; color:#0f696e; font-size:13px; font-weight:600; cursor:pointer;">
+                <button type="button" class="cv-more-details-btn" @click="openCommonVulnModal">
                   More details <i class="bi bi-arrow-right ms-1"></i>
                 </button>
               </div>
 
-              <div v-if="mitigationLoading && uniqueMitigationVulns.length === 0" class="py-3 text-center text-muted">Loading...</div>
-              <div v-else-if="!mitigationLoading && uniqueMitigationVulns.length === 0" class="py-3 text-muted small">No vulnerabilities assigned to this team.</div>
+              <div v-if="uniqueMitigationVulns.length === 0" class="py-3 text-muted small">No vulnerabilities assigned to this team.</div>
               <div v-else class="row g-3">
                 <div class="col-md-3" v-for="(vuln, i) in uniqueMitigationVulns.slice(0, 8)" :key="(vuln.plugin_name || 'vuln') + i">
                   <div class="cv-vuln-card">
@@ -759,6 +800,13 @@
                       <i class="bi bi-person me-1" style="color:#94a3b8; font-size:0.78rem;"></i>
                         <span class="cv-affected-label">{{ getVulnAssetCount(vuln) ?? 1 }} affected assets</span>
                     </div>
+                    <button
+                      type="button"
+                      class="cv-more-details-btn cv-more-details-btn-sm"
+                      @click="openCommonVulnModal"
+                    >
+                      More details <i class="bi bi-arrow-right"></i>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -864,7 +912,7 @@
                           <div v-else class="d-flex flex-column gap-3">
                             <div v-for="(v, i) in overlayFilteredVulns" :key="i" class="vuln-accordion-item">
                               <div class="vuln-accordion-header" data-bs-toggle="collapse" :data-bs-target="'#ov' + i" role="button">
-                                <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
+                                <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0 overflow-hidden">
                                   <i class="bi bi-exclamation-triangle-fill vuln-icon flex-shrink-0"
                                     :class="{
                                       'vuln-icon-critical': v.severity === 'Critical',
@@ -872,7 +920,7 @@
                                       'vuln-icon-medium': v.severity === 'Medium',
                                       'vuln-icon-low': v.severity === 'Low'
                                     }"></i>
-                                  <span class="vuln-name">{{ v.vul_name }}</span>
+                                  <TruncatedVulnName class="vuln-name" :text="v.vul_name" />
                                 </div>
                                 <div class="d-flex align-items-center gap-3 flex-shrink-0 vuln-top-meta-row">
                                   <span class="sev-badge" :class="'sev-' + (v.severity?.toLowerCase() || '')">{{ v.severity }}</span>
@@ -916,8 +964,8 @@
                                 <div class="d-flex align-items-center gap-3">
                                   <i class="bi bi-check-circle-fill fixed-check-icon"></i>
                                   <div>
-                                    <p class="fixed-vuln-name">{{ item.vulnerability_name }}</p>
-                                    <p class="fixed-vuln-date">Status: {{ item.status }}</p>
+                                    <p class="fixed-vuln-name" :title="item.vulnerability_name">{{ item.vulnerability_name }}</p>
+                                    <p class="fixed-vuln-date">Status: {{ formatStatusLabel(item.status) }}</p>
                                   </div>
                                 </div>
                               </div>
@@ -931,7 +979,7 @@
                             <div v-for="(req, i) in overlaySupportRequests" :key="req._id" class="support-req-item">
                               <div class="d-flex align-items-center gap-3">
                                 <div class="sr-index-circle">{{ i + 1 }}</div>
-                                <p class="sr-vul-name mb-0">{{ req.vul_name }}</p>
+                                <p class="sr-vul-name mb-0" :title="req.vul_name">{{ req.vul_name }}</p>
                               </div>
                             </div>
                           </div>
@@ -1029,16 +1077,16 @@
               <div class="mte-severity-left">
                 <i class="bi bi-exclamation-circle-fill"></i>
                 <span>Critical Severity Requests</span>
-                <span class="mte-badge critical">{{ mteFilteredData.critical.length }} ITEMS</span>
+                <span class="mte-badge critical">{{ mteFilteredData.critical.length }} {{ mteFilteredData.critical.length === 1 ? 'request' : 'requests' }}</span>
               </div>
               <div class="mte-head-right">
-                <span v-if="mteFilteredData.critical.length === 0" class="mte-no-req-msg"><i class="bi bi-inbox"></i> No requests</span>
+                <span v-if="mteFilteredData.critical.length === 0" class="mte-no-req-msg"><i class="bi bi-inbox"></i> No extension</span>
                 <span v-else class="mte-count-msg">{{ mteFilteredData.critical.length }} {{ mteFilteredData.critical.length === 1 ? 'request' : 'requests' }}</span>
-                <i class="bi" :class="mteOpenSection === 'critical' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                <i class="bi" :class="mteOpenSections.critical ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
               </div>
             </div>
-            <div v-if="mteOpenSection === 'critical'" class="mte-table-wrap">
-              <div v-if="mteFilteredData.critical.length === 0" class="mte-no-data">No requests for selected team.</div>
+            <div v-if="mteOpenSections.critical" class="mte-table-wrap">
+              <div v-if="mteFilteredData.critical.length === 0" class="mte-no-data">No extension for selected team.</div>
               <table v-else class="mte-table">
                 <thead>
                   <tr>
@@ -1071,16 +1119,16 @@
               <div class="mte-severity-left">
                 <i class="bi bi-exclamation-triangle-fill mte-high-icon"></i>
                 <span>High Severity Requests</span>
-                <span class="mte-badge high">{{ mteFilteredData.high.length }} ITEMS</span>
+                <span class="mte-badge high">{{ mteFilteredData.high.length }} {{ mteFilteredData.high.length === 1 ? 'request' : 'requests' }}</span>
               </div>
               <div class="mte-head-right">
-                <span v-if="mteFilteredData.high.length === 0" class="mte-no-req-msg"><i class="bi bi-inbox"></i> No requests</span>
+                <span v-if="mteFilteredData.high.length === 0" class="mte-no-req-msg"><i class="bi bi-inbox"></i> No extension</span>
                 <span v-else class="mte-count-msg">{{ mteFilteredData.high.length }} {{ mteFilteredData.high.length === 1 ? 'request' : 'requests' }}</span>
-                <i class="bi" :class="mteOpenSection === 'high' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                <i class="bi" :class="mteOpenSections.high ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
               </div>
             </div>
-            <div v-if="mteOpenSection === 'high'" class="mte-table-wrap">
-              <div v-if="mteFilteredData.high.length === 0" class="mte-no-data">No requests for selected team.</div>
+            <div v-if="mteOpenSections.high" class="mte-table-wrap">
+              <div v-if="mteFilteredData.high.length === 0" class="mte-no-data">No extension for selected team.</div>
               <table v-else class="mte-table">
                 <thead>
                   <tr>
@@ -1113,16 +1161,16 @@
               <div class="mte-severity-left">
                 <i class="bi bi-exclamation-circle-fill mte-medium-icon"></i>
                 <span>Medium Severity Requests</span>
-                <span class="mte-badge medium">{{ mteFilteredData.medium.length }} ITEMS</span>
+                <span class="mte-badge medium">{{ mteFilteredData.medium.length }} {{ mteFilteredData.medium.length === 1 ? 'request' : 'requests' }}</span>
               </div>
               <div class="mte-head-right">
-                <span v-if="mteFilteredData.medium.length === 0" class="mte-no-req-msg"><i class="bi bi-inbox"></i> No requests</span>
+                <span v-if="mteFilteredData.medium.length === 0" class="mte-no-req-msg"><i class="bi bi-inbox"></i> No extension</span>
                 <span v-else class="mte-count-msg">{{ mteFilteredData.medium.length }} {{ mteFilteredData.medium.length === 1 ? 'request' : 'requests' }}</span>
-                <i class="bi" :class="mteOpenSection === 'medium' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                <i class="bi" :class="mteOpenSections.medium ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
               </div>
             </div>
-            <div v-if="mteOpenSection === 'medium'" class="mte-table-wrap">
-              <div v-if="mteFilteredData.medium.length === 0" class="mte-no-data">No requests for selected team.</div>
+            <div v-if="mteOpenSections.medium" class="mte-table-wrap">
+              <div v-if="mteFilteredData.medium.length === 0" class="mte-no-data">No extension for selected team.</div>
               <table v-else class="mte-table">
                 <thead>
                   <tr>
@@ -1155,16 +1203,16 @@
               <div class="mte-severity-left">
                 <i class="bi bi-gear-fill mte-low-icon"></i>
                 <span>Low Severity Requests</span>
-                <span class="mte-badge low">{{ mteFilteredData.low.length }} ITEMS</span>
+                <span class="mte-badge low">{{ mteFilteredData.low.length }} {{ mteFilteredData.low.length === 1 ? 'request' : 'requests' }}</span>
               </div>
               <div class="mte-head-right">
-                <span v-if="mteFilteredData.low.length === 0" class="mte-no-req-msg"><i class="bi bi-inbox"></i> No requests</span>
+                <span v-if="mteFilteredData.low.length === 0" class="mte-no-req-msg"><i class="bi bi-inbox"></i> No extension</span>
                 <span v-else class="mte-count-msg">{{ mteFilteredData.low.length }} {{ mteFilteredData.low.length === 1 ? 'request' : 'requests' }}</span>
-                <i class="bi" :class="mteOpenSection === 'low' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                <i class="bi" :class="mteOpenSections.low ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
               </div>
             </div>
-            <div v-if="mteOpenSection === 'low'" class="mte-table-wrap">
-              <div v-if="mteFilteredData.low.length === 0" class="mte-no-data">No requests for selected team.</div>
+            <div v-if="mteOpenSections.low" class="mte-table-wrap">
+              <div v-if="mteFilteredData.low.length === 0" class="mte-no-data">No extension for selected team.</div>
               <table v-else class="mte-table">
                 <thead>
                   <tr>
@@ -1432,7 +1480,20 @@
 import DashboardMenu from '@/components/admin-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/admin-component/DashboardHeader.vue';
 import AdminProjectField from '@/components/admin-component/AdminProjectField.vue';
+import TruncatedVulnName from '@/components/common/TruncatedVulnName.vue';
+import { isRealScanHost } from '@/utils/assetDummyData';
+import { filterActiveThreatVulnerabilities } from '@/utils/assetVulnerabilities';
+import { formatStatusLabel } from '@/utils/statusLabel';
 import { useAuthStore } from "@/stores/authStore";
+import { isClaimInviteFlow, hasClaimInviteReport } from "@/utils/claimInvite";
+import { resolveMitigationDays, resolveMitigationLabel } from "@/utils/mitigationTimeline";
+import { getSeverityColor as severityHex } from "@/utils/severityColors";
+import {
+  freemiumUpgradeAssetCount,
+  markFreemiumCompletePopupShown,
+  setBillingReturnTo,
+  wasFreemiumCompletePopupShown,
+} from "@/utils/planLimits";
 import Swal from "sweetalert2";
 import Chart from 'chart.js/auto';
 
@@ -1442,6 +1503,7 @@ export default {
     DashboardMenu,
     DashboardHeader,
     AdminProjectField,
+    TruncatedVulnName,
   },
   data() {
     return {
@@ -1461,7 +1523,12 @@ export default {
       monthNames: ["January","February","March","April","May","June","July","August","September","October","November","December"],
       showModal: false,
       showMitigationExtensionModal: false,
-      mteOpenSection: null,
+      mteOpenSections: {
+        critical: false,
+        high: false,
+        medium: false,
+        low: false,
+      },
       mteSelectedTeam: "All",
       mteStaticData: {
         critical: [],
@@ -1471,6 +1538,7 @@ export default {
       },
 
       adminMteTeams: [],
+      adminMtePendingTeams: [],
       adminMteLoading: false,
       adminMteReportData: { critical: [], high: [], medium: [], low: [] },
       adminMteReportLoading: false,
@@ -1534,6 +1602,7 @@ export default {
       vulFixedMedium: 0,
       vulFixedLow: 0,
       dashboardLoadToken: 0,
+      summaryCardsLoading: false,
       mitigationLoading: false,
       mitigationByTeamData: null,
       vulnAssetCountData: null,
@@ -1575,6 +1644,20 @@ export default {
   computed: {
     authStore() {
       return useAuthStore();
+    },
+    hasMitigationGaugeData() {
+      return ["critical", "high", "medium", "low"].some((sev) => {
+        const label = this.getMitigationLabel(sev);
+        return label && label !== "--";
+      });
+    },
+    mitigationGaugesLoading() {
+      return this.summaryCardsLoading && !this.hasMitigationGaugeData;
+    },
+    freemiumUpgradeBanner() {
+      const banner = this.authStore.freemiumUpgrade;
+      if (!banner || banner.eligible !== true) return null;
+      return banner;
     },
     mteDropdownTeams() {
       return (this.adminMteTeams || [])
@@ -1680,7 +1763,7 @@ export default {
         else if (vuln.host_name) teamHostnames.add(norm(vuln.host_name));
       }
       if (teamHostnames.size === 0) return [];
-      return this.allAssets.filter(a => teamHostnames.has(norm(a.asset)));
+      return this.allAssets.filter(a => teamHostnames.has(norm(a.asset)) && isRealScanHost(a.asset));
     },
     filteredOverlayAssets() {
       const q = (this.overlayQuery || '').toLowerCase();
@@ -1692,7 +1775,11 @@ export default {
       return this.filteredOverlayAssets;
     },
     overlayFilteredVulns() {
-      const list = this.authStore.selectedAssetVulnerabilities || [];
+      const list = filterActiveThreatVulnerabilities(
+        this.authStore.selectedAssetVulnerabilities || [],
+        this.overlayClosedVulns,
+        this.overlayActiveIndex || this.authStore.selectedAssetDetail?.asset || '',
+      );
       const filtered = this.overlayActiveSeverity === 'All' ? list : list.filter(v => v.severity === this.overlayActiveSeverity);
       return [...filtered].sort((a, b) => {
         const rank = { Critical: 1, High: 2, Medium: 3, Low: 4 };
@@ -1701,15 +1788,19 @@ export default {
     },
     uniqueMitigationVulns() {
       const seen = new Map();
+      const addHost = (set, value) => {
+        const host = String(value || '').trim();
+        if (isRealScanHost(host)) set.add(host);
+      };
       for (const vuln of this.mitigationActiveTeamData.vulnerabilities) {
         const key = (vuln.plugin_name || '').trim().toLowerCase();
         if (!seen.has(key)) {
           const assets = new Set();
-          if (Array.isArray(vuln.assets)) vuln.assets.forEach(a => assets.add(String(a)));
-          if (vuln.host_name) assets.add(String(vuln.host_name));
-          if (vuln.asset) assets.add(String(vuln.asset));
-          if (vuln.ip) assets.add(String(vuln.ip));
-          if (vuln.hostname) assets.add(String(vuln.hostname));
+          if (Array.isArray(vuln.assets)) vuln.assets.forEach(a => addHost(assets, a));
+          addHost(assets, vuln.host_name);
+          addHost(assets, vuln.asset);
+          addHost(assets, vuln.ip);
+          addHost(assets, vuln.hostname);
 
           seen.set(key, {
             ...vuln,
@@ -1718,15 +1809,17 @@ export default {
           });
         } else {
           const existing = seen.get(key);
-          if (Array.isArray(vuln.assets)) vuln.assets.forEach(a => existing._assetSet.add(String(a)));
-          if (vuln.host_name) existing._assetSet.add(String(vuln.host_name));
-          if (vuln.asset) existing._assetSet.add(String(vuln.asset));
-          if (vuln.ip) existing._assetSet.add(String(vuln.ip));
-          if (vuln.hostname) existing._assetSet.add(String(vuln.hostname));
+          if (Array.isArray(vuln.assets)) vuln.assets.forEach(a => addHost(existing._assetSet, a));
+          addHost(existing._assetSet, vuln.host_name);
+          addHost(existing._assetSet, vuln.asset);
+          addHost(existing._assetSet, vuln.ip);
+          addHost(existing._assetSet, vuln.hostname);
           existing.assetCount = existing._assetSet.size;
         }
       }
-      return Array.from(seen.values()).map(({ _assetSet, ...rest }) => rest);
+      return Array.from(seen.values())
+        .filter((item) => item.assetCount > 0)
+        .map(({ _assetSet, ...rest }) => rest);
     },
     modalSeverityLabel() {
       const map = { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low' };
@@ -1836,6 +1929,7 @@ export default {
     },
   },
   methods: {
+    formatStatusLabel,
     startCommonWalkthrough() {
       this.commonWalkthroughStepIndex = 0;
       this.commonWalkthroughActive = true;
@@ -1904,12 +1998,12 @@ export default {
       if (!step || !this.$el) return;
       const targetEl = this.$el.querySelector(`[data-walkthrough-target="${step.target}"]`);
       if (targetEl && typeof targetEl.scrollIntoView === "function") {
-        targetEl.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+        targetEl.scrollIntoView({ behavior: "auto", block: "center", inline: "nearest" });
       }
       this.scheduleWalkthroughPopupPosition();
     },
     scheduleWalkthroughPopupPosition() {
-      setTimeout(() => this.updateWalkthroughPopupPosition(), 260);
+      setTimeout(() => this.updateWalkthroughPopupPosition(), 20);
     },
     updateWalkthroughPopupPosition() {
       if (!this.walkthroughActive) return;
@@ -1997,20 +2091,94 @@ export default {
     },
     teamHasPendingRequests(row) {
       if (!row) return false;
-      return ["critical", "high", "medium", "low"].some(
-        (severity) => Number(row[severity] || 0) > 0
-      );
+      const team = this.normalizeMteTeamName(row.team);
+      if (team && this.adminMtePendingTeams.includes(team)) return true;
+      if (row.has_pending === true || row.has_pending_request === true) return true;
+      if (Number(row.pending || row.pending_count || 0) > 0) return true;
+      return false;
+    },
+    normalizeMteTeamName(name) {
+      return String(name || "").toLowerCase().replace(/\s+/g, " ").trim();
+    },
+    isPendingMteStatus(status) {
+      const s = String(status || "").toLowerCase().replace(/[\s_-]+/g, "");
+      if (["approved", "rejected", "declined", "cancelled", "canceled", "closed"].includes(s)) {
+        return false;
+      }
+      return true;
+    },
+    normalizeMteTeamRows(teams) {
+      if (Array.isArray(teams)) {
+        return teams
+          .map((item) => ({
+            team: item.team || item.team_name || item.name || "",
+            critical: item.critical || 0,
+            high: item.high || 0,
+            medium: item.medium || 0,
+            low: item.low || 0,
+            pending: item.pending || item.pending_count || 0,
+            has_pending: item.has_pending || item.has_pending_request || false,
+          }))
+          .filter((item) => item.team);
+      }
+      if (teams && typeof teams === "object") {
+        return Object.entries(teams)
+          .map(([name, val]) => {
+            if (val && typeof val === "object") {
+              return {
+                team: val.team || val.team_name || name,
+                critical: val.critical || 0,
+                high: val.high || 0,
+                medium: val.medium || 0,
+                low: val.low || 0,
+                pending: val.pending || val.pending_count || 0,
+                has_pending: val.has_pending || val.has_pending_request || false,
+              };
+            }
+            return null;
+          })
+          .filter((item) => item?.team);
+      }
+      return [];
+    },
+    collectPendingMteTeams(payload) {
+      const names = new Set();
+      const addItem = (item) => {
+        if (!item || !this.isPendingMteStatus(item.status)) return;
+        const team = this.normalizeMteTeamName(
+          item.team || item.team_name || item.assigned_team || item.requested_by || item.by || "",
+        );
+        if (team) names.add(team);
+      };
+      if (Array.isArray(payload?.results)) {
+        payload.results.forEach(addItem);
+      }
+      ["critical", "high", "medium", "low"].forEach((sev) => {
+        (payload?.[sev] || []).forEach(addItem);
+      });
+      (this.adminMteTeams || []).forEach((row) => {
+        if (row.has_pending || Number(row.pending || 0) > 0) {
+          const team = this.normalizeMteTeamName(row.team);
+          if (team) names.add(team);
+        }
+      });
+      return [...names];
     },
 
     async loadAdminMteData() {
-      // Don't show loading spinner on background refresh (only on first load)
-      const isFirstLoad = !this.adminMteTeams || Object.keys(this.adminMteTeams).length === 0;
+      const isFirstLoad = !this.adminMteTeams || this.adminMteTeams.length === 0;
       if (isFirstLoad) this.adminMteLoading = true;
-      const res = await this.authStore.fetchAdminMitigationTimelineExtension();
+      const [summaryRes, reportRes] = await Promise.all([
+        this.authStore.fetchAdminMitigationTimelineExtension(),
+        this.authStore.fetchAdminMitigationTimelineExtensionReport(),
+      ]);
       if (isFirstLoad) this.adminMteLoading = false;
-      // Only update if valid data received - preserve existing data on failed refresh
-      if (res.status && res.data?.teams && Object.keys(res.data.teams).length > 0) {
-        this.adminMteTeams = res.data.teams;
+      if (summaryRes.status && summaryRes.data?.teams) {
+        const rows = this.normalizeMteTeamRows(summaryRes.data.teams);
+        if (rows.length) this.adminMteTeams = rows;
+      }
+      if (reportRes.status && reportRes.data) {
+        this.adminMtePendingTeams = this.collectPendingMteTeams(reportRes.data);
       }
     },
     async loadAdminMteReportData() {
@@ -2051,20 +2219,25 @@ export default {
       }
 
       this.adminMteReportData = grouped;
+      this.adminMtePendingTeams = this.collectPendingMteTeams(res.data);
     },
-    async openMitigationExtensionModal() {
+    async openMitigationExtensionForTeam(team) {
+      await this.openMitigationExtensionModal(team);
+    },
+    async openMitigationExtensionModal(team) {
       this.showMitigationExtensionModal = true;
-      this.mteOpenSection = null;
-      this.mteSelectedTeam = "All";
+      this.mteOpenSections = { critical: false, high: false, medium: false, low: false };
+      // Guard against a stray DOM event being passed in (e.g. a bare
+      // @click="openMitigationExtensionModal" binding auto-forwards the
+      // native click event as the first argument).
+      this.mteSelectedTeam = typeof team === "string" && team ? team : "All";
       await this.loadAdminMteReportData();
     },
     closeMitigationExtensionModal() {
       this.showMitigationExtensionModal = false;
-      this.mteOpenSection = null;
+      this.mteOpenSections = { critical: false, high: false, medium: false, low: false };
     },
-    toggleMteSection(section) {
-      this.mteOpenSection = this.mteOpenSection === section ? null : section;
-    },
+    toggleMteSection(section) { this.mteOpenSections[section] = !this.mteOpenSections[section]; },
     openReasonDetail(event, reason, requestId) {
       this.selectedRequestId = requestId || null;
       this.adminComment = "";
@@ -2102,6 +2275,7 @@ export default {
       if (res.status) {
         this.closeReasonDetail();
         await this.loadAdminMteReportData();
+        await this.loadAdminMteData();
         Swal.fire({
           icon: "success",
           title: "Request Approved",
@@ -2135,6 +2309,7 @@ export default {
       if (res.status) {
         this.closeReasonDetail();
         await this.loadAdminMteReportData();
+        await this.loadAdminMteData();
         Swal.fire({
           icon: "info",
           title: "Request Rejected",
@@ -2255,7 +2430,7 @@ export default {
       return assetsSet.size;
     },
     getMitigationRiskColor(risk) {
-      const map = { Critical: "#b42318", High: "#f44336", Medium: "#f6b100", Low: "#4caf50" };
+      const map = { Critical: severityHex("critical"), High: severityHex("high"), Medium: severityHex("medium"), Low: severityHex("low") };
       return map[risk] || "#666";
     },
     // Case-insensitive lookup: handles both 'critical' and 'Critical' keys
@@ -2266,31 +2441,16 @@ export default {
         ?? null;
     },
     getMitigationLabel(sev) {
-      const sevData = this.getMitigationSevData(sev);
-      if (sevData && typeof sevData === 'object') {
-        // 1st: remaining_label (e.g. "Overdue")
-        if (sevData.remaining_label) return sevData.remaining_label;
-        // 2nd: status field fallback
-        if (String(sevData.status || '').toLowerCase() === 'overdue') return 'Overdue';
-        // 3rd: remaining_days formatted
-        if (sevData.remaining_days != null) return this.formatTimeline({ days: sevData.remaining_days });
-        // 4th: configured days formatted
-        return this.formatTimeline({ days: sevData.days });
+      // Prefer saved risk criteria — summary mitigation_timeline can stay stale after update.
+      const criteria = this.riskCriteria?.[sev];
+      if (criteria != null && String(criteria).trim()) {
+        return String(criteria).trim();
       }
-      return this.formatTimeline(this.getMitigationValue(sev));
+      const sevData = this.getMitigationSevData(sev);
+      return resolveMitigationLabel(sevData, this.getMitigationDays(sev), (value) => this.formatTimeline(value));
     },
     getMitigationDays(sev) {
-      const sevData = this.getMitigationSevData(sev);
-      if (typeof sevData === 'number') return sevData;
-      if (typeof sevData === 'string') {
-        const p = Number(sevData);
-        return Number.isFinite(p) ? p : null;
-      }
-      if (sevData && typeof sevData === 'object') {
-        const r = sevData.remaining_days;
-        return (r !== null && r !== undefined) ? r : (sevData.days ?? null);
-      }
-      return null;
+      return resolveMitigationDays(this.getMitigationSevData(sev), this.riskCriteria?.[sev]);
     },
     getMitigationValue(sev) {
       const days = this.getMitigationDays(sev);
@@ -2682,27 +2842,94 @@ export default {
     async loadRiskCriteria() {
       const res = await this.authStore.fetchAdminRiskCriteria();
       if (res.status && res.data) {
-        const list = res.data.risk_criteria || (res.data.critical !== undefined ? [res.data] : []);
-        if (list && list.length) {
-          const latest = list[0];
+        const latest =
+          res.data.critical !== undefined || res.data.high !== undefined
+            ? res.data
+            : (Array.isArray(res.data.risk_criteria) && res.data.risk_criteria[0]) || null;
+        if (latest) {
           this.riskCriteria = {
             critical: latest.critical ?? null,
             high: latest.high ?? null,
             medium: latest.medium ?? null,
             low: latest.low ?? null,
           };
+          if (latest._id) {
+            localStorage.setItem('riskCriteriaId', latest._id);
+            localStorage.setItem('riskId', latest._id);
+          }
+          // Keep gauge store aligned so summary payload cannot flash old SLA labels.
+          this.authStore.applyRiskCriteriaToMitigationGauges(this.riskCriteria);
         }
       }
     },
+    liveRefreshPage(opts = {}) {
+      const source = opts?.source || "mutation";
+      if (source === "poll") {
+        return this.refreshInProcessCount();
+      }
+      return this.loadDashboardData();
+    },
+    goFreemiumUpgrade() {
+      const banner = this.freemiumUpgradeBanner;
+      const total = freemiumUpgradeAssetCount(banner);
+      setBillingReturnTo('/communication');
+      const query = { plan: 'premium', returnTo: '/communication' };
+      if (total > 0) query.assets = String(total);
+      const raw = banner?.upgrade_url || '/pricingplan';
+      try {
+        if (/^https?:\/\//i.test(raw)) {
+          const parsed = new URL(raw, window.location.origin);
+          if (parsed.origin === window.location.origin) {
+            const path = parsed.pathname || '/pricingplan';
+            if (path.includes('pricing')) {
+              this.$router.push({ path, query: { ...Object.fromEntries(parsed.searchParams.entries()), ...query } });
+              return;
+            }
+            this.$router.push(parsed.pathname + parsed.search + parsed.hash);
+            return;
+          }
+          window.location.assign(raw);
+          return;
+        }
+      } catch {
+        /* fall through */
+      }
+      this.$router.push({ path: '/pricingplan', query });
+    },
+    maybeShowFreemiumCompletePopup() {
+      const banner = this.freemiumUpgradeBanner;
+      if (!banner) return;
+      if (wasFreemiumCompletePopupShown()) return;
+      markFreemiumCompletePopupShown();
+      const text = String(banner.message || '').trim()
+        || "You've closed every visible finding — upgrade to Premium to unlock more asset(s) from this file, no re-upload needed.";
+      Swal.fire({
+        icon: 'info',
+        text,
+        confirmButtonText: 'Upgrade to Premium',
+        showCancelButton: true,
+        cancelButtonText: 'Later',
+        confirmButtonColor: '#241447',
+        cancelButtonColor: '#64748b',
+        didOpen: () => {
+          const container = document.querySelector('.swal2-container');
+          if (container) container.style.zIndex = '999999';
+        },
+      }).then((result) => {
+        if (result.isConfirmed) this.goFreemiumUpgrade();
+      });
+    },
     loadDashboardData() {
+      if (this._dashboardLoadInFlight) {
+        this._dashboardLoadQueued = true;
+        return this._dashboardLoadInFlight;
+      }
+
       const token = Date.now();
       this.dashboardLoadToken = token;
-      // Only show loading on first load (no existing data)
-      const isFirstLoad = !this.mitigationByTeamData;
-      if (isFirstLoad) this.mitigationLoading = true;
+      if (!this.hasMitigationGaugeData) this.summaryCardsLoading = true;
 
-      // Single parallel batch: avoids waiting for mitigation/vuln helpers to finish before KPI Promise.all starts.
-      Promise.allSettled([
+      this._dashboardLoadInFlight = Promise.allSettled([
         this.loadMitigationByTeam(),
         this.loadVulnAssetCount(),
         this.loadRiskCriteria(),
@@ -2713,6 +2940,10 @@ export default {
       ])
         .then((results) => {
           if (this.dashboardLoadToken !== token) return;
+          // Summary may return stale mitigation_timeline — re-assert latest risk criteria on gauges.
+          if (this.riskCriteria?.critical || this.riskCriteria?.high || this.riskCriteria?.medium || this.riskCriteria?.low) {
+            this.authStore.applyRiskCriteriaToMitigationGauges(this.riskCriteria);
+          }
           const summaryResult = results[results.length - 1];
           if (summaryResult.status === "fulfilled" && summaryResult.value?.status) {
             const summary = summaryResult.value.data || {};
@@ -2730,16 +2961,23 @@ export default {
             if (fixed.medium_fixed !== undefined) this.vulFixedMedium = fixed.medium_fixed;
             if (fixed.low_fixed !== undefined) this.vulFixedLow = fixed.low_fixed;
           }
+          this.maybeShowFreemiumCompletePopup();
           console.log("✅ Dashboard API batch finished");
         })
         .catch((err) => {
           console.error("❌ Dashboard API error", err);
         })
         .finally(() => {
-          if (this.dashboardLoadToken === token && isFirstLoad) {
-            this.mitigationLoading = false;
+          this.mitigationLoading = false;
+          this.summaryCardsLoading = false;
+          this._dashboardLoadInFlight = null;
+          if (this._dashboardLoadQueued) {
+            this._dashboardLoadQueued = false;
+            this.loadDashboardData();
           }
         });
+
+      return this._dashboardLoadInFlight;
     },
 
     async checkReportStatus() {
@@ -2859,24 +3097,27 @@ export default {
     async initReportStatusCheck() {
       console.log("🚀 Initializing report status check...");
 
-      const res = await this.authStore.getReportStatus();
-      const state = res.state || (res.hasReport ? "ready" : "no_report");
+      this.authStore.initCompletedSteps();
+      const magicLinkReady =
+        isClaimInviteFlow() &&
+        (this.authStore.completedSteps.includes(2) || this.authStore.reportStatus?.hasRiskCriteria);
 
-      if (state === "no_report") {
-        this.$router.replace("/admin-upload-report");
-        return;
-      }
-      if (state === "needs_risk_criteria") {
+      if (!magicLinkReady) {
         const route = await this.authStore.getAdminOnboardingRoute();
-        this.$router.replace(route);
-        return;
+        if (route !== "/admindashboardonboarding") {
+          this.$router.replace(route);
+          return;
+        }
       }
+      const stepsDone =
+        this.authStore.completedSteps.includes(1) && this.authStore.completedSteps.includes(2);
 
-      // ready — show dashboard
-      this.hasReport = true;
+      const res = this.authStore.reportStatus;
+      this.hasReport = !!(res.hasReport || stepsDone || isClaimInviteFlow() || hasClaimInviteReport());
       this.currentReportId = res.reportId || this.authStore.reportStatus.reportId;
       this.reportStatusChecking = false;
       this.removeReportStatusOverlay();
+      if (this.hasReport) this.loadDashboardData();
     },
     startLiveDashboardSync() {
       if (this._liveDashboardTimer) return;
@@ -2899,15 +3140,15 @@ export default {
 
 mounted() {
   console.log("=== DASHBOARD MOUNTED ===");
+  this._vaptLiveAllowPoll = true;
 
   window.addEventListener("resize", this.handleWalkthroughViewportChange);
   window.addEventListener("scroll", this.handleWalkthroughViewportChange, true);
 
+  this._dashboardMountedAt = Date.now();
   // Fire dashboard APIs immediately; report-status check runs in parallel (no duplicate loadDashboardData).
   this.loadDashboardData();
   void this.initReportStatusCheck();
-  this.startLiveDashboardSync();
-  document.addEventListener("visibilitychange", this.handleLiveDashboardVisibility);
 
   queueMicrotask(() => {
     this.initTestingOverlay();
@@ -2934,10 +3175,12 @@ mounted() {
     console.log("=== ACTIVATED hook called ===");
     this.initTestingOverlay();
     void this.initReportStatusCheck();
-    // Refresh every time dashboard is shown again (keep-alive includes vulns-fixed + in-process inside loadDashboardData).
+    // keep-alive fires activated() right after mounted() — skip that duplicate load.
+    if (this._dashboardMountedAt && Date.now() - this._dashboardMountedAt < 800) {
+      this._dashboardMountedAt = 0;
+      return;
+    }
     this.loadDashboardData();
-    this.startLiveDashboardSync();
-    this._lastDashboardLoad = Date.now();
   },
 };
 </script>
@@ -2984,14 +3227,35 @@ mounted() {
 .cv-stat-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .cv-dot-critical { background: #b42318; }
 .cv-dot-high     { background: #dc2626; }
-.cv-dot-medium   { background: #b45309; }
-.cv-dot-low      { background: #0f766e; }
+.cv-dot-medium   { background: #f59e0b; }
+.cv-dot-low      { background: #10b981; }
 .cv-stat-label { font-size: 11px; color: #64748b; flex: 1; }
 .cv-stat-val { font-size: 12px; font-weight: 700; color: #1e293b; }
 .cv-affected-row { display: flex; align-items: center; gap: 6px; margin-top: auto; padding-top: 10px; border-top: 1px solid #f1f5f9; }
 .cv-affected-label { font-size: 11px; color: #94a3b8; font-weight: 500; flex: 1; }
 .cv-affected-num { font-size: 13px; font-weight: 800; color: #1e293b; }
 .cv-vuln-heading { font-size: 0.95rem; font-weight: 700; color: #1e293b; }
+.cv-more-details-btn {
+  background: #e6f6f5;
+  border: none;
+  border-radius: 20px;
+  padding: 7px 16px;
+  color: #0f696e;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.cv-more-details-btn:hover { background: #c9ece9; color: #0b4f53; }
+.cv-more-details-btn-sm {
+  font-size: 11px;
+  padding: 5px 12px;
+  margin-top: 10px;
+  align-self: flex-start;
+}
 .cv-vuln-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
@@ -3013,8 +3277,8 @@ mounted() {
 .cv-sev-badge { font-size: 9px; font-weight: 800; padding: 2px 7px; border-radius: 4px; letter-spacing: 0.04em; white-space: nowrap; }
 .cv-badge-critical { background: #f8dede; color: #b42318; }
 .cv-badge-high     { background: #fee2e2; color: #dc2626; }
-.cv-badge-medium   { background: #fef3c7; color: #b45309; }
-.cv-badge-low      { background: #ccfbf1; color: #0f766e; }
+.cv-badge-medium   { background: #fef3c7; color: #f59e0b; }
+.cv-badge-low      { background: #d1fae5; color: #10b981; }
 
 /* ===== DASHBOARD REDESIGN ===== */
 .dash-card {
@@ -3031,7 +3295,7 @@ mounted() {
 }
 .walkthrough-target {
   position: relative;
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  transition: box-shadow 0.12s ease, transform 0.12s ease;
 }
 .walkthrough-target-active {
   z-index: 20;
@@ -3074,6 +3338,22 @@ mounted() {
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
   z-index: 1061;
 }
+.dashboard-walkthrough-skip-corner {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  border: 1px solid rgba(203, 196, 208, 0.3);
+  border-radius: 999px;
+  background: #1f2a44;
+  color: #cfd0e6;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 4px 12px;
+  line-height: 1;
+  z-index: 1;
+}
+.dashboard-walkthrough-skip-corner:hover { color: #ffffff; background: #28345a; }
 .dashboard-walkthrough-popup::before {
   content: "";
   position: absolute;
@@ -3227,6 +3507,25 @@ mounted() {
   border: 1px solid #d1fae5;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 6px 14px rgba(16,185,129,0.16);
 }
+.dash-card-clickable {
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.dash-card-clickable:hover {
+  box-shadow: 0 4px 14px rgba(15, 105, 110, 0.12);
+  border-color: #c5e4e6;
+}
+.dash-card-action-hint {
+  font-size: 11px;
+  font-weight: 700;
+  color: #0f696e;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+.dash-card-clickable:hover .dash-card-action-hint {
+  opacity: 1;
+  text-decoration: underline;
+}
 .mitigation-sev-label {
   font-size: 10px;
   font-weight: 700;
@@ -3319,8 +3618,8 @@ mounted() {
 }
 .dash-mte-table th.sev-critical { color: #b42318; }
 .dash-mte-table th.sev-high { color: #dc2626; }
-.dash-mte-table th.sev-medium { color: #b45309; }
-.dash-mte-table th.sev-low { color: #0f766e; }
+.dash-mte-table th.sev-medium { color: #f59e0b; }
+.dash-mte-table th.sev-low { color: #10b981; }
 .dash-mte-pill {
   display: inline-flex;
   align-items: center;
@@ -3335,8 +3634,8 @@ mounted() {
 }
 .dash-mte-pill.critical { background: #f8dede; color: #b42318; border: 1px solid #fca5a5; }
 .dash-mte-pill.high { background: #fee2e2; color: #dc2626; border: 1px solid #efb7b1; }
-.dash-mte-pill.medium { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
-.dash-mte-pill.low { background: #ccfbf1; color: #0f766e; border: 1px solid #5eead4; }
+.dash-mte-pill.medium { background: #fef3c7; color: #f59e0b; border: 1px solid #fcd34d; }
+.dash-mte-pill.low { background: #d1fae5; color: #10b981; border: 1px solid #6ee7b7; }
 
 .mte-modal-backdrop {
   position: fixed;
@@ -3468,10 +3767,10 @@ mounted() {
   font-weight: 700;
   line-height: 1.25;
 }
-.mte-critical .mte-severity-left { color: rgb(220, 38, 38); }
-.mte-high .mte-severity-left { color: rgb(180, 35, 24) !important; }
-.mte-medium .mte-severity-left { color: rgb(245, 158, 11) !important; }
-.mte-low .mte-severity-left { color: rgb(16, 185, 129) !important; }
+.mte-critical .mte-severity-left { color: #b42318; }
+.mte-high .mte-severity-left { color: #dc2626 !important; }
+.mte-medium .mte-severity-left { color: #f59e0b !important; }
+.mte-low .mte-severity-left { color: #10b981 !important; }
 .mte-critical .mte-severity-head { background: #fecaca; border-bottom: 1px solid #fca5a5; }
 .mte-high .mte-severity-head { background: #fde68a; border-bottom: 1px solid #fdba74; }
 .mte-medium .mte-severity-head { background: #fef9c3; border-bottom: 1px solid #fcd34d; }
@@ -3513,7 +3812,7 @@ mounted() {
 .mte-badge.critical { background: #f8dede; color: #b42318; border: 1px solid #fca5a5; }
 .mte-badge.high { background: #fde8e8; color: #dc2626; border: 1px solid #f5c6cb; }
 .mte-badge.medium { background: #f7e4bf; color: #d48806; border: 1px solid #f3d79a; }
-.mte-badge.low { background: #d1fae5; color: #0f766e; border: 1px solid #86efac; }
+.mte-badge.low { background: #d1fae5; color: #10b981; border: 1px solid #86efac; }
 .mte-table-wrap { overflow-x: auto; border-top: 1px solid #e2e8f0; }
 .mte-table { width: 100%; border-collapse: collapse; min-width: 760px; }
 .mte-table th,
@@ -3980,8 +4279,8 @@ mounted() {
 .rsev-badge { padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; display: inline-block; }
 .rsev-maroon, .rsev-critical { background: #f8dede; color: #b42318; }
 .rsev-red, .rsev-high { background: #fee2e2; color: #dc2626; }
-.rsev-orange, .rsev-medium { background: #fef3c7; color: #b45309; }
-.rsev-darkgreen, .rsev-low { background: #ccfbf1; color: #0f766e; }
+.rsev-orange, .rsev-medium { background: #fef3c7; color: #f59e0b; }
+.rsev-darkgreen, .rsev-low { background: #d1fae5; color: #10b981; }
 /* rteam-badge colors: global main.css */
 .rstatus-open { padding: 6px 12px; border-radius: 20px; background: #f8dede; color: #b42318; font-size: 0.85rem; font-weight: 600; display: inline-block; }
 .rstatus-closed { padding: 6px 12px; border-radius: 20px; background: #d1fae5; color: #059669; font-size: 0.85rem; font-weight: 600; display: inline-block; }
@@ -4191,8 +4490,8 @@ mounted() {
 }
 .sev-critical { background: #f8dede; color: #b42318; }
 .sev-high     { background: #fee2e2; color: #dc2626; }
-.sev-medium   { background: #fef3c7; color: #b45309; }
-.sev-low      { background: #ccfbf1; color: #0f766e; }
+.sev-medium   { background: #fef3c7; color: #f59e0b; }
+.sev-low      { background: #d1fae5; color: #10b981; }
 
 .sev-count-dot {
   font-size: 0.65rem;
@@ -4202,8 +4501,8 @@ mounted() {
 }
 .critical-dot { color: #b42318;  background: #f8dede; }
 .high-dot     { color: #dc2626; background: #fee2e2; }
-.medium-dot   { color: #b45309; background: #fef3c7; }
-.low-dot      { color: #0f766e; background: #ccfbf1; }
+.medium-dot   { color: #f59e0b; background: #fef3c7; }
+.low-dot      { color: #10b981; background: #d1fae5; }
 
 .assets-right-panel {
   flex: 1;
@@ -4332,9 +4631,9 @@ mounted() {
 }
 .sev-pill-critical { color: #b42318; }
 .sev-pill-high     { color: #dc2626; }
-.sev-pill-medium   { color: #b45309; }
+.sev-pill-medium   { color: #f59e0b; }
 /* Same white / gray border as other pills (base .sev-pill); green text only */
-.sev-pill-low { color: #0f766e; }
+.sev-pill-low { color: #10b981; }
 .sev-pill-low.sev-pill-active {
   background: #e0f2f1 !important;
   color: #10b981 !important;
@@ -4352,7 +4651,8 @@ mounted() {
 }
 
 .vuln-accordion-item:has(.accordion-collapse.show) {
-  max-height: min(calc(100vh - 220px), 520px);
+  max-height: calc(100vh - 220px);
+  max-height: calc(100dvh - 220px);
 }
 
 .vuln-accordion-header {
@@ -4365,6 +4665,7 @@ mounted() {
   align-items: center;
   cursor: pointer;
   gap: 12px;
+  min-width: 0;
 }
 
 .vuln-accordion-item .accordion-collapse.show {
@@ -4379,16 +4680,19 @@ mounted() {
 .vuln-icon { font-size: 1rem; }
 .vuln-icon-critical { color: #b42318; }
 .vuln-icon-high     { color: #dc2626; }
-.vuln-icon-medium   { color: #b45309; }
-.vuln-icon-low      { color: #0f766e; }
+.vuln-icon-medium   { color: #f59e0b; }
+.vuln-icon-low      { color: #10b981; }
 
 .vuln-name {
   font-size: 0.92rem;
   font-weight: 700;
   color: #241447;
+  min-width: 0;
+  flex: 1 1 0%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: default;
 }
 
 .vuln-accordion-body { padding: 18px 20px; }
@@ -4462,6 +4766,11 @@ mounted() {
   font-weight: 700;
   color: #241447;
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 420px;
+  cursor: default;
 }
 .fixed-vuln-date {
   font-size: 0.7rem;
@@ -4493,6 +4802,11 @@ mounted() {
   font-size: 0.9rem;
   font-weight: 600;
   color: #241447;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
 }
 .sr-empty {
   color: #94a3b8;
@@ -4673,10 +4987,18 @@ mounted() {
   border-radius: 10px;
   padding: 10px 12px;
 }
+.in-process-item-row > div:first-child {
+  min-width: 0;
+  flex: 1;
+}
 .in-process-vuln-name {
   font-size: 0.85rem;
   font-weight: 700;
   color: #1e293b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
 }
 .in-process-asset {
   font-size: 0.75rem;
@@ -4745,5 +5067,36 @@ mounted() {
   box-shadow: 0 1px 3px rgba(99, 102, 241, 0.2);
   white-space: nowrap;
   display: inline-block;
+}
+
+.freemium-upgrade-banner {
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  border-radius: 12px;
+  padding: 14px 16px;
+  color: #9a3412;
+}
+.freemium-upgrade-banner i {
+  color: #c2410c;
+  font-size: 1.1rem;
+  margin-top: 2px;
+}
+.freemium-upgrade-banner p {
+  font-size: 0.92rem;
+  line-height: 1.45;
+  font-weight: 600;
+}
+.freemium-upgrade-btn {
+  background: #241447;
+  color: #fff;
+  border: 0;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 8px 16px;
+}
+.freemium-upgrade-btn:hover {
+  opacity: 0.92;
+  color: #fff;
 }
 </style>

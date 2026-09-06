@@ -6,7 +6,7 @@
     <div class="ld-page">
       <aside class="ld-sidebar">
         <div class="ld-sidebar-label">On this page</div>
-        <nav @click="onTocNavClick">
+        <nav ref="tocNav" @click="onTocNavClick">
           <template v-for="item in tocItems" :key="item.href || item.label">
             <a
               v-if="item.type === 'link'"
@@ -19,7 +19,7 @@
         </nav>
       </aside>
 
-      <main class="ld-content">
+      <div class="ld-main">
         <div class="ld-doc-header">
           <div class="ld-doc-tag">Global Privacy · 20+ Jurisdictions</div>
           <h1 class="ld-doc-title">{{ activeSectionLabel }}</h1>
@@ -32,6 +32,8 @@
           </p>
         </div>
 
+        <main ref="contentScroller" class="ld-content" @scroll.passive="onContentScroll">
+
         <div class="ld-callout">
           <p>This Privacy Policy applies to all users of VaptFix.ai globally. We comply with applicable data protection and privacy laws in every jurisdiction where we operate. General provisions apply to all users; the jurisdiction-specific notices (Sections 5-A through 5-P) supplement the general provisions with rights and obligations specific to your location. Where local law provides greater protections, those protections apply.</p>
         </div>
@@ -39,8 +41,8 @@
         <section id="overview">
           <div class="ld-section-number">01 / OVERVIEW</div>
           <h2>Who We Are</h2>
-          <p>VaptFix.ai is a cybersecurity platform providing automated vulnerability assessment and penetration testing (VAPT), security scanning, remediation guidance, and reporting to organizations worldwide. We act as a <strong>data controller</strong> for account and usage data, and as a <strong>data processor</strong> when handling customer-submitted scan data under a Data Processing Agreement (DPA).</p>
-          <p>This Policy covers all products and services available at vaptfix.ai and via our API. It applies regardless of how you access the Service — web, mobile, API, or integrations. Our DPO and regional contacts are listed in Section 14.</p>
+          <p>VaptFix.ai is a cybersecurity platform providing automated vulnerability assessment and penetration testing (VAPT), security scanning, remediation guidance, and reporting to organizations worldwide.</p>
+          <p>This Policy covers all products and services available at vaptfix.ai and via our API. It applies regardless of how you access the Service — web, mobile, API, or integrations.</p>
         </section>
 
         <section id="data-collected">
@@ -50,7 +52,7 @@
           <h3>Account &amp; Identity Data</h3>
           <ul>
             <li>Full name, email address, and organization name</li>
-            <li>Billing address and payment information (processed via PCI-DSS-compliant processors)</li>
+            <li>Billing address and payment information</li>
             <li>Authentication credentials — passwords stored in hashed form only, never in plaintext</li>
             <li>Profile preferences, notification settings, and language/locale</li>
           </ul>
@@ -74,7 +76,7 @@
 
           <h3>Communications Data</h3>
           <ul>
-            <li>Support tickets, live chat messages, and email correspondence</li>
+            <li>Support tickets and email correspondence</li>
             <li>Survey responses and product feedback submissions</li>
             <li>Webinar and event registrations and participation records</li>
           </ul>
@@ -527,7 +529,7 @@
           <p>We do not sell, rent, or trade your personal data to third parties for their own commercial purposes in any jurisdiction. Sharing occurs only as follows:</p>
 
           <h3>Service Providers &amp; Sub-processors</h3>
-          <p>We engage trusted third-party processors (cloud infrastructure, payment, email, analytics, support). All are bound by Data Processing Agreements and restricted to processing data solely to provide services to us. A current sub-processor list is available in our DPA Annex B.</p>
+          <p>We engage trusted third-party processors (cloud infrastructure, payment, email, analytics, support). All are bound by Data Processing Agreements and restricted to processing data solely to provide services to us.</p>
 
           <h3>Business Transfers</h3>
           <p>In a merger, acquisition, or asset sale, personal data may transfer as a business asset. We provide 30 days' prior notice via email and platform notice. You may request deletion before transfer if no legal obligation requires retention.</p>
@@ -553,7 +555,6 @@
             <tbody>
               <tr><td>Account &amp; profile data</td><td>Account lifetime + 30 days</td><td>Varies by jurisdiction</td></tr>
               <tr><td>Scan results &amp; security reports</td><td>2 years (configurable per plan)</td><td>No universal minimum</td></tr>
-              <tr><td>Billing records &amp; invoices</td><td>7 years</td><td>5–10 years under tax law</td></tr>
               <tr><td>Security &amp; access logs</td><td>12 months</td><td>90 days in some jurisdictions</td></tr>
               <tr><td>Support communications</td><td>3 years</td><td>No universal minimum</td></tr>
               <tr><td>Marketing preferences &amp; consent records</td><td>Until opt-out or account deletion; 5 years for consent records</td><td>Required by GDPR, PIPL, LGPD</td></tr>
@@ -619,29 +620,8 @@
           <p>Manage preferences at any time via our Cookie Preference Centre or your browser settings. Disabling essential cookies will impair platform functionality.</p>
         </section>
 
-        <section id="security">
-          <div class="ld-section-number">10 / SECURITY</div>
-          <h2>Data Security</h2>
-          <p>We implement technical and organizational security measures appropriate to the risk of processing, including: AES-256 encryption at rest; TLS 1.3 in transit; mandatory MFA; RBAC; annual third-party penetration testing; SOC 2 Type II compliance; and 24/7 monitoring. Full details are in our <router-link to="/security">Security Statement</router-link>.</p>
-          <p>In the event of a personal data breach, we notify affected users and supervisory authorities within the timeframes required by applicable law — typically 72 hours under GDPR; 24 hours under VaptFix.ai's internal SLA; within 3 business days under Singapore PDPA; 72 hours under Thailand PDPA; and as specified by each jurisdiction's law.</p>
-        </section>
-
-        <section id="children">
-          <div class="ld-section-number">11 / CHILDREN'S PRIVACY</div>
-          <h2>Children's Privacy</h2>
-          <p>VaptFix.ai services are not directed to minors. The applicable age threshold varies by jurisdiction, and we apply the highest applicable standard for each user's location:</p>
-          <ul>
-            <li><strong>13 years (USA — COPPA):</strong> No knowing collection from children under 13 without verifiable parental consent</li>
-            <li><strong>13–16 years (EU GDPR Art. 8):</strong> Each EU Member State sets the age between 13–16; parental consent required below the applicable threshold; we apply 16 years as the default</li>
-            <li><strong>16 years (UK GDPR, Switzerland revFADP, Singapore PDPA, Australia):</strong> Parental consent required for users under 16</li>
-            <li><strong>18 years (India DPDP Act, China PIPL, Saudi Arabia PDPL, UAE PDPL):</strong> Verifiable parental consent required for all minors under 18; no behavioral profiling or tracking of children</li>
-            <li><strong>All other jurisdictions:</strong> We apply the higher of the local statutory minimum or 16 years of age</li>
-          </ul>
-          <p>If you believe a minor has provided personal data without required parental consent, contact <a href="mailto:privacy@vaptfix.ai">privacy@vaptfix.ai</a> immediately — we will investigate and delete such data promptly.</p>
-        </section>
-
         <section id="international">
-          <div class="ld-section-number">12 / CROSS-BORDER TRANSFERS</div>
+          <div class="ld-section-number">10 / CROSS-BORDER TRANSFERS</div>
           <h2>International Data Transfers</h2>
           <p>VaptFix.ai operates infrastructure across multiple regions. Personal data may be transferred internationally. We select safeguards based on the origin and destination of each data flow:</p>
           <table class="ld-data-table">
@@ -669,19 +649,18 @@
         </section>
 
         <section id="changes">
-          <div class="ld-section-number">13 / POLICY CHANGES</div>
+          <div class="ld-section-number">11 / POLICY CHANGES</div>
           <h2>Changes to This Policy</h2>
           <p>We review this Policy at least annually and update it when laws change, we add new features, or our practices evolve. For material changes, we will:</p>
           <ul>
             <li>Provide at least 30 days' advance notice via email and a prominent in-platform notice</li>
-            <li>Where required by law (e.g., LGPD, PIPL, India DPDP, South Korea PIPA), obtain renewed consent for material changes to processing purposes</li>
             <li>Maintain a version archive of prior policies at vaptfix.ai/privacy-archive</li>
           </ul>
           <p>Continued use after the effective date constitutes acceptance, except where applicable law requires explicit re-consent.</p>
         </section>
 
         <section id="contact">
-          <div class="ld-section-number">14 / CONTACT, DPO &amp; AUTHORITIES</div>
+          <div class="ld-section-number">12 / CONTACT, DPO &amp; AUTHORITIES</div>
           <h2>Contact Us &amp; Supervisory Authorities</h2>
           <div class="ld-callout">
             <p>
@@ -732,6 +711,7 @@
 
         <LegalDocInnerFooter />
       </main>
+      </div>
     </div>
     </div>
   </div>
@@ -750,6 +730,8 @@ export default {
   data() {
     return {
       activeTocHash: '',
+      _scrollSpyLocked: false,
+      _scrollSpyUnlockTimer: null,
       tocItems: [
         { type: 'group', label: 'General' },
         { type: 'link', href: '#overview', label: 'Overview' },
@@ -780,8 +762,6 @@ export default {
         { type: 'link', href: '#retention', label: 'Retention Schedule' },
         { type: 'link', href: '#your-rights', label: 'Your Rights Table' },
         { type: 'link', href: '#cookies', label: 'Cookies' },
-        { type: 'link', href: '#security', label: 'Security' },
-        { type: 'link', href: '#children', label: "Children's Privacy" },
         { type: 'link', href: '#international', label: 'Cross-Border Transfers' },
         { type: 'link', href: '#changes', label: 'Policy Changes' },
         { type: 'link', href: '#contact', label: 'Contact & Authorities' },
@@ -796,23 +776,32 @@ export default {
         this.scrollContentToHash(this.activeTocHash);
       });
     },
+    activeTocHash() {
+      this.$nextTick(() => this.ensureActiveTocVisible());
+    },
   },
   mounted() {
     document.documentElement.classList.add('legal-doc-sticky-context');
     this.lockWindowScroll();
+    window.addEventListener('scroll', this.lockWindowScroll, { passive: true });
     this.$nextTick(() => {
       this.syncTocFromRoute();
       if (this.$route.hash) this.scrollContentToHash(this.activeTocHash);
+      else this.updateActiveFromScroll();
     });
   },
   beforeUnmount() {
     document.documentElement.classList.remove('legal-doc-sticky-context');
     window.removeEventListener('scroll', this.lockWindowScroll);
+    if (this._scrollSpyUnlockTimer) clearTimeout(this._scrollSpyUnlockTimer);
   },
   computed: {
     activeSectionLabel() {
       const active = this.tocItems.find(i => i.type === 'link' && i.href === this.activeTocHash);
       return active ? active.label : 'Privacy Policy';
+    },
+    tocLinkItems() {
+      return this.tocItems.filter((i) => i.type === 'link' && i.href);
     },
   },
   methods: {
@@ -821,27 +810,81 @@ export default {
         window.scrollTo(0, 0);
       }
     },
+    getContentScroller() {
+      return this.$refs.contentScroller || this.$el?.querySelector?.('.ld-content');
+    },
+    stickyOffset() {
+      return 24;
+    },
     syncTocFromRoute() {
-      const hashes = this.tocItems.filter((i) => i.type === 'link').map((i) => i.href);
+      const hashes = this.tocLinkItems.map((i) => i.href);
       const h = this.$route.hash;
       if (h && hashes.includes(h)) this.activeTocHash = h;
-      else this.activeTocHash = hashes[0] || '';
+      else if (!this.activeTocHash) this.activeTocHash = hashes[0] || '';
+    },
+    onContentScroll() {
+      if (this._scrollSpyLocked) return;
+      this.updateActiveFromScroll();
+    },
+    updateActiveFromScroll() {
+      const links = this.tocLinkItems;
+      const scroller = this.getContentScroller();
+      if (!links.length || !scroller) return;
+
+      const offset = this.stickyOffset();
+      const scrollerTop = scroller.getBoundingClientRect().top;
+      let current = links[0]?.href || '';
+
+      for (const item of links) {
+        const el = scroller.querySelector(item.href);
+        if (!el) continue;
+        const top = el.getBoundingClientRect().top - scrollerTop;
+        if (top <= offset) current = item.href;
+      }
+
+      if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 8) {
+        current = links[links.length - 1]?.href || current;
+      }
+
+      if (current && current !== this.activeTocHash) {
+        this.activeTocHash = current;
+        if (typeof history !== 'undefined' && history.replaceState) {
+          const url = `${window.location.pathname}${window.location.search}${current}`;
+          history.replaceState(null, '', url);
+        }
+      }
+    },
+    ensureActiveTocVisible() {
+      const nav = this.$refs.tocNav;
+      if (!nav) return;
+      const active = nav.querySelector('a.is-active');
+      if (!active) return;
+      active.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     },
     scrollContentToHash(href) {
       if (!href || !href.startsWith('#')) return;
       const id = href.slice(1);
-      const scroller = this.$el?.querySelector?.('.ld-content');
+      const scroller = this.getContentScroller();
       const target = scroller?.querySelector?.(`#${CSS.escape(id)}`);
       if (!target || !scroller) return;
+
       this.lockWindowScroll();
+      this._scrollSpyLocked = true;
+      if (this._scrollSpyUnlockTimer) clearTimeout(this._scrollSpyUnlockTimer);
+
       if (window.matchMedia('(min-width: 769px)').matches) {
         const sRect = scroller.getBoundingClientRect();
         const tRect = target.getBoundingClientRect();
-        const top = scroller.scrollTop + (tRect.top - sRect.top) - 16;
+        const top = scroller.scrollTop + (tRect.top - sRect.top) - this.stickyOffset() + 8;
         scroller.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
       } else {
         target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
+
+      this._scrollSpyUnlockTimer = setTimeout(() => {
+        this._scrollSpyLocked = false;
+        this.updateActiveFromScroll();
+      }, 450);
     },
     onTocNavClick(e) {
       const a = e.target.closest?.('a[href^="#"]');
@@ -999,9 +1042,39 @@ export default {
   box-shadow: 0 0 0 3px rgba(15, 105, 110, 0.25);
 }
 
+.ld-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 0;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.ld-doc-header {
+  position: relative;
+  flex-shrink: 0;
+  z-index: 5;
+  width: 100%;
+  margin: 0;
+  padding: 0.6rem clamp(1.5rem, 4vw, 3rem) 0.5rem clamp(1.75rem, 3.5vw, 2.75rem);
+  border-bottom: 1px solid rgba(15, 105, 110, 0.12);
+  background: #ffffff;
+  background-image: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+  box-shadow: 0 8px 16px -12px rgba(36, 20, 71, 0.18);
+}
+
 .ld-content {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   position: relative;
   z-index: 0;
   padding: 1.25rem clamp(1.5rem, 4vw, 3rem) 2.5rem clamp(1.75rem, 3.5vw, 2.75rem);
@@ -1011,38 +1084,13 @@ export default {
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  background: #ffffff;
 }
 
 .ld-content::-webkit-scrollbar {
   width: 0;
   height: 0;
   display: none;
-}
-
-.ld-doc-header {
-  position: sticky;
-  top: 72px;
-  z-index: 1020;
-  margin-bottom: 2rem;
-  padding-top: 1.75rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 1px solid rgba(15, 105, 110, 0.12);
-  background-color: #ffffff;
-  background-image: radial-gradient(#ebe6f3 1px, #ffffff 1px);
-  background-size: 20px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: flex-start;
-}
-
-
-
-.ld-content > .ld-callout,
-.ld-content > section,
-.ld-content > .legal-doc-inner-footer {
-  position: relative;
-  z-index: 1;
 }
 
 .ld-doc-tag {
@@ -1391,10 +1439,26 @@ section {
     display: none;
   }
 
-  .ld-content {
+  /* Right column: fixed header + scrolling body */
+  .ld-main {
     flex: 1 1 auto;
     min-height: 0;
     height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ld-doc-header {
+    position: relative;
+    flex-shrink: 0;
+    top: auto;
+  }
+
+  .ld-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
@@ -1406,10 +1470,6 @@ section {
     width: 0;
     height: 0;
     display: none;
-  }
-
-  .ld-doc-header {
-    top: 0;
   }
 
   .ld-content > section {
@@ -1438,6 +1498,19 @@ section {
     min-height: 0;
     height: auto;
     padding: 1.25rem 0 2rem;
+  }
+
+  .ld-main {
+    overflow: visible;
+    height: auto;
+    display: block;
+  }
+
+  .ld-doc-header {
+    padding-left: 0;
+    padding-right: 0;
+    position: static;
+    box-shadow: none;
   }
 
   .ld-content {

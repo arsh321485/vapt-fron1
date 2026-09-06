@@ -638,29 +638,25 @@ export function openTeamsAdminDashboard(url, { newTab = true } = {}) {
   const raw = String(url || "").trim();
 
   // Backend teams_tab_url must be opened as-is (ctx=channel etc. already set).
-  // Never open bare https://teams.cloud.microsoft/ or rebuild away query params.
+  // Do not rebuild / trim / swap host when the URL is already a channel deep link.
   let target = "";
   if (isUsableBackendTeamsTabUrl(raw)) {
     target = raw;
   } else {
-    // Last resort: try stored backend URL, then rebuild only if still missing.
-    const storedRaw = String(pickTeamsTabUrl(readStoredTeamsDeepLink()) || "").trim();
-    if (isUsableBackendTeamsTabUrl(storedRaw)) {
-      target = storedRaw;
-    } else {
-      const parsed = parseChannelDeepLink(raw);
-      const channelId = parsed?.channelId || "";
-      const channelName = parsed?.channelName || "vaptfix admin dashboard";
-      const groupId = parsed?.groupId || "";
-      const tenantId = parsed?.tenantId || tenantIdFrom({});
-      const cloud = toTeamsWebChannelUrl(raw);
-      target =
-        (channelId
-          ? buildOfficialChannelDeepLink(channelId, channelName, groupId, tenantId)
-          : "") ||
-        cloud ||
-        "";
-    }
+    const parsed = parseChannelDeepLink(raw);
+    const channelId = parsed?.channelId || "";
+    const channelName = parsed?.channelName || "vaptfix admin dashboard";
+    const groupId = parsed?.groupId || "";
+    const tenantId = parsed?.tenantId || tenantIdFrom({});
+
+    const launcher = channelId
+      ? buildChannelLauncherUrl(channelId, channelName, groupId, tenantId)
+      : "";
+    const cloud = toTeamsWebChannelUrl(raw);
+    const classic = cloud
+      ? cloud.replace(TEAMS_WEB_ORIGIN, TEAMS_DEEP_LINK_ORIGIN)
+      : "";
+    target = launcher || classic || cloud;
   }
 
   if (!target || isBareTeamsHome(target) || isTeamsChatOrTeamHomeUrl(target)) {
@@ -668,9 +664,15 @@ export function openTeamsAdminDashboard(url, { newTab = true } = {}) {
     return false;
   }
   if (newTab) {
-    const opened = window.open(target, "_blank", "noopener,noreferrer");
+    const opened = window.open(target, TEAMS_WINDOW_NAME);
     if (!opened) {
-      window.location.assign(target);
+      window.open(target, "_blank");
+    } else {
+      try {
+        opened.focus();
+      } catch {
+        /* ignore */
+      }
     }
     return true;
   }
@@ -691,7 +693,7 @@ export function landOnTeamsAdminDashboardChannel(payload, { newTab = false } = {
 }
 
 /** Connected-button / stored link → vaptfix admin dashboard channel in a side tab. */
-export function redirectToTeamsTabUrl(payload) {
+export function redirectToTeamsTabUrl(payload = {}) {
   const links = extractTeamsDeepLink(payload || {});
   persistTeamsDeepLink(links);
   const raw = String(links.teams_tab_url || "").trim();

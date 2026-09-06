@@ -378,8 +378,8 @@ export default {
 }
 .vr-sev-critical { background: #f8dede !important; color: #b42318 !important; }
 .vr-sev-high     { background: #fee2e2 !important; color: #dc2626 !important; }
-.vr-sev-medium   { background: #fef3c7; color: #b45309; }
-.vr-sev-low      { background: #ccfbf1; color: #0f766e; }
+.vr-sev-medium   { background: #fef3c7 !important; color: #f59e0b !important; }
+.vr-sev-low      { background: #d1fae5 !important; color: #10b981 !important; }
 
 .vr-status-pill {
   display: inline-flex;

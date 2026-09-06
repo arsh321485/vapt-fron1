@@ -6,8 +6,6 @@
       <span class="legal-doc-inner-sep">·</span>
       <router-link to="/terms">Terms</router-link>
       <span class="legal-doc-inner-sep">·</span>
-      <router-link to="/security">Security</router-link>
-      <span class="legal-doc-inner-sep">·</span>
       <router-link to="/dpa">DPA</router-link>
       <span class="legal-doc-inner-sep">·</span>
       <router-link to="/support">Support</router-link>

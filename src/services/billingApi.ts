@@ -10,13 +10,21 @@ export interface EstimatePayload {
   plan: BillingPlan;
   mode?: PremiumMode;
   billing_cycle?: BillingCycle;
+  asset_count?: number;
 }
 
-export interface EstimateResult {
+export interface BillingAssetBreakdown {
+  asset_count?: number;
+  visible_asset_count?: number;
+  locked_asset_count?: number;
+  original_asset_count?: number;
+  billable_asset_count?: number;
+}
+
+export interface EstimateResult extends BillingAssetBreakdown {
   plan?: BillingPlan;
   mode?: PremiumMode | null;
   billing_cycle?: BillingCycle | null;
-  asset_count?: number;
   asset_limit?: number;
   asset_ceiling?: number;
   over_limit?: boolean;
@@ -25,14 +33,15 @@ export interface EstimateResult {
   amount_due?: string;
   currency?: string;
   message?: string;
+  needs_scope?: boolean;
+  scope_submit_endpoint?: string;
   [key: string]: unknown;
 }
 
-export interface BillingSubscription {
+export interface BillingSubscription extends BillingAssetBreakdown {
   plan: BillingPlan | string;
   mode: PremiumMode | string | null;
   billing_cycle: BillingCycle | string | null;
-  asset_count: number | null;
   price_per_ip: string | null;
   amount_due: string;
   currency: string;
@@ -57,14 +66,50 @@ export interface BillingInvoice {
 export interface SubscriptionMeResponse {
   subscription: BillingSubscription | null;
   invoices?: BillingInvoice[];
+  /** Magic-link admins: no Freemium UI limits (automation, upgrade prompts, etc.). */
+  magic_link_unlimited?: boolean | string | number;
+}
+
+function stripeDetailText(detail: unknown): string | null {
+  if (typeof detail === "string" && detail.trim()) return detail.trim();
+  if (Array.isArray(detail)) {
+    const parts = detail
+      .map((item) => {
+        if (typeof item === "string") return item.trim();
+        if (item && typeof item === "object") {
+          const row = item as Record<string, unknown>;
+          return String(row.msg || row.detail || row.message || "").trim();
+        }
+        return "";
+      })
+      .filter(Boolean);
+    return parts.length ? parts.join(" ") : null;
+  }
+  if (detail && typeof detail === "object") {
+    const row = detail as Record<string, unknown>;
+    const nested = row.msg || row.detail || row.message;
+    if (typeof nested === "string" && nested.trim()) return nested.trim();
+  }
+  return null;
 }
 
 function firstFieldError(data: Record<string, unknown> | null | undefined): string | null {
   if (!data || typeof data !== "object") return null;
-  if (typeof data.detail === "string" && data.detail.trim()) return data.detail;
+  const detail = stripeDetailText(data.detail);
+  if (detail) return detail;
   if (typeof data.error === "string" && data.error.trim()) return data.error;
   if (typeof data.message === "string" && data.message.trim()) return data.message;
-  for (const key of ["mode", "billing_cycle", "plan", "full_name", "work_email", "company", "estimated_assets"]) {
+  for (const key of [
+    "mode",
+    "billing_cycle",
+    "plan",
+    "full_name",
+    "work_email",
+    "company",
+    "estimated_assets",
+    "targets",
+    "file",
+  ]) {
     const value = data[key];
     if (typeof value === "string" && value.trim()) return value;
     if (Array.isArray(value) && value[0]) return String(value[0]);
@@ -76,6 +121,21 @@ export function billingErrorMessage(error: unknown, fallback = "Something went w
   const err = error as { response?: { data?: Record<string, unknown> }; message?: string };
   const data = err?.response?.data;
   return firstFieldError(data) || err?.message || fallback;
+}
+
+/** Scope submit blocks Freemium (400 on checkout/freemium or /billing/freemium/activate/). */
+export function isScopeBlocksFreemiumError(error: unknown, message = ""): boolean {
+  const err = error as { response?: { status?: number; data?: Record<string, unknown> } };
+  const status = Number(err?.response?.status) || 0;
+  const text = `${message} ${billingErrorMessage(error, "")}`.toLowerCase();
+  if (
+    /pending_superadmin|scope.{0,80}(premium|custom|not available|not allowed|cannot|blocked)|freemium.{0,80}(scope|not available|not allowed|cannot)/i.test(
+      text,
+    )
+  ) {
+    return true;
+  }
+  return status === 400 && /scope/.test(text);
 }
 
 export function formatUsd(amount: string | number | null | undefined, currency = "usd"): string {
@@ -96,6 +156,23 @@ export async function estimatePlan(payload: EstimatePayload) {
   return res.data;
 }
 
+/** Review Plan — submit IPs/URLs so Management+Testing can be priced. */
+export async function submitBillingScope(payload: { targets?: string; file?: File | null }) {
+  const form = new FormData();
+  const targets = String(payload.targets || "").trim();
+  if (payload.file) form.append("file", payload.file);
+  else if (targets) form.append("targets", targets);
+
+  const res = await endpoint.post("/api/admin/scope/create/", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data as {
+    message?: string;
+    created_count?: number;
+    skipped_count?: number;
+  };
+}
+
 export async function checkoutFreemium(collectCard = true) {
   const res = await endpoint.post(`${BILLING_BASE}/checkout/freemium/`, {
     collect_card: collectCard,
@@ -106,10 +183,17 @@ export async function checkoutFreemium(collectCard = true) {
   };
 }
 
-export async function checkoutPremium(payload: { mode: PremiumMode; billing_cycle?: BillingCycle }) {
-  const body: Record<string, string> = { mode: payload.mode };
+export async function checkoutPremium(payload: {
+  mode: PremiumMode;
+  billing_cycle?: BillingCycle;
+  asset_count?: number;
+}) {
+  const body: Record<string, string | number> = { mode: payload.mode };
   if (payload.mode === "management" && payload.billing_cycle) {
     body.billing_cycle = payload.billing_cycle;
+  }
+  if (payload.asset_count) {
+    body.asset_count = payload.asset_count;
   }
   const res = await endpoint.post(`${BILLING_BASE}/checkout/premium/`, body);
   return res.data as {
@@ -130,8 +214,34 @@ export async function submitCustomLead(payload: {
 }
 
 export async function getMySubscription() {
-  const res = await endpoint.get<SubscriptionMeResponse>(`${BILLING_BASE}/subscription/me/`);
-  return res.data;
+  const res = await endpoint.get<SubscriptionMeResponse & BillingAssetBreakdown>(
+    `${BILLING_BASE}/subscription/me/`,
+    { timeout: 8000 },
+  );
+  const data = res.data || {};
+  const sub = data.subscription;
+  if (sub && typeof sub === "object") {
+    data.subscription = {
+      ...sub,
+      asset_count: sub.asset_count ?? data.asset_count,
+      visible_asset_count: sub.visible_asset_count ?? data.visible_asset_count,
+      locked_asset_count: sub.locked_asset_count ?? data.locked_asset_count,
+      original_asset_count: sub.original_asset_count ?? data.original_asset_count,
+      billable_asset_count: sub.billable_asset_count ?? data.billable_asset_count,
+    };
+  }
+  // Persist so Freemium UI helpers / automation lock can skip for magic-link unlimited admins.
+  try {
+    const { setMagicLinkUnlimited } = await import("../utils/planLimits");
+    const unlimited =
+      data.magic_link_unlimited === true ||
+      data.magic_link_unlimited === "true" ||
+      data.magic_link_unlimited === 1;
+    setMagicLinkUnlimited(!!unlimited);
+  } catch {
+    /* ignore */
+  }
+  return data;
 }
 
 export async function cancelSubscription() {
@@ -141,7 +251,7 @@ export async function cancelSubscription() {
 
 export async function syncSubscriptionAssets() {
   const res = await endpoint.post(`${BILLING_BASE}/subscription/sync-assets/`);
-  return res.data as { asset_count: number };
+  return res.data as BillingAssetBreakdown & { asset_count: number };
 }
 
 export function isBillingAuthError(error: unknown): boolean {

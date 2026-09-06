@@ -1,4 +1,4 @@
-export interface TeamsDeepLinks {
+export interface TeamsDeepLinkLinks {
   status: string;
   teams_tab_url: string;
   teams_tab_url_alt: string;
@@ -7,35 +7,35 @@ export interface TeamsDeepLinks {
   [key: string]: unknown;
 }
 
-export function extractTeamsDeepLink(payload?: Record<string, unknown>): TeamsDeepLinks;
-export function persistTeamsDeepLink(links: TeamsDeepLinks | null | undefined): void;
-export function readStoredTeamsDeepLink(): TeamsDeepLinks;
+export const TEAMS_WINDOW_NAME: string;
+
+export function extractTeamsDeepLink(payload?: unknown): TeamsDeepLinkLinks;
+export function persistTeamsDeepLink(links: unknown): void;
+export function readStoredTeamsDeepLink(): TeamsDeepLinkLinks;
 export function unwrapTeamsLauncherUrl(url: unknown): string;
 export function isBareTeamsHome(url: unknown): boolean;
 export function isTeamsChatOrTeamHomeUrl(url: unknown): boolean;
 export function isVaptfixTeamDirectoryUrl(url: unknown): boolean;
 export function isChannelSpecificTeamsUrl(url: unknown): boolean;
-export function isUsableBackendTeamsTabUrl(url: unknown): boolean;
 export function toTeamsWebChannelUrl(url: unknown): string;
-export function buildAdminDashboardChannelUrl(payload?: Record<string, unknown>): string;
-export function pickTeamsTabUrl(links: Record<string, unknown> | null | undefined): string;
-export function pickTeamsWebUrl(links: Record<string, unknown> | null | undefined): string;
+export function buildAdminDashboardChannelUrl(payload?: unknown): string;
+export function pickTeamsTabUrl(links: unknown): string;
+export function pickTeamsWebUrl(links: unknown): string;
 export function pickTeamsRedirectUrl(
-  links: Record<string, unknown> | null | undefined,
-  options?: { preferDesktop?: boolean },
+  links: unknown,
+  opts?: { preferDesktop?: boolean },
 ): string;
 export function resolveTeamsAdminDashboardUrl(
-  payload: Record<string, unknown>,
-  fetchStatus?: () => Promise<Record<string, unknown>>,
+  payload: unknown,
+  fetchStatus?: () => Promise<unknown> | unknown,
 ): Promise<string>;
-export const TEAMS_WINDOW_NAME: string;
 export function openTeamsAdminDashboard(
-  url: string,
-  options?: { newTab?: boolean },
+  url: unknown,
+  opts?: { newTab?: boolean },
 ): boolean;
 export function landOnTeamsAdminDashboardChannel(
-  payload: Record<string, unknown>,
-  options?: { newTab?: boolean },
+  payload: unknown,
+  opts?: { newTab?: boolean },
 ): boolean;
-export function redirectToTeamsTabUrl(payload?: Record<string, unknown>): boolean;
-export function openTeamsOAuthPopup(authUrl: string): Window | null;
+export function redirectToTeamsTabUrl(payload?: unknown): boolean;
+export function openTeamsOAuthPopup(authUrl: unknown): Window | null;

@@ -3,6 +3,16 @@ import Swal from "sweetalert2";
 const FLAG = "vaptfix_post_login_success";
 const MSG_KEY = "vaptfix_post_login_success_msg";
 
+export const ADMIN_SET_PASSWORD_MAIL_TEXT =
+  "We emailed you a link to set a password so you can also sign in with email. Check your inbox.";
+
+/** First-time Slack/Teams admin signup: backend already sent the email; show a notice after redirect. */
+export function markAdminSetPasswordEmailIfNew(isNewUser: boolean) {
+  if (!isNewUser) return;
+  sessionStorage.setItem("isNewUser", "true");
+  markPostLoginSuccess(ADMIN_SET_PASSWORD_MAIL_TEXT);
+}
+
 /** Call right before navigating away from the login screen after a successful login. */
 export function markPostLoginSuccess(message?: string) {
   sessionStorage.setItem(FLAG, "1");

@@ -1,6 +1,47 @@
 <template>
-  <div class="auto-tab-content" :class="{ 'auto-tab-content--greyed': !scriptAvailable }">
+  <div
+    class="auto-tab-content"
+    :class="{
+      'auto-tab-content--greyed': !premiumLocked && hasPositiveMatch && !scriptAvailable,
+      'auto-tab-content--unmatched': !matchLoading && !premiumLocked && !hasPositiveMatch,
+    }"
+  >
+    <div v-if="premiumLocked" class="auto-premium-notice">
+      <i class="bi bi-lock-fill" aria-hidden="true"></i>
+      <div class="auto-premium-notice-body">
+        <p>{{ premiumLockMessage }}</p>
+        <router-link to="/pricingplan" class="auto-premium-upgrade">Upgrade to Premium</router-link>
+      </div>
+    </div>
 
+    <div v-else-if="matchLoading" class="auto-empty-state auto-empty-state--loading">
+      <span class="spinner-border spinner-border-sm me-2"></span>
+      Checking for an automated fix…
+    </div>
+
+    <div v-else-if="!hasPositiveMatch" class="auto-empty-state">
+      <div class="capability-banner" :style="theme.banner">
+        <div class="cap-banner-top">
+          <div class="cap-left">
+            <div class="cap-label">Automation Possible</div>
+            <div class="cap-value" :style="{ color: theme.accent }">
+              No <span class="cap-pct">[0%]</span>
+            </div>
+          </div>
+        </div>
+        <div class="cap-bar-col">
+          <div class="cap-bar-track cap-bar-track--no">
+            <div class="cap-bar-fill" :style="{ width: '100%', background: theme.accent }"></div>
+          </div>
+        </div>
+      </div>
+      <div class="auto-unmatched-notice">
+        <i class="bi bi-info-circle-fill me-2"></i>
+        {{ unmatchedMessage }}
+      </div>
+    </div>
+
+    <template v-else>
     <!-- OS Selector -->
     <div v-if="availableOs.length > 1" class="os-selector-row">
       <span class="os-selector-label">OS:</span>
@@ -185,30 +226,14 @@
         <pre><code>{{ resolvedRun }}</code></pre>
       </div>
     </div>
-
-    <!-- Action buttons: user side only (/userassets automation fix) -->
-    <div v-if="isUser" class="run-action-row">
-      <button
-        type="button"
-        class="run-action-btn run-action-btn--complete"
-        @click="$emit('complete-steps')"
-      >
-        <i class="bi bi-check2-all" aria-hidden="true"></i> Complete all steps
-      </button>
-      <button
-        type="button"
-        class="run-action-btn run-action-btn--verify"
-        @click="$emit('send-verification')"
-      >
-        <i class="bi bi-send" aria-hidden="true"></i> Send verification
-      </button>
-    </div>
+    </template>
 
   </div>
 </template>
 
 <script>
 import { canonSeverity, resolveAutomationDisplay } from '@/utils/assetVulnerabilities';
+import { isPositiveAutomationMatch } from '@/utils/automationScriptMatch';
 import { useAuthStore } from '@/stores/authStore';
 import {
   buildScriptFeedbackKey,
@@ -300,7 +325,7 @@ const DEFAULT_REC =
 
 export default {
   name: 'AutomatedFixPanel',
-  emits: ['view-code', 'feedback-change', 'complete-steps', 'send-verification', 'os-data-change'],
+  emits: ['view-code', 'feedback-change', 'os-data-change'],
   props: {
     showActions: { type: Boolean, default: true },
     isUser: { type: Boolean, default: false },
@@ -322,6 +347,7 @@ export default {
     runCommand: { type: String, default: '' },
     // Real API data from automation-scripts/match endpoint
     automationData: { type: Object, default: null },
+    matchLoading: { type: Boolean, default: false },
   },
   data() {
     return {
@@ -369,6 +395,27 @@ export default {
     effectiveData() {
       return this.localData || this.automationData;
     },
+    hasPositiveMatch() {
+      return isPositiveAutomationMatch(this.effectiveData);
+    },
+    premiumLocked() {
+      const d = this.effectiveData;
+      if (d && (d.premium_required === true || d.premium_required === 'true' || d.premium_required === 1)) {
+        return true;
+      }
+      return !!this.authStore.automationPremiumRequired;
+    },
+    premiumLockMessage() {
+      const fromData = String(this.effectiveData && this.effectiveData.message || '').trim();
+      if (fromData && /freemium|upgrade to premium/i.test(fromData)) return fromData;
+      return this.authStore.automationPremiumMessage
+        || 'Automation scripts are not available on the Freemium plan. Upgrade to Premium.';
+    },
+    unmatchedMessage() {
+      const msg = String(this.effectiveData && this.effectiveData.message || '').trim();
+      if (msg && !/freemium|upgrade to premium/i.test(msg)) return msg;
+      return 'No automated fix available for this vulnerability.';
+    },
     availableOs() {
       const d = this.effectiveData;
       if (!d || !Array.isArray(d.available_os) || d.available_os.length <= 1) return [];
@@ -377,7 +424,7 @@ export default {
     // Helper: parse numbered string list "1. A. 2. B." into ["A.", "B."]
     _apiParsed() {
       const d = this.effectiveData;
-      if (!d) return null;
+      if (!d || !this.hasPositiveMatch) return null;
       const split = str => !str ? [] : str.split(/\d+\.\s+/).map(s => s.trim()).filter(Boolean);
       const splitComma = str => !str ? [] : str.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
       const autoLevel = (() => {
@@ -404,10 +451,14 @@ export default {
       };
     },
     scriptAvailable() {
+      if (!this.hasPositiveMatch) return false;
       if (this._apiParsed) return this._apiParsed.scriptAvailable;
-      return true;
+      return false;
     },
     autoDisplay() {
+      if (!this.hasPositiveMatch) {
+        return { tier: 'no', label: 'No', pct: 0, barWidth: 100, displayPct: '0%' };
+      }
       const level = this._apiParsed?.automationLevel || this.automationLevel;
       return resolveAutomationDisplay(
         level,
@@ -1080,6 +1131,59 @@ export default {
   padding: 6px 12px;
   margin-top: 8px;
 }
+.auto-empty-state {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.auto-empty-state--loading {
+  flex-direction: row;
+  align-items: center;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 12px 0;
+}
+.auto-unmatched-notice {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #991b1b;
+  display: flex;
+  align-items: flex-start;
+}
+.auto-premium-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0 0 4px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.auto-premium-notice > i {
+  color: #94a3b8;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+.auto-premium-notice-body p {
+  margin: 0 0 6px;
+}
+.auto-premium-upgrade {
+  font-weight: 600;
+  color: #4f46e5;
+  text-decoration: none;
+}
+.auto-premium-upgrade:hover {
+  text-decoration: underline;
+}
 .script-unavailable-notice {
   opacity: 1 !important;
   background: #fef9ec;
@@ -1148,55 +1252,9 @@ export default {
 
 .copy-btn:hover { color: #e2e8f0; }
 
-.run-action-row {
-  display: flex;
-  gap: 12px;
-  margin-top: 14px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.run-action-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 9px 20px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  border: 2px solid transparent;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-}
-
-.run-action-btn--complete {
-  background: #1b3a5c;
-  color: #fff;
-  border-color: #1b3a5c;
-}
-
-.run-action-btn--complete:hover {
-  background: #163251;
-  border-color: #163251;
-}
-
-.run-action-btn--verify {
-  background: #fff;
-  color: #1b3a5c;
-  border-color: #1b3a5c;
-}
-
-.run-action-btn--verify:hover {
-  background: #f0f5fb;
-}
-
 @media (max-width: 700px) {
   .two-col-grid { grid-template-columns: 1fr; }
   .capability-banner { grid-template-columns: 1fr 1fr; }
   .libs-row-card { grid-template-columns: 1fr; }
-  .run-action-row {
-    flex-direction: column;
-    align-items: flex-end;
-  }
 }
 </style>

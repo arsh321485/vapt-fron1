@@ -18,8 +18,12 @@ export default defineComponent({
     },
   },
   mounted() {
-    const restored = this.authStore.restoreFromStorage();
-    console.log("Session restored?", restored);
+    try {
+      const restored = this.authStore.restoreFromStorage();
+      console.log("Session restored?", restored);
+    } catch (e) {
+      console.error("Session restore failed", e);
+    }
   },
 });
 </script>

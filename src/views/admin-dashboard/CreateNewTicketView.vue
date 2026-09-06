@@ -169,6 +169,12 @@ mounted() {
     },
   },
   methods: {
+    async liveRefreshPage() {
+      if (!this.ticketId || !this.fixVulnerabilityId) return;
+      const authStore = useAuthStore();
+      const res = await authStore.getTicketById(this.fixVulnerabilityId, this.ticketId);
+      if (res.status && res.data) this.ticketData = res.data;
+    },
     loadPage() {
       const route = this.$route;
 

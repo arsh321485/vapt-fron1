@@ -19,8 +19,8 @@
               {{ planLabel }} is now {{ subscription.status }}.
               <span v-if="subscription.amount_due"> Amount: {{ formattedAmount }}.</span>
             </p>
-            <router-link to="/admindashboardonboarding" class="btn text-light rounded-pill pricing-cta">
-              Go to dashboard
+            <router-link :to="continuePath" class="btn text-light rounded-pill pricing-cta">
+              {{ continueLabel }}
             </router-link>
           </div>
 
@@ -49,7 +49,13 @@
 <script>
 import Header from '@/components/admin-component/Header.vue';
 import Footer from '@/components/admin-component/Footer.vue';
+import Swal from 'sweetalert2';
 import { formatUsd, getMySubscription } from '@/services/billingApi';
+import { captureChatHandoffSource, maybeShowReturnToChatPlatformPopup } from '@/utils/adminHandoff';
+import { consumeBillingReturnTo, peekBillingReturnTo, UPLOAD_RETURN_PATH } from '@/utils/planLimits';
+import { setCachedPaidPlan } from '@/utils/authenticatedHome';
+import { useAuthStore } from '@/stores/authStore';
+import { isScopeFileAwaitingSuperadmin, markScopeFileAwaitingSuperadmin, readStoredAdminEmail } from '@/utils/scopeScanGate';
 
 const MAX_POLLS = 20;
 const POLL_MS = 2500;
@@ -64,6 +70,7 @@ export default {
       subscription: null,
       statusMessage: 'Waiting for Stripe to confirm the subscription.',
       pollTimer: null,
+      continuePath: peekBillingReturnTo() || '/admindashboardonboarding',
     };
   },
   computed: {
@@ -78,8 +85,24 @@ export default {
     formattedAmount() {
       return formatUsd(this.subscription?.amount_due, this.subscription?.currency || 'usd');
     },
+    continueLabel() {
+      if (this.continuePath.startsWith('/waiting-for-report')) {
+        return 'Continue';
+      }
+      if (this.continuePath.startsWith(UPLOAD_RETURN_PATH) || this.continuePath.startsWith('/admin-upload-report')) {
+        return 'Continue';
+      }
+      if (this.continuePath.startsWith('/communication')) {
+        return 'Continue to add users';
+      }
+      if (this.continuePath.startsWith('/riskcriteria')) {
+        return 'Continue to risk criteria';
+      }
+      return 'Go to dashboard';
+    },
   },
   mounted() {
+    captureChatHandoffSource(this.$route?.query || {});
     this.pollOnce();
     this.pollTimer = setInterval(() => {
       if (!this.isActive && this.pollCount < MAX_POLLS) {
@@ -107,6 +130,42 @@ export default {
         if (this.isActive) {
           this.polling = false;
           this.stopPolling();
+          setCachedPaidPlan(true);
+          const authStore = useAuthStore();
+          authStore.invalidateAfterPaidUpgrade();
+          void authStore.fetchDashboardSummary();
+          void authStore.fetchAssets(true);
+          void authStore.getReportStatus();
+          const stored = consumeBillingReturnTo('');
+          const awaitingScopeFile =
+            isScopeFileAwaitingSuperadmin(readStoredAdminEmail()) ||
+            String(stored || '').startsWith('/waiting-for-report');
+          if (awaitingScopeFile) {
+            markScopeFileAwaitingSuperadmin(readStoredAdminEmail());
+            this.continuePath = '/waiting-for-report';
+            await Swal.fire({
+              icon: 'info',
+              title: 'Payment received',
+              text: 'Our Super admin will analyse your file.',
+              confirmButtonText: 'OK',
+              confirmButtonColor: '#241447',
+            });
+            await maybeShowReturnToChatPlatformPopup();
+            this.$router.replace('/waiting-for-report');
+            return;
+          }
+
+          // Premium (report already uploaded): add users → risk criteria → dashboard.
+          if (authStore.isSlackOrTeamsLogin()) {
+            this.continuePath = '/riskcriteria';
+          } else {
+            authStore.unmarkStepCompleted(1);
+            this.continuePath = '/communication';
+          }
+          await maybeShowReturnToChatPlatformPopup();
+          window.setTimeout(() => {
+            this.$router.replace(this.continuePath);
+          }, 400);
           return;
         }
         if (this.pollCount >= MAX_POLLS) {

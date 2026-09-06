@@ -12,7 +12,7 @@
           type="button"
           class="panel-alert-close"
           aria-label="Close"
-          @click="$emit('close')"
+          @click="dismiss"
         >
           <i class="bi bi-x"></i>
         </button>
@@ -28,47 +28,74 @@
 </template>
 
 <script>
-const DEFAULT_DELAY_MS = 1500;
+import {
+  hasSeenVaptfixVerifiedAlert,
+  markVaptfixVerifiedAlertSeen,
+} from '@/utils/fixPanelAlertsOnce';
+
+const DEFAULT_DELAY_MS = 1850;
+const AUTO_HIDE_MS = 5000;
 
 export default {
   name: 'VaptfixVerifiedAlert',
   props: {
     visible: { type: Boolean, default: false },
     delayMs: { type: Number, default: DEFAULT_DELAY_MS },
+    autoHideMs: { type: Number, default: AUTO_HIDE_MS },
   },
   emits: ['close'],
   data() {
     return {
       shown: false,
       delayTimer: null,
+      hideTimer: null,
     };
   },
   watch: {
     visible: {
       immediate: true,
       handler(val) {
-        this.clearDelayTimer();
+        this.clearTimers();
         if (!val) {
           this.shown = false;
+          return;
+        }
+        if (hasSeenVaptfixVerifiedAlert()) {
+          this.shown = false;
+          this.$emit('close');
           return;
         }
         this.shown = false;
         this.delayTimer = setTimeout(() => {
           this.shown = true;
           this.delayTimer = null;
+          markVaptfixVerifiedAlertSeen();
+          this.hideTimer = setTimeout(() => {
+            this.dismiss();
+          }, this.autoHideMs);
         }, this.delayMs);
       },
     },
   },
   beforeUnmount() {
-    this.clearDelayTimer();
+    this.clearTimers();
   },
   methods: {
-    clearDelayTimer() {
+    clearTimers() {
       if (this.delayTimer) {
         clearTimeout(this.delayTimer);
         this.delayTimer = null;
       }
+      if (this.hideTimer) {
+        clearTimeout(this.hideTimer);
+        this.hideTimer = null;
+      }
+    },
+    dismiss() {
+      this.clearTimers();
+      markVaptfixVerifiedAlertSeen();
+      this.shown = false;
+      this.$emit('close');
     },
   },
 };

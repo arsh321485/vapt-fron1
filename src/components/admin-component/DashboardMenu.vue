@@ -126,15 +126,16 @@ export default {
   methods: {
     // ✅ Check if dashboard is blocked (onboarding not ready)
     // Uses BOTH store state (reactive) AND localStorage (fallback)
+    // Block Fix/Register only when there is still no report after a fresh check.
     isDashboardBlocked() {
+      if (this.authStore.latestReportId) return false;
+      if (this.authStore.reportStatus.hasReport) return false;
+      if (this.authStore.reportStatus.state === "ready") return false;
+      if (this.authStore.reportStatus.showDashboard) return false;
       if (this.authStore.reportStatus.checked) {
-        const state = this.authStore.reportStatus.state;
-        if (state) return state !== "ready";
-        return !this.authStore.reportStatus.hasReport;
+        return this.authStore.reportStatus.state === "no_report";
       }
-      // Fallback: check localStorage (for cases where store hasn't been checked yet)
-      const reportId = localStorage.getItem("reportId");
-      return !reportId;
+      return !localStorage.getItem("reportId");
     },
 
     // ✅ OLD: Check if testing is in progress (kept for backward compatibility)
@@ -211,13 +212,14 @@ export default {
       });
     },
 
-    navigateTo(path) {
-      // ✅ Check for no report first (uses reactive store state)
+    async navigateTo(path) {
+      if (this.isDashboardBlocked()) {
+        await this.authStore.getReportStatus();
+      }
       if (this.isDashboardBlocked()) {
         this.showNoReportAlert();
         return;
       }
-      // ✅ Then check for testing in progress (backward compatibility)
       if (this.isTestingInProgress()) {
         this.showTestingAlert();
         return;
@@ -225,19 +227,19 @@ export default {
       this.router.push(path);
     },
 
-    navigateToTickets() {
-      // ✅ Check for no report first (uses reactive store state)
+    async navigateToTickets() {
+      if (this.isDashboardBlocked()) {
+        await this.authStore.getReportStatus();
+      }
       if (this.isDashboardBlocked()) {
         this.showNoReportAlert();
         return;
       }
-      // ✅ Then check for testing in progress (backward compatibility)
       if (this.isTestingInProgress()) {
         this.showTestingAlert();
         return;
       }
-      // Get reportId from store or localStorage
-      this.activeReportId = this.authStore.reportStatus.reportId || localStorage.getItem("reportId") || "";
+      this.activeReportId = this.authStore.reportStatus.reportId || this.authStore.latestReportId || localStorage.getItem("reportId") || "";
       this.router.push({
         name: 'supportticket',
         params: { reportId: this.activeReportId }

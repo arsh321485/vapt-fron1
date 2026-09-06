@@ -17,10 +17,11 @@ import endpoint from "./apiServices";
  */
 
 export type ScopeAnalysisStatus = {
-  status: "pending" | "ready" | string;
+  status: "pending" | "pending_superadmin_review" | "ready" | string;
   has_report?: boolean;
   asset_count?: number;
   email?: string;
+  message?: string;
   [key: string]: unknown;
 };
 
@@ -69,8 +70,25 @@ export async function fetchScopeAnalysisStatus(): Promise<ScopeAnalysisStatus | 
   }
 }
 
+export function isPendingSuperadminReview(payload: unknown): boolean {
+  if (payload == null) return false;
+  if (typeof payload === "string") {
+    const state = payload.toLowerCase();
+    return (
+      state === "pending_superadmin_review" ||
+      state === "pending_review" ||
+      state === "pending"
+    );
+  }
+  if (typeof payload !== "object") return false;
+  const row = payload as Record<string, unknown>;
+  const nested = row.data && typeof row.data === "object" ? (row.data as Record<string, unknown>) : row;
+  return isPendingSuperadminReview(String(nested.status || nested.state || ""));
+}
+
 export function isScopeAnalysisReady(status: ScopeAnalysisStatus | null | undefined): boolean {
   if (!status) return false;
   const state = String(status.status || "").toLowerCase();
+  if (isPendingSuperadminReview(state)) return false;
   return state === "ready" || status.has_report === true;
 }

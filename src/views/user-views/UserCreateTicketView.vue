@@ -156,6 +156,11 @@ export default {
         }
     },
     methods: {
+        async liveRefreshPage() {
+            if (!this.ticketId) return;
+            const res = await this.authStore.getUserTicketById(this.fixVulnerabilityId, this.ticketId);
+            if (res.status && res.data) this.ticketData = res.data;
+        },
         async fetchTicket() {
             this.loading = true;
             const res = await this.authStore.getUserTicketById(this.fixVulnerabilityId, this.ticketId);

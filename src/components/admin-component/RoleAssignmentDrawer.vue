@@ -150,6 +150,8 @@
 </template>
 
 <script>
+import { countUniqueAssignmentAssets } from "@/utils/roleAssignmentData";
+
 export default {
   name: "RoleAssignmentDrawer",
   props: {
@@ -194,7 +196,10 @@ export default {
     },
     currentAssetCount() {
       if (!this.activeRole) return 0;
-      return this.roleAssignments[this.activeRole]?.assets?.length || 0;
+      return countUniqueAssignmentAssets(
+        this.roleAssignments[this.activeRole]?.assets || [],
+        this.catalog[this.activeRole]?.assets || [],
+      );
     },
     currentVulnCount() {
       if (!this.activeRole) return 0;
@@ -507,10 +512,10 @@ export default {
   padding: 3px 8px;
   flex-shrink: 0;
 }
-.ra-sev-critical { background: #fee2e2; color: #b91c1c; }
-.ra-sev-high { background: #ffedd5; color: #c2410c; }
-.ra-sev-medium { background: #fef3c7; color: #b45309; }
-.ra-sev-low { background: #dcfce7; color: #15803d; }
+.ra-sev-critical { background: #f8dede; color: #b42318; }
+.ra-sev-high { background: #fee2e2; color: #dc2626; }
+.ra-sev-medium { background: #fef3c7; color: #f59e0b; }
+.ra-sev-low { background: #d1fae5; color: #10b981; }
 .ra-empty {
   margin: 0;
   padding: 16px 14px;

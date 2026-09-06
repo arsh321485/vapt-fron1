@@ -370,8 +370,8 @@
                   ) : (
                     selectedEvent.color === 'maroon'    ? '#b42318' :
                     selectedEvent.color === 'dl-blue'   ? '#dc2626' :
-                    selectedEvent.color === 'dl-orange' ? '#b45309' :
-                    selectedEvent.color === 'dl-green'  ? '#0f766e' : '#475569'
+                    selectedEvent.color === 'dl-orange' ? '#f59e0b' :
+                    selectedEvent.color === 'dl-green'  ? '#10b981' : '#475569'
                   )
                 }">
                   {{ selectedEvent.isExtensionEvent ? (
@@ -447,9 +447,11 @@
 import DashboardMenu from '@/components/user-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/user-component/DashboardHeader.vue';
 import { useAuthStore } from '@/stores/authStore';
+import userTeamFilterWatch from '@/utils/userTeamFilterWatch';
 import { getTeamTextClass } from '@/utils/teamColors';
 
 export default {
+  mixins: [userTeamFilterWatch],
   name: 'UserCalendarView',
   components: { DashboardMenu, DashboardHeader },
   data() {
@@ -517,6 +519,10 @@ export default {
   },
 
   methods: {
+    async onUserSelectedTeamChanged(team) {
+      if (typeof this.loadCalendarData === "function") await this.loadCalendarData();
+      else if (typeof this.fetchCalendar === "function") await this.fetchCalendar();
+    },
     getTeamTextClass,
     // ── Color helpers ──────────────────────────────────────────────────────────
     severityColor(sev) {
@@ -608,6 +614,21 @@ export default {
           });
         });
       });
+    },
+
+    async liveRefreshPage() {
+      const store = useAuthStore();
+      const team     = this.teamsFilter       !== 'All Units' ? this.teamsFilter                          : undefined;
+      const severity = this.criticalityFilter !== 'All Types' ? this.criticalityFilter.toLowerCase() : undefined;
+      const res = await store.fetchUserRiskCriteriaCalendarWithFilters(
+        this.currentYear, this.currentMonth, team, severity,
+      );
+      if (res.status && res.data) {
+        this.apiCalendarData = res.data;
+        const evts = [];
+        this.pushEventsFromCalendarApiData(res.data, this.currentYear, this.currentMonth, evts);
+        this.events = evts;
+      }
     },
 
     // ── Month view ─────────────────────────────────────────────────────────────
@@ -929,7 +950,10 @@ export default {
   },
 
   watch: {
-    teamsFilter() {
+    teamsFilter(val) {
+      // Keep the shared, app-wide team selection in sync so every other page
+      // (Dashboard, Assets, Tickets, Exceptions, ...) picks up the change too.
+      useAuthStore().setUserSelectedTeam(val && val !== 'All Units' ? val : 'both');
       if (this.activeView === 'Week') this.loadWeekData();
       else this.loadCalendarData();
     },
@@ -952,6 +976,12 @@ export default {
       this.assignedTeams = Array.isArray(user.Member_role) ? user.Member_role : [];
     } catch {
       this.assignedTeams = [];
+    }
+
+    // Carry over the team picked on Home so Calendar shows the same filtered data by default.
+    const shared = useAuthStore().userSelectedTeam;
+    if (shared && shared !== 'both' && shared !== 'All Teams' && this.assignedTeams.includes(shared)) {
+      this.teamsFilter = shared;
     }
 
     if (this.teamsFilter !== 'All Units' && !this.assignedTeams.includes(this.teamsFilter)) {
@@ -1239,8 +1269,8 @@ export default {
 .cal-event-crimson     { background: #fee2e2; color: #b91c1c; }
 .cal-event-maroon      { background: #f8dede; color: #b42318; } /* Critical */
 .cal-event-dl-blue     { background: #fee2e2; color: #dc2626; } /* High */
-.cal-event-dl-orange   { background: #fef3c7; color: #b45309; } /* Medium */
-.cal-event-dl-green    { background: #ccfbf1; color: #0f766e; } /* Low */
+.cal-event-dl-orange   { background: #fef3c7; color: #f59e0b; } /* Medium */
+.cal-event-dl-green    { background: #d1fae5; color: #10b981; } /* Low */
 .cal-event-dl-red      { background: #fef2f2; color: rgb(220, 38, 38); }
 /* cal-event-team-* colors: global main.css */
 
@@ -1457,8 +1487,8 @@ export default {
 /* Week card colors — severity deadlines */
 .cal-week-card-maroon    { background: #f8dede; color: #b42318; border-left: 3px solid #efb7b1; } /* Critical */
 .cal-week-card-dl-blue   { background: #fee2e2; color: #dc2626; border-left: 3px solid #fca5a5; } /* High */
-.cal-week-card-dl-orange { background: #fef3c7; color: #b45309; border-left: 3px solid #fcd34d; } /* Medium */
-.cal-week-card-dl-green  { background: #ccfbf1; color: #0f766e; border-left: 3px solid #5eead4; } /* Low */
+.cal-week-card-dl-orange { background: #fef3c7; color: #f59e0b; border-left: 3px solid #fcd34d; } /* Medium */
+.cal-week-card-dl-green  { background: #d1fae5; color: #10b981; border-left: 3px solid #6ee7b7; } /* Low */
 /* Week card colors — team extension events */
 .cal-week-card-team-network,
 .cal-week-card-team-patch,
@@ -1478,8 +1508,8 @@ export default {
 /* Badge colors */
 .cal-badge-maroon    { background: #b42318; color: white; } /* Critical */
 .cal-badge-dl-blue   { background: #dc2626; color: white; } /* High */
-.cal-badge-dl-orange { background: #b45309; color: white; } /* Medium */
-.cal-badge-dl-green  { background: #0f766e; color: white; } /* Low */
+.cal-badge-dl-orange { background: #f59e0b; color: white; } /* Medium */
+.cal-badge-dl-green  { background: #10b981; color: white; } /* Low */
 /* cal-badge-team-* colors: global main.css */
 
 .cal-week-event-title {
@@ -1569,8 +1599,8 @@ export default {
 /* Day card colors — severity deadlines */
 .cal-day-card-maroon    { background: #f8dede; color: #b42318; border-left: 4px solid #efb7b1; } /* Critical */
 .cal-day-card-dl-blue   { background: #fee2e2; color: #dc2626; border-left: 4px solid #fca5a5; } /* High */
-.cal-day-card-dl-orange { background: #fef3c7; color: #b45309; border-left: 4px solid #fcd34d; } /* Medium */
-.cal-day-card-dl-green  { background: #ccfbf1; color: #0f766e; border-left: 4px solid #5eead4; } /* Low */
+.cal-day-card-dl-orange { background: #fef3c7; color: #f59e0b; border-left: 4px solid #fcd34d; } /* Medium */
+.cal-day-card-dl-green  { background: #d1fae5; color: #10b981; border-left: 4px solid #6ee7b7; } /* Low */
 /* Day card colors — team extension events */
 .cal-day-card-team-network,
 .cal-day-card-team-patch,

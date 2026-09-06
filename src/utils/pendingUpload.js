@@ -45,12 +45,24 @@ export function clearPendingUploadMeta() {
   sessionStorage.removeItem(PENDING_UPLOAD_META_KEY);
 }
 
-export async function stashPendingUpload(file, meta = {}) {
-  if (!(file instanceof Blob)) return;
+function asFile(entry, fallbackName = "report") {
+  if (!entry) return null;
+  const blob = entry.file || entry;
+  if (!(blob instanceof Blob)) return null;
+  return new File([blob], entry.name || fallbackName, {
+    type: entry.type || blob.type || "",
+  });
+}
+
+export async function stashPendingUpload(fileOrFiles, meta = {}) {
+  const files = (Array.isArray(fileOrFiles) ? fileOrFiles : [fileOrFiles]).filter(
+    (file) => file instanceof Blob,
+  );
+  if (!files.length) return;
   setPendingUploadMeta({
     count: Number(meta.count) || 0,
     plan: meta.plan || "",
-    name: file.name || meta.name || "report",
+    name: files[0].name || meta.name || "report",
   });
   const db = await openDb();
   await new Promise((resolve, reject) => {
@@ -58,14 +70,23 @@ export async function stashPendingUpload(file, meta = {}) {
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
     tx.objectStore(STORE).put(
-      { file, name: file.name, type: file.type },
+      {
+        files: files.map((file) => ({
+          file,
+          name: file.name,
+          type: file.type,
+        })),
+        file: files[0],
+        name: files[0].name,
+        type: files[0].type,
+      },
       KEY,
     );
   });
   db.close();
 }
 
-export async function peekPendingUploadFile() {
+export async function peekPendingUploadFiles() {
   try {
     const db = await openDb();
     const record = await new Promise((resolve, reject) => {
@@ -75,14 +96,19 @@ export async function peekPendingUploadFile() {
       req.onerror = () => reject(req.error);
     });
     db.close();
-    if (!record?.file) return null;
-    const blob = record.file;
-    return new File([blob], record.name || "report", {
-      type: record.type || blob.type || "",
-    });
+    if (Array.isArray(record?.files) && record.files.length) {
+      return record.files.map((entry, idx) => asFile(entry, `report-${idx + 1}`)).filter(Boolean);
+    }
+    const single = asFile(record, "report");
+    return single ? [single] : [];
   } catch {
-    return null;
+    return [];
   }
+}
+
+export async function peekPendingUploadFile() {
+  const files = await peekPendingUploadFiles();
+  return files[0] || null;
 }
 
 export async function clearPendingUpload() {

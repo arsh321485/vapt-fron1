@@ -72,7 +72,7 @@
                             <div class="d-flex align-items-center gap-2">
                               <span class="msu-status-dot-inline" :class="getStatusDotClass(vuln.status)"></span>
                               <span class="msu-status-text" :class="getStatusTextClass(vuln.status)">
-                                {{ vuln.status }}
+                                {{ formatStatusLabel(vuln.status) }}
                               </span>
                             </div>
                           </td>
@@ -108,6 +108,7 @@ import DashboardMenu from "@/components/admin-component/DashboardMenu.vue";
 import DashboardHeader from "@/components/admin-component/DashboardHeader.vue";
 import { useAuthStore } from "@/stores/authStore";
 import { getTeamTextClass } from '@/utils/teamColors';
+import { formatStatusLabel } from '@/utils/statusLabel';
 
 export default {
   name: "MissingSecurityUpdatesView",
@@ -144,6 +145,7 @@ export default {
     },
   },
   methods: {
+    formatStatusLabel,
     toggleGroup(idx) {
       if (this.openGroups.includes(idx)) {
         this.openGroups = this.openGroups.filter(i => i !== idx);
@@ -176,6 +178,14 @@ export default {
     },
     exportPDF() {
       window.print();
+    },
+    async liveRefreshPage() {
+      const store = useAuthStore();
+      const result = await store.fetchMitigationByTeam(true);
+      if (result.status) {
+        this.mitigationData = result.data;
+        this.reportId = result.data.report_id;
+      }
     },
     async loadData() {
       const store = useAuthStore();
@@ -360,8 +370,8 @@ export default {
 }
 .msu-sev-critical { background: #f8dede; color: #b42318; }
 .msu-sev-high     { background: #fee2e2; color: #dc2626; }
-.msu-sev-medium   { background: #fef3c7; color: #b45309; }
-.msu-sev-low      { background: #ccfbf1; color: #0f766e; }
+.msu-sev-medium   { background: #fef3c7; color: #f59e0b; }
+.msu-sev-low      { background: #d1fae5; color: #10b981; }
 
 /* Status */
 .msu-status-dot-inline {

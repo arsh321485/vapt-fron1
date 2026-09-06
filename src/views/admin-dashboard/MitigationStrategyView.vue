@@ -208,6 +208,7 @@ import DashboardMenu from "@/components/admin-component/DashboardMenu.vue";
 import DashboardHeader from "@/components/admin-component/DashboardHeader.vue";
 import { useAuthStore } from "@/stores/authStore";
 import { getTeamTextClass } from '@/utils/teamColors';
+import { getSeverityColor as severityHex } from '@/utils/severityColors';
 
 export default {
   name: "MitigationStrategyView",
@@ -278,13 +279,7 @@ export default {
     },
 
     riskColor(risk) {
-      const map = {
-        Critical: "#b31c1c",
-        High: "#f44336",
-        Medium: "#f6b100",
-        Low: "#4caf50",
-      };
-      return map[risk] || "#666";
+      return severityHex(risk);
     },
 
 
@@ -412,6 +407,24 @@ export default {
         this.mitigationData = data;
       }
       this.loading = false;
+    },
+    async liveRefreshPage() {
+      const store = useAuthStore();
+      let result = await store.fetchAdminMitigationVulnAssetCount();
+      if (result.status && result.data) {
+        const data = result.data;
+        this.teamsData = data.teams || data;
+        this.mitigationData = data;
+        await this.loadRiskCriteria();
+        return;
+      }
+      result = await store.fetchMitigationByTeam(true);
+      if (result.status && result.data) {
+        const data = result.data;
+        this.teamsData = data.teams || data;
+        this.mitigationData = data;
+      }
+      await this.loadRiskCriteria();
     },
   },
 
@@ -607,10 +620,10 @@ export default {
   font-weight: 700;
 }
 
-.critical .severity { color: #b31c1c; }
-.high .severity { color: #f44336; }
-.medium .severity { color: #d28a00; }
-.low .severity { color: #2f9e44; }
+.critical .severity { color: #b42318; }
+.high .severity { color: #dc2626; }
+.medium .severity { color: #f59e0b; }
+.low .severity { color: #10b981; }
 
 .timeline-btn {
   border: 1px solid rgba(0, 0, 0, 0.12);

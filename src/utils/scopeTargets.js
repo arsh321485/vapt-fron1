@@ -140,6 +140,27 @@ export function isValidScopeTarget(raw) {
   return isValidHostname(value);
 }
 
+export function invalidScopeTargetMessage(raw) {
+  const value = String(raw || "").trim();
+  if (!value) return "Empty line";
+  if (looksLikeFilename(value)) {
+    return "Filenames are not valid targets. Enter a valid IP, CIDR, or URL.";
+  }
+  if (/^[a-zA-Z]+$/.test(value) || (!/\d/.test(value) && !value.includes("."))) {
+    return "Not a valid IP address. Enter a valid IP (for example 192.168.1.10).";
+  }
+  return "Not a valid IP, CIDR, or URL.";
+}
+
+export function collectInvalidScopeLines(textOrLines) {
+  const lines = Array.isArray(textOrLines)
+    ? textOrLines.map((line) => String(line || "").trim()).filter(Boolean)
+    : splitScopeLines(textOrLines);
+  return lines
+    .filter((line) => !isValidScopeTarget(line))
+    .map((value) => ({ value, error: invalidScopeTargetMessage(value) }));
+}
+
 export function countValidScopeTargets(text) {
   return splitScopeLines(text).filter(isValidScopeTarget).length;
 }
@@ -183,18 +204,89 @@ export function extractScopeProcessing(payload) {
   };
 }
 
+export function extractScopeSubmitStatus(payload) {
+  const data = payload?.data && typeof payload.data === "object" ? payload.data : payload || {};
+  const details =
+    payload?.details && typeof payload.details === "object" ? payload.details : {};
+  const status = String(
+    data.status || data.state || details.status || payload?.status || "",
+  ).toLowerCase();
+  const message = String(
+    data.message || details.message || payload?.message || "",
+  ).trim();
+  return {
+    status,
+    message,
+    pending_superadmin_review:
+      status === "pending_superadmin_review" ||
+      status === "pending_review" ||
+      status === "pending",
+  };
+}
+
+export function recommendedPaidPlanFromScope(rec, count = 0) {
+  const n = Number(rec?.total_scope_assets) || Number(count) || 0;
+  if (n > 250) return "custom";
+  const plan = String(rec?.recommended_plan || "").toLowerCase();
+  if (plan === "custom") return "custom";
+  return "premium";
+}
+
 export function extractPlanRecommendation(payload) {
   const data = payload?.data && typeof payload.data === "object" ? payload.data : payload || {};
   const details =
     payload?.details && typeof payload.details === "object" ? payload.details : {};
   const rec = data.plan_recommendation || details.plan_recommendation;
   if (!rec || typeof rec !== "object") return null;
-  const plan = String(rec.recommended_plan || "").toLowerCase();
-  if (plan !== "freemium" && plan !== "premium") return null;
+  let plan = String(rec.recommended_plan || "").toLowerCase();
+  // Scope submit never recommends Freemium.
+  if (plan === "freemium") plan = "premium";
+  const internal = Number(rec.internal_count) || 0;
+  const external = Number(rec.external_count) || 0;
+  const web = Number(rec.web_count ?? rec.web_app_count ?? rec.url_count) || 0;
+  const total =
+    Number(rec.total_scope_assets) ||
+    (internal + external + web) ||
+    0;
+  if (total > 250) plan = "custom";
+  else if (plan !== "premium" && plan !== "custom") {
+    plan = "premium";
+  }
   return {
     recommended_plan: plan,
-    total_scope_assets: Number(rec.total_scope_assets) || 0,
+    total_scope_assets: total,
+    internal_count: internal,
+    external_count: external,
+    web_count: web,
     freemium_limit: Number(rec.freemium_limit) || 5,
-    message: String(rec.message || "").trim(),
+    message: String(rec.message || data.message || "").trim(),
   };
+}
+
+export function planRecommendationBreakdown(rec) {
+  if (!rec) return "";
+  const internal = Number(rec.internal_count);
+  const external = Number(rec.external_count);
+  if (!Number.isFinite(internal) && !Number.isFinite(external)) return "";
+  const parts = [];
+  if (Number.isFinite(internal)) {
+    parts.push(`${internal} internal`);
+  }
+  if (Number.isFinite(external)) {
+    parts.push(`${external} external`);
+  }
+  if (!parts.length) return "";
+  if (external > 0) {
+    return `${parts.join(", ")} — Premium required for external targets`;
+  }
+  return parts.join(", ");
+}
+
+export function planRecommendationMessage(rec) {
+  if (rec?.message) return rec.message;
+  const breakdown = planRecommendationBreakdown(rec);
+  if (breakdown && Number(rec?.external_count) > 0) return breakdown;
+  const count = Number(rec?.total_scope_assets) || 0;
+  const limit = rec?.freemium_limit || 5;
+  return `Your scope has ${count} target(s). Freemium shows ${limit} now — extra assets stay locked until you upgrade (no re-upload). Premium unlocks all of them.`;
 }

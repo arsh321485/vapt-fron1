@@ -46,9 +46,11 @@
                       <div class="col-4" v-for="n in totalSteps" :key="n">
                         <span class="vc-step-pill"
                           :class="[
-                            selectedSteps.includes(n) ? 'vc-step-pill-active' : '',
-                            raisedSupportSteps.includes(n) ? 'vc-step-pill-raised' : ''
+                            selectedSteps.includes(n) && !raisedSupportSteps.includes(n) ? 'vc-step-pill-active' : '',
+                            raisedSupportSteps.includes(n) ? 'vc-step-pill-raised' : '',
+                            selectedSteps.includes(n) && raisedSupportSteps.includes(n) ? 'vc-step-pill-raised-selected' : '',
                           ]"
+                          :title="raisedSupportSteps.includes(n) ? 'Support already raised — click to view' : 'Select this step'"
                           style="cursor:pointer;"
                           @click="toggleStep(n)">
                           Step {{ n }}
@@ -727,10 +729,15 @@ export default {
       if (icon === 'arrow') return '#0f696e';
       return '#94a3b8';
     },
-    async fetchTimeline(fixVulId) {
-      this.timelineLoading = true;
+    async liveRefreshPage() {
+      const fixVulId = this.currentVuln?.id || this.$route.query.fix_vul_id;
+      if (!fixVulId) return;
+      await this.fetchTimeline(String(fixVulId), true);
+    },
+    async fetchTimeline(fixVulId, silent = false) {
+      if (!silent) this.timelineLoading = true;
       const res = await this.authStore.fetchVulnerabilityTimeline(fixVulId);
-      this.timelineLoading = false;
+      if (!silent) this.timelineLoading = false;
       if (res.status && res.data?.timeline) {
         const sorted = [...res.data.timeline].sort((a, b) => {
           return new Date(a.date).getTime() - new Date(b.date).getTime();
@@ -763,9 +770,9 @@ export default {
   computed: {
     remediationStatusLabel() {
       const status = String(this.currentVuln?.status || 'open').toLowerCase();
-      if (status === 'closed') return 'CLOSED';
-      if (status === 'in_progress' || status === 'in progress') return 'IN PROGRESS';
-      return 'OPEN';
+      if (status === 'closed') return 'Closed';
+      if (status === 'in_progress' || status === 'in progress') return 'In Progress';
+      return 'Open';
     },
     riskChipClass() {
       const risk = String(this.currentVuln?.risk || '').toLowerCase();
@@ -776,8 +783,8 @@ export default {
     },
     statusChipClass() {
       const status = this.remediationStatusLabel;
-      if (status === 'CLOSED') return 'rt-chip-status-closed';
-      if (status === 'IN PROGRESS') return 'rt-chip-status-progress';
+      if (status === 'Closed') return 'rt-chip-status-closed';
+      if (status === 'In Progress') return 'rt-chip-status-progress';
       return 'rt-chip-status-open';
     },
     progressPercent() {
@@ -1259,8 +1266,8 @@ cp target/application.war /opt/tomcat/webapps/`,
 .rt-chip-risk { color: #b42318; background: #f8dede; }
 .rt-chip-risk-critical { color: #b42318; background: #f8dede; }
 .rt-chip-risk-high { color: #dc2626; background: #fee2e2; }
-.rt-chip-risk-medium { color: #b45309; background: #fef3c7; }
-.rt-chip-risk-low { color: #0f766e; background: #ccfbf1; }
+.rt-chip-risk-medium { color: #f59e0b; background: #fef3c7; }
+.rt-chip-risk-low { color: #10b981; background: #d1fae5; }
 .rt-chip-status {
   color: #334155;
   background: #e2e8f0;
@@ -1378,9 +1385,15 @@ cp target/application.war /opt/tomcat/webapps/`,
   border-color: #0f696e;
 }
 .vc-step-pill-raised {
-  background: #fff7ed;
-  color: #c2410c;
-  border-color: #fdba74;
+  background: #e2e8f0;
+  color: #64748b;
+  border-color: #cbd5e1;
+}
+.vc-step-pill-raised-selected {
+  background: #e2e8f0;
+  color: #334155;
+  border-color: #0f696e;
+  box-shadow: 0 0 0 2px rgba(15,105,110,0.2);
 }
 .vc-textarea {
   width: 100%;

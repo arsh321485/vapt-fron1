@@ -25,6 +25,7 @@
 
 <script>
 import { useAuthStore } from "@/stores/authStore";
+import { resolveDjangoOAuthPostMessageFields } from "@/utils/djangoOAuthTokens";
 import {
   extractSetPasswordFromPayload,
   extractSetPasswordParams,
@@ -49,7 +50,15 @@ export default {
   methods: {
     isMemberFlow() {
       const params = new URLSearchParams(window.location.search);
-      return params.get("flow") === "member";
+      if (params.get("flow") === "member") return true;
+      try {
+        return (
+          sessionStorage.getItem("pending_member_flow") === "slack" ||
+          localStorage.getItem("pending_member_flow") === "slack"
+        );
+      } catch {
+        return false;
+      }
     },
     notifyOpener(payload) {
       if (window.opener) {
@@ -136,6 +145,7 @@ export default {
         this.status = "success";
 
         const loginData = res.data || {};
+        const djangoFields = resolveDjangoOAuthPostMessageFields(loginData);
         // ✅ Only use Django local_user — never fallback to Slack user object
         const localUser = loginData.local_user || null;
         this.notifyOpener({
@@ -145,22 +155,19 @@ export default {
           local_user: localUser,
           bot_token: botToken,
           slack_user_id: validateRes?.data?.user?.id || "",
-          django_access_token:
-            loginData.jwt_tokens?.access ||
-            loginData.tokens?.access ||
-            loginData.access_token ||
-            sessionStorage.getItem("authorization") ||
-            "",
-          django_refresh_token:
-            loginData.jwt_tokens?.refresh ||
-            loginData.tokens?.refresh ||
-            "",
+          is_new_user: loginData.is_new_user === true,
+          ...djangoFields,
         });
 
         setTimeout(() => window.close(), 1200);
       } else {
         this.status = "error";
         this.errorMessage = res.message || "Slack login failed.";
+        this.notifyOpener({
+          type: "slack-auth-success",
+          success: false,
+          error: this.errorMessage,
+        });
       }
     },
     async handleCallback() {
@@ -186,6 +193,11 @@ export default {
           this.status = "error";
           this.errorMessage =
             urlParams.get("error_description") || "Slack authorization failed.";
+          this.notifyOpener({
+            type: "slack-auth-success",
+            success: false,
+            error: this.errorMessage,
+          });
           return;
         }
 
