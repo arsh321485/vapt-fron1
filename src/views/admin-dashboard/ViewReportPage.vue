@@ -100,10 +100,10 @@
               </div>
 
               <div class="severity-stats-grid">
-                <div class="stat-card stat-card--compact critical"><span>Critical</span><strong>{{ vulnStats.critical }}</strong><small>+2 from last scan</small></div>
-                <div class="stat-card stat-card--compact high"><span>High</span><strong>{{ vulnStats.high }}</strong><small>-5 remediated</small></div>
-                <div class="stat-card stat-card--compact medium"><span>Medium</span><strong>{{ vulnStats.medium }}</strong><small>Stable</small></div>
-                <div class="stat-card stat-card--compact low"><span>Low</span><strong>{{ vulnStats.low }}</strong><small>Maintenance only</small></div>
+                <div class="stat-card stat-card--compact critical"><span>Critical</span><strong>{{ vulnStats.critical }}</strong></div>
+                <div class="stat-card stat-card--compact high"><span>High</span><strong>{{ vulnStats.high }}</strong></div>
+                <div class="stat-card stat-card--compact medium"><span>Medium</span><strong>{{ vulnStats.medium }}</strong></div>
+                <div class="stat-card stat-card--compact low"><span>Low</span><strong>{{ vulnStats.low }}</strong></div>
               </div>
 
               <div class="chart-grid">
