@@ -404,7 +404,6 @@
                         <p class="mb-0">
                           Continue to Stripe to pay for
                           <strong>{{ billedAssetCount || 'your' }} {{ billedAssetCount === 1 ? 'IP' : 'IPs' }}</strong>.
-                          After payment you will return here automatically.
                         </p>
                       </div>
                     </div>
