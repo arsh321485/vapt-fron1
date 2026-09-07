@@ -60,9 +60,9 @@
                       <span>Risk Score</span>
                       <strong>{{ riskScore }}/100</strong>
                     </div>
-                    <div class="score-box">
+                    <div class="score-box" :style="riskRating ? { background: riskRatingBg } : null">
                       <span>Sensitivity</span>
-                      <strong>{{ riskRating || '—' }}</strong>
+                      <strong :style="riskRating ? { color: riskRatingColor } : null">{{ riskRating || '—' }}</strong>
                     </div>
                   </div>
                   <div class="scope-mini-section">
@@ -71,22 +71,18 @@
                       <div class="scope-mini-card">
                         <span><i class="bi bi-pc-display scope-ico"></i> Assets</span>
                         <strong>{{ assetTypeCounts.assets }}</strong>
-                        <small>Other hosts</small>
                       </div>
                       <div class="scope-mini-card">
                         <span><i class="bi bi-globe scope-ico"></i> Web App</span>
                         <strong>{{ assetTypeCounts.webapp }}</strong>
-                        <small>Web applications</small>
                       </div>
                       <div class="scope-mini-card">
                         <span><i class="bi bi-shield-lock scope-ico"></i> Firewall</span>
                         <strong>{{ assetTypeCounts.firewall }}</strong>
-                        <small>Network devices</small>
                       </div>
                       <div class="scope-mini-card">
                         <span><i class="bi bi-hdd-stack scope-ico"></i> Server</span>
                         <strong>{{ assetTypeCounts.server }}</strong>
-                        <small>Servers scanned</small>
                       </div>
                     </div>
                   </div>
@@ -217,13 +213,6 @@
                     </tbody>
                   </table>
                 </div>
-                <div class="table-footer">
-                  <span>Showing {{ filteredData.length }} of {{ tableData.length }} total findings</span>
-                  <div class="table-footer-actions">
-                    <button type="button">Previous</button>
-                    <button type="button">Next</button>
-                  </div>
-                </div>
               </div>
 
             </div>
@@ -243,7 +232,7 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { useAuthStore } from '@/stores/authStore';
 import { PERFORMANCE_TEAM_CONFIGS, TEAM_COLORS, resolveTeamKey } from '@/utils/teamColors';
-import { SEV, SEV_CHART } from '@/utils/severityColors';
+import { SEV, SEV_CHART, getSeverityColor, getSeverityBg } from '@/utils/severityColors';
 import { formatStatusLabel } from '@/utils/statusLabel';
 import { filterAssetsByType } from '@/utils/assetDummyData';
 
@@ -377,6 +366,12 @@ export default {
       const weighted = (this.vulnStats.critical * 8) + (this.vulnStats.high * 5) + (this.vulnStats.medium * 3) + (this.vulnStats.low * 1);
       const max = this.totalVulnerabilities ? this.totalVulnerabilities * 8 : 1;
       return Math.min(100, Math.round((weighted / max) * 100));
+    },
+    riskRatingColor() {
+      return getSeverityColor(this.riskRating);
+    },
+    riskRatingBg() {
+      return getSeverityBg(this.riskRating);
     },
     severityLegend() {
       const total = this.totalVulnerabilities || 1;
