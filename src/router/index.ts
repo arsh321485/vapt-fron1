@@ -750,10 +750,10 @@ router.beforeEach(async (to, from, next) => {
     try {
       const authStore = useAuthStore();
       const rs = authStore.reportStatus;
-      if (
-        rs.checked &&
-        (authStore._isOnboardingComplete(rs) || rs.hasReport || rs.showDashboard)
-      ) {
+      // A report on file is not proof of payment (Premium uploads before
+      // checkout) — only a genuinely completed/dashboard state may skip the
+      // paid-plan check below.
+      if (rs.checked && (authStore._isOnboardingComplete(rs) || rs.showDashboard)) {
         return next();
       }
       const paid = await authStore.hasPaidPlan();

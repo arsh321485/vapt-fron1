@@ -8178,7 +8178,12 @@ export const useAuthStore = defineStore("auth", {
       if (this.reportStatus.checked && this._isOnboardingComplete(this.reportStatus)) {
         return true;
       }
-      if (this.reportStatus.checked && this.reportStatus.hasReport) {
+      // Fast, reliable signal set only on an actually-completed checkout
+      // (Premium payment confirmed active, or a completed Freemium checkout).
+      // NOTE: a report existing on file is NOT proof of payment — Premium
+      // uploads its report before checkout, so an abandoned Stripe session
+      // must not be waved through just because reportStatus.hasReport is true.
+      if (hasCachedPaidPlan()) {
         return true;
       }
       try {
@@ -8187,8 +8192,8 @@ export const useAuthStore = defineStore("auth", {
         setCachedPaidPlan(paid);
         return paid;
       } catch {
-        // Billing outage / timeout — do not block dashboard when report is already on file.
-        if (this.reportStatus.hasReport || this._isOnboardingComplete(this.reportStatus)) {
+        // Billing outage / timeout — do not block a genuinely-onboarded dashboard.
+        if (this._isOnboardingComplete(this.reportStatus)) {
           return true;
         }
         return hasCachedPaidPlan();
@@ -8311,11 +8316,19 @@ export const useAuthStore = defineStore("auth", {
         return "/admin-upload-report";
       }
 
-      // Report already on file — never wait on billing/subscription/me (often 30–45s).
+      // Report already on file. hasPaidPlan() is a cheap cache check once a
+      // checkout has actually completed, so this stays fast for the normal
+      // case — it only reaches the live billing call (~30–45s worst case) for
+      // an admin who uploaded a report but never finished paying, and that
+      // case must not be waved into Add Users just because a report exists
+      // (Premium uploads its report *before* Stripe checkout).
       clearScopeFileAwaitingSuperadmin();
       if (this._isOnboardingComplete(res) || res.hasRiskCriteria) {
         this._markOnboardingComplete();
         return "/admindashboardonboarding";
+      }
+      if (!(await this.hasPaidPlan())) {
+        return "/admin-upload-report";
       }
       if (this.needsCommunicationStep()) {
         return "/communication";
