@@ -492,6 +492,84 @@ export function isFreemiumSinglePickIntent() {
   }
 }
 
+const AUTO_PREMIUM_CHECKOUT_KEY = "vaptfix_auto_premium_checkout_fired";
+
+/**
+ * "Yes, continue with Premium" (upload flow) should land straight on Stripe
+ * Checkout instead of requiring a second click on /pricingplan. Call this
+ * right when the user makes that choice so the resulting page load is armed
+ * to auto-fire checkout once.
+ */
+export function armAutoPremiumCheckout() {
+  try {
+    sessionStorage.removeItem(AUTO_PREMIUM_CHECKOUT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** True once auto-checkout has already fired this tab session — guards against
+ * re-firing Stripe Checkout if the user hits Back from Stripe's hosted page. */
+export function hasAutoPremiumCheckoutFired() {
+  try {
+    return sessionStorage.getItem(AUTO_PREMIUM_CHECKOUT_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function markAutoPremiumCheckoutFired() {
+  try {
+    sessionStorage.setItem(AUTO_PREMIUM_CHECKOUT_KEY, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
+const PENDING_PLAN_RESUME_KEY = "vaptfix_pending_plan_resume";
+
+/**
+ * Remember an in-progress PAID plan selection (Premium/Custom) that got
+ * interrupted by a forced sign-in/sign-up on the pricing page, so that once
+ * the admin is authenticated they resume checkout for that plan instead of
+ * landing in generic onboarding with no plan chosen and nothing paid.
+ * Freemium never needs this — it has no checkout to resume.
+ */
+export function setPendingPlanResume({ plan, mode = "", billingCycle = "" } = {}) {
+  const p = String(plan || "").toLowerCase();
+  if (p !== "premium" && p !== "custom") return;
+  try {
+    sessionStorage.setItem(
+      PENDING_PLAN_RESUME_KEY,
+      JSON.stringify({ plan: p, mode: String(mode || ""), billingCycle: String(billingCycle || "") }),
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Reads and clears the pending paid-plan resume (one-shot, like a redirect target). */
+export function consumePendingPlanResume() {
+  try {
+    const raw = sessionStorage.getItem(PENDING_PLAN_RESUME_KEY);
+    sessionStorage.removeItem(PENDING_PLAN_RESUME_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || (data.plan !== "premium" && data.plan !== "custom")) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+/** /pricingplan URL that resumes a pending paid-plan checkout after sign-in/sign-up. */
+export function pendingPlanResumeUrl(pending) {
+  if (!pending || !pending.plan) return "";
+  const params = new URLSearchParams({ plan: pending.plan, source: "resume" });
+  if (pending.mode) params.set("mode", pending.mode);
+  return `/pricingplan?${params.toString()}`;
+}
+
 /** Backend 4-field breakdown. Do not invent a price count — prefer billable/original. */
 export function billingAssetBreakdown(source) {
   const empty = {
@@ -523,6 +601,42 @@ export function billableAssetCount(source, fallback = 0) {
   return billingAssetBreakdown(source).billable_asset_count || Number(fallback) || 0;
 }
 
+/**
+ * Sum per-file unique-IP counts without double-counting a file that appears in
+ * more than one bucket (`results` and `files` commonly describe the *same*
+ * uploaded files from two angles — concatenating them summed each file twice).
+ * Rows are deduped by file name, keeping the larger reported count per name.
+ */
+function sumUniqueIpBuckets(buckets) {
+  const byName = new Map();
+  let unnamed = 0;
+  let saw = false;
+  buckets.forEach((row) => {
+    if (row == null || typeof row === "string") return;
+    const n = Number(
+      row.unique_ip_count ?? row.merged_unique_ip_count ?? row.unique_ips ?? 0,
+    );
+    if (!Number.isFinite(n) || n <= 0) return;
+    saw = true;
+    const name = String(
+      row.file_name || row.filename || row.name || row.original_filename || "",
+    )
+      .trim()
+      .toLowerCase();
+    if (name) {
+      const prev = byName.get(name) || 0;
+      if (n > prev) byName.set(name, n);
+    } else {
+      unnamed += n;
+    }
+  });
+  let sum = unnamed;
+  byName.forEach((n) => {
+    sum += n;
+  });
+  return { sum, saw };
+}
+
 /** Distinct IPv4/IPv6 count from backend — never host_count / Nessus row count / file count. */
 export function uniqueIpCountFields(source) {
   if (source == null || typeof source !== "object") return 0;
@@ -538,18 +652,7 @@ export function uniqueIpCountFields(source) {
   const buckets = [];
   if (Array.isArray(source.results)) buckets.push(...source.results);
   if (Array.isArray(source.files)) buckets.push(...source.files);
-  let partSum = 0;
-  let partSaw = false;
-  buckets.forEach((row) => {
-    if (row == null || typeof row === "string") return;
-    const n = Number(
-      row.unique_ip_count ?? row.merged_unique_ip_count ?? row.unique_ips ?? 0,
-    );
-    if (Number.isFinite(n) && n > 0) {
-      partSum += n;
-      partSaw = true;
-    }
-  });
+  const { sum: partSum, saw: partSaw } = sumUniqueIpBuckets(buckets);
 
   if (directOk) {
     // If top-level equals file count but per-file IPs are larger, top-level was file-count leak.

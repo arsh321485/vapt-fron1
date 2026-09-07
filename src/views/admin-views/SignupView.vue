@@ -240,6 +240,7 @@ import {
   storeClaimInviteToken,
 } from '@/utils/claimInvite'
 import { fetchClaimInviteValidate } from '@/services/claimInviteApi'
+import { consumePendingPlanResume, pendingPlanResumeUrl } from '@/utils/planLimits'
 import Swal from 'sweetalert2'
 import teamsIcon from '@/assets/images/teams.png'
 import slackIcon from '@/assets/images/slack.png'
@@ -389,7 +390,14 @@ export default {
           const signedUpEmail = this.form.email
           this.form = { email: '', password: '', confirm_password: '' }
           authStore.setAdminLoginMethod('email')
-          if (inviteToken) {
+          // A Premium/Custom checkout interrupted by this forced sign-up must
+          // resume — never fall through to Add Users / Upload with no plan
+          // picked and no payment made.
+          const pendingPlan = consumePendingPlanResume()
+          const pendingDest = pendingPlan ? pendingPlanResumeUrl(pendingPlan) : ''
+          if (pendingDest) {
+            this.$router.push(pendingDest)
+          } else if (inviteToken) {
             markClaimInviteSignup(signedUpEmail)
             authStore.unmarkStepCompleted(1)
             this.$router.push('/communication')

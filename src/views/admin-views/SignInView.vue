@@ -167,6 +167,7 @@ import {
 import { extractClaimInviteToken, readClaimInviteToken, setClaimInviteValid, storeClaimInviteToken, currentClaimInviteToken, ensureClaimInviteCaptured } from '@/utils/claimInvite'
 import { consumeAdminPlatformOAuthError } from '@/utils/platformOAuthMessage'
 import { extractDjangoOAuthTokens, persistDjangoOAuthTokens } from '@/utils/djangoOAuthTokens'
+import { consumePendingPlanResume, pendingPlanResumeUrl } from '@/utils/planLimits'
 import Swal from 'sweetalert2'
 import teamsIcon from '@/assets/images/teams.png'
 import slackIcon from '@/assets/images/slack.png'
@@ -452,6 +453,18 @@ export default {
       if (userType === 'user' || userType === 'member' || userType === 'internal' || userType === 'external') {
         this.$router.replace('/userdashboard')
         return
+      }
+
+      // A Premium/Custom checkout interrupted by this forced sign-in must resume
+      // — never fall through to generic onboarding with no plan picked and no
+      // payment made.
+      const pendingPlan = consumePendingPlanResume()
+      if (pendingPlan) {
+        const dest = pendingPlanResumeUrl(pendingPlan)
+        if (dest) {
+          this.$router.replace(dest)
+          return
+        }
       }
 
       if (readClaimInviteToken()) {

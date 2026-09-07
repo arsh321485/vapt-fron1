@@ -78,13 +78,6 @@
                     <span class="ra-item-name">{{ asset.name }}</span>
                     <span class="ra-item-meta">{{ asset.os }}</span>
                   </div>
-                  <span
-                    v-if="asset.severity"
-                    class="ra-sev"
-                    :class="'ra-sev-' + asset.severity.toLowerCase()"
-                  >
-                    {{ asset.severity }}
-                  </span>
                 </label>
               </div>
               <p v-else class="ra-empty">No assets found for this role.</p>

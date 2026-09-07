@@ -68,6 +68,22 @@ export function clearUploadedScanFileMemory(): void;
 export function markFreemiumSinglePickIntent(): void;
 export function clearFreemiumSinglePickIntent(): void;
 export function isFreemiumSinglePickIntent(): boolean;
+export function armAutoPremiumCheckout(): void;
+export function hasAutoPremiumCheckoutFired(): boolean;
+export function markAutoPremiumCheckoutFired(): void;
+export function setPendingPlanResume(opts?: {
+  plan?: string;
+  mode?: string;
+  billingCycle?: string;
+}): void;
+export function consumePendingPlanResume(): {
+  plan: "premium" | "custom";
+  mode: string;
+  billingCycle: string;
+} | null;
+export function pendingPlanResumeUrl(
+  pending: { plan: string; mode?: string } | null,
+): string;
 export function billingAssetBreakdown(source: unknown): {
   asset_count: number;
   visible_asset_count: number;

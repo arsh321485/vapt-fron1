@@ -1,1 +1,0 @@
-in manage-account on prfile the first name and last name will be black because user only signup through mail id so remove this first name last name filed from there in user side also 

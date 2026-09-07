@@ -565,6 +565,9 @@ import {
   freemiumBlocksMultiFileUpload,
   freemiumMultiFileUserMessage,
   UPLOAD_RETURN_PATH,
+  hasAutoPremiumCheckoutFired,
+  markAutoPremiumCheckoutFired,
+  setPendingPlanResume,
 } from '@/utils/planLimits';
 
 const STRIPE_PK = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '';
@@ -601,7 +604,6 @@ const PLAN_CONFIG = {
       { text: 'Full automation scripts', included: true },
       { text: 'Email support', included: true },
       { text: 'Management: upload report (from $1.25/IP)', included: true },
-      { text: 'Management + Testing: $20/IP/year (annual)', included: true },
     ],
   },
   custom: {
@@ -975,6 +977,7 @@ export default {
     }
     const requestedPlan = String(this.$route.query.plan || '').toLowerCase();
     const requestedMode = String(this.$route.query.mode || '').toLowerCase();
+    const requestedSource = String(this.$route.query.source || '').toLowerCase();
     if (requestedPlan === 'freemium' || requestedPlan === 'premium' || requestedPlan === 'custom') {
       const planId = (this.fileAssetCount || Number(this.$route.query.assets) || 0) > 250
         ? 'custom'
@@ -988,9 +991,16 @@ export default {
         this.selectedPlan === planId && this.step === 'details';
       if (alreadyShowing) {
         this.applyLocalEstimate();
-        this.fetchEstimate();
+        await this.fetchEstimate();
       } else {
-        this.selectPlan(planId, { premiumMode: requestedMode });
+        await this.selectPlan(planId, { premiumMode: requestedMode });
+        await this.fetchEstimate();
+      }
+      // "Yes, continue with Premium" on the upload page should land straight on
+      // Stripe Checkout — no extra landing/click on this pricing page. Same for
+      // resuming a Premium checkout that was interrupted by a forced sign-in.
+      if (planId === 'premium' && (requestedSource === 'upload' || requestedSource === 'resume')) {
+        await this.maybeAutoStartPremiumCheckout();
       }
     }
   },
@@ -1294,22 +1304,20 @@ export default {
       }
     },
     promptAuth() {
-      return Swal.fire({
-        icon: 'info',
-        title: 'Sign in required',
-        text: 'Log in as an admin to estimate pricing and complete checkout.',
-        showCancelButton: true,
-        confirmButtonText: 'Sign in',
-        cancelButtonText: 'Create account',
-        confirmButtonColor: '#241447',
-      }).then((result) => {
-        if (result.isConfirmed) {
-          this.$router.push('/signin');
-        } else if (result.dismiss === Swal.DismissReason.cancel) {
-          this.openAdminSignUpModal();
-        }
-        return false;
-      });
+      // No confirmation step — go straight to sign in (this is admin-only
+      // pricing/checkout, so there is nothing else to decide here).
+      // A paid plan (Premium/Custom) must not be forgotten here — remember it
+      // so sign-in/sign-up resumes checkout instead of dropping the admin
+      // straight into onboarding with nothing selected and nothing paid.
+      if (this.selectedPlan === 'premium' || this.selectedPlan === 'custom') {
+        setPendingPlanResume({
+          plan: this.selectedPlan,
+          mode: this.premiumMode,
+          billingCycle: this.billingCycle,
+        });
+      }
+      this.$router.push('/signin');
+      return Promise.resolve(false);
     },
     selectPaymentMethod(method) {
       if (!method || method.comingSoon) return;
@@ -1594,6 +1602,24 @@ export default {
       } finally {
         this.checkoutLoading = false;
       }
+    },
+    /**
+     * Auto-fires Stripe checkout for the "Yes, continue with Premium" hop from
+     * the upload page, so that flow lands on Stripe directly instead of
+     * requiring a second "Continue to Stripe Checkout" click here.
+     * Only runs once per browser tab session (sessionStorage-gated) so that
+     * pressing Back after reaching Stripe returns to a normal, clickable
+     * pricing page instead of bouncing straight back to Stripe.
+     */
+    async maybeAutoStartPremiumCheckout() {
+      if (this.selectedPlan !== 'premium' || !this.isAuthenticated) return;
+      // Same conditions that disable the manual "Continue to Stripe Checkout"
+      // button — don't auto-fire into a state the user couldn't have clicked into.
+      if (this.estimate?.over_ceiling || this.needsScope) return;
+      if (this.needsReportUpload && !this.pendingAssetCount && !this.isTestingMode) return;
+      if (hasAutoPremiumCheckoutFired()) return;
+      markAutoPremiumCheckoutFired();
+      await this.startPremium();
     },
     async startPremium() {
       if (this.estimate?.over_ceiling) {

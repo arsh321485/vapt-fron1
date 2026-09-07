@@ -30,14 +30,9 @@
             <p class="billing-result-copy">
               {{ statusMessage }}
             </p>
-            <div class="d-flex flex-wrap justify-content-center gap-2">
-              <button type="button" class="btn text-light rounded-pill pricing-cta" :disabled="polling" @click="pollOnce">
-                Refresh status
-              </button>
-              <router-link to="/pricingplan" class="btn rounded-pill btn-outline-dark">
-                Back to pricing
-              </router-link>
-            </div>
+            <router-link :to="continuePath" class="btn text-light rounded-pill pricing-cta">
+              {{ continueLabel }}
+            </router-link>
           </div>
         </div>
       </div>
@@ -122,6 +117,23 @@ export default {
         this.pollTimer = null;
       }
     },
+    /** Same destination the success branch resolves to, for the "still confirming" fallback button. */
+    resolvePendingContinuePath() {
+      const authStore = useAuthStore();
+      const stored = consumeBillingReturnTo('');
+      const awaitingScopeFile =
+        isScopeFileAwaitingSuperadmin(readStoredAdminEmail()) ||
+        String(stored || '').startsWith('/waiting-for-report');
+      if (awaitingScopeFile) {
+        markScopeFileAwaitingSuperadmin(readStoredAdminEmail());
+        this.continuePath = '/waiting-for-report';
+      } else if (authStore.isSlackOrTeamsLogin()) {
+        this.continuePath = '/riskcriteria';
+      } else {
+        authStore.unmarkStepCompleted(1);
+        this.continuePath = '/communication';
+      }
+    },
     async pollOnce() {
       this.pollCount += 1;
       try {
@@ -171,13 +183,18 @@ export default {
         if (this.pollCount >= MAX_POLLS) {
           this.polling = false;
           this.statusMessage =
-            'Payment succeeded, but the subscription is still confirming. Refresh in a moment or open Manage Account.';
+            'Payment succeeded — your subscription is finishing activation in the background.';
           this.stopPolling();
+          // Stripe already confirmed the checkout session; don't strand the
+          // admin here waiting on webhook timing. Send them on the same path
+          // the success branch above would have used.
+          this.resolvePendingContinuePath();
         }
       } catch (error) {
         this.polling = false;
-        this.statusMessage = 'We could not load your subscription yet. Sign in and refresh this page.';
+        this.statusMessage = 'We could not confirm your subscription yet, but your payment went through.';
         if (this.pollCount >= MAX_POLLS) this.stopPolling();
+        this.resolvePendingContinuePath();
       }
     },
   },

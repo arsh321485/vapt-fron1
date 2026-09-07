@@ -936,6 +936,7 @@ import {
   suggestedPlanFromAssetCount,
   uploadTransportErrorMessage,
   UPLOAD_RETURN_PATH,
+  armAutoPremiumCheckout,
 } from '@/utils/planLimits';
 import {
   collectInvalidScopeLines,
@@ -1449,6 +1450,11 @@ export default {
         query.mode = 'management';
         query.source = 'upload';
         setPremiumEntrySource('upload');
+      }
+      // "Yes, continue with Premium" from the upload page should land straight
+      // on Stripe Checkout — arm the pricing page to auto-fire it once.
+      if (planId === 'premium' && query.source === 'upload') {
+        armAutoPremiumCheckout();
       }
       this.$router.push({ path: '/pricingplan', query });
     },

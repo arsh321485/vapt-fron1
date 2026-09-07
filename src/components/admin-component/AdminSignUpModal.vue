@@ -273,6 +273,7 @@ import {
 } from '@/utils/teamsDeepLink';
 import { consumeAdminPlatformOAuthError } from '@/utils/platformOAuthMessage';
 import { extractDjangoOAuthTokens, persistDjangoOAuthTokens } from '@/utils/djangoOAuthTokens';
+import { consumePendingPlanResume, pendingPlanResumeUrl } from '@/utils/planLimits';
 
 export default {
   name: 'AdminSignUpModal',
@@ -453,6 +454,16 @@ export default {
         authStore.setAdminLoginMethod('teams');
       } else if (this.slackConnected || localStorage.getItem('slack_bot_token')) {
         authStore.setAdminLoginMethod('slack');
+      }
+      // A Premium/Custom checkout interrupted by this forced sign-up must resume
+      // — never fall through to Add Users with no plan picked and no payment made.
+      const pendingPlan = consumePendingPlanResume();
+      if (pendingPlan) {
+        const dest = pendingPlanResumeUrl(pendingPlan);
+        if (dest) {
+          this.$router.replace(dest);
+          return;
+        }
       }
       // Magic link only: Super Admin already attached the file → Add Users.
       if (isClaimInviteFlow()) {

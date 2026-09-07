@@ -3776,6 +3776,40 @@ export const useAuthStore = defineStore("auth", {
     },
 
     captureUniqueIpCount(data: any) {
+      // Sum per-file unique-IP counts without double-counting a file that shows
+      // up in more than one bucket — `results` and `files` commonly describe
+      // the *same* uploaded files from two angles, so concatenating them summed
+      // each file twice (e.g. a single 2-IP file reported as 4). Dedupe by file
+      // name, keeping the larger reported count per name.
+      const sumBuckets = (buckets: any[]): { sum: number; saw: boolean } => {
+        const byName = new Map<string, number>();
+        let unnamed = 0;
+        let saw = false;
+        buckets.forEach((row: any) => {
+          if (!row || typeof row === "string") return;
+          const n = Number(
+            row.unique_ip_count ?? row.merged_unique_ip_count ?? row.unique_ips ?? 0,
+          );
+          if (!Number.isFinite(n) || n <= 0) return;
+          saw = true;
+          const name = String(
+            row.file_name || row.filename || row.name || row.original_filename || "",
+          )
+            .trim()
+            .toLowerCase();
+          if (name) {
+            const prev = byName.get(name) || 0;
+            if (n > prev) byName.set(name, n);
+          } else {
+            unnamed += n;
+          }
+        });
+        let sum = unnamed;
+        byName.forEach((n) => {
+          sum += n;
+        });
+        return { sum, saw };
+      };
       const pick = (src: any): number => {
         if (!src || typeof src !== "object") return 0;
         const direct = Number(
@@ -3786,18 +3820,7 @@ export const useAuthStore = defineStore("auth", {
           ...(Array.isArray(src.results) ? src.results : []),
           ...(Array.isArray(src.files) ? src.files : []),
         ];
-        let partSum = 0;
-        let partSaw = false;
-        buckets.forEach((row: any) => {
-          if (!row || typeof row === "string") return;
-          const n = Number(
-            row.unique_ip_count ?? row.merged_unique_ip_count ?? row.unique_ips ?? 0,
-          );
-          if (Number.isFinite(n) && n > 0) {
-            partSum += n;
-            partSaw = true;
-          }
-        });
+        const { sum: partSum, saw: partSaw } = sumBuckets(buckets);
         if (directOk) {
           if (partSaw && buckets.length > 1 && direct === buckets.length && partSum > direct) {
             return partSum;
