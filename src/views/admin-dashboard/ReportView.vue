@@ -117,7 +117,7 @@
                     <tr>
                         <td>example.com</td>
                         <td>SQL Injection</td>
-                        <td><span class="badge bg-danger">Critical</span></td>
+                        <td><span class="badge" style="background:#f8dede;color:#b42318;">Critical</span></td>
                         <td><span class="badge bg-warning">Open</span></td>
                         <td>12 Jan 2026</td>
                         <td class="text-end">
@@ -133,7 +133,7 @@
                     <tr>
                         <td>api.example.com</td>
                         <td>XSS</td>
-                        <td><span class="badge bg-warning text-dark">High</span></td>
+                        <td><span class="badge" style="background:#fee2e2;color:#dc2626;">High</span></td>
                         <td><span class="badge bg-success">Fixed</span></td>
                         <td>10 Jan 2026</td>
                         <td class="text-end">
@@ -181,9 +181,9 @@ export default {
   color: #fff;
 }
 
-.summary-card.critical { background: #dc3545; }
-.summary-card.high { background: #fd7e14; }
-.summary-card.medium { background: #ffc107; color: #000; }
-.summary-card.low { background: #198754; }
+.summary-card.critical { background: #f8dede; color: #b42318; }
+.summary-card.high { background: #fee2e2; color: #dc2626; }
+.summary-card.medium { background: #fef3c7; color: #f59e0b; }
+.summary-card.low { background: #d1fae5; color: #10b981; }
 
 </style>

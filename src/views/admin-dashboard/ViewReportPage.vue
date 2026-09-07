@@ -66,22 +66,27 @@
                     </div>
                   </div>
                   <div class="scope-mini-section">
-                    <h4 class="scope-mini-heading">Scope of Assessment</h4>
+                    <h4 class="scope-mini-heading">Assets in Scope</h4>
                     <div class="scope-mini-grid">
                       <div class="scope-mini-card">
-                        <span><span class="scope-ico">◎</span> External IPs</span>
-                        <strong>{{ uniqueHostsCount }}</strong>
-                        <small>Active Nodes Scanned</small>
+                        <span><i class="bi bi-pc-display scope-ico"></i> Assets</span>
+                        <strong>{{ assetTypeCounts.assets }}</strong>
+                        <small>Other hosts</small>
                       </div>
                       <div class="scope-mini-card">
-                        <span><span class="scope-ico">▣</span> Web Applications</span>
-                        <strong>12</strong>
-                        <small>Production URLs</small>
+                        <span><i class="bi bi-globe scope-ico"></i> Web App</span>
+                        <strong>{{ assetTypeCounts.webapp }}</strong>
+                        <small>Web applications</small>
                       </div>
                       <div class="scope-mini-card">
-                        <span><span class="scope-ico">☁</span> Cloud Infrastructure</span>
-                        <strong>2</strong>
-                        <small>AWS / Azure Subsets</small>
+                        <span><i class="bi bi-shield-lock scope-ico"></i> Firewall</span>
+                        <strong>{{ assetTypeCounts.firewall }}</strong>
+                        <small>Network devices</small>
+                      </div>
+                      <div class="scope-mini-card">
+                        <span><i class="bi bi-hdd-stack scope-ico"></i> Server</span>
+                        <strong>{{ assetTypeCounts.server }}</strong>
+                        <small>Servers scanned</small>
                       </div>
                     </div>
                   </div>
@@ -237,9 +242,10 @@ import Chart from 'chart.js/auto';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { useAuthStore } from '@/stores/authStore';
-import { PERFORMANCE_TEAM_CONFIGS, TEAM_COLORS } from '@/utils/teamColors';
-import { SEV_CHART } from '@/utils/severityColors';
+import { PERFORMANCE_TEAM_CONFIGS, TEAM_COLORS, resolveTeamKey } from '@/utils/teamColors';
+import { SEV, SEV_CHART } from '@/utils/severityColors';
 import { formatStatusLabel } from '@/utils/statusLabel';
+import { filterAssetsByType } from '@/utils/assetDummyData';
 
 const REPORT_WATERMARK_TEXT = 'vaptfix.ai';
 /** Manual uploaded scan file name until API field is wired */
@@ -340,9 +346,14 @@ export default {
       const { critical, high, medium, low } = this.vulnStats;
       return critical + high + medium + low;
     },
-    uniqueHostsCount() {
-      const assets = new Set(this.tableData.map(row => row.asset).filter(Boolean));
-      return assets.size || 0;
+    assetTypeCounts() {
+      const rows = useAuthStore().assetRows || [];
+      return {
+        assets: filterAssetsByType(rows, 'assets').length,
+        webapp: filterAssetsByType(rows, 'webapp').length,
+        firewall: filterAssetsByType(rows, 'firewall').length,
+        server: filterAssetsByType(rows, 'server').length,
+      };
     },
     openFindings() {
       const apiOpen = this.teamCardConfigs.reduce((sum, cfg) => sum + ((this.teamDetail[cfg.name] || {}).open || 0), 0);
@@ -370,10 +381,10 @@ export default {
     severityLegend() {
       const total = this.totalVulnerabilities || 1;
       return [
-        { label: 'Critical', value: this.vulnStats.critical, color: '#b91c1c', percent: Math.round((this.vulnStats.critical / total) * 100) },
-        { label: 'High', value: this.vulnStats.high, color: '#f2994a', percent: Math.round((this.vulnStats.high / total) * 100) },
-        { label: 'Medium', value: this.vulnStats.medium, color: '#e3b124', percent: Math.round((this.vulnStats.medium / total) * 100) },
-        { label: 'Low', value: this.vulnStats.low, color: '#0f696e', percent: Math.round((this.vulnStats.low / total) * 100) },
+        { label: 'Critical', value: this.vulnStats.critical, color: SEV.critical, percent: Math.round((this.vulnStats.critical / total) * 100) },
+        { label: 'High', value: this.vulnStats.high, color: SEV.high, percent: Math.round((this.vulnStats.high / total) * 100) },
+        { label: 'Medium', value: this.vulnStats.medium, color: SEV.medium, percent: Math.round((this.vulnStats.medium / total) * 100) },
+        { label: 'Low', value: this.vulnStats.low, color: SEV.low, percent: Math.round((this.vulnStats.low / total) * 100) },
       ];
     },
     severityConicStyle() {
@@ -389,10 +400,10 @@ export default {
       const c4 = critical + high + medium + low;
       return {
         background: `conic-gradient(
-          #b91c1c 0% ${c1}%,
-          #f2994a ${c1}% ${c2}%,
-          #e3b124 ${c2}% ${c3}%,
-          #0f696e ${c3}% ${c4}%,
+          ${SEV.critical} 0% ${c1}%,
+          ${SEV.high} ${c1}% ${c2}%,
+          ${SEV.medium} ${c2}% ${c3}%,
+          ${SEV.low} ${c3}% ${c4}%,
           #e5e7eb ${c4}% 100%
         )`
       };
@@ -455,7 +466,10 @@ export default {
       }
       const store = useAuthStore();
       try {
-        const result = await store.fetchReportDownloadData();
+        const [result] = await Promise.all([
+          store.fetchReportDownloadData(),
+          store.fetchAssets(false),
+        ]);
         if (!result.status || !result.data) return;
         const d = result.data;
 
@@ -501,17 +515,11 @@ export default {
 
         // 4. Vulnerability detail list + derive teamDetail for open/closed counts
         if (Array.isArray(d.vulnerabilities_detail)) {
-          const teamKeyMap = {
-            'Network Security': 'network',
-            'Patch Management': 'patch',
-            'Configuration Management': 'configuration',
-            'Architectural Flaws': 'architectural',
-          };
           this.tableData = d.vulnerabilities_detail.map((v, i) => ({
             id: i + 1,
             name: v.vulnerability_name,
             asset: v.assets,
-            team: teamKeyMap[v.assigned_team] || 'unassigned',
+            team: resolveTeamKey(v.assigned_team) || 'unassigned',
             teamLabel: v.assigned_team || 'Unassigned',
             severity: (v.risk_factor || '').toLowerCase(),
             found: v.found_date ? v.found_date.split('T')[0] : '—',
@@ -641,7 +649,9 @@ export default {
               datasets: [{
                 data: dist.map(d => d.count),
                 backgroundColor: dist.map(d => colorMap[d.team] || '#6b7280'),
+                hoverBackgroundColor: dist.map(d => colorMap[d.team] || '#6b7280'),
                 borderWidth: 0,
+                hoverBorderWidth: 0,
                 hoverOffset: 0,
                 offset: 0,
               }],
@@ -651,10 +661,35 @@ export default {
             responsive: true,
             maintainAspectRatio: false,
             animation: false,
-            events: [],
+            animations: false,
+            interaction: { mode: 'nearest', intersect: true },
+            hover: { animationDuration: 0 },
+            onHover: (event, elements) => {
+              const el = event?.native?.target;
+              if (el) el.style.cursor = elements.length ? 'pointer' : 'default';
+            },
             plugins: {
               legend: { display: false },
-              tooltip: { enabled: false }
+              tooltip: {
+                enabled: true,
+                backgroundColor: 'rgba(31, 42, 66, 0.95)',
+                titleColor: '#ffffff',
+                bodyColor: '#e8ecf2',
+                titleFont: { weight: '700', size: 13, family: 'Inter, sans-serif' },
+                bodyFont: { size: 12, family: 'Inter, sans-serif' },
+                padding: 10,
+                cornerRadius: 8,
+                displayColors: true,
+                callbacks: {
+                  title(items) {
+                    return items[0]?.label || '';
+                  },
+                  label(item) {
+                    const value = Number(item.raw) || 0;
+                    return `${value} finding${value === 1 ? '' : 's'}`;
+                  },
+                },
+              },
             },
           }
         },
@@ -752,7 +787,7 @@ export default {
     .top-grid, .chart-grid { grid-template-columns: 1.6fr 1fr !important; }
     .severity-stats-grid { grid-template-columns: repeat(4, 1fr) !important; }
     .meta-items { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
-    .scope-mini-grid { grid-template-columns: repeat(3, 1fr) !important; }
+    .scope-mini-grid { grid-template-columns: repeat(4, 1fr) !important; }
     .severity-visual { grid-template-columns: 240px 1fr !important; min-height: 240px !important; }
     img { max-width: 100%; height: auto; }`;
     },
@@ -1066,7 +1101,7 @@ ${this.getExportLayoutCss()}
 
 .scope-mini-section { margin-top: auto; padding-top: 12px; }
 .scope-mini-heading { margin: 0 0 8px; font-size: 10px; color: #8b95a7; text-transform: uppercase; letter-spacing: .08em; font-weight: 800; }
-.scope-mini-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.scope-mini-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .scope-mini-card {
   background: #fff;
   border: 1px solid #ececf2;
@@ -1293,10 +1328,11 @@ ${this.getExportLayoutCss()}
 .status-pill.open { color: #b91c1c; }
 .status-pill.closed { color: #0f766e; }
 .team-pill { font-size: 12px; font-weight: 700; border-radius: 999px; padding: 4px 10px; border: 1px solid transparent; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-.team-pill-network { color: #0f696e; background: #e6f7f8; border-color: #8dd9dd; }
-.team-pill-patch { color: #8a4f00; background: #fff3dd; border-color: #ffd089; }
-.team-pill-configuration { color: #0f696e; background: #e6f7f8; border-color: #8dd9dd; }
-.team-pill-architectural { color: #6b21a8; background: #f3e8ff; border-color: #d8b4fe; }
+.team-pill-network { color: var(--team-network-color); background: var(--team-network-bg); border-color: var(--team-network-color); }
+.team-pill-patch { color: var(--team-patch-color); background: var(--team-patch-bg); border-color: var(--team-patch-color); }
+.team-pill-configuration { color: var(--team-configuration-color); background: var(--team-configuration-bg); border-color: var(--team-configuration-color); }
+.team-pill-architectural { color: var(--team-architectural-color); background: var(--team-architectural-bg); border-color: var(--team-architectural-color); }
+.team-pill-unassigned { color: #475569; background: #f1f5f9; border-color: #e2e8f0; }
 .table-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 4px 0; color: #7b8497; font-size: 12px; }
 .table-footer-actions button { border: none; background: transparent; color: #6b7280; font-size: 12px; margin-left: 8px; }
 .btn-export {

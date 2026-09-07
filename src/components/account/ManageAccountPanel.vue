@@ -57,14 +57,6 @@
           <p class="ma-section-desc">Your account details from the logged-in profile.</p>
 
           <div class="row g-3">
-            <div class="col-md-6">
-              <label class="ma-label">First Name</label>
-              <input :value="firstName" type="text" class="form-control ma-input" placeholder="-" disabled readonly />
-            </div>
-            <div class="col-md-6">
-              <label class="ma-label">Last Name</label>
-              <input :value="lastName" type="text" class="form-control ma-input" placeholder="-" disabled readonly />
-            </div>
             <div class="col-12">
               <label class="ma-label">Email</label>
               <input :value="userEmail" type="email" class="form-control ma-input" disabled readonly />
@@ -280,7 +272,7 @@
             <button type="button" class="btn btn-danger btn-sm" @click="handleLogout">Logout</button>
           </div>
 
-          <div v-if="mode === 'admin'" class="ma-security-card">
+          <div v-if="mode === 'admin' && !isMagicLinkAdmin" class="ma-security-card">
             <div>
               <h6 class="mb-1">Subscription</h6>
               <p class="ma-hint mb-0">View plans and upgrade your VaptFix subscription.</p>
@@ -301,6 +293,7 @@ import AdminProjectField from '@/components/admin-component/AdminProjectField.vu
 import { billingErrorMessage, cancelSubscription, formatUsd, getMySubscription } from '@/services/billingApi';
 import { consumeAdminPlatformOAuthError } from '@/utils/platformOAuthMessage';
 import { openTeamsOAuthPopup } from '@/utils/teamsDeepLink';
+import { isMagicLinkUnlimited } from '@/utils/planLimits';
 
 const USER_TEAM_KEY = 'vaptfix_user_preferred_team';
 
@@ -372,7 +365,9 @@ export default {
         { id: 'password', label: 'Password', icon: 'bi bi-key' },
         { id: 'workspace', label: this.mode === 'admin' ? 'Projects' : 'Team', icon: 'bi bi-folder2' },
       ];
-      if (this.mode === 'admin') {
+      // Magic-link admins already have unlimited access with nothing to bill —
+      // Billing (and Upgrade Plan under Security) is only for normal signup/login.
+      if (this.mode === 'admin' && !this.isMagicLinkAdmin) {
         items.push({ id: 'billing', label: 'Billing', icon: 'bi bi-credit-card' });
       }
       items.push({ id: 'security', label: 'Security', icon: 'bi bi-shield-lock' });
@@ -401,6 +396,9 @@ export default {
     isSlackOrTeamsAdmin() {
       return this.mode === 'admin' && this.authStore.isSlackOrTeamsLogin();
     },
+    isMagicLinkAdmin() {
+      return this.mode === 'admin' && isMagicLinkUnlimited();
+    },
     needsSetPassword() {
       return this.isSlackOrTeamsAdmin && this.adminHasPassword !== true;
     },
@@ -425,7 +423,9 @@ export default {
     }
     if (this.mode === 'admin') {
       await this.refreshAdminPasswordState();
-      await this.loadBilling();
+      if (!this.isMagicLinkAdmin) {
+        await this.loadBilling();
+      }
       this.syncConnectionState();
       window.addEventListener('message', this.onOAuthMessage);
     }

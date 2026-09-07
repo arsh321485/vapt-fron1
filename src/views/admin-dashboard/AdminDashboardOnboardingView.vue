@@ -3771,10 +3771,10 @@ mounted() {
 .mte-high .mte-severity-left { color: #dc2626 !important; }
 .mte-medium .mte-severity-left { color: #f59e0b !important; }
 .mte-low .mte-severity-left { color: #10b981 !important; }
-.mte-critical .mte-severity-head { background: #fecaca; border-bottom: 1px solid #fca5a5; }
-.mte-high .mte-severity-head { background: #fde68a; border-bottom: 1px solid #fdba74; }
-.mte-medium .mte-severity-head { background: #fef9c3; border-bottom: 1px solid #fcd34d; }
-.mte-low .mte-severity-head { background: #bbf7d0; border-bottom: 1px solid #86efac; }
+.mte-critical .mte-severity-head { background: #f8dede; border-bottom: 1px solid #efb7b1; }
+.mte-high .mte-severity-head { background: #fee2e2; border-bottom: 1px solid #fca5a5; }
+.mte-medium .mte-severity-head { background: #fef3c7; border-bottom: 1px solid #fcd34d; }
+.mte-low .mte-severity-head { background: #d1fae5; border-bottom: 1px solid #6ee7b7; }
 .mte-badge {
   border-radius: 6px;
   font-size: 11px;
@@ -3810,8 +3810,8 @@ mounted() {
   gap: 4px;
 }
 .mte-badge.critical { background: #f8dede; color: #b42318; border: 1px solid #fca5a5; }
-.mte-badge.high { background: #fde8e8; color: #dc2626; border: 1px solid #f5c6cb; }
-.mte-badge.medium { background: #f7e4bf; color: #d48806; border: 1px solid #f3d79a; }
+.mte-badge.high { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
+.mte-badge.medium { background: #fef3c7; color: #f59e0b; border: 1px solid #fcd34d; }
 .mte-badge.low { background: #d1fae5; color: #10b981; border: 1px solid #86efac; }
 .mte-table-wrap { overflow-x: auto; border-top: 1px solid #e2e8f0; }
 .mte-table { width: 100%; border-collapse: collapse; min-width: 760px; }
@@ -4310,10 +4310,10 @@ mounted() {
   border-radius: 10px;
   border-left: 4px solid transparent;
 }
-.ms-risk-critical { background: #fef2f2; border-left-color: #b42318; }
-.ms-risk-high     { background: #fff7ed; border-left-color: #dc2626; }
-.ms-risk-medium   { background: #fefce8; border-left-color: #a16207; }
-.ms-risk-low      { background: #f0fdf4; border-left-color: #15803d; }
+.ms-risk-critical { background: #f8dede; border-left-color: #b42318; }
+.ms-risk-high     { background: #fee2e2; border-left-color: #dc2626; }
+.ms-risk-medium   { background: #fef3c7; border-left-color: #f59e0b; }
+.ms-risk-low      { background: #d1fae5; border-left-color: #10b981; }
 
 .ms-risk-left {
   display: flex;

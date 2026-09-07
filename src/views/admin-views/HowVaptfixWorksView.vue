@@ -824,10 +824,10 @@ export default {
   font-size: 11px;
   font-weight: 600;
 }
-.critical-tag { background: #fee2e2; color: #991b1b; }
-.high-tag     { background: #ffedd5; color: #9a3412; }
-.medium-tag   { background: #fef9c3; color: #854d0e; }
-.low-tag      { background: #dcfce7; color: #166534; }
+.critical-tag { background: #f8dede; color: #b42318; }
+.high-tag     { background: #fee2e2; color: #dc2626; }
+.medium-tag   { background: #fef3c7; color: #f59e0b; }
+.low-tag      { background: #d1fae5; color: #10b981; }
 
 /* ── FREEMIUM GATE ── */
 .hvw-gate-section {

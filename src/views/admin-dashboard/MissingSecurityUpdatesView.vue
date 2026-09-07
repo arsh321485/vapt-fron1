@@ -287,8 +287,8 @@ export default {
 }
 .bar-critical { background: #b42318; }
 .bar-high     { background: #dc2626; }
-.bar-medium   { background: #b45309; }
-.bar-low      { background: #0f766e; }
+.bar-medium   { background: #f59e0b; }
+.bar-low      { background: #10b981; }
 
 .msu-accordion-title {
   font-size: 0.95rem;

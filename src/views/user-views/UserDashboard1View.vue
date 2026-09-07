@@ -2441,16 +2441,16 @@ export default {
 }
 .ud-bar-critical { background: #b42318; }
 .ud-bar-high     { background: #dc2626; }
-.ud-bar-medium   { background: #8a6000; }
-.ud-bar-low      { background: #0f696e; }
+.ud-bar-medium   { background: #f59e0b; }
+.ud-bar-low      { background: #10b981; }
 .ud-sev-label {
   font-size: 10px;
   font-weight: 600;
 }
 .ud-label-critical { color: #b42318; }
 .ud-label-high     { color: #dc2626; }
-.ud-label-medium   { color: #8a6000; }
-.ud-label-low      { color: #0f696e; }
+.ud-label-medium   { color: #f59e0b; }
+.ud-label-low      { color: #10b981; }
 
 /* ===== COMMON VULNERABILITIES ===== */
 .cv-section-title {
@@ -3204,9 +3204,9 @@ export default {
 }
 .ext-drawer-accent { height: 5px; width: 100%; flex-shrink: 0; }
 .ext-accent-critical { background: linear-gradient(90deg, #9e1b0d, #b42318); }
-.ext-accent-high     { background: linear-gradient(90deg, #c71616, #ef4444); }
-.ext-accent-medium   { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
-.ext-accent-low      { background: linear-gradient(90deg, #0f696e, #14b8a6); }
+.ext-accent-high     { background: linear-gradient(90deg, #b91c1c, #dc2626); }
+.ext-accent-medium   { background: linear-gradient(90deg, #d97706, #f59e0b); }
+.ext-accent-low      { background: linear-gradient(90deg, #059669, #10b981); }
 .ext-drawer-enter-active .ext-popup-box { animation: extDrawerIn 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
 .ext-drawer-leave-active .ext-popup-box { animation: extDrawerOut 0.22s cubic-bezier(0.55, 0, 1, 0.45); }
 .ext-drawer-enter-active { animation: extFadeIn 0.28s ease; }
@@ -3327,9 +3327,9 @@ export default {
 .mte-medium .mte-severity-left { color: #f59e0b; }
 .mte-low .mte-severity-left { color: #10b981; }
 .mte-critical .mte-severity-head { background: #f8dede; border-bottom: 1px solid #efb7b1; }
-.mte-high .mte-severity-head { background:#fecaca; border-bottom: 1px solid #fca5a5; }
+.mte-high .mte-severity-head { background: #fee2e2; border-bottom: 1px solid #fca5a5; }
 .mte-medium .mte-severity-head { background: #fef3c7; border-bottom: 1px solid #fcd34d; }
-.mte-low .mte-severity-head { background: #bbf7d0; border-bottom: 1px solid #86efac; }
+.mte-low .mte-severity-head { background: #d1fae5; border-bottom: 1px solid #6ee7b7; }
 .mte-badge {
   border-radius: 6px;
   font-size: 11px;
@@ -3363,9 +3363,9 @@ export default {
   align-items: center;
   gap: 4px;
 }
-.mte-badge.critical { background: #fde8e8; color: #b42318; border: 1px solid #f5c6cb; }
+.mte-badge.critical { background: #f8dede; color: #b42318; border: 1px solid #fca5a5; }
 .mte-badge.high { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
-.mte-badge.medium { background: #f7e4bf; color: #d48806; border: 1px solid #f3d79a; }
+.mte-badge.medium { background: #fef3c7; color: #f59e0b; border: 1px solid #fcd34d; }
 .mte-badge.low { background: #d1fae5; color: #10b981; border: 1px solid #86efac; }
 .msu-critical-card { border-color: #fecaca; background: #fff5f5; }
 .msu-high-card { border-color: #fed7aa; background: #fff7ed; }

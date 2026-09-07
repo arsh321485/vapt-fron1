@@ -1570,7 +1570,7 @@ export default {
 .cal-badge-purple { background: #ede9fe; color: #241447; }
 .cal-badge-grey   { background: #f1f5f9; color: #64748b; }
 /* Severity deadline badge colors */
-.cal-badge-maroon    { background: #dc2626; color: white; } /* Critical */
+.cal-badge-maroon    { background: #b42318; color: white; } /* Critical */
 .cal-badge-dl-blue   { background: #dc2626; color: white; } /* High */
 .cal-badge-dl-orange { background: #f59e0b; color: white; } /* Medium */
 .cal-badge-dl-green  { background: #10b981; color: white; } /* Low */
@@ -1754,7 +1754,7 @@ export default {
 .cal-day-card-red  { background: #fef2f2; border-left: 4px solid #dc2626; }
 .cal-day-card-teal { background: #f0fdf9; border-left: 4px solid #0f696e; }
 /* Severity deadline day colors */
-.cal-day-card-maroon    { background: #fee2e2; color: #dc2626; border-left: 4px solid #fca5a5; } /* Critical */
+.cal-day-card-maroon    { background: #f8dede; color: #b42318; border-left: 4px solid #efb7b1; } /* Critical */
 .cal-day-card-dl-blue   { background: #fee2e2; color: #dc2626; border-left: 4px solid #fca5a5; } /* High */
 .cal-day-card-dl-orange { background: #fef3c7; color: #f59e0b; border-left: 4px solid #fcd34d; } /* Medium */
 .cal-day-card-dl-green  { background: #d1fae5; color: #10b981; border-left: 4px solid #6ee7b7; } /* Low */

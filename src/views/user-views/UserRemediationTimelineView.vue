@@ -1650,10 +1650,10 @@ export default {
   overflow: hidden;
 }
 .ext-drawer-accent { height: 5px; width: 100%; flex-shrink: 0; }
-.ext-accent-critical { background: linear-gradient(90deg, #c71616, #ef4444); }
-.ext-accent-high     { background: linear-gradient(90deg, #d97706, #f59e0b); }
-.ext-accent-medium   { background: linear-gradient(90deg, #b45309, #fbbf24); }
-.ext-accent-low      { background: linear-gradient(90deg, #0f696e, #14b8a6); }
+.ext-accent-critical { background: linear-gradient(90deg, #9e1b0d, #b42318); }
+.ext-accent-high     { background: linear-gradient(90deg, #b91c1c, #dc2626); }
+.ext-accent-medium   { background: linear-gradient(90deg, #d97706, #f59e0b); }
+.ext-accent-low      { background: linear-gradient(90deg, #059669, #10b981); }
 .ext-popup-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 22px; background: linear-gradient(135deg, #241447 0%, #0f696e 100%); margin-top: 52px; }
 .ext-header-left { display: flex; align-items: center; gap: 12px; }
 .ext-header-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }

@@ -1940,10 +1940,10 @@ export default {
   font-size: 8px;
 }
 
-.p-c { background: #fecaca; color: #7f1d1d; }
-.p-h { background: #fecaca; color: #991b1b; }
-.p-m { background: #fef3c7; color: #92400e; }
-.p-l { background: #d1fae5; color: #14532d; }
+.p-c { background: #f8dede; color: #b42318; }
+.p-h { background: #fee2e2; color: #dc2626; }
+.p-m { background: #fef3c7; color: #f59e0b; }
+.p-l { background: #d1fae5; color: #10b981; }
 
 .mock-link-report {
   margin-top: 8px;
@@ -2080,17 +2080,17 @@ export default {
 
 .alc-sev.sev-high {
   background: #fee2e2;
-  color: #b91c1c;
+  color: #dc2626;
 }
 
 .alc-sev.sev-medium {
-  background: #fef9c3;
-  color: #a16207;
+  background: #fef3c7;
+  color: #f59e0b;
 }
 
 .alc-sev.sev-low {
   background: #d1fae5;
-  color: #047857;
+  color: #10b981;
 }
 
 .alc-exp {
@@ -2118,23 +2118,23 @@ export default {
 }
 
 .vp-c {
-  background: #fee2e2;
-  color: #991b1b;
+  background: #f8dede;
+  color: #b42318;
 }
 
 .vp-h {
-  background: #ffedd5;
-  color: #c2410c;
+  background: #fee2e2;
+  color: #dc2626;
 }
 
 .vp-m {
-  background: #fef9c3;
-  color: #a16207;
+  background: #fef3c7;
+  color: #f59e0b;
 }
 
 .vp-l {
   background: #d1fae5;
-  color: #047857;
+  color: #10b981;
 }
 
 .assets-col-right {
@@ -2361,12 +2361,12 @@ export default {
 
 .ad-mini-sev.sev-high {
   background: #fee2e2;
-  color: #b91c1c;
+  color: #dc2626;
 }
 
 .ad-mini-sev.sev-medium {
-  background: #fef9c3;
-  color: #a16207;
+  background: #fef3c7;
+  color: #f59e0b;
 }
 
 .ad-mini-open {
@@ -3204,12 +3204,12 @@ export default {
 
 .reg-sev-pill-td.sev-high {
   background: #fee2e2;
-  color: #991b1b;
+  color: #dc2626;
 }
 
 .reg-sev-pill-td.sev-medium {
-  background: #fef9c3;
-  color: #b45309;
+  background: #fef3c7;
+  color: #f59e0b;
 }
 
 .reg-st-pill {
@@ -3721,20 +3721,24 @@ export default {
   text-overflow: ellipsis;
 }
 
-.cal-pill-critical,
+.cal-pill-critical {
+  background: #f8dede;
+  color: #b42318;
+}
+
 .cal-pill-high {
   background: #fee2e2;
-  color: #991b1b;
+  color: #dc2626;
 }
 
 .cal-pill-medium {
-  background: #fef9c3;
-  color: #b45309;
+  background: #fef3c7;
+  color: #f59e0b;
 }
 
 .cal-pill-low {
-  background: #ccfbf1;
-  color: #0f766e;
+  background: #d1fae5;
+  color: #10b981;
 }
 
 /* Demo cursor */

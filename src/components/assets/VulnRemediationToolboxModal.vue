@@ -245,7 +245,7 @@ export default {
 .toolbox-risk-critical { background: #f8dede; color: #b42318; }
 .toolbox-risk-high { background: #fee2e2; color: #dc2626; }
 .toolbox-risk-medium { background: #fef3c7; color: #f59e0b; }
-.toolbox-risk-low { background: #ccfbf1; color: #0f766e; }
+.toolbox-risk-low { background: #d1fae5; color: #10b981; }
 
 .toolbox-verified-pill {
   font-size: 0.68rem;

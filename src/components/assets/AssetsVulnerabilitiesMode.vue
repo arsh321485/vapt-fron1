@@ -294,7 +294,10 @@
             v-for="(v, i) in panelVulns"
             :key="v._key"
             class="vuln-accordion-item"
-            :class="{ 'vuln-accordion-item--expanded': expandedVulnIndex === i }"
+            :class="{
+              'vuln-accordion-item--expanded': expandedVulnIndex === i,
+              'vuln-accordion-item--manual': expandedVulnIndex === i && currentVulnTab === 'manual',
+            }"
             :ref="'vuln-' + v._key"
           >
             <div class="vuln-accordion-header" role="button" @click="toggleAccordion(i)">
@@ -347,15 +350,21 @@
                 <div class="vuln-accordion-static">
                 <div class="av-description-block">
                   <div class="av-db-label">DESCRIPTION</div>
-                  <p class="av-db-text">{{ getDisplayDescription(v, v._key) }}</p>
-                  <button
-                    v-if="resolveGroupedDescription(v._key, v, ...(v.rows || [])).length > descriptionPreviewLimit"
-                    type="button"
-                    class="av-read-more"
-                    @click="toggleDescription(v._key)"
-                  >
-                    {{ isDescriptionExpanded(v._key) ? 'Read less' : 'Read more' }}
-                  </button>
+                  <div class="av-db-text-wrap">
+                    <p
+                      class="av-db-text"
+                      :class="{ 'av-db-text--clamped': !isDescriptionExpanded(v._key) }"
+                    >{{ getDisplayDescription(v, v._key) }}</p>
+                    <button
+                      v-if="resolveGroupedDescription(v._key, v, ...(v.rows || [])).length > descriptionPreviewLimit"
+                      type="button"
+                      class="av-read-more"
+                      :class="{ 'av-read-more--inline': !isDescriptionExpanded(v._key) }"
+                      @click="toggleDescription(v._key)"
+                    >
+                      {{ isDescriptionExpanded(v._key) ? 'Read less' : 'Read more' }}
+                    </button>
+                  </div>
                 </div>
 
                 <div class="av-detail-tabs">
@@ -389,7 +398,10 @@
                 </div>
                 </div>
 
-                <div class="av-detail-tab-content">
+                <div
+                  class="av-detail-tab-content"
+                  :class="{ 'av-detail-tab-content--manual': currentVulnTab === 'manual' }"
+                >
                   <!-- Affected Assets content hidden -->
 
                   <div v-show="currentVulnTab === 'auto'" class="av-auto-tab">
@@ -447,7 +459,10 @@
                           v-for="(item, i) in closedRecentlyItems"
                           :key="item._id || item.fix_vulnerability_id || (item.vulnerability_name + '-' + item.host_name + '-' + i)"
                           class="vuln-accordion-item"
-                          :class="{ 'vuln-accordion-item--expanded': expandedClosedIndex === i }"
+                          :class="{
+                            'vuln-accordion-item--expanded': expandedClosedIndex === i,
+                            'vuln-accordion-item--manual': expandedClosedIndex === i && currentVulnTab === 'manual',
+                          }"
                         >
                           <div class="vuln-accordion-header" role="button" @click="toggleClosedAccordion(i)">
                             <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0 overflow-hidden">
@@ -494,15 +509,21 @@
                               <div class="vuln-accordion-static">
                                 <div class="av-description-block">
                                   <div class="av-db-label">DESCRIPTION</div>
-                                  <p class="av-db-text">{{ getDisplayDescription(closedItemAsVuln(item), closedDescKey(item, i)) }}</p>
-                                  <button
-                                    v-if="resolveGroupedDescription(closedDescKey(item, i), closedItemAsVuln(item)).length > descriptionPreviewLimit"
-                                    type="button"
-                                    class="av-read-more"
-                                    @click="toggleDescription(closedDescKey(item, i))"
-                                  >
-                                    {{ isDescriptionExpanded(closedDescKey(item, i)) ? 'Read less' : 'Read more' }}
-                                  </button>
+                                  <div class="av-db-text-wrap">
+                                    <p
+                                      class="av-db-text"
+                                      :class="{ 'av-db-text--clamped': !isDescriptionExpanded(closedDescKey(item, i)) }"
+                                    >{{ getDisplayDescription(closedItemAsVuln(item), closedDescKey(item, i)) }}</p>
+                                    <button
+                                      v-if="resolveGroupedDescription(closedDescKey(item, i), closedItemAsVuln(item)).length > descriptionPreviewLimit"
+                                      type="button"
+                                      class="av-read-more"
+                                      :class="{ 'av-read-more--inline': !isDescriptionExpanded(closedDescKey(item, i)) }"
+                                      @click="toggleDescription(closedDescKey(item, i))"
+                                    >
+                                      {{ isDescriptionExpanded(closedDescKey(item, i)) ? 'Read less' : 'Read more' }}
+                                    </button>
+                                  </div>
                                 </div>
                                 <div class="av-detail-tabs">
                                   <button
@@ -525,7 +546,10 @@
                                   </button>
                                 </div>
                               </div>
-                              <div class="av-detail-tab-content">
+                              <div
+                                class="av-detail-tab-content"
+                                :class="{ 'av-detail-tab-content--manual': currentVulnTab === 'manual' }"
+                              >
                                 <div v-show="currentVulnTab === 'auto'" class="av-auto-tab">
                                   <AutomatedFixPanel
                                     :key="'closed-' + closedDescKey(item, i)"
@@ -846,7 +870,7 @@ import {
   isPositiveAutomationMatch,
 } from '@/utils/automationScriptMatch';
 
-const DESC_LIMIT = 280;
+const DESC_LIMIT = 160;
 
 export default {
   name: 'AssetsVulnerabilitiesMode',
@@ -2307,12 +2331,11 @@ export default {
       return pickVulnDescription(vulnOrText);
     },
     getDisplayDescription(vuln, key) {
-      const fullText = this.resolveGroupedDescription(key || vuln?._key, vuln, ...(vuln?.rows || []))
+      // Full text is always returned; when collapsed, the "av-db-text--clamped"
+      // class visually restricts it to 2 lines with a CSS ellipsis instead of
+      // cutting the string in JS, so wording never gets chopped mid-word.
+      return this.resolveGroupedDescription(key || vuln?._key, vuln, ...(vuln?.rows || []))
         || 'No description available for this vulnerability.';
-      if (this.isDescriptionExpanded(key) || fullText.length <= this.descriptionPreviewLimit) {
-        return fullText;
-      }
-      return `${fullText.slice(0, this.descriptionPreviewLimit).trimEnd()}...`;
     },
     isVulnAutomationNo(v, index) {
       return isAutomationNotAvailable(v.assets?.[0], index % 3, v.severity);
@@ -2942,7 +2965,7 @@ export default {
 
 .av-description-block {
   background: #fff;
-  padding: 14px 22px;
+  padding: 10px 22px;
   border-bottom: 1px solid #f1f5f9;
 }
 
@@ -2952,16 +2975,28 @@ export default {
   letter-spacing: 0.5px;
   text-transform: uppercase;
   color: #94a3b8;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .av-db-text {
   font-size: 13px;
   font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: #374151;
-  line-height: 1.65;
+  line-height: 1.5;
   margin: 0;
   white-space: pre-line;
+}
+
+.av-db-text-wrap {
+  position: relative;
+}
+
+/* Collapsed state: clip to exactly 2 lines with a trailing ellipsis. */
+.av-db-text--clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .av-read-more {
@@ -2973,6 +3008,21 @@ export default {
   font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Collapsed state: sit inline at the end of the 2nd line instead of on its
+   own line below, so it never gets pushed out by the accordion's fixed
+   height (e.g. under the Manual Fix tab). A left fade blends it into the
+   clamped text so it reads as part of the sentence. */
+.av-read-more--inline {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  margin-top: 0;
+  line-height: 1.5;
+  padding-left: 26px;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0), #fff 22px);
 }
 
 .av-affected-block {
@@ -4309,7 +4359,7 @@ export default {
 }
 
 .vuln-accordion-body .av-description-block {
-  padding: 0 0 14px;
+  padding: 0 0 10px;
   border-bottom: 1px solid #e2e8f0;
   background: transparent;
 }

@@ -1139,10 +1139,10 @@ export default {
   flex-shrink: 0;
 }
 
-.settings-risk-bar--critical { background: #ba1a1a; }
-.settings-risk-bar--high { background: #e65100; }
-.settings-risk-bar--medium { background: #f9a825; }
-.settings-risk-bar--low { background: #0f696e; }
+.settings-risk-bar--critical { background: #b42318; }
+.settings-risk-bar--high { background: #dc2626; }
+.settings-risk-bar--medium { background: #f59e0b; }
+.settings-risk-bar--low { background: #10b981; }
 
 .settings-risk-info p {
   font-size: 0.75rem;

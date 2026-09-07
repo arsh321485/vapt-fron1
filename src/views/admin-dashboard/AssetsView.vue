@@ -325,7 +325,10 @@
                         v-for="(v, i) in filteredVulnerabilities"
                         :key="v.fix_vulnerability_id || (v.vul_name + '-' + (v.id || v.vul_name))"
                         class="vuln-accordion-item"
-                        :class="{ 'vuln-accordion-item--expanded': expandedVulnIndex === i }"
+                        :class="{
+                          'vuln-accordion-item--expanded': expandedVulnIndex === i,
+                          'vuln-accordion-item--manual': expandedVulnIndex === i && currentVulnTab === 'manual',
+                        }"
                         :ref="'vuln-' + i"
                       >
                         <div class="vuln-accordion-header" role="button" @click="toggleAccordion(i)">
@@ -377,17 +380,21 @@
                             <!-- Description -->
                             <div class="av-description-block">
                               <div class="av-db-label">DESCRIPTION</div>
-                              <p class="av-db-text">
-                                {{ getDisplayDescription(v, i) }}
-                              </p>
-                              <button
-                                v-if="descriptionText(v).length > descriptionPreviewLimit"
-                                type="button"
-                                class="av-read-more"
-                                @click="toggleDescription(i)"
-                              >
-                                {{ isDescriptionExpanded(i) ? 'Read less' : 'Read more' }}
-                              </button>
+                              <div class="av-db-text-wrap">
+                                <p
+                                  class="av-db-text"
+                                  :class="{ 'av-db-text--clamped': !isDescriptionExpanded(i) }"
+                                >{{ getDisplayDescription(v, i) }}</p>
+                                <button
+                                  v-if="descriptionText(v).length > descriptionPreviewLimit"
+                                  type="button"
+                                  class="av-read-more"
+                                  :class="{ 'av-read-more--inline': !isDescriptionExpanded(i) }"
+                                  @click="toggleDescription(i)"
+                                >
+                                  {{ isDescriptionExpanded(i) ? 'Read less' : 'Read more' }}
+                                </button>
+                              </div>
                             </div>
 
                             <!-- Affected Assets Chips -->
@@ -422,7 +429,10 @@
                             </div>
 
                             <!-- Tab Content (scrolls; header + description + tabs stay fixed) -->
-                            <div class="av-detail-tab-content">
+                            <div
+                              class="av-detail-tab-content"
+                              :class="{ 'av-detail-tab-content--manual': currentVulnTab === 'manual' }"
+                            >
                               <div v-show="currentVulnTab === 'auto'" class="av-auto-tab">
                                 <AutomatedFixPanel
                                   :key="v.vul_name + '-' + i"
@@ -477,6 +487,7 @@
                           class="vuln-accordion-item"
                           :class="{
                             'vuln-accordion-item--expanded': expandedClosedIndex === i,
+                            'vuln-accordion-item--manual': expandedClosedIndex === i && currentVulnTab === 'manual',
                             'fixed-item--highlight': highlightedFixedId === (item.fix_vulnerability_id || i),
                           }"
                         >
@@ -526,17 +537,21 @@
                               <div class="vuln-accordion-static">
                                 <div class="av-description-block">
                                   <div class="av-db-label">DESCRIPTION</div>
-                                  <p class="av-db-text">
-                                    {{ getDisplayDescription(closedItemAsVuln(item), 'closed-' + i) }}
-                                  </p>
-                                  <button
-                                    v-if="descriptionText(closedItemAsVuln(item)).length > descriptionPreviewLimit"
-                                    type="button"
-                                    class="av-read-more"
-                                    @click="toggleDescription('closed-' + i)"
-                                  >
-                                    {{ isDescriptionExpanded('closed-' + i) ? 'Read less' : 'Read more' }}
-                                  </button>
+                                  <div class="av-db-text-wrap">
+                                    <p
+                                      class="av-db-text"
+                                      :class="{ 'av-db-text--clamped': !isDescriptionExpanded('closed-' + i) }"
+                                    >{{ getDisplayDescription(closedItemAsVuln(item), 'closed-' + i) }}</p>
+                                    <button
+                                      v-if="descriptionText(closedItemAsVuln(item)).length > descriptionPreviewLimit"
+                                      type="button"
+                                      class="av-read-more"
+                                      :class="{ 'av-read-more--inline': !isDescriptionExpanded('closed-' + i) }"
+                                      @click="toggleDescription('closed-' + i)"
+                                    >
+                                      {{ isDescriptionExpanded('closed-' + i) ? 'Read less' : 'Read more' }}
+                                    </button>
+                                  </div>
                                 </div>
                                 <div class="av-detail-tabs">
                                   <button
@@ -559,7 +574,10 @@
                                   </button>
                                 </div>
                               </div>
-                              <div class="av-detail-tab-content">
+                              <div
+                                class="av-detail-tab-content"
+                                :class="{ 'av-detail-tab-content--manual': currentVulnTab === 'manual' }"
+                              >
                                 <div v-show="currentVulnTab === 'auto'" class="av-auto-tab">
                                   <AutomatedFixPanel
                                     :key="'closed-' + (closedItemAsVuln(item).vul_name || i)"
@@ -1906,11 +1924,10 @@ class TLSConfigurator:
       };
     },
     getDisplayDescription(vuln, index) {
-      const fullText = this.descriptionText(vuln) || 'No description available for this vulnerability.';
-      if (this.isDescriptionExpanded(index) || fullText.length <= this.descriptionPreviewLimit) {
-        return fullText;
-      }
-      return `${fullText.slice(0, this.descriptionPreviewLimit).trimEnd()}...`;
+      // Full text is always returned; when collapsed, the "av-db-text--clamped"
+      // class visually restricts it to 2 lines with a CSS ellipsis instead of
+      // cutting the string in JS, so wording never gets chopped mid-word.
+      return this.descriptionText(vuln) || 'No description available for this vulnerability.';
     },
     viewFixDetail(item) {
       // Closed vulns stay under Fixed Recently only ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ scroll/highlight there (not Active Threats).
@@ -3318,9 +3335,21 @@ class TLSConfigurator:
   font-size: 0.8rem;
   font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: #475569;
-  line-height: 1.65;
+  line-height: 1.5;
   margin: 0;
   white-space: pre-line;
+}
+
+.av-db-text-wrap {
+  position: relative;
+}
+
+/* Collapsed state: clip to exactly 2 lines with a trailing ellipsis. */
+.av-db-text--clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .av-read-more {
@@ -3332,6 +3361,21 @@ class TLSConfigurator:
   font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Collapsed state: sit inline at the end of the 2nd line instead of on its
+   own line below, so it never gets pushed out by the accordion's fixed
+   height (e.g. under the Manual Fix tab). A left fade blends it into the
+   clamped text so it reads as part of the sentence. */
+.av-read-more--inline {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  margin-top: 0;
+  line-height: 1.5;
+  padding-left: 26px;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0), #fff 22px);
 }
 
 

@@ -445,7 +445,7 @@
                       <button v-for="r in ['Low', 'Medium', 'High']" :key="r"
                         class="btn btn-sm flex-fill"
                         :style="selectedRisk === r
-                          ? `background:${r === 'Low' ? '#22c55e' : r === 'Medium' ? '#f59e0b' : '#ef4444'}; color:#fff; border:none; border-radius:8px; font-size:12px;`
+                          ? `background:${r === 'Low' ? '#10b981' : r === 'Medium' ? '#f59e0b' : '#dc2626'}; color:#fff; border:none; border-radius:8px; font-size:12px;`
                           : 'background:#f8f8f8; color:rgba(0,0,0,0.6); border:1px solid #e5e5e5; border-radius:8px; font-size:12px;'"
                         @click="selectedRisk = r">
                         {{ r }}

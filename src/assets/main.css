@@ -2032,6 +2032,41 @@ th.sev-low { color: var(--sev-low-text) !important; }
   border-radius: 12px 12px 0 0;
 }
 
+/* Manual Fix: compact description so at least one full step is visible */
+.vuln-accordion-item--manual.vuln-accordion-item--expanded {
+  height: calc(100vh - 148px);
+  height: calc(100dvh - 148px);
+  max-height: calc(100vh - 148px);
+  max-height: calc(100dvh - 148px);
+  min-height: 420px;
+}
+
+.vuln-accordion-item--manual .av-description-block {
+  padding-top: 8px !important;
+  padding-bottom: 6px !important;
+}
+
+/* The description itself already clamps to 2 lines (via .av-db-text--clamped)
+   with its Read more/Read less button sitting inline at the end of the 2nd
+   line (.av-read-more--inline), so it stays compact without needing to be
+   force-clamped or hidden here — that used to block expanding the
+   description while the Manual Fix tab was open. */
+
+.vuln-accordion-item--manual .av-asset-label {
+  display: none;
+}
+
+.vuln-accordion-item--manual .av-detail-tab-content,
+.vuln-accordion-item--manual .av-detail-tab-content--manual {
+  flex: 1 1 auto !important;
+  min-height: min(52vh, 28rem);
+}
+
+.vuln-accordion-item--manual .mf-fix-info-card {
+  padding: 8px 12px;
+  margin-bottom: 4px;
+}
+
 /* Severity + status badges inline after vuln title */
 .vuln-accordion-header > .d-flex.flex-grow-1,
 .vuln-accordion-header > .flex-grow-1 {
