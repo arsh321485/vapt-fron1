@@ -1104,8 +1104,9 @@ export default {
         }
         return;
       }
-      // Same source of truth as the "This report has N IPs" screen: unique_ip_count,
-      // never host_count / never uploaded file-count. Prefer assets + report payload.
+      // Same source of truth as the "This report has N IPs" screen: host_count
+      // (falls back to unique_ip_count for older payloads) — never the
+      // uploaded file-count. Prefer assets + report payload.
       let detected =
         peekBillableAssetCount() ||
         Number(this.$route.query.assets) ||
@@ -1135,7 +1136,7 @@ export default {
           billing_cycle: 'annual',
         });
         if (data) this.estimate = data;
-        // Only trust estimate when it has genuine unique_ip_count — never host_count.
+        // Only trust the estimate when it has a genuine host/IP count.
         const fromEstimate = uniqueIpCountFields(data);
         if (fromEstimate) detected = Math.max(detected, fromEstimate);
       } catch {

@@ -3788,7 +3788,13 @@ export const useAuthStore = defineStore("auth", {
         buckets.forEach((row: any) => {
           if (!row || typeof row === "string") return;
           const n = Number(
-            row.unique_ip_count ?? row.merged_unique_ip_count ?? row.unique_ips ?? 0,
+            row.host_count ??
+              row.hosts_count ??
+              row.total_hosts ??
+              row.unique_ip_count ??
+              row.merged_unique_ip_count ??
+              row.unique_ips ??
+              0,
           );
           if (!Number.isFinite(n) || n <= 0) return;
           saw = true;
@@ -3810,10 +3816,18 @@ export const useAuthStore = defineStore("auth", {
         });
         return { sum, saw };
       };
+      // Host/IP count — prefers host_count; falls back to unique_ip_count
+      // fields for older payloads that don't send host_count.
       const pick = (src: any): number => {
         if (!src || typeof src !== "object") return 0;
         const direct = Number(
-          src.unique_ip_count ?? src.merged_unique_ip_count ?? src.total_unique_ips ?? src.unique_ips,
+          src.host_count ??
+            src.hosts_count ??
+            src.total_hosts ??
+            src.unique_ip_count ??
+            src.merged_unique_ip_count ??
+            src.total_unique_ips ??
+            src.unique_ips,
         );
         const directOk = Number.isFinite(direct) && direct > 0;
         const buckets = [

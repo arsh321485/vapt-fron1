@@ -1193,7 +1193,16 @@ export default {
         const name = String(item.file_name || item.filename || item.name || '').trim();
         if (!name) return;
         const ipCount =
-          Number(item.unique_ip_count || item.uniqueIpCount || item.ip_count || item.ips || 0) || 0;
+          Number(
+            item.host_count ||
+              item.hosts_count ||
+              item.total_hosts ||
+              item.unique_ip_count ||
+              item.uniqueIpCount ||
+              item.ip_count ||
+              item.ips ||
+              0,
+          ) || 0;
         byName.set(name, { name, ipCount });
       });
       this.existingUploadedFiles.forEach((name) => {
@@ -2037,6 +2046,9 @@ export default {
       }
       const hint = parsePlanHintFromMessage(errorBlob);
       const count = Number(
+        payload.host_count ||
+        payload.hosts_count ||
+        payload.total_hosts ||
         payload.unique_ip_count ||
         hint.count ||
         0,
