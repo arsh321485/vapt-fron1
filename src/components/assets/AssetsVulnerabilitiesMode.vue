@@ -92,16 +92,21 @@
               </template>
             </span>
           </div>
-          <!-- Asset count + always-expanded host list -->
+          <!-- Asset count + collapsible host list (open by default) -->
           <div
             v-if="item.assets?.length"
-            class="av-assets-toggle av-assets-toggle--static"
-            aria-hidden="true"
+            class="av-assets-toggle"
+            role="button"
+            tabindex="0"
+            :aria-expanded="isAssetsListExpanded(item)"
+            @click.stop="toggleAssetsListExpanded(item)"
+            @keydown.enter.stop.prevent="toggleAssetsListExpanded(item)"
+            @keydown.space.stop.prevent="toggleAssetsListExpanded(item)"
           >
-            <i class="bi bi-chevron-up"></i>
+            <i class="bi" :class="isAssetsListExpanded(item) ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
             <span>{{ item.assets.length }} asset{{ item.assets.length === 1 ? '' : 's' }}</span>
           </div>
-          <div v-if="item.assets?.length" class="av-nested-assets" @click.stop>
+          <div v-if="item.assets?.length && isAssetsListExpanded(item)" class="av-nested-assets" @click.stop>
             <div
               v-for="assetIp in item.assets"
               :key="assetIp"
@@ -908,6 +913,11 @@ export default {
       activeFilters: ['All'],
       statusFilter: [],
       selectedKey: null,
+      // Per-vuln collapse state for the "N assets" host list in the left
+      // list (av-assets-toggle / av-nested-assets) — keyed by item._key so
+      // it survives filteredVulns recomputing. Absent from this object
+      // means expanded (matches the previous always-open default).
+      collapsedAssetLists: {},
       expandedVulnIndex: null,
       expandedClosedIndex: null,
       automationScriptMap: {},
@@ -1461,6 +1471,19 @@ export default {
     },
     nestedAssetBadge(item, assetIp) {
       return assetTypeBadgeMeta(this.hostAssetType(assetIp, item));
+    },
+    isAssetsListExpanded(item) {
+      const key = item?._key;
+      if (!key) return true;
+      return !this.collapsedAssetLists[key];
+    },
+    toggleAssetsListExpanded(item) {
+      const key = item?._key;
+      if (!key) return;
+      this.collapsedAssetLists = {
+        ...this.collapsedAssetLists,
+        [key]: !this.collapsedAssetLists[key],
+      };
     },
     async ensureVulnAssetRows(vuln) {
       const key = vuln?._key;
@@ -4123,11 +4146,12 @@ export default {
   background: rgba(15,105,110,0.07);
   border: 1px solid rgba(15,105,110,0.15);
   margin-top: 4px;
+  cursor: pointer;
+  user-select: none;
 }
 
-.av-assets-toggle--static {
-  cursor: default;
-  pointer-events: none;
+.av-assets-toggle:hover {
+  background: rgba(15,105,110,0.13);
 }
 
 .av-nested-assets {

@@ -131,8 +131,17 @@
                 </div>
                 <div class="card chart-card">
                   <h3>Findings by Team</h3>
-                  <div class="chart-canvas-box">
-                    <canvas id="rTeamDistributionChart"></canvas>
+                  <div class="severity-visual">
+                    <div class="chart-canvas-box">
+                      <canvas id="rTeamDistributionChart"></canvas>
+                    </div>
+                    <div class="severity-legend">
+                      <div v-for="item in teamLegend" :key="item.label" class="severity-legend-row">
+                        <span class="legend-color" :style="{ background: item.color }"></span>
+                        <span class="legend-label">{{ item.label }}</span>
+                        <strong class="legend-pct">{{ item.percent }}%</strong>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -381,6 +390,30 @@ export default {
         { label: 'Medium', value: this.vulnStats.medium, color: SEV.medium, percent: Math.round((this.vulnStats.medium / total) * 100) },
         { label: 'Low', value: this.vulnStats.low, color: SEV.low, percent: Math.round((this.vulnStats.low / total) * 100) },
       ];
+    },
+    teamLegend() {
+      const colorMap = {
+        'Network Security': TEAM_COLORS.network,
+        'Patch Management': TEAM_COLORS.patch,
+        'Configuration Management': TEAM_COLORS.configuration,
+        'Architectural Flaws': TEAM_COLORS.architectural,
+      };
+      const dist = this.teamDistribution.length
+        ? this.teamDistribution.filter((d) => d.team !== 'Unassigned')
+        : [
+            { team: 'Network Security', count: 0 },
+            { team: 'Patch Management', count: 0 },
+            { team: 'Configuration Management', count: 0 },
+            { team: 'Architectural Flaws', count: 0 },
+          ];
+      const total = dist.reduce((sum, d) => sum + (Number(d.count) || 0), 0) || 1;
+      return dist.map((d) => ({
+        label: d.team,
+        value: Number(d.count) || 0,
+        color: colorMap[d.team] || '#6b7280',
+        percent:
+          d.percentage != null ? Math.round(Number(d.percentage)) : Math.round(((Number(d.count) || 0) / total) * 100),
+      }));
     },
     severityConicStyle() {
       const total = this.totalVulnerabilities || 1;
@@ -776,10 +809,14 @@ export default {
     }
     .report-page *, .report-page *::before, .report-page *::after { box-sizing: border-box; }
     .no-export { display: none !important; }
-    .table-wrap { max-height: none !important; overflow: visible !important; height: auto !important; }
     .chart-canvas-box { height: 240px !important; }
     .severity-static-donut { width: 220px !important; height: 220px !important; }
-    .top-grid, .chart-grid { grid-template-columns: 1.6fr 1fr !important; }
+    .top-grid { grid-template-columns: 1.6fr 1fr !important; }
+    /* Both chart-grid cards now carry a donut + legend (Severity Distribution
+       and Findings by Team) — an uneven split squeezed the second card's
+       legend column, wrapping long team names into the percentage next to
+       them. Match the live view's equal split. */
+    .chart-grid { grid-template-columns: 1fr 1fr !important; }
     .severity-stats-grid { grid-template-columns: repeat(4, 1fr) !important; }
     .meta-items { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
     .scope-mini-grid { grid-template-columns: repeat(4, 1fr) !important; }
@@ -788,9 +825,26 @@ export default {
     },
 
     collectDocumentStyles() {
-      return Array.from(document.querySelectorAll('style'))
-        .map((node) => node.textContent || '')
-        .join('\n');
+      // In a production build Vite extracts component CSS into external
+      // .css files loaded via <link>, not inline <style> tags — so scraping
+      // <style> only found nothing there (dev's HMR-injected <style> tags
+      // made this look fine on localhost) and the downloaded HTML came out
+      // completely unstyled. document.styleSheets covers BOTH inline
+      // <style> blocks and same-origin <link>-loaded stylesheets, so read
+      // the parsed rules back out as text instead.
+      const chunks = [];
+      Array.from(document.styleSheets).forEach((sheet) => {
+        try {
+          const rules = sheet.cssRules;
+          if (!rules) return;
+          chunks.push(Array.from(rules).map((rule) => rule.cssText).join('\n'));
+        } catch {
+          // Cross-origin stylesheet (e.g. the Google Fonts CSS) — reading
+          // cssRules throws. Safe to skip: the exported document links that
+          // same stylesheet directly.
+        }
+      });
+      return chunks.join('\n');
     },
 
     buildReportClone() {
@@ -804,11 +858,9 @@ export default {
       clone.style.margin = '0 auto';
       clone.style.padding = '28px 32px 48px';
       clone.style.overflow = 'visible';
-      clone.querySelectorAll('.table-wrap').forEach((el) => {
-        el.style.maxHeight = 'none';
-        el.style.overflow = 'visible';
-        el.style.height = 'auto';
-      });
+      // Keep the same scrollable box as View Report — the downloaded HTML is
+      // still an interactive page, not a flat print document, so the
+      // Detailed Vulnerability Log should scroll the same way here too.
 
       const liveCanvases = reportContent.querySelectorAll('canvas');
       const clonedCanvases = clone.querySelectorAll('canvas');

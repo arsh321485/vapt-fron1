@@ -24,6 +24,20 @@ if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
 const app = createApp(App);
 app.mixin(livePageSyncMixin);
 
+// Without this, an uncaught error thrown while rendering/mounting any page
+// (e.g. a network hiccup mid-navigation) just leaves that page blank with
+// nothing but a bare "Uncaught" line in the console — no route, no
+// component name, nothing to go on when a user reports "the page went
+// blank". This doesn't change behavior; it just makes the next occurrence
+// diagnosable.
+app.config.errorHandler = (err, instance, info) => {
+  console.error("[vaptfix] Uncaught app error:", err, {
+    component: instance?.$options?.name || instance?.$?.type?.name || "unknown",
+    route: router.currentRoute?.value?.fullPath,
+    info,
+  });
+};
+
 app.component("TeamNameText", TeamNameText);
 
 app.use(createPinia());

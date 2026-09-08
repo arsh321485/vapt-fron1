@@ -3689,39 +3689,51 @@ export default {
       return;
     }
     this.applyRouteMode();
-    await Promise.all([this.loadExistingScope(), this.loadExistingReport(), this.loadSubscription()]);
-    if (await this.resumeAgentGenerationIfNeeded()) {
-      return;
+    // This mount does ~10 chained backend calls (scope/report/subscription
+    // status, onboarding-route resolution, scope-payment resume, pending
+    // upload resume). None of it was guarded — one network hiccup or
+    // unexpected response shape anywhere in that chain threw uncaught, which
+    // is exactly the kind of error that leaves this page blank instead of
+    // just falling back to its normal upload UI. Never let that happen here:
+    // on any failure, stop trying to auto-redirect and just show the page.
+    try {
+      await Promise.all([this.loadExistingScope(), this.loadExistingReport(), this.loadSubscription()]);
+      if (await this.resumeAgentGenerationIfNeeded()) {
+        return;
+      }
+      const authStore = useAuthStore();
+      const status = await authStore.getReportStatus();
+      if (
+        freemiumLocksUploadScope(this.subscription) &&
+        status?.hasReport &&
+        this.isExplicitScopeVisit
+      ) {
+        this.redirecting = true;
+        await this.$router.replace({
+          path: '/pricingplan',
+          query: { returnTo: '/admindashboardonboarding' },
+        });
+        return;
+      }
+      // Paid onboarding can skip this screen once a report already exists.
+      // Unpaid must stay here: upload the file, then pick a plan.
+      // If agents are still generating, stay and keep polling.
+      if (status?.hasReport && !this.isExplicitScopeVisit && (await authStore.hasPaidPlan())) {
+        if (await this.resumeAgentGenerationIfNeeded()) return;
+        this.redirecting = true;
+        await this.$router.replace(await authStore.getAdminOnboardingRoute());
+        return;
+      }
+      if (await this.redirectIfReportReadyFromElsewhere()) return;
+      if (sessionStorage.getItem('isNewUser') !== 'true') {
+        if (await this.resumeUnpaidScopePayment()) return;
+      }
+      this.startExternalReportWatch();
+      await this.resumePendingUploadIfNeeded();
+    } catch (error) {
+      console.error('[AdminUploadReportView] mounted() init failed — showing page as-is:', error);
+      this.redirecting = false;
     }
-    const authStore = useAuthStore();
-    const status = await authStore.getReportStatus();
-    if (
-      freemiumLocksUploadScope(this.subscription) &&
-      status?.hasReport &&
-      this.isExplicitScopeVisit
-    ) {
-      this.redirecting = true;
-      await this.$router.replace({
-        path: '/pricingplan',
-        query: { returnTo: '/admindashboardonboarding' },
-      });
-      return;
-    }
-    // Paid onboarding can skip this screen once a report already exists.
-    // Unpaid must stay here: upload the file, then pick a plan.
-    // If agents are still generating, stay and keep polling.
-    if (status?.hasReport && !this.isExplicitScopeVisit && (await authStore.hasPaidPlan())) {
-      if (await this.resumeAgentGenerationIfNeeded()) return;
-      this.redirecting = true;
-      await this.$router.replace(await authStore.getAdminOnboardingRoute());
-      return;
-    }
-    if (await this.redirectIfReportReadyFromElsewhere()) return;
-    if (sessionStorage.getItem('isNewUser') !== 'true') {
-      if (await this.resumeUnpaidScopePayment()) return;
-    }
-    this.startExternalReportWatch();
-    await this.resumePendingUploadIfNeeded();
   },
   watch: {
     uniqueAssetIpCount(n) {

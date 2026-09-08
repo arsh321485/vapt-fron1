@@ -1527,10 +1527,11 @@ class TLSConfigurator:
         rows,
       );
     },
-    preselectActiveAsset() {
+    /** Hold/Delete must start with nothing checked — the admin picks what to act on. */
+    clearAssetSelections() {
       const rows = this.sourceAssetRows || [];
       rows.forEach((a) => {
-        a.selected = !!(this.activeIndex && a.asset === this.activeIndex);
+        a.selected = false;
       });
     },
     onAssetRowClick(asset) {
@@ -1584,7 +1585,7 @@ class TLSConfigurator:
       const rows = this.sourceAssetRows || [];
       if (!this.showCheckboxes) {
         this.showCheckboxes = true;
-        this.preselectActiveAsset();
+        this.clearAssetSelections();
         return;
       }
       const selectedAssets = rows.filter(a => a.selected);
@@ -1693,7 +1694,7 @@ class TLSConfigurator:
       }
 
       this.showHoldCheckboxes = true;
-      this.preselectActiveAsset();
+      this.clearAssetSelections();
     },
     async confirmHold() {
       const selected = (this.sourceAssetRows || []).filter(a => a.selected);
