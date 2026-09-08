@@ -1,1 +1,1 @@
-see in img on uploading file there on second image see there also take host_count instead of unique_ip_count 
+here in image this report has 15 unique ips it take from response host_count that is right also on file name after that the ip count comes there also recheck is it take host_count or unique_ip_count dont t=ake there unique_ip_count take there host_count recheck this 
