@@ -128,9 +128,15 @@ export default {
       // correctly refuses to infer payment from report/onboarding state)
       // doesn't strand a genuinely-paid admin on a webhook-timing race.
       setCachedPaidPlan(true);
+      // Clear cached (still-Freemium-trimmed) data, but do NOT eagerly
+      // re-fetch assets here — the backend genuinely hasn't processed the
+      // Stripe webhook yet at this point (that's why we're in this fallback
+      // at all), so an eager fetchAssets(true) would just re-cache the same
+      // trimmed snapshot, and fetchAssets(false) elsewhere (e.g. the
+      // dashboard) would then reuse that stale cache forever instead of
+      // re-fetching once the backend has actually caught up. Leaving the
+      // cache empty lets whichever page loads next fetch it fresh for real.
       authStore.invalidateAfterPaidUpgrade();
-      void authStore.fetchDashboardSummary();
-      void authStore.fetchAssets(true);
       void authStore.getReportStatus();
       const stored = consumeBillingReturnTo('');
       const awaitingScopeFile =
