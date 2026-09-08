@@ -238,6 +238,16 @@ endpoint.interceptors.response.use(
       "/pricingplan",
       "/billing/success",
       "/billing/cancel",
+      // Immediate post-checkout onboarding steps: the access token is often
+      // still expired from sitting through the Stripe redirect, and the
+      // refresh above hasn't necessarily settled yet by the time these pages'
+      // own calls fire. Bouncing here to /home right after a completed
+      // payment is the "why am I here" regression — these pages are already
+      // gated by the router's requiresAuth/requiresPaidPlan check, so a 401
+      // here is this race, not a real logout.
+      "/communication",
+      "/riskcriteria",
+      "/waiting-for-report",
       "/partner",
       "/partner-lead-portal",
       "/partner-lead-thankyou",

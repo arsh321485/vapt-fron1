@@ -656,16 +656,20 @@
           </div>
           <div class="modal-body p-4" v-if="selectedSupportRequest">
             <p class="sr-section-label mb-3">Steps requested for support</p>
-            <div v-if="selectedSupportRequest.step_requested" class="d-flex flex-wrap gap-2 mb-4">
-              <span
-                v-for="(step, si) in selectedSupportRequest.step_requested.split(',')"
-                :key="si"
-                class="sr-step-pill"
-              >
-                {{ step.trim() }}: review
-              </span>
+            <div class="d-flex flex-wrap gap-2 mb-4">
+              <template v-if="supportRequestStepPills(selectedSupportRequest).length">
+                <span
+                  v-for="(pill, si) in supportRequestStepPills(selectedSupportRequest)"
+                  :key="si"
+                  class="sr-step-pill"
+                >
+                  {{ pill }}
+                </span>
+              </template>
+              <template v-else>
+                <span class="text-muted small">No steps specified.</span>
+              </template>
             </div>
-            <div v-else class="text-muted small mb-4">No steps specified.</div>
             <p class="sr-section-label mb-2">Description</p>
             <textarea
               class="sr-textarea"
@@ -1471,6 +1475,30 @@ export default {
     },
     nestedAssetBadge(item, assetIp) {
       return assetTypeBadgeMeta(this.hostAssetType(assetIp, item));
+    },
+    /**
+     * The "raise support request" submit forms post the step under
+     * different keys (step_number as a plain number, or step as "all"/a
+     * comma list) — and the admin list-by-host endpoint may not echo the
+     * same field name back. Check every plausible field so a genuinely
+     * specified step is never shown as "No steps specified.".
+     */
+    supportRequestStepPills(req) {
+      if (!req) return [];
+      const stepNumber = req.step_number;
+      if (stepNumber !== undefined && stepNumber !== null && stepNumber !== '') {
+        return [`Step ${stepNumber}`];
+      }
+      const raw = String(req.step_requested ?? req.step ?? req.steps_requested ?? '').trim();
+      if (!raw) return [];
+      if (raw.toLowerCase() === 'all') return ['All Steps'];
+      // Bare step numbers ("1", "2") read as just "Step 1" — no ": review"
+      // suffix, and leave an already-labeled token (e.g. "Step 1") as-is.
+      return raw
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map((s) => (/^\d+$/.test(s) ? `Step ${s}` : s));
     },
     isAssetsListExpanded(item) {
       const key = item?._key;

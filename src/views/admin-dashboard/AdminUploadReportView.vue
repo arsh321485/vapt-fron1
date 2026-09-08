@@ -38,7 +38,7 @@
               <template v-if="planSuggestPrompt.count">
                 This {{ planSuggestPrompt.source === 'upload' ? 'report' : 'scope' }} has
                 <strong>{{ displayedPlanIpCount }}</strong>
-                unique IP{{ displayedPlanIpCount === 1 ? '' : 's' }}
+                IP{{ displayedPlanIpCount === 1 ? '' : 's' }}
                 <template v-if="planSuggestFileCount > 1">
                   combined from <strong>{{ planSuggestFileCount }}</strong> files
                 </template>.
@@ -1193,16 +1193,7 @@ export default {
         const name = String(item.file_name || item.filename || item.name || '').trim();
         if (!name) return;
         const ipCount =
-          Number(
-            item.host_count ||
-              item.hosts_count ||
-              item.total_hosts ||
-              item.unique_ip_count ||
-              item.uniqueIpCount ||
-              item.ip_count ||
-              item.ips ||
-              0,
-          ) || 0;
+          Number(item.unique_ip_count || item.uniqueIpCount || item.ip_count || item.ips || 0) || 0;
         byName.set(name, { name, ipCount });
       });
       this.existingUploadedFiles.forEach((name) => {
@@ -1317,6 +1308,13 @@ export default {
     },
   },
   methods: {
+    // Plain top-level imports aren't visible inside the template on an
+    // Options API component (unlike <script setup>) — only data/computed/
+    // methods are. The template calls this directly (line ~342), so it must
+    // be re-exposed here or it throws "_ctx.freemiumLocksUploadScope is not
+    // a function" the moment that branch renders (i.e. whenever there's an
+    // existing report on file — exactly the reported crash).
+    freemiumLocksUploadScope,
     toastNotice(icon, title, text = '', ms = 2400) {
       return Swal.fire({
         toast: true,
@@ -1356,12 +1354,9 @@ export default {
       return this.uniqueAssetIpCount;
     },
     payloadUniqueIpCount() {
-      // Different endpoints carry different fields — some report metadata
-      // (existingReport/uploadResult) only has unique_ip_count, while the
-      // assets endpoint (auth.uniqueIpCount, via fetchAssets) also has the
-      // larger host_count. Take the MAX across every source rather than the
-      // first non-zero one, so a source with host_count always wins over one
-      // that only has unique_ip_count, whichever happens to be checked first.
+      // Take the max across every source that can carry unique_ip_count
+      // rather than the first non-zero one, so a stale/zero reading from one
+      // source never wins over a genuinely-populated one from another.
       const auth = useAuthStore();
       return Math.max(
         uniqueIpCountFields(this.uploadResult),
@@ -1381,11 +1376,10 @@ export default {
       );
     },
     async resolveUniqueIpCount(fallback = 0) {
-      // Always refresh from the assets endpoint before deciding — it's the
-      // one guaranteed to carry host_count, and skipping this fetch just
-      // because existingReport/uploadResult already had SOME (possibly
-      // host_count-less) number was letting a smaller unique_ip_count-only
-      // value win over the real host_count.
+      // Always refresh from the assets endpoint before deciding, rather than
+      // skipping the fetch just because existingReport/uploadResult already
+      // had some number — a fresh read is more likely to be accurate than a
+      // stale payload captured earlier in the flow.
       const auth = useAuthStore();
       try {
         await auth.fetchAssets(true);
@@ -2052,9 +2046,6 @@ export default {
       }
       const hint = parsePlanHintFromMessage(errorBlob);
       const count = Number(
-        payload.host_count ||
-        payload.hosts_count ||
-        payload.total_hosts ||
         payload.unique_ip_count ||
         hint.count ||
         0,
@@ -2664,7 +2655,14 @@ export default {
     openUploadReport() {
       this.clearFileState();
       this.viewMode = 'upload';
-      this.loadExistingReport();
+      // Not awaited — this is a click handler, the "Upload Your Scan Report"
+      // panel must show immediately. But an unawaited call whose promise
+      // rejects becomes invisible to Vue entirely (bypasses errorCaptured
+      // and app.config.errorHandler both) — catch it explicitly so a
+      // failure here can never look like the whole page silently broke.
+      this.loadExistingReport().catch((err) => {
+        console.error('[AdminUploadReportView] loadExistingReport (from openUploadReport) failed:', err);
+      });
     },
     shortReportId(id) {
       const value = String(id || '');

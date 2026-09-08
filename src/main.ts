@@ -38,6 +38,18 @@ app.config.errorHandler = (err, instance, info) => {
   });
 };
 
+// A "fire and forget" async call (e.g. a click handler that calls an async
+// method without await/.catch — this codebase has several) rejects outside
+// Vue's own error-handling path entirely: neither errorHandler above nor an
+// <ErrorBoundary>'s errorCaptured ever sees it. Left unlogged, that's a
+// silent failure with zero trace of what actually went wrong. Log it here
+// instead of letting the browser only print a bare "Uncaught (in promise)".
+window.addEventListener("unhandledrejection", (event) => {
+  console.error("[vaptfix] Unhandled promise rejection:", event.reason, {
+    route: router.currentRoute?.value?.fullPath,
+  });
+});
+
 app.component("TeamNameText", TeamNameText);
 
 app.use(createPinia());

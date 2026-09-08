@@ -614,13 +614,7 @@ function sumUniqueIpBuckets(buckets) {
   buckets.forEach((row) => {
     if (row == null || typeof row === "string") return;
     const n = Number(
-      row.host_count ??
-        row.hosts_count ??
-        row.total_hosts ??
-        row.unique_ip_count ??
-        row.merged_unique_ip_count ??
-        row.unique_ips ??
-        0,
+      row.unique_ip_count ?? row.merged_unique_ip_count ?? row.unique_ips ?? 0,
     );
     if (!Number.isFinite(n) || n <= 0) return;
     saw = true;
@@ -643,14 +637,11 @@ function sumUniqueIpBuckets(buckets) {
   return { sum, saw };
 }
 
-/** Host/IP count from backend — prefers host_count; falls back to unique_ip_count fields for older payloads that don't send host_count. Never a file/row count. */
+/** Distinct IPv4/IPv6 count from backend — never host_count / Nessus row count / file count. */
 export function uniqueIpCountFields(source) {
   if (source == null || typeof source !== "object") return 0;
   const direct = Number(
-    source.host_count ??
-      source.hosts_count ??
-      source.total_hosts ??
-      source.unique_ip_count ??
+    source.unique_ip_count ??
       source.merged_unique_ip_count ??
       source.total_unique_ips ??
       source.unique_ips,
@@ -705,9 +696,9 @@ export function detectedFileAssetCount(source, fallback = 0) {
 }
 
 /**
- * File IP count for the recommended-plan screen (host_count preferred — see
- * uniqueIpCountFields). If the visible list is Freemium-capped at 5, use
- * locked+visible / original.
+ * File IP count for the recommended-plan screen.
+ * Unique IPs first. If the visible list is Freemium-capped at 5, use locked+visible / original.
+ * Never use Nessus host_count (inflates 9 unique IPs to 11 hosts).
  */
 export function recommendPlanAssetCount(...sources) {
   let uniqueBest = 0;
