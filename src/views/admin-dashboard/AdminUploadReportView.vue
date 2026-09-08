@@ -1356,14 +1356,20 @@ export default {
       return this.uniqueAssetIpCount;
     },
     payloadUniqueIpCount() {
+      // Different endpoints carry different fields — some report metadata
+      // (existingReport/uploadResult) only has unique_ip_count, while the
+      // assets endpoint (auth.uniqueIpCount, via fetchAssets) also has the
+      // larger host_count. Take the MAX across every source rather than the
+      // first non-zero one, so a source with host_count always wins over one
+      // that only has unique_ip_count, whichever happens to be checked first.
       const auth = useAuthStore();
-      return (
-        uniqueIpCountFields(this.uploadResult) ||
-        uniqueIpCountFields(this.existingReport) ||
-        uniqueIpCountFields(this.uploadResult?.data) ||
-        uniqueIpCountFields(this.existingReport?.data) ||
-        Number(auth.uniqueIpCount) ||
-        0
+      return Math.max(
+        uniqueIpCountFields(this.uploadResult),
+        uniqueIpCountFields(this.existingReport),
+        uniqueIpCountFields(this.uploadResult?.data),
+        uniqueIpCountFields(this.existingReport?.data),
+        Number(auth.uniqueIpCount) || 0,
+        0,
       );
     },
     recommendAssetCount() {
@@ -1375,26 +1381,26 @@ export default {
       );
     },
     async resolveUniqueIpCount(fallback = 0) {
-      const fromPayload = this.payloadUniqueIpCount();
-      if (fromPayload) {
-        this.fileDetectedIpCount = fromPayload;
-        storeBillableAssetCount(fromPayload);
-        return fromPayload;
-      }
+      // Always refresh from the assets endpoint before deciding — it's the
+      // one guaranteed to carry host_count, and skipping this fetch just
+      // because existingReport/uploadResult already had SOME (possibly
+      // host_count-less) number was letting a smaller unique_ip_count-only
+      // value win over the real host_count.
       const auth = useAuthStore();
       try {
         await auth.fetchAssets(true);
       } catch {
         /* payload still usable */
       }
+      const fromPayload = this.payloadUniqueIpCount();
       const fromAssets = countUniqueIpHosts(auth.assetRows);
-      const n =
-        this.payloadUniqueIpCount() ||
-        fromAssets ||
-        Number(auth.uniqueIpCount) ||
-        peekBillableAssetCount() ||
-        Number(fallback) ||
-        0;
+      const n = Math.max(
+        fromPayload,
+        fromAssets,
+        Number(auth.uniqueIpCount) || 0,
+        peekBillableAssetCount() || 0,
+        Number(fallback) || 0,
+      );
       // Never accept fallback that is just the uploaded file count.
       const fileCount = Number(this.lastUploadFileCount) || this.currentSelectedUploadFiles().length || 0;
       const safe =
