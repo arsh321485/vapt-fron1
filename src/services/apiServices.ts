@@ -248,11 +248,22 @@ endpoint.interceptors.response.use(
     const skip401Redirect =
       isAuthScreen || noRedirect401Paths.has(currentPath) || isUserAppRoute(currentPath);
 
-    if (error.response?.status === 401 && !isAuthEndpoint && !skip401Redirect) {
+    // Token refresh is always attempted on a 401, even on skip401Redirect pages
+    // (e.g. /billing/success, which can sit through a long Stripe checkout
+    // detour and come back with an expired access token) — otherwise the
+    // token stays expired through that whole page and the very next API call
+    // on the NEXT (non-whitelisted) page immediately force-logs-out to /home.
+    // Only the logout + redirect-to-/home on total failure is skipped there.
+    const forceLogoutHome = () => {
+      if (skip401Redirect) return;
+      clearAllSessionTokens();
+      router.push("/home");
+    };
+
+    if (error.response?.status === 401 && !isAuthEndpoint) {
       const failedConfig = error.config;
       if (failedConfig?._authRetried) {
-        clearAllSessionTokens();
-        router.push("/home");
+        forceLogoutHome();
         return Promise.reject(error);
       }
 
@@ -296,18 +307,16 @@ endpoint.interceptors.response.use(
           if (error.config) error.config._authRetried = true;
           return endpoint(error.config);
         } catch {
-          // ❌ Refresh bhi fail → logout
+          // ❌ Refresh bhi fail → logout (unless this page opts out of it)
           isRefreshing = false;
           clearRefreshQueue();
-          clearAllSessionTokens();
-          router.push("/home");
+          forceLogoutHome();
           return Promise.reject(error);
         }
       }
 
-      // Refresh token nahi mila → seedha logout
-      clearAllSessionTokens();
-      router.push("/home");
+      // Refresh token nahi mila → seedha logout (unless this page opts out of it)
+      forceLogoutHome();
     }
     return Promise.reject(error);
   },
