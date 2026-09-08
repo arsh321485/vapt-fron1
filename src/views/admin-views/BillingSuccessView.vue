@@ -120,6 +120,18 @@ export default {
     /** Same destination the success branch resolves to, for the "still confirming" fallback button. */
     resolvePendingContinuePath() {
       const authStore = useAuthStore();
+      // Landing here at all means Stripe already redirected back from a
+      // completed checkout (this URL only exists as Stripe's success_url,
+      // carrying a real session_id) — our backend's own subscription record
+      // just hasn't caught up to that yet. Mark it paid locally so the
+      // requiresPaidPlan route guard's hasPaidPlan() check (which now
+      // correctly refuses to infer payment from report/onboarding state)
+      // doesn't strand a genuinely-paid admin on a webhook-timing race.
+      setCachedPaidPlan(true);
+      authStore.invalidateAfterPaidUpgrade();
+      void authStore.fetchDashboardSummary();
+      void authStore.fetchAssets(true);
+      void authStore.getReportStatus();
       const stored = consumeBillingReturnTo('');
       const awaitingScopeFile =
         isScopeFileAwaitingSuperadmin(readStoredAdminEmail()) ||
