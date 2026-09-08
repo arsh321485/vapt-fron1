@@ -749,13 +749,12 @@ router.beforeEach(async (to, from, next) => {
     }
     try {
       const authStore = useAuthStore();
-      const rs = authStore.reportStatus;
-      // A report on file is not proof of payment (Premium uploads before
-      // checkout) — only a genuinely completed/dashboard state may skip the
-      // paid-plan check below.
-      if (rs.checked && (authStore._isOnboardingComplete(rs) || rs.showDashboard)) {
-        return next();
-      }
+      // hasPaidPlan() itself is the single source of truth here — it already
+      // short-circuits fast via hasCachedPaidPlan() once a checkout has
+      // actually completed. A report on file (or the backend's "ready" /
+      // showDashboard report-processing state) is NOT proof of payment —
+      // Premium uploads its report before checkout — so neither may be used
+      // to skip this check.
       const paid = await authStore.hasPaidPlan();
       if (paid) {
         return next();

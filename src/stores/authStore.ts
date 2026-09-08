@@ -8175,14 +8175,14 @@ export const useAuthStore = defineStore("auth", {
 
     /** True when the admin has an active, trial, or past-due paid plan. */
     async hasPaidPlan(): Promise<boolean> {
-      if (this.reportStatus.checked && this._isOnboardingComplete(this.reportStatus)) {
-        return true;
-      }
       // Fast, reliable signal set only on an actually-completed checkout
       // (Premium payment confirmed active, or a completed Freemium checkout).
-      // NOTE: a report existing on file is NOT proof of payment — Premium
-      // uploads its report before checkout, so an abandoned Stripe session
-      // must not be waved through just because reportStatus.hasReport is true.
+      // NOTE: reportStatus.state === "ready" / showDashboard === true reflect
+      // report+scope PROCESSING finishing on the backend — not Stripe checkout
+      // completing — and a report existing is not proof of payment either
+      // (Premium uploads its report before checkout). None of that may be used
+      // to assume payment happened; only hasCachedPaidPlan() or a real
+      // subscription check may.
       if (hasCachedPaidPlan()) {
         return true;
       }
@@ -8192,8 +8192,11 @@ export const useAuthStore = defineStore("auth", {
         setCachedPaidPlan(paid);
         return paid;
       } catch {
-        // Billing outage / timeout — do not block a genuinely-onboarded dashboard.
-        if (this._isOnboardingComplete(this.reportStatus)) {
+        // Billing outage / timeout. Don't invent payment from report/scope
+        // state — but hasReport + hasRiskCriteria can only genuinely happen
+        // after Add Users, which is itself payment-gated, so that specific
+        // combination is a safe fallback signal here.
+        if (this.reportStatus.hasReport && this.reportStatus.hasRiskCriteria) {
           return true;
         }
         return hasCachedPaidPlan();
@@ -8285,14 +8288,17 @@ export const useAuthStore = defineStore("auth", {
 
       // HARD GATE: normal email/Slack/Teams signup — no report ⇒ never Add Users / Risk Criteria.
       // Upload (or wait for Super Admin scan) first; /communication only after has_report.
+      // Payment is checked BEFORE trusting "ready"/showDashboard — that backend
+      // state reflects report/scope processing, not Stripe checkout, so it must
+      // never be used to wave an unpaid admin past payment.
       if (!res.hasReport) {
+        if (!(await this.hasPaidPlan())) {
+          return "/admin-upload-report";
+        }
+
         if (this._isOnboardingComplete(res)) {
           this._markOnboardingComplete();
           return "/admindashboardonboarding";
-        }
-
-        if (!(await this.hasPaidPlan())) {
-          return "/admin-upload-report";
         }
 
         const analysis = await fetchScopeAnalysisStatus();
@@ -8319,16 +8325,19 @@ export const useAuthStore = defineStore("auth", {
       // Report already on file. hasPaidPlan() is a cheap cache check once a
       // checkout has actually completed, so this stays fast for the normal
       // case — it only reaches the live billing call (~30–45s worst case) for
-      // an admin who uploaded a report but never finished paying, and that
-      // case must not be waved into Add Users just because a report exists
-      // (Premium uploads its report *before* Stripe checkout).
+      // an admin who uploaded a report but never finished paying.
+      // IMPORTANT: this is checked BEFORE _isOnboardingComplete()/hasRiskCriteria —
+      // the backend's "ready"/showDashboard state reflects report+scope
+      // processing finishing, not Stripe checkout completing, so it must never
+      // be trusted to wave an unpaid admin into Add Users / the dashboard just
+      // because a report exists (Premium uploads its report *before* checkout).
       clearScopeFileAwaitingSuperadmin();
+      if (!(await this.hasPaidPlan())) {
+        return "/admin-upload-report";
+      }
       if (this._isOnboardingComplete(res) || res.hasRiskCriteria) {
         this._markOnboardingComplete();
         return "/admindashboardonboarding";
-      }
-      if (!(await this.hasPaidPlan())) {
-        return "/admin-upload-report";
       }
       if (this.needsCommunicationStep()) {
         return "/communication";
