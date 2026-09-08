@@ -139,9 +139,12 @@ export default {
       if (awaitingScopeFile) {
         markScopeFileAwaitingSuperadmin(readStoredAdminEmail());
         this.continuePath = '/waiting-for-report';
-      } else if (authStore.isSlackOrTeamsLogin()) {
-        this.continuePath = '/riskcriteria';
       } else {
+        // Always Add Users first — /riskcriteria itself already redirects back
+        // here (needsCommunicationStep()) if Add Users genuinely isn't done
+        // yet, so guessing "Slack/Teams already added users" here only
+        // produced a confusing flash-then-bounce. Add Users' own Continue
+        // button is what correctly advances past this once it's done.
         authStore.unmarkStepCompleted(1);
         this.continuePath = '/communication';
       }
@@ -180,12 +183,9 @@ export default {
           }
 
           // Premium (report already uploaded): add users → risk criteria → dashboard.
-          if (authStore.isSlackOrTeamsLogin()) {
-            this.continuePath = '/riskcriteria';
-          } else {
-            authStore.unmarkStepCompleted(1);
-            this.continuePath = '/communication';
-          }
+          // Always Add Users first — see resolvePendingContinuePath() above for why.
+          authStore.unmarkStepCompleted(1);
+          this.continuePath = '/communication';
           await maybeShowReturnToChatPlatformPopup();
           window.setTimeout(() => {
             this.$router.replace(this.continuePath);
