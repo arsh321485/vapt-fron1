@@ -213,6 +213,26 @@ export async function submitCustomLead(payload: {
   return res.data as { detail?: string };
 }
 
+export interface CheckoutConfirmResponse extends BillingAssetBreakdown {
+  subscription: BillingSubscription;
+  invoices?: BillingInvoice[];
+}
+
+/**
+ * Actively verifies a completed Stripe Checkout session against Stripe (does not
+ * wait on the checkout.session.completed webhook), and activates/returns the
+ * subscription synchronously. Call from /billing/success with the session_id
+ * from that page's URL query string. Idempotent — safe to call on every load,
+ * including a refresh.
+ */
+export async function confirmCheckoutSession(sessionId: string) {
+  const res = await endpoint.get<CheckoutConfirmResponse>(`${BILLING_BASE}/checkout/confirm/`, {
+    params: { session_id: sessionId },
+    timeout: 15000,
+  });
+  return res.data;
+}
+
 export async function getMySubscription() {
   const res = await endpoint.get<SubscriptionMeResponse & BillingAssetBreakdown>(
     `${BILLING_BASE}/subscription/me/`,

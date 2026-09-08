@@ -823,11 +823,17 @@ export default {
     handleContinue() {
       dismissUploadReportModal();
       this.authStore.markStepCompleted(1);
-      this.authStore.getAdminOnboardingRoute().then((route) => {
-        this.$router.push(route === "/communication" ? "/riskcriteria" : route);
-      }).catch(() => {
-        this.$router.push("/riskcriteria");
-      });
+      if (this.returnTo) {
+        this.$router.push(this.returnTo);
+        return;
+      }
+      // Always go to Risk Criteria next — never route through
+      // getAdminOnboardingRoute() here, since a stale hasRiskCriteria /
+      // onboarding-complete flag on the account (e.g. a reused test account)
+      // could make it skip straight to the dashboard, bypassing Risk Criteria
+      // entirely. Risk Criteria's own Continue action is what advances past
+      // it once it's actually (re)submitted.
+      this.$router.push("/riskcriteria");
     },
     async maybeShowFreemiumNotice() {
       try {
