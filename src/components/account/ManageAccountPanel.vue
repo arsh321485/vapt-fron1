@@ -75,7 +75,7 @@
 
           <div v-if="mode === 'admin'" class="ma-connect-block">
             <h4 class="ma-connect-title">Connect Slack / Teams</h4>
-            <p class="ma-section-desc mb-3">Email-signup admins can also connect Slack or Microsoft Teams to this account.</p>
+            <p class="ma-section-desc mb-3">Email-signup admins can only connect with Slack or Teams.</p>
             <div class="ma-connect-actions">
               <button type="button" class="btn ma-btn-outline" :disabled="oauthLoading === 'slack'" @click="connectSlack">
                 <span v-if="oauthLoading === 'slack'" class="spinner-border spinner-border-sm me-1"></span>

@@ -37,7 +37,7 @@
   type="button"
   class="btn btn-sm w-100 mb-2 header-upload-scope--disabled"
   disabled
-  title="Upgrade to Premium to upload a new scope"
+  :title="uploadScopeLockedReason"
 >
   Upload Scope
 </button>
@@ -98,7 +98,7 @@ import router from "@/router";
 import NotificationPanel from "@/components/admin-component/NotificationPanel.vue";
 import { getAuthenticatedAppHome } from "@/utils/authenticatedHome";
 import { getMySubscription } from "@/services/billingApi";
-import { freemiumLocksUploadScope } from "@/utils/planLimits";
+import { freemiumLocksUploadScope, isMagicLinkUnlimited } from "@/utils/planLimits";
 
 export default {
   name: 'DashboardHeader',
@@ -116,8 +116,15 @@ export default {
       return getAuthenticatedAppHome(this.$route?.path || '/admindashboardonboarding');
     },
     uploadScopeLocked() {
+      // Magic-link admin: the Super Admin already handled scope/report for
+      // them — Upload Scope from here has nothing to do.
+      if (isMagicLinkUnlimited()) return true;
       if (freemiumLocksUploadScope(this.billingSubscription)) return true;
       return !!useAuthStore().automationPremiumRequired && !this.billingSubscription;
+    },
+    uploadScopeLockedReason() {
+      if (isMagicLinkUnlimited()) return "Not available for magic-link accounts";
+      return "Upgrade to Premium to upload a new scope";
     },
   },
   methods: {
