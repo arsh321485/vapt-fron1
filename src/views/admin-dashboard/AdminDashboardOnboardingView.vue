@@ -148,7 +148,8 @@
               </div>
 
               <div class="d-flex align-items-center gap-2 mt-5 flex-wrap">
-                <AdminProjectField />
+                <!-- Project name functionality commented out per request -->
+                <!-- <AdminProjectField /> -->
                 <button
                   class="btn fw-semibold px-3 py-2 bg-white view-report-dash-btn"
                   @click="$router.push('/viewreport')"
@@ -1479,7 +1480,7 @@
 <script>
 import DashboardMenu from '@/components/admin-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/admin-component/DashboardHeader.vue';
-import AdminProjectField from '@/components/admin-component/AdminProjectField.vue';
+// import AdminProjectField from '@/components/admin-component/AdminProjectField.vue'; // Project name functionality commented out per request
 import TruncatedVulnName from '@/components/common/TruncatedVulnName.vue';
 import { isRealScanHost } from '@/utils/assetDummyData';
 import { filterActiveThreatVulnerabilities } from '@/utils/assetVulnerabilities';
@@ -1502,7 +1503,7 @@ export default {
   components: {
     DashboardMenu,
     DashboardHeader,
-    AdminProjectField,
+    // AdminProjectField, // Project name functionality commented out per request
     TruncatedVulnName,
   },
   data() {

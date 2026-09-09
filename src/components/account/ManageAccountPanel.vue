@@ -363,8 +363,13 @@ export default {
       const items = [
         { id: 'profile', label: 'Profile', icon: 'bi bi-person' },
         { id: 'password', label: 'Password', icon: 'bi bi-key' },
-        { id: 'workspace', label: this.mode === 'admin' ? 'Projects' : 'Team', icon: 'bi bi-folder2' },
       ];
+      // Project name functionality commented out per request — admins no
+      // longer get a "Projects" tab here. "Team" (user mode) is unrelated
+      // (a default-team selector, not the project field) and stays as-is.
+      if (this.mode !== 'admin') {
+        items.push({ id: 'workspace', label: 'Team', icon: 'bi bi-folder2' });
+      }
       // Magic-link admins already have unlimited access with nothing to bill —
       // Billing (and Upgrade Plan under Security) is only for normal signup/login.
       if (this.mode === 'admin' && !this.isMagicLinkAdmin) {
