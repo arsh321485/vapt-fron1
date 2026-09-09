@@ -8188,7 +8188,21 @@ export const useAuthStore = defineStore("auth", {
       }
       try {
         const data = await getMySubscription();
-        const paid = isActiveSubscription(data?.subscription);
+        // getMySubscription() already persists this via setMagicLinkUnlimited()
+        // as a side effect, but that write lands too late for THIS call to see
+        // it through isMagicLinkUnlimited() — read the same response field
+        // directly. This is a real per-account backend flag (unlike the
+        // device-local isClaimInviteFlow()/isReturningClaimedAdmin() checks),
+        // so it's what actually catches a magic-link admin signing in fresh
+        // (new device, incognito, cleared storage): the Super Admin already
+        // provided their report, so they must never be routed back to
+        // Upload Report / treated as needing to pay.
+        const magicLinkUnlimited =
+          data?.magic_link_unlimited === true ||
+          data?.magic_link_unlimited === "true" ||
+          data?.magic_link_unlimited === 1 ||
+          isMagicLinkUnlimited();
+        const paid = magicLinkUnlimited || isActiveSubscription(data?.subscription);
         setCachedPaidPlan(paid);
         return paid;
       } catch {
@@ -8196,6 +8210,7 @@ export const useAuthStore = defineStore("auth", {
         // state — but hasReport + hasRiskCriteria can only genuinely happen
         // after Add Users, which is itself payment-gated, so that specific
         // combination is a safe fallback signal here.
+        if (isMagicLinkUnlimited()) return true;
         if (this.reportStatus.hasReport && this.reportStatus.hasRiskCriteria) {
           return true;
         }
