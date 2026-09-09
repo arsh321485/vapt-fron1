@@ -1615,9 +1615,10 @@ class TLSConfigurator:
         rows,
       );
     },
-    preselectActiveAsset() {
+    // Nothing should be checked until the user checks it — same as admin side.
+    clearAssetSelections() {
       (this.filteredAssets || []).forEach((a) => {
-        a.selected = !!(this.activeIndex && a.asset === this.activeIndex);
+        a.selected = false;
       });
     },
     onAssetRowClick(asset) {
@@ -1955,7 +1956,7 @@ class TLSConfigurator:
       this.activeAction = "delete";
       if (!this.showCheckboxes) {
         this.showCheckboxes = true;
-        this.preselectActiveAsset();
+        this.clearAssetSelections();
         return;
       }
       const selectedAssets = (this.filteredAssets || []).filter((a) => a.selected);
@@ -1996,7 +1997,7 @@ class TLSConfigurator:
         return;
       }
       this.showHoldCheckboxes = true;
-      this.preselectActiveAsset();
+      this.clearAssetSelections();
     },
     async toggleUnholdMode() {
       if (this.activeAction === "hold" || this.activeAction === "delete") return;
