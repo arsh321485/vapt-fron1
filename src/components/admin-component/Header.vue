@@ -132,9 +132,10 @@
                     </router-link>
                   </template>
 
-                  <!-- Magic-link admins already have unlimited access, nothing to upgrade -->
+                  <!-- Upgrade Plan is an admin-only concept: never shown to team members,
+                       and magic-link admins already have unlimited access, nothing to upgrade. -->
                   <router-link
-                    v-if="!isMagicLinkAdmin"
+                    v-if="!isTeamMember && !isMagicLinkAdmin"
                     :to="{ path: '/pricingplan', query: { returnTo: $route.fullPath } }"
                     class="btn btn-sm btn-outline-dark w-100 mb-2"
                     @click="showDropdown = false"
