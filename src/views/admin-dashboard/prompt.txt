@@ -1,1 +1,1 @@
-see second image on click view raised request on local it proper open the modal of it but on live it take to first image balnk the comopelte page so check this also locally it works but on vaptfix.ai it will not please check when i pushed the code is it working properly than 
+rwmove this pop up from /home page 
