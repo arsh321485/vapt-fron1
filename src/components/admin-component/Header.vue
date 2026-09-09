@@ -132,7 +132,9 @@
                     </router-link>
                   </template>
 
+                  <!-- Magic-link admins already have unlimited access, nothing to upgrade -->
                   <router-link
+                    v-if="!isMagicLinkAdmin"
                     :to="{ path: '/pricingplan', query: { returnTo: $route.fullPath } }"
                     class="btn btn-sm btn-outline-dark w-100 mb-2"
                     @click="showDropdown = false"
@@ -299,6 +301,9 @@ export default {
     appHomePath() {
       if (this.isPublicHomePage) return '/home';
       return getAuthenticatedAppHome(this.$route?.path || '/home');
+    },
+    isMagicLinkAdmin() {
+      return !this.isTeamMember && isMagicLinkUnlimited();
     },
     uploadScopeLocked() {
       if (this.isTeamMember) return false;

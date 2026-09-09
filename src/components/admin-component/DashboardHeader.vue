@@ -66,8 +66,9 @@
         >
           Manage Account
         </router-link>
-        <!-- Upgrade -->
+        <!-- Upgrade: magic-link admins already have unlimited access, nothing to upgrade -->
         <router-link
+          v-if="!isMagicLinkAdmin"
           :to="{ path: '/pricingplan', query: { returnTo: $route.fullPath } }"
           class="btn btn-sm btn-outline-dark w-100 mb-2"
           @click="showDropdown = false"
@@ -114,6 +115,9 @@ export default {
   computed: {
     logoPath() {
       return getAuthenticatedAppHome(this.$route?.path || '/admindashboardonboarding');
+    },
+    isMagicLinkAdmin() {
+      return isMagicLinkUnlimited();
     },
     uploadScopeLocked() {
       // Magic-link admin: the Super Admin already handled scope/report for
