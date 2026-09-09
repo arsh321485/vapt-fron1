@@ -37,16 +37,10 @@
                     <button
                       class="btn-export"
                       type="button"
-                      :disabled="pdfExporting"
-                      @click="toggleExportMenu"
+                      @click="downloadReportAsHtml"
                     >
-                      {{ pdfExporting ? 'Exporting…' : 'Export Report' }}
-                      <span class="export-chevron" :class="{ open: exportMenuOpen }">▾</span>
+                      Download as HTML
                     </button>
-                    <div v-show="exportMenuOpen" class="export-menu" role="menu">
-                      <button type="button" role="menuitem" @click="downloadReportAsHtml">Download as HTML</button>
-                      <button type="button" role="menuitem" @click="exportReportPdf">Export PDF</button>
-                    </div>
                   </div>
                 </div>
               </div>
