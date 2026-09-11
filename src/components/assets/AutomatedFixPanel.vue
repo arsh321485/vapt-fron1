@@ -60,9 +60,35 @@
               <i v-else class="bi bi-download me-1"></i> Download Verify Script
             </button>
           </div>
-          <p v-else class="ai-admin-note">
-            <i class="bi bi-info-circle me-1"></i> Script download is available to team members.
-          </p>
+          <template v-else>
+            <!-- Admin: view only, no download (same restriction as the
+                 curated automation-scripts feature) — the vulnerability-card
+                 endpoint sends the script text inline for Premium so it can
+                 be read here, not saved as a file. -->
+            <div v-if="aiCard.fix_script || aiCard.verify_script" class="ai-view-actions">
+              <button
+                v-if="aiCard.fix_script"
+                type="button"
+                class="ai-view-btn"
+                @click="aiCodeView = aiCodeView === 'fix' ? null : 'fix'"
+              >
+                <i class="bi bi-eye me-1"></i> {{ aiCodeView === 'fix' ? 'Hide' : 'View' }} Fix Script
+              </button>
+              <button
+                v-if="aiCard.verify_script"
+                type="button"
+                class="ai-view-btn"
+                @click="aiCodeView = aiCodeView === 'verify' ? null : 'verify'"
+              >
+                <i class="bi bi-eye me-1"></i> {{ aiCodeView === 'verify' ? 'Hide' : 'View' }} Verify Script
+              </button>
+            </div>
+            <p v-else class="ai-admin-note">
+              <i class="bi bi-info-circle me-1"></i> Script download is available to team members.
+            </p>
+            <pre v-if="aiCodeView === 'fix' && aiCard.fix_script" class="ai-code-block"><code>{{ aiCard.fix_script }}</code></pre>
+            <pre v-if="aiCodeView === 'verify' && aiCard.verify_script" class="ai-code-block"><code>{{ aiCard.verify_script }}</code></pre>
+          </template>
           <p v-if="aiDownloadError" class="ai-download-error">{{ aiDownloadError }}</p>
         </template>
       </template>
@@ -437,6 +463,7 @@ export default {
       aiLoading: false,
       aiDownloading: null,
       aiDownloadError: '',
+      aiCodeView: null,
     };
   },
   watch: {
@@ -463,10 +490,12 @@ export default {
     automationCard() {
       this.localAiCard = null;
       this.aiDownloadError = '';
+      this.aiCodeView = null;
     },
     resolvedCardId() {
       this.localAiCard = null;
       this.aiDownloadError = '';
+      this.aiCodeView = null;
       this.loadAiCardIfNeeded();
     },
   },
@@ -721,7 +750,7 @@ export default {
     async loadAiCardIfNeeded() {
       if (this.automationCard || this.isUser || !this.resolvedCardId) return;
       this.aiLoading = true;
-      const res = await this.authStore.fetchAiAutomationCardAdmin(this.resolvedCardId);
+      const res = await this.authStore.fetchVulnerabilityCardAutomation(this.resolvedCardId);
       this.aiLoading = false;
       if (res.status && res.data) {
         this.localAiCard = res.data;
@@ -1386,6 +1415,44 @@ export default {
   margin-top: 10px;
   font-size: 12px;
   color: #64748b;
+}
+
+.ai-view-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.ai-view-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 14px;
+  border-radius: 7px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.ai-view-btn:hover { background: #f8fafc; border-color: #94a3b8; }
+
+.ai-code-block {
+  margin-top: 10px;
+  background: #0f172a;
+  border-radius: 7px;
+  padding: 12px 14px;
+  max-height: 320px;
+  overflow: auto;
+}
+.ai-code-block code {
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  font-size: 11px;
+  color: #e2e8f0;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 .ai-download-error {

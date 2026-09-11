@@ -1,12 +1,77 @@
-{"error":"Vulnerability card not found or access denied"}
+Frontend ko koi naya endpoint ya card_id-resolution nahi chahiye — jo response manual steps (mitigation_table) ke liye already use ho raha hai (VulnerabilityCardDetailView — GET /api/admin/upload_report/vulnerability-cards/<card_id>/, aur list wala VulnerabilityCardListView), usi document me card_id aur automation_card already hain, koi extra call nahi lagegi.
 
-Request URL
-https://vaptbackend.secureitlab.com/api/admin/automation-scripts/ai/f24f01dc-ad75-410d-98dc-2b620c6c09c8/?_ts=1789107505261
-Request Method
-GET
-Status Code
-404 Not Found
-Remote Address
-38.242.247.151:443
-Referrer Policy
-strict-origin-when-cross-origin
+Maine sirf ek zaroori fix add kiya (dono jagah):
+
+VulnerabilityCardDetailView aur VulnerabilityCardListView — ab automation_card return karte waqt, agar us report ka admin Freemium hai to fix_script/verify_script khaali kar dete hain (baaki fields — status, description, considerations — dikhte hain) + ek "premium_required": true/false flag bhi bhej dete hain, taaki frontend "Upgrade to Premium" UI dikha sake. Ye wahi rule hai jo curated automation-scripts feature me pehle se hai — Freemium ko script CONTENT kabhi bhi seedha nahi milna chahiye.
+Frontend ko batao: card.automation_card ko usi response se read karo jaha card.mitigation_table already read kar rahe ho — dono ek hi object me hain. card.automation_card.premium_required check karke lock UI dikhao, card.automation_card.automation_status (full/partial/not_possible) se 3-state UI, aur fix_script/verify_script seedha wahi se milega (Premium ke liye).
+
+
+
+
+GET /api/admin/upload_report/vulnerability-cards/<card_id>/ — Detail response
+Premium admin (full content dikhega):
+
+
+{
+  "success": true,
+  "card": {
+    "card_id": "7faaea64-b5fe-42af-98c3-49ca1af6a40c",
+    "report_id": "6aa...",
+    "vulnerability_name": "SNMP Agent Default Community Name Disclosure",
+    "host_name": "10.0.0.5",
+    "assigned_team": "Configuration Management",
+    "mitigation_table": [ /* manual steps — jaisa pehle se aata hai */ ],
+
+    "automation_card": {
+      "vulnerability": "SNMP Agent Default Community Name Disclosure",
+      "os": "Windows 10",
+      "severity": "Medium",
+      "port": "unknown",
+      "description": "The SNMP service is configured with the default community name 'public'...",
+      "automation_status": "partial",
+      "automation_possible": "Partial",
+      "reason_not_possible": "",
+      "script_name": "Fix SNMP Community Name and Firewall Rules",
+      "script_description": "This script removes the default SNMP community name, adds a secure com...",
+      "what_can_be_automated": "Locating and modifying SNMP community strings, updating firewall rules...",
+      "what_must_remain_manual": "Documenting changes and monitoring for compliance.",
+      "recommended_approach": "Run the fix script to update SNMP settings and firewall rules, then ma...",
+      "considerations_before": "Take a backup of the registry before making changes.",
+      "considerations_after": "Verify that the new SNMP community string and firewall rules are corre...",
+      "language": "powershell",
+      "libraries": "",
+      "command_download_libraries": "",
+      "command_run_script": "powershell.exe -File 'C:\\path\\to\\fix_snmp_firewall.ps1'",
+      "fix_script": "Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Wow6432Node\\SNMP\\Parameters\\Val...",
+      "fix_script_filename": "SNMP_Agent_Default_Community_Name_Disclosure_Windows_10_fix.ps1",
+      "verify_script": "Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Wow6432Node\\SNMP\\Parameters\\Val...",
+      "verify_script_filename": "SNMP_Agent_Default_Community_Name_Disclosure_Windows_10_verify.ps1",
+      "tested_manually": "No — AI-generated, not yet human-tested",
+      "download_count": 0,
+      "premium_required": false
+    }
+  }
+}
+Freemium admin (sirf ye 3 fields alag honge, baaki sab same):
+
+
+"automation_card": {
+  "...same as above...": "...",
+  "fix_script": "",
+  "verify_script": "",
+  "premium_required": true
+}
+List endpoint — GET /api/admin/upload_report/vulnerability-cards/?report_id=<id>
+Same shape, bas array me — {"success": true, "count": N, "report_id": "...", "cards": [ {card_id, vulnerability_name, host_name, automation_card: {...same as above...}}, ... ] } (mitigation_table yaha exclude hoti hai, automation_card include hoti hai).
+
+Frontend ke liye instruction
+card.card_id — id jo pehle se available hai, koi nayi field nahi.
+card.automation_card.automation_status — "full" / "partial" / "not_possible" → 3-state UI.
+card.automation_card.premium_required — true ho to lock/upgrade UI dikhao, script fields khaali honge.
+card.automation_card.reason_not_possible — sirf jab automation_status = "not_possible" ho, wahi message dikhana.
+Fix/Verify script download button ke liye ye fix_script/verify_script text ko seedha file bana kar bhi de sakte ho (Premium case me already text mil raha hai yahi response me), ya mera pehle wala dedicated download endpoint (/api/user/automation-scripts/ai/<card_id>/download/?type=fix) bhi use kar sakte ho member side ke liye.
+
+
+
+
+backedn engineer gives this prompt to me with api anmd its response check and update according that

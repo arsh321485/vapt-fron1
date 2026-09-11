@@ -6725,14 +6725,21 @@ export const useAuthStore = defineStore("auth", {
     },
 
     // 🔹 AI automation card — view only (Admin). Covers every vulnerability
-    // card (not just the curated ~63 scripts above). No script body — just
-    // feasibility + description; download is team-member-only, below.
-    // GET /api/admin/automation-scripts/ai/{card_id}/
-    async fetchAiAutomationCardAdmin(cardId: string | number) {
+    // card (not just the curated ~63 scripts above). Lives on the same
+    // vulnerability-card record as mitigation_table — VulnerabilityCardDetailView
+    // returns { success, card: { card_id, ..., mitigation_table, automation_card } }.
+    // Premium gets fix_script/verify_script text inline here (used for the
+    // admin "view code" modal only — no download button on the admin side,
+    // same restriction as the curated automation-scripts feature); Freemium
+    // gets those two fields emptied + automation_card.premium_required: true.
+    // GET /api/admin/upload_report/vulnerability-cards/{card_id}/
+    async fetchVulnerabilityCardAutomation(cardId: string | number) {
       try {
-        const res = await endpoint.get(`/api/admin/automation-scripts/ai/${cardId}/`);
-        this.applyAutomationStatsMeta(res.data);
-        return { status: true, data: res.data };
+        const res = await endpoint.get(`/api/admin/upload_report/vulnerability-cards/${cardId}/`);
+        const card = res.data?.card || res.data;
+        const automationCard = card?.automation_card || null;
+        this.applyAutomationStatsMeta(automationCard);
+        return { status: true, data: automationCard, card };
       } catch (error: any) {
         this.applyAutomationStatsMeta(error.response?.data);
         return {
