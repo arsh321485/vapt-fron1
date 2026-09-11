@@ -528,7 +528,7 @@
                 {{
                   activePlanFitNotice
                     ? `Freemium shows ${activePlanFitNotice.limit} targets now. Extra assets stay locked until you upgrade.`
-                    : 'Upload a .csv, .xlsx, .xls, or .txt file listing the assets you want VAPTFix to include in scope.'
+                    : 'Upload a .csv, .xlsx, .xls, .txt, .xml, .nessus, .html, .htm, .pdf, .docx, or .doc file listing the assets you want VAPTFix to include in scope.'
                 }}
               </p>
             </div>
@@ -622,7 +622,7 @@
               <input
                 ref="csvInput"
                 type="file"
-                accept=".csv,.xlsx,.xls,.txt,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                accept=".csv,.xlsx,.xls,.txt,.xml,.nessus,.html,.htm,.pdf,.docx,.doc,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/html,application/pdf,application/xml,text/xml,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 class="aur-file-input"
                 @change="onScopeCsvChange"
               />
@@ -631,7 +631,7 @@
                 <i class="bi bi-file-earmark-spreadsheet aur-drop-icon"></i>
                 <p class="aur-drop-text">Drag &amp; drop your scope file here</p>
                 <p class="aur-drop-sub">or <span class="aur-browse">browse files</span></p>
-                <p class="aur-drop-types">.csv · .xlsx · .xls · .txt</p>
+                <p class="aur-drop-types">.csv · .xlsx · .xls · .txt · .xml · .nessus · .html · .htm · .pdf · .docx · .doc</p>
               </div>
 
               <div v-else class="aur-file-info">
@@ -974,9 +974,26 @@ const ALLOWED_EXTENSIONS = [
   '.doc',
 ];
 
-const SCOPE_ALLOWED_EXTENSIONS = ['.csv', '.xlsx', '.xls', '.txt'];
+const SCOPE_ALLOWED_EXTENSIONS = [
+  '.csv',
+  '.xlsx',
+  '.xls',
+  '.txt',
+  '.xml',
+  '.nessus',
+  '.html',
+  '.htm',
+  '.pdf',
+  '.docx',
+  '.doc',
+];
+// Only plain delimited formats can be parsed client-side for the local
+// target-count preview (trimCsvFile/countCsvTargets read raw text and split
+// on newlines) — .xml/.html/.pdf/.docx/etc. still upload fine, they just
+// skip that local preview and get counted server-side instead.
 const SCOPE_TEXT_EXTENSIONS = ['.csv', '.txt'];
-const SCOPE_FILE_ERROR = 'Please upload a .csv, .xlsx, .xls, or .txt file for scope.';
+const SCOPE_FILE_ERROR =
+  'Please upload a .csv, .xlsx, .xls, .txt, .xml, .nessus, .html, .htm, .pdf, .docx, or .doc file for scope.';
 
 const MAX_UPLOAD_FILES = 10;
 const STATUS_POLL_MS = 4000;
