@@ -3397,9 +3397,12 @@ export default {
         }
       }
 
-      if (!anyInProgress && persisted?.reportIds?.length && !Object.keys(seed).length) {
-        anyInProgress = true;
-      }
+      // NOTE: previously, if every status check above came back empty/failed
+      // (stale report id, wrong account, deleted report) but a persisted
+      // flag still existed, this defaulted to "assume still generating" —
+      // which is exactly what put a fresh admin who never uploaded anything
+      // straight onto "Creating agents 0%". Failing to confirm progress must
+      // mean "not in progress", not the other way around.
 
       if (!anyInProgress) {
         clearPersistedAgentGeneration();

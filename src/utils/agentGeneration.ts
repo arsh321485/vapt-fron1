@@ -86,7 +86,12 @@ export function readPersistedAgentGeneration(email?: string): PersistedAgentGene
     return null;
   }
   const now = normalizeEmail(email);
-  if (now && saved.email && saved.email !== now) return null;
+  // Require a positive email match — an empty/not-yet-loaded `now` must NOT
+  // fall through to "no filter", or a leftover record from a previous
+  // account/test session in the same browser gets attributed to whoever
+  // logs in next (seen as: fresh sign-up landing straight on "Creating
+  // agents" for a report they never uploaded).
+  if (saved.email !== now) return null;
   return saved;
 }
 

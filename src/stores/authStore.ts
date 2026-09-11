@@ -8296,7 +8296,14 @@ export const useAuthStore = defineStore("auth", {
         if (persisted) clearPersistedAgentGeneration();
         return false;
       }
-      return !!persisted;
+      // Every status check failed to confirm anything (stale/deleted report
+      // id, network blip) — don't trust the persisted flag blindly here
+      // either; that's what previously sent an admin who never uploaded
+      // anything straight to "Creating agents". Clear it and report false;
+      // a genuinely still-running generation will resurface via the report's
+      // own status the moment it can actually be fetched.
+      if (persisted) clearPersistedAgentGeneration();
+      return false;
     },
 
     /** Route after login / onboarding actions based on report-status.state */
