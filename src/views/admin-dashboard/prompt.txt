@@ -1,1 +1,19 @@
-here on selecting prem ium plan when i comes here here i want when i click on continue to payment than it goes to strp payment page but with out click o  this button  it takes me to next page that flow is correct buit i want only when i click on con tinue to payemnt htan i will go on that page
+Subject: Scope File Upload — accepted file types badh gaye hain (backend done)
+
+Backend ab "Upload Scope File" (POST /api/admin/scope/create/, same endpoint, same file field, same response) me Upload Report jitne hi formats accept karta hai:
+
+Naye extensions add karne hain:
+
+.xml, .nessus, .html, .htm, .pdf, .docx, .doc
+Pehle se already the:
+
+.csv, .xlsx, .xls, .txt
+Frontend me 2 jagah update chahiye (Upload Scope File screen — "Provide Scope" step):
+
+File input ka accept attribute badhao taaki browser ka file-picker naye formats ko bhi select karne de: accept=".csv,.xlsx,.xls,.txt,.xml,.nessus,.html,.htm,.pdf,.docx,.doc"
+Screen pe jo helper text hai ("Upload a .csv, .xlsx, .xls, or .txt file...") aur niche jo chhoti list hai (".csv · .xlsx · .xls · .txt") — dono ko update karo naye poore list ke saath.
+Koi client-side validation logic ho (file-extension check upload se pehle) to wo bhi isi naye list se match karo — warna backend accept karega par frontend khud hi reject kar dega.
+
+
+
+this is for manual scope i arrady didi it but please recheck again

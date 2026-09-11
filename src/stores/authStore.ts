@@ -394,6 +394,15 @@ export const useAuthStore = defineStore("auth", {
     vulnerabilityRows: [] as any[],
     latestReportId: null as string | null,
     userLatestReportId: null as string | null,
+    // AI automation-card lookup cache, keyed by report_id — see
+    // fetchVulnerabilityCardsByReport(). The existing per-asset
+    // vulnerabilities endpoint doesn't carry card_id at all (it's a
+    // different, older model than the new VulnerabilityCard system), so
+    // cards are matched by vulnerability name + host instead of by id.
+    vulnerabilityCardsByReport: {} as Record<string, any[]>,
+    // Same cache, user-side (separate: unconfirmed whether a user-scoped
+    // mirror of the admin bulk endpoint exists — see fetchVulnerabilityCardsByReportUser).
+    userVulnerabilityCardsByReport: {} as Record<string, any[]>,
     uniqueIpCount: 0,
     assetRows: [] as any[],
     assetCount: 0,
@@ -6746,6 +6755,67 @@ export const useAuthStore = defineStore("auth", {
           status: false,
           data: null,
           message: error.response?.data?.detail || error.response?.data?.message || "Failed to load automation details",
+        };
+      }
+    },
+
+    // 🔹 AI automation cards — bulk list for a report (Admin). The existing
+    // per-asset vulnerabilities endpoint the app already uses for this page
+    // doesn't return card_id — it's a different backend model than the new
+    // VulnerabilityCard/automation_card system, and the two aren't joined
+    // there. So instead of guessing at an id that was never sent to us,
+    // fetch every card for the report once (cached by report_id) and match
+    // each vulnerability to its automation_card by name + host.
+    // GET /api/admin/upload_report/vulnerability-cards/?report_id={reportId}
+    async fetchVulnerabilityCardsByReport(reportId: string, force = false) {
+      const key = String(reportId || "").trim();
+      if (!key) return { status: false, cards: [] };
+      if (!force && this.vulnerabilityCardsByReport[key]) {
+        return { status: true, cards: this.vulnerabilityCardsByReport[key] };
+      }
+      try {
+        const res = await endpoint.get(`/api/admin/upload_report/vulnerability-cards/`, {
+          params: { report_id: key },
+        });
+        const cards = Array.isArray(res.data?.cards) ? res.data.cards : [];
+        this.vulnerabilityCardsByReport = { ...this.vulnerabilityCardsByReport, [key]: cards };
+        return { status: true, cards };
+      } catch (error: any) {
+        return {
+          status: false,
+          cards: [],
+          message: error.response?.data?.detail || error.response?.data?.message || "Failed to load vulnerability cards",
+        };
+      }
+    },
+
+    // 🔹 AI automation cards — bulk list for a report (Team member).
+    // UNCONFIRMED with backend: mirrors fetchVulnerabilityCardsByReport's
+    // admin URL under /api/user/ by this codebase's usual admin/user
+    // endpoint-pairing convention. Fails gracefully (same as every other
+    // AI-card call here) if this path doesn't actually exist yet — nothing
+    // breaks, the AI section on the member side just stays hidden until this
+    // is confirmed or corrected with the backend.
+    // GET /api/user/upload_report/vulnerability-cards/?report_id={reportId}
+    async fetchVulnerabilityCardsByReportUser(reportId: string, team?: string, force = false) {
+      const key = String(reportId || "").trim();
+      if (!key) return { status: false, cards: [] };
+      if (!force && this.userVulnerabilityCardsByReport[key]) {
+        return { status: true, cards: this.userVulnerabilityCardsByReport[key] };
+      }
+      try {
+        const teamParam = toTeamQueryParam(team);
+        const res = await endpoint.get(`/api/user/upload_report/vulnerability-cards/`, {
+          params: { report_id: key, ...(teamParam ? { team: teamParam } : {}) },
+        });
+        const cards = Array.isArray(res.data?.cards) ? res.data.cards : [];
+        this.userVulnerabilityCardsByReport = { ...this.userVulnerabilityCardsByReport, [key]: cards };
+        return { status: true, cards };
+      } catch (error: any) {
+        return {
+          status: false,
+          cards: [],
+          message: error.response?.data?.detail || error.response?.data?.message || "Failed to load vulnerability cards",
         };
       }
     },

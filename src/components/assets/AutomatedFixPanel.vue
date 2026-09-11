@@ -476,9 +476,17 @@ export default {
     },
     vulnName() {
       this.refreshFeedbackState();
+      this.localAiCard = null;
+      this.aiDownloadError = '';
+      this.aiCodeView = null;
+      this.loadAiCardIfNeeded();
     },
     assetIp() {
       this.refreshFeedbackState();
+      this.localAiCard = null;
+      this.aiDownloadError = '';
+      this.aiCodeView = null;
+      this.loadAiCardIfNeeded();
     },
     resolvedScriptName() {
       this.refreshFeedbackState();
@@ -511,7 +519,13 @@ export default {
     },
     // ---- AI automation card (new: every vulnerability, not just curated scripts) ----
     resolvedCardId() {
-      return String(this.cardId || this.automationCard?.card_id || this.automationCard?.id || '').trim();
+      return String(
+        this.cardId ||
+          this.automationCard?.card_id ||
+          this.automationCard?.id ||
+          this.localAiCard?.card_id ||
+          '',
+      ).trim();
     },
     aiCard() {
       const d = this.automationCard || this.localAiCard;
@@ -747,13 +761,36 @@ export default {
     // Only admin has a view-only GET for this — the team member endpoint is
     // download-only, so the user side relies entirely on `automationCard`
     // already being embedded on the vulnerability object passed in.
+    // Admin: match this vulnerability to its automation_card by name + host
+    // rather than by id — the per-asset vulnerabilities endpoint this panel's
+    // vulnName/assetIp come from doesn't carry a card_id (see
+    // fetchVulnerabilityCardsByReport for why), so an id lookup 404s no
+    // matter what. Name+host is the only join key both systems actually share.
     async loadAiCardIfNeeded() {
-      if (this.automationCard || this.isUser || !this.resolvedCardId) return;
+      if (this.automationCard) return;
+      const reportId = String(
+        (this.isUser ? this.authStore.userLatestReportId : this.authStore.latestReportId) || '',
+      ).trim();
+      const wantName = String(this.vulnName || '').trim().toLowerCase();
+      if (!reportId || !wantName) return;
       this.aiLoading = true;
-      const res = await this.authStore.fetchVulnerabilityCardAutomation(this.resolvedCardId);
+      const res = this.isUser
+        ? await this.authStore.fetchVulnerabilityCardsByReportUser(reportId)
+        : await this.authStore.fetchVulnerabilityCardsByReport(reportId);
       this.aiLoading = false;
-      if (res.status && res.data) {
-        this.localAiCard = res.data;
+      if (!res.status) return;
+      const wantHost = String(this.assetIp || '').trim().toLowerCase();
+      const match = (res.cards || []).find((c) => {
+        const name = String(c?.vulnerability_name || '').trim().toLowerCase();
+        if (name !== wantName) return false;
+        if (!wantHost) return true;
+        return String(c?.host_name || '').trim().toLowerCase() === wantHost;
+      });
+      if (match?.automation_card) {
+        // Keep the outer card_id alongside the automation_card fields (the
+        // list entry carries card_id as a sibling, not nested inside
+        // automation_card itself) — the team-member download button needs it.
+        this.localAiCard = { ...match.automation_card, card_id: match.card_id };
       }
     },
     async downloadAiScript(type) {
