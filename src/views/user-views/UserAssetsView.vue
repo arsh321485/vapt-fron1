@@ -427,6 +427,8 @@
                                   :is-user="true"
                                   :automation-data="getAutomationForVuln(vuln)"
                                   :match-loading="loadingAutomation"
+                                  :automation-card="vuln.automation_card || null"
+                                  :card-id="resolveVulnCardId(vuln)"
                                   @view-code="showCodeModal = true"
                                 />
                               </div>
@@ -569,6 +571,8 @@
                                     :is-user="true"
                                     :automation-data="getAutomationForVuln(closedItemAsVuln(item))"
                                     :match-loading="loadingAutomation"
+                                    :automation-card="closedItemAsVuln(item).automation_card || null"
+                                    :card-id="resolveVulnCardId(closedItemAsVuln(item))"
                                     @view-code="showCodeModal = true"
                                   />
                                 </div>
@@ -948,7 +952,7 @@ import {
   clearHeldItemAssetType,
 } from "@/utils/assetDummyData";
 import { filterSupportRequestsByVuln, mapSupportRequestsByStep } from "@/utils/supportRequests";
-import { resolveVulnPluginId as lookupVulnPluginId } from "@/utils/automationScriptDownload";
+import { resolveVulnPluginId as lookupVulnPluginId, resolveVulnCardId as lookupVulnCardId } from "@/utils/automationScriptDownload";
 import {
   isNessusPluginId,
   vulnMatchName,
@@ -1842,6 +1846,9 @@ class TLSConfigurator:
         registerRows: this.authStore.cachedUserVulnRegister || [],
         automationScriptMap: this.automationScriptMap,
       });
+    },
+    resolveVulnCardId(vuln) {
+      return lookupVulnCardId(vuln);
     },
     getAutomationForVuln(vuln) {
       return getMatchedAutomation(vuln, this.automationScriptMap);

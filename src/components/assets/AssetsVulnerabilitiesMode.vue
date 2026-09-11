@@ -422,6 +422,8 @@
                       :can-automate="canAutomate"
                       :must-manual="mustManual"
                       :recommended-text="recommendedText"
+                      :automation-card="v.automation_card || null"
+                      :card-id="resolveVulnCardId(v)"
                       @view-code="showCodeModal = true"
                     />
                   </div>
@@ -568,6 +570,8 @@
                                     :can-automate="canAutomate"
                                     :must-manual="mustManual"
                                     :recommended-text="recommendedText"
+                                    :automation-card="closedItemAsVuln(item).automation_card || null"
+                                    :card-id="resolveVulnCardId(closedItemAsVuln(item))"
                                     @view-code="showCodeModal = true"
                                   />
                                 </div>
@@ -868,7 +872,7 @@ import {
   loadHeldItemTypeMap,
 } from '@/utils/assetDummyData';
 import { filterSupportRequestsByVuln, mapSupportRequestsByStep } from '@/utils/supportRequests';
-import { resolveVulnPluginId as lookupVulnPluginId } from '@/utils/automationScriptDownload';
+import { resolveVulnPluginId as lookupVulnPluginId, resolveVulnCardId as lookupVulnCardId } from '@/utils/automationScriptDownload';
 import {
   isNessusPluginId,
   vulnMatchName,
@@ -2477,6 +2481,9 @@ export default {
         registerRows: this.rawRows || [],
         automationScriptMap: this.automationScriptMap,
       });
+    },
+    resolveVulnCardId(vuln) {
+      return lookupVulnCardId(vuln);
     },
     getAutomationForVuln(vuln) {
       return getMatchedAutomation(vuln, this.automationScriptMap);

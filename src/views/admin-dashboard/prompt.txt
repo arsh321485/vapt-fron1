@@ -1,1 +1,39 @@
-is there need for any backedn chage for this or byu this it will work
+Frontend — haan, kaam chahiye. Ready-to-send prompt:
+Subject: New feature — AI Automation Scripts (backend done, needs frontend UI)
+
+Backend now generates an AI "automation feasibility + script" for every vulnerability card (not just the old 63 curated ones), stored as automation_card on the vulnerability card. Two new read APIs:
+
+1. Admin — view only, no download
+GET /api/admin/automation-scripts/ai/<card_id>/
+
+
+{
+  "matched": true,
+  "automation_status": "full | partial | not_possible",
+  "automation_possible": "Yes | Partial | No",
+  "reason_not_possible": "...",
+  "script_description": "...", "what_can_be_automated": "...", "what_must_remain_manual": "...",
+  "recommended_approach": "...", "considerations_before": "...", "considerations_after": "...",
+  "language": "bash", "libraries": "...", "command_download_libraries": "...", "command_run_script": "...",
+  "premium_required": false, "message": null
+}
+(fix_script/verify_script body text is never sent to admin — download-only, same as existing automation scripts.)
+
+2. Team member — actual file download
+GET /api/user/automation-scripts/ai/<card_id>/download/?type=fix (or ?type=verify)
+Returns the raw script file (Content-Disposition: attachment) — trigger it exactly like the existing curated-script download button (plain link/window.open, not fetch+blob).
+
+UI needed, 3 states per vulnerability card:
+
+automation_status	Show
+full	Green "Automation Available" badge + Download Fix Script + Download Verify Script buttons
+partial	Yellow "Partially Automated" badge + download button(s) + what_must_remain_manual shown as a note (manual steps still apply on top)
+not_possible	Gray/neutral "Automation not possible" message + reason_not_possible text — no buttons
+Plan gate: same as existing automation scripts — Freemium admin/member sees premium_required: true + upgrade message instead of the script; UI should show the same "Upgrade to Premium" prompt already used for the curated scripts feature.
+
+Note: this is a NEW area — currently there's no existing member-facing "full vulnerability card detail" screen in the codebase to hang this off of, so frontend needs to decide where in the member's Mitigation Strategy / vulnerability-card view this section goes.
+
+
+
+
+backedn engineer give me this prompt for automation script integration par on automation fix tab on admin user both side check this and do its integration 

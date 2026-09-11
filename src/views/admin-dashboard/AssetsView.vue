@@ -445,6 +445,8 @@
                                   :is-user="false"
                                   :automation-data="getAutomationForVuln(v)"
                                   :match-loading="loadingAutomation"
+                                  :automation-card="v.automation_card || null"
+                                  :card-id="resolveVulnCardId(v)"
                                   @view-code="showCodeModal = true"
                                 />
                               </div>
@@ -589,6 +591,8 @@
                                     :is-user="false"
                                     :automation-data="getAutomationForVuln(closedItemAsVuln(item))"
                                     :match-loading="loadingAutomation"
+                                    :automation-card="closedItemAsVuln(item).automation_card || null"
+                                    :card-id="resolveVulnCardId(closedItemAsVuln(item))"
                                     @view-code="showCodeModal = true"
                                   />
                                 </div>
@@ -772,7 +776,7 @@ import {
 } from "@/utils/assetVulnerabilities";
 import { useAuthStore } from "@/stores/authStore";
 import { getSeverityColor as severityHex, getSeverityBg as severityBg } from "@/utils/severityColors";
-import { resolveVulnPluginId as lookupVulnPluginId } from "@/utils/automationScriptDownload";
+import { resolveVulnPluginId as lookupVulnPluginId, resolveVulnCardId as lookupVulnCardId } from "@/utils/automationScriptDownload";
 import {
   isNessusPluginId,
   vulnMatchName,
@@ -1273,6 +1277,9 @@ class TLSConfigurator:
         registerRows: this.authStore.vulnerabilityRows || [],
         automationScriptMap: this.automationScriptMap,
       });
+    },
+    resolveVulnCardId(vuln) {
+      return lookupVulnCardId(vuln);
     },
     getAutomationForVuln(vuln) {
       return getMatchedAutomation(vuln, this.automationScriptMap);

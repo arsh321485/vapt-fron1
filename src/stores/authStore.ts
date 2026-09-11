@@ -6724,6 +6724,44 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    // 🔹 AI automation card — view only (Admin). Covers every vulnerability
+    // card (not just the curated ~63 scripts above). No script body — just
+    // feasibility + description; download is team-member-only, below.
+    // GET /api/admin/automation-scripts/ai/{card_id}/
+    async fetchAiAutomationCardAdmin(cardId: string | number) {
+      try {
+        const res = await endpoint.get(`/api/admin/automation-scripts/ai/${cardId}/`);
+        this.applyAutomationStatsMeta(res.data);
+        return { status: true, data: res.data };
+      } catch (error: any) {
+        this.applyAutomationStatsMeta(error.response?.data);
+        return {
+          status: false,
+          data: null,
+          message: error.response?.data?.detail || error.response?.data?.message || "Failed to load automation details",
+        };
+      }
+    },
+
+    // 🔹 AI automation script file download — Team member only.
+    // GET /api/user/automation-scripts/ai/{card_id}/download/?type=fix|verify
+    async downloadAiAutomationScript(cardId: string | number, type: "fix" | "verify" = "fix") {
+      try {
+        const res = await endpoint.get(`/api/user/automation-scripts/ai/${cardId}/download/`, {
+          params: { type },
+          responseType: "blob",
+        });
+        return { status: true, content: res.data, headers: res.headers };
+      } catch (error: any) {
+        // Blob error responses land as a Blob, not JSON — no premium-lock JSON to parse here.
+        return {
+          status: false,
+          content: null,
+          message: error.response?.data?.detail || error.response?.data?.message || "Download failed",
+        };
+      }
+    },
+
     // 🔹 Bulk automation script match (User)
     async fetchAutomationScriptsBulk(pluginIds: number[]) {
       if (!pluginIds.length) return { status: true, results: [] };
@@ -8351,6 +8389,19 @@ export const useAuthStore = defineStore("auth", {
         return "/admin-upload-report";
       }
       if (this._isOnboardingComplete(res) || res.hasRiskCriteria) {
+        this._markOnboardingComplete();
+        return "/admindashboardonboarding";
+      }
+      // report-status's hasRiskCriteria is a summary flag that can lag or
+      // miss for admins onboarded via a magic-link claim (seen on a fresh
+      // sign-in after logout: Add Users + Risk Criteria were genuinely done,
+      // but this flag still read false) — cross-check the real risk-criteria
+      // record before bouncing an already-fully-onboarded admin back to Add
+      // Users. Reaching Risk Criteria at all already implies Add Users was
+      // completed (that page redirects back here otherwise), so finding a
+      // real record here means both steps are done.
+      const riskCriteria = await this.fetchAdminRiskCriteria();
+      if (riskCriteria.status && riskCriteria.data) {
         this._markOnboardingComplete();
         return "/admindashboardonboarding";
       }

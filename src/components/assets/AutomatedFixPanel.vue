@@ -6,6 +6,68 @@
       'auto-tab-content--unmatched': !matchLoading && !premiumLocked && !hasPositiveMatch,
     }"
   >
+    <!-- AI Automation Card: covers every vulnerability, not just the curated
+         scripts below. Shown whenever AI data is available, independent of
+         whether a curated script also matched. -->
+    <div v-if="aiLoading" class="auto-empty-state auto-empty-state--loading">
+      <span class="spinner-border spinner-border-sm me-2"></span>
+      Checking AI automation feasibility…
+    </div>
+    <div v-else-if="aiCard" class="ai-auto-card" :class="'ai-auto-card--' + aiStatusTier">
+      <div v-if="aiPremiumLocked" class="auto-premium-notice">
+        <i class="bi bi-lock-fill" aria-hidden="true"></i>
+        <div class="auto-premium-notice-body">
+          <p>{{ aiPremiumMessage }}</p>
+          <router-link to="/pricingplan" class="auto-premium-upgrade">Upgrade to Premium</router-link>
+        </div>
+      </div>
+      <template v-else>
+        <div class="ai-auto-header">
+          <span class="ai-status-badge" :class="'ai-status-badge--' + aiStatusTier">
+            <i class="bi" :class="aiStatusIcon"></i> {{ aiStatusLabel }}
+          </span>
+        </div>
+
+        <p v-if="aiStatusTier === 'not_possible'" class="ai-reason-text">
+          {{ aiCard.reason_not_possible || 'Automation is not possible for this vulnerability.' }}
+        </p>
+
+        <template v-else>
+          <p v-if="aiCard.script_description" class="ai-description-text">{{ aiCard.script_description }}</p>
+
+          <div v-if="aiStatusTier === 'partial' && aiCard.what_must_remain_manual" class="ai-manual-note">
+            <i class="bi bi-info-circle-fill me-2"></i>
+            <strong>Manual steps still apply:</strong> {{ aiCard.what_must_remain_manual }}
+          </div>
+
+          <div v-if="isUser" class="ai-download-actions">
+            <button
+              type="button"
+              class="ai-download-btn"
+              :disabled="!!aiDownloading"
+              @click="downloadAiScript('fix')"
+            >
+              <span v-if="aiDownloading === 'fix'" class="spinner-border spinner-border-sm me-1"></span>
+              <i v-else class="bi bi-download me-1"></i> Download Fix Script
+            </button>
+            <button
+              type="button"
+              class="ai-download-btn ai-download-btn--verify"
+              :disabled="!!aiDownloading"
+              @click="downloadAiScript('verify')"
+            >
+              <span v-if="aiDownloading === 'verify'" class="spinner-border spinner-border-sm me-1"></span>
+              <i v-else class="bi bi-download me-1"></i> Download Verify Script
+            </button>
+          </div>
+          <p v-else class="ai-admin-note">
+            <i class="bi bi-info-circle me-1"></i> Script download is available to team members.
+          </p>
+          <p v-if="aiDownloadError" class="ai-download-error">{{ aiDownloadError }}</p>
+        </template>
+      </template>
+    </div>
+
     <div v-if="premiumLocked" class="auto-premium-notice">
       <i class="bi bi-lock-fill" aria-hidden="true"></i>
       <div class="auto-premium-notice-body">
@@ -241,6 +303,11 @@ import {
   getUserScriptFeedback,
   setUserScriptFeedback,
 } from '@/utils/scriptFeedback';
+import {
+  aiScriptExtension,
+  parseDownloadFilename,
+  triggerBlobFileDownload,
+} from '@/utils/automationScriptDownload';
 
 const DESC_PREVIEW_LIMIT = 200;
 
@@ -348,6 +415,11 @@ export default {
     // Real API data from automation-scripts/match endpoint
     automationData: { type: Object, default: null },
     matchLoading: { type: Boolean, default: false },
+    // AI automation card (covers every vulnerability, not just the curated
+    // scripts above) — embedded on the vulnerability card as `automation_card`
+    // when already loaded; falls back to a lazy admin-only fetch by cardId.
+    automationCard: { type: Object, default: null },
+    cardId: { type: [String, Number], default: '' },
   },
   data() {
     return {
@@ -361,7 +433,10 @@ export default {
       selectedOs: null,
       localData: null,
       osLoading: false,
-
+      localAiCard: null,
+      aiLoading: false,
+      aiDownloading: null,
+      aiDownloadError: '',
     };
   },
   watch: {
@@ -385,15 +460,69 @@ export default {
       this.localData = null;
       this.selectedOs = newVal && newVal.os || null;
     },
+    automationCard() {
+      this.localAiCard = null;
+      this.aiDownloadError = '';
+    },
+    resolvedCardId() {
+      this.localAiCard = null;
+      this.aiDownloadError = '';
+      this.loadAiCardIfNeeded();
+    },
   },
   async mounted() {
     this.refreshFeedbackState();
     this.selectedOs = this.automationData && this.automationData.os || null;
     await this.loadApiFeedback(); // load real counts + my_feedback from API
+    await this.loadAiCardIfNeeded();
   },
   computed: {
     effectiveData() {
       return this.localData || this.automationData;
+    },
+    // ---- AI automation card (new: every vulnerability, not just curated scripts) ----
+    resolvedCardId() {
+      return String(this.cardId || this.automationCard?.card_id || this.automationCard?.id || '').trim();
+    },
+    aiCard() {
+      const d = this.automationCard || this.localAiCard;
+      if (!d || d.matched === false) return null;
+      return d;
+    },
+    aiStatusTier() {
+      const status = String(this.aiCard?.automation_status || '').trim().toLowerCase();
+      if (status === 'full') return 'full';
+      if (status === 'partial') return 'partial';
+      if (status) return 'not_possible';
+      // Fall back to automation_possible when automation_status is missing.
+      const possible = String(this.aiCard?.automation_possible || '').trim().toLowerCase();
+      if (possible.startsWith('yes')) return 'full';
+      if (possible.startsWith('partial')) return 'partial';
+      return 'not_possible';
+    },
+    aiStatusLabel() {
+      return {
+        full: 'Automation Available',
+        partial: 'Partially Automated',
+        not_possible: 'Automation Not Possible',
+      }[this.aiStatusTier];
+    },
+    aiStatusIcon() {
+      return {
+        full: 'bi-check-circle-fill',
+        partial: 'bi-exclamation-triangle-fill',
+        not_possible: 'bi-dash-circle-fill',
+      }[this.aiStatusTier];
+    },
+    aiPremiumLocked() {
+      const d = this.aiCard;
+      return !!(d && (d.premium_required === true || d.premium_required === 'true' || d.premium_required === 1));
+    },
+    aiPremiumMessage() {
+      const fromData = String(this.aiCard?.message || '').trim();
+      if (fromData) return fromData;
+      return this.authStore.automationPremiumMessage
+        || 'Automation scripts are not available on the Freemium plan. Upgrade to Premium.';
     },
     hasPositiveMatch() {
       return isPositiveAutomationMatch(this.effectiveData);
@@ -586,6 +715,32 @@ export default {
     if (this._copyTimer) clearTimeout(this._copyTimer);
   },
   methods: {
+    // Only admin has a view-only GET for this — the team member endpoint is
+    // download-only, so the user side relies entirely on `automationCard`
+    // already being embedded on the vulnerability object passed in.
+    async loadAiCardIfNeeded() {
+      if (this.automationCard || this.isUser || !this.resolvedCardId) return;
+      this.aiLoading = true;
+      const res = await this.authStore.fetchAiAutomationCardAdmin(this.resolvedCardId);
+      this.aiLoading = false;
+      if (res.status && res.data) {
+        this.localAiCard = res.data;
+      }
+    },
+    async downloadAiScript(type) {
+      if (!this.isUser || !this.resolvedCardId || this.aiDownloading) return;
+      this.aiDownloadError = '';
+      this.aiDownloading = type;
+      const res = await this.authStore.downloadAiAutomationScript(this.resolvedCardId, type);
+      this.aiDownloading = null;
+      if (res.status && res.content != null) {
+        const ext = aiScriptExtension(this.aiCard?.language);
+        const filename = parseDownloadFilename(res.headers, `${type}_script.${ext}`);
+        triggerBlobFileDownload(res.content, filename);
+      } else {
+        this.aiDownloadError = res.message || 'Download failed';
+      }
+    },
     refreshFeedbackState() {
       if (!this.feedbackKey) {
         this.userFeedback = null;
@@ -1155,6 +1310,91 @@ export default {
   display: flex;
   align-items: flex-start;
 }
+.ai-auto-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+.ai-auto-card--full { border-color: #86efac; background: #f0fdf4; }
+.ai-auto-card--partial { border-color: #fde68a; background: #fffbeb; }
+.ai-auto-card--not_possible { border-color: #e2e8f0; background: #f8fafc; }
+
+.ai-auto-header { margin-bottom: 8px; }
+
+.ai-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 999px;
+}
+.ai-status-badge--full { background: #dcfce7; color: #166534; }
+.ai-status-badge--partial { background: #fef3c7; color: #92400e; }
+.ai-status-badge--not_possible { background: #f1f5f9; color: #64748b; }
+
+.ai-reason-text,
+.ai-description-text {
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.6;
+  margin: 6px 0 0;
+}
+
+.ai-manual-note {
+  margin-top: 10px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 12px;
+  color: #92400e;
+  line-height: 1.55;
+}
+
+.ai-download-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.ai-download-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 14px;
+  border-radius: 7px;
+  border: 1px solid #16a34a;
+  background: #16a34a;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.ai-download-btn:hover { opacity: 0.9; }
+.ai-download-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.ai-download-btn--verify {
+  background: #fff;
+  color: #16a34a;
+}
+
+.ai-admin-note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.ai-download-error {
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #dc2626;
+}
+
 .auto-premium-notice {
   display: flex;
   align-items: flex-start;

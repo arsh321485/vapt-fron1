@@ -208,6 +208,9 @@
                     :vuln-name="selectedVuln.vul_name"
                     :asset-ip="selectedOsGroups[0]?.assets[0]?.host_name"
                     :asset-index="0"
+                    :is-user="isUser"
+                    :automation-card="selectedVuln.automation_card || null"
+                    :card-id="String(selectedVuln.card_id || selectedVuln.id || selectedVuln._id || '')"
                     @view-code="showCodeModal = true"
                   />
                 </div>

@@ -81,6 +81,39 @@ export function triggerTextFileDownload(content, filename) {
   URL.revokeObjectURL(url);
 }
 
+/** Same as triggerTextFileDownload, but for an already-binary Blob response (AI script download). */
+export function triggerBlobFileDownload(blob, filename) {
+  const url = URL.createObjectURL(blob instanceof Blob ? blob : new Blob([blob ?? '']));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename || 'automation_script.py';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/** AI automation card id: the vulnerability-card id the ai automation_card is keyed to. */
+export function resolveVulnCardId(vuln) {
+  if (!vuln) return '';
+  return String(
+    vuln.card_id ||
+      vuln.automation_card_id ||
+      vuln.vulnerability_card_id ||
+      vuln.id ||
+      vuln._id ||
+      vuln.vulnerability_id ||
+      '',
+  ).trim();
+}
+
+/** File extension inferred from the AI card's declared script language. */
+export function aiScriptExtension(language) {
+  const lang = String(language || '').trim().toLowerCase();
+  const map = { bash: 'sh', shell: 'sh', sh: 'sh', python: 'py', powershell: 'ps1', ps1: 'ps1' };
+  return map[lang] || 'sh';
+}
+
 export function extractScriptPayload(content) {
   if (content == null) return '';
   if (typeof content === 'object') {
