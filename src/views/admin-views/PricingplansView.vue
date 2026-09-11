@@ -995,12 +995,10 @@ export default {
         await this.selectPlan(planId, { premiumMode: requestedMode });
         await this.fetchEstimate();
       }
-      // "Yes, continue with Premium" on the upload page should land straight on
-      // Stripe Checkout — no extra landing/click on this pricing page. Same for
-      // resuming a Premium checkout that was interrupted by a forced sign-in.
-      if (planId === 'premium' && (requestedSource === 'upload' || requestedSource === 'resume')) {
-        await this.maybeAutoStartPremiumCheckout();
-      }
+      // Previously auto-fired straight to Stripe Checkout from here when
+      // arriving with source=upload/resume, skipping this page entirely —
+      // removed per request: Stripe should only ever be reached by an
+      // explicit click on "Continue to payment" below, never automatically.
     }
   },
   beforeUnmount() {
