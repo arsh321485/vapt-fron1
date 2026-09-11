@@ -1857,6 +1857,23 @@ class TLSConfigurator:
       return isPositiveAutomationMatch(this.getAutomationForVuln(vuln));
     },
     resolveAutomationMatched(vuln) {
+      // AI automation_card (new: every vulnerability) takes precedence over
+      // the older curated catalog when it has an opinion — same precedence
+      // AutomatedFixPanel.vue applies in the detail tab, so the row badge
+      // agrees with what opening the tab shows instead of contradicting it.
+      const reportId = String(this.authStore.userLatestReportId || '').trim();
+      if (reportId) {
+        const aiCard = this.authStore.getCachedAiAutomationCard(
+          reportId,
+          vuln?.vul_name,
+          this.selectedAssetIp,
+          true,
+        );
+        if (aiCard) {
+          const status = String(aiCard.automation_status || '').trim().toLowerCase();
+          if (status) return status === 'full' || status === 'partial';
+        }
+      }
       const data = this.getAutomationForVuln(vuln);
       if (!data) return null;
       if (typeof data.matched === 'boolean') return data.matched;
@@ -1879,6 +1896,13 @@ class TLSConfigurator:
       const vulns = this.authStore.selectedAssetVulnerabilities || [];
       if (!(this.authStore.cachedUserVulnRegister || []).length) {
         await this.authStore.fetchUserVulnerabilityRegister(false);
+      }
+      const reportId = String(this.authStore.userLatestReportId || '').trim();
+      if (reportId) {
+        // Fire-and-forget: cached after the first fetch per report, and
+        // resolveAutomationMatched() degrades to the legacy system while
+        // this is still in flight, so nothing needs to await it.
+        void this.authStore.fetchVulnerabilityCardsByReportUser(reportId);
       }
       this.loadingAutomation = true;
       const map = await matchAutomationScriptsForVulns({

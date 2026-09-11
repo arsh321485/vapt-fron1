@@ -6759,6 +6759,30 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    // Sync lookup against whatever's already cached (no fetch) — used by
+    // vulnerability-row badges (FixAvailableIndicator) so the row-level
+    // "Automatable" chip agrees with the AI verdict shown once the detail
+    // panel is opened, instead of only ever reflecting the older curated
+    // automation-scripts catalog. Returns null if nothing's cached yet for
+    // this report or no card matches — callers should fall back to the
+    // legacy match in that case, not treat null as "not automatable".
+    getCachedAiAutomationCard(reportId: string, vulnName: string, hostName: string, isUser = false): any {
+      const key = String(reportId || "").trim();
+      if (!key) return null;
+      const cards = isUser ? this.userVulnerabilityCardsByReport[key] : this.vulnerabilityCardsByReport[key];
+      if (!cards) return null;
+      const wantName = String(vulnName || "").trim().toLowerCase();
+      if (!wantName) return null;
+      const wantHost = String(hostName || "").trim().toLowerCase();
+      const match = cards.find((c: any) => {
+        const name = String(c?.vulnerability_name || "").trim().toLowerCase();
+        if (name !== wantName) return false;
+        if (!wantHost) return true;
+        return String(c?.host_name || "").trim().toLowerCase() === wantHost;
+      });
+      return match?.automation_card || null;
+    },
+
     // 🔹 AI automation cards — bulk list for a report (Admin). The existing
     // per-asset vulnerabilities endpoint the app already uses for this page
     // doesn't return card_id — it's a different backend model than the new

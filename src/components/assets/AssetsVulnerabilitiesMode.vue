@@ -2492,6 +2492,22 @@ export default {
       return isPositiveAutomationMatch(this.getAutomationForVuln(vuln));
     },
     resolveAutomationMatched(vuln) {
+      // AI automation_card (new: every vulnerability) takes precedence over
+      // the older curated catalog when it has an opinion — same precedence
+      // AutomatedFixPanel.vue applies in the detail tab, so the row badge
+      // agrees with what opening the tab shows instead of contradicting it.
+      // This view groups a vulnerability across hosts, so match by name only
+      // (same level the legacy match below already works at).
+      const reportId = String(
+        (this.isUser ? this.authStore.userLatestReportId : this.authStore.latestReportId) || '',
+      ).trim();
+      if (reportId) {
+        const aiCard = this.authStore.getCachedAiAutomationCard(reportId, vuln?.vul_name, '', this.isUser);
+        if (aiCard) {
+          const status = String(aiCard.automation_status || '').trim().toLowerCase();
+          if (status) return status === 'full' || status === 'partial';
+        }
+      }
       const data = this.getAutomationForVuln(vuln);
       if (!data) return null;
       if (typeof data.matched === 'boolean') return data.matched;
@@ -2499,6 +2515,17 @@ export default {
     },
     async loadAutomationScripts() {
       const vulns = this.groupedVulns || [];
+      const reportId = String(
+        (this.isUser ? this.authStore.userLatestReportId : this.authStore.latestReportId) || '',
+      ).trim();
+      if (reportId) {
+        // Fire-and-forget: cached after the first fetch per report, and
+        // resolveAutomationMatched() degrades to the legacy system while
+        // this is still in flight, so nothing needs to await it.
+        void (this.isUser
+          ? this.authStore.fetchVulnerabilityCardsByReportUser(reportId)
+          : this.authStore.fetchVulnerabilityCardsByReport(reportId));
+      }
       this.loadingAutomation = true;
       const map = await matchAutomationScriptsForVulns({
         authStore: this.authStore,

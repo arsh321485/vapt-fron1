@@ -122,3 +122,4 @@ export function localPremiumEstimate(
   mode: unknown,
   billingCycle: unknown,
 ): Record<string, unknown> | null;
+export function localCustomEstimate(assetCount: unknown): Record<string, unknown> | null;

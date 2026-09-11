@@ -1,19 +1,8 @@
-Subject: Scope File Upload — accepted file types badh gaye hain (backend done)
-
-Backend ab "Upload Scope File" (POST /api/admin/scope/create/, same endpoint, same file field, same response) me Upload Report jitne hi formats accept karta hai:
-
-Naye extensions add karne hain:
-
-.xml, .nessus, .html, .htm, .pdf, .docx, .doc
-Pehle se already the:
-
-.csv, .xlsx, .xls, .txt
-Frontend me 2 jagah update chahiye (Upload Scope File screen — "Provide Scope" step):
-
-File input ka accept attribute badhao taaki browser ka file-picker naye formats ko bhi select karne de: accept=".csv,.xlsx,.xls,.txt,.xml,.nessus,.html,.htm,.pdf,.docx,.doc"
-Screen pe jo helper text hai ("Upload a .csv, .xlsx, .xls, or .txt file...") aur niche jo chhoti list hai (".csv · .xlsx · .xls · .txt") — dono ko update karo naye poore list ke saath.
-Koi client-side validation logic ho (file-extension check upload se pehle) to wo bhi isi naye list se match karo — warna backend accept karega par frontend khud hi reject kar dega.
+Request URL
+https://vaptbackend.secureitlab.com/api/admin/upload_report/vulnerability-cards/671b2ed2-5bfe-4687-bebc-f90a7c03dfd3/?_ts=1789118983291
 
 
+why this api not hit on Automation fix tab on admin user both side check this and showing tha dummy data there is this api inetgrated properly there
 
-this is for manual scope i arrady didi it but please recheck again
+
+Also check this show Automatable but Under Automated fix tab it show 1 message Automation is not possible for this vulnerability. why if there is any thing need to be f=dron from frontedn do that anmd if ny thing need to be done from backedn give me proper copy paste prompt 

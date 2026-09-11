@@ -361,18 +361,18 @@
                 <span class="pricing-progress-dot active"></span>
               </div>
               <p class="pricing-progress-label">
-                Step 3 of 3 — {{ activePlan.id === 'custom' ? 'Contact sales' : 'Payment' }}
+                Step 3 of 3 — Payment
               </p>
 
               <div class="pricing-checkout-grid">
                 <div class="pricing-checkout-main">
                   <h2 class="pricing-checkout-title">
-                    {{ activePlan.id === 'custom' ? 'Confirm & contact sales' : 'Payment details' }}
+                    {{ activePlan.id === 'custom' ? 'Confirm & pay' : 'Payment details' }}
                   </h2>
 
                   <template v-if="activePlan.id === 'custom'">
                     <p class="pricing-mechanics-copy mb-3">
-                      We’ll email enterprise sales with your details. No payment is required for a Custom quote.
+                      Payment is completed on Stripe Checkout. Card, UPI, and Net Banking details are not collected on this page.
                     </p>
                     <div class="pricing-contact-confirm">
                       <div class="pricing-contact-row"><span>Name</span><strong>{{ leadForm.name }}</strong></div>
@@ -385,10 +385,10 @@
                       type="button"
                       class="btn text-light rounded-pill w-100 pricing-cta pricing-cta--featured mt-4"
                       :disabled="checkoutLoading"
-                      @click="submitCustomRequest"
+                      @click="submitCustomCheckout"
                     >
                       <span v-if="checkoutLoading" class="spinner-border spinner-border-sm me-2"></span>
-                      {{ checkoutLoading ? 'Submitting…' : 'Submit request' }}
+                      {{ checkoutLoading ? 'Redirecting to Stripe…' : 'Continue to payment' }}
                       <i class="bi bi-arrow-right-circle-fill" aria-hidden="true"></i>
                     </button>
                   </template>
@@ -519,6 +519,7 @@ import AdminSignUpModal from '@/components/admin-component/AdminSignUpModal.vue'
 import Swal from 'sweetalert2';
 import {
   billingErrorMessage,
+  checkoutCustom,
   checkoutFreemium,
   checkoutPremium,
   estimatePlan,
@@ -544,6 +545,7 @@ import {
   isActiveSubscription,
   isExistingSubscriptionMessage,
   isFreemiumPlan,
+  localCustomEstimate,
   localPremiumEstimate,
   markFreemiumActiveNotice,
   peekBillingReturnTo,
@@ -608,9 +610,9 @@ const PLAN_CONFIG = {
   custom: {
     id: 'custom',
     name: 'Custom',
-    priceLabel: 'Contact Sales',
-    priceNote: 'for 250+ assets—always a custom quote',
-    cta: 'Talk to Sales',
+    priceLabel: '$1.25 / IP / year',
+    priceNote: 'for 250+ assets—pay by card via Stripe, same as Premium',
+    cta: 'Get Started',
     featured: false,
     featuresHeading: 'Everything in Premium, plus:',
     features: [
@@ -894,6 +896,7 @@ export default {
         if (this.premiumMode === 'testing') return '$20 / IP / year · testing included';
         return `${this.selectedCycle.rate} · Management`;
       }
+      if (this.selectedPlan === 'custom') return '$1.25 / IP / year · Management';
       return 'Custom quote';
     },
     summaryTotal() {
@@ -908,6 +911,14 @@ export default {
         if (this.premiumMode === 'testing') return '$20 / IP / year';
         if (this.billingCycle === 'monthly') return '$2.00 / IP / month';
         if (this.billingCycle === 'semi') return '$1.50 / IP / 6 months';
+        return '$1.25 / IP / year';
+      }
+      if (this.selectedPlan === 'custom') {
+        const assetCount = Number(this.leadForm.assets) || this.detectedAssetCount || 0;
+        const local = localCustomEstimate(assetCount);
+        if (local?.amount_due && Number(local.amount_due) > 0) {
+          return formatUsd(local.amount_due, local.currency || 'usd');
+        }
         return '$1.25 / IP / year';
       }
       return 'Contact sales';
@@ -1688,7 +1699,15 @@ export default {
         this.checkoutLoading = false;
       }
     },
-    async submitCustomRequest() {
+    /**
+     * Custom tier now pays through Stripe the same way Premium does, instead
+     * of only ever notifying sales. Still best-effort-notifies sales in the
+     * background (non-blocking — a lead-notify failure must never stop a
+     * real checkout) so the team still knows a Custom account paid.
+     * Relies on checkoutCustom() — see that function's comment: the backend
+     * endpoint it calls is unconfirmed/likely not built yet.
+     */
+    async submitCustomCheckout() {
       if (!this.canContinueCustom) return;
       if (!this.isAuthenticated) {
         await this.promptAuth();
@@ -1697,24 +1716,29 @@ export default {
       this.checkoutLoading = true;
       this.checkoutError = '';
       try {
-        const data = await submitCustomLead({
+        void submitCustomLead({
           full_name: this.leadForm.name,
           work_email: this.leadForm.email,
           company: this.leadForm.company,
           estimated_assets: this.leadForm.assets,
-        });
-        await Swal.fire({
-          icon: 'success',
-          title: 'Request submitted',
-          text: data?.detail || 'Our sales team will reach out.',
-          confirmButtonColor: '#241447',
-        });
-        if (this.comingFromUpload) {
-          this.goAfterBilling();
+        }).catch(() => { /* best-effort sales notification only */ });
+
+        const assetCount = Number(this.leadForm.assets) || this.detectedAssetCount || 0;
+        // Same post-payment destination logic Premium uses — a Custom admin
+        // who provided a scope (not yet scanned) waits for the Super Admin's
+        // scan, same as Premium/Freemium scope flows already do; otherwise
+        // straight to Add Users once the Super Admin has attached/processed
+        // the report and agent generation is complete.
+        if (this.fromScopeFile && !this.fromScanReport) {
+          setBillingReturnTo('/waiting-for-report');
         } else {
-          this.step = 'plans';
-          this.selectedPlan = null;
+          setBillingReturnTo('/communication');
         }
+        const data = await checkoutCustom({ asset_count: assetCount });
+        if (!data?.checkout_url) {
+          throw new Error('Stripe checkout URL was not returned.');
+        }
+        window.location.href = data.checkout_url;
       } catch (error) {
         const message = billingErrorMessage(error);
         if (isBillingAuthError(error)) {
@@ -1722,7 +1746,7 @@ export default {
           return;
         }
         this.checkoutError = message;
-        await Swal.fire({ icon: 'error', title: 'Could not submit request', text: message, confirmButtonColor: '#241447' });
+        await Swal.fire({ icon: 'error', title: 'Checkout failed', text: message, confirmButtonColor: '#241447' });
       } finally {
         this.checkoutLoading = false;
       }

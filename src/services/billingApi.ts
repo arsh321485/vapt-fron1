@@ -213,6 +213,24 @@ export async function submitCustomLead(payload: {
   return res.data as { detail?: string };
 }
 
+// UNCONFIRMED WITH BACKEND — endpoint doesn't exist yet as of this writing.
+// Mirrors checkoutPremium()'s exact shape/convention for the >250-asset
+// Custom tier, so a paid Custom admin flows through the exact same
+// hasPaidPlan()/subscription-status machinery Premium already uses (no new
+// frontend routing needed once this exists — see the backend prompt this
+// was written alongside). Fails safely: a wrong/missing endpoint here just
+// surfaces "Checkout failed" and creates no Stripe session — no money moves.
+export async function checkoutCustom(payload: { asset_count: number }) {
+  const res = await endpoint.post(`${BILLING_BASE}/checkout/custom/`, {
+    asset_count: payload.asset_count,
+  });
+  return res.data as {
+    checkout_url: string;
+    session_id: string;
+    amount_due: string;
+  };
+}
+
 export interface CheckoutConfirmResponse extends BillingAssetBreakdown {
   subscription: BillingSubscription;
   invoices?: BillingInvoice[];

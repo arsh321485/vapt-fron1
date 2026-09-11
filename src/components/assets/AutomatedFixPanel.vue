@@ -94,6 +94,13 @@
       </template>
     </div>
 
+    <!-- Legacy curated automation-scripts catalog (~63 scripts) — only shown
+         when the new AI system (above) has no verdict for this vulnerability
+         at all. Once aiCard exists, it's the authoritative answer; showing
+         both side by side let them contradict each other (AI says "not
+         possible" while the old catalog says "Yes 100%" for the same vuln —
+         confusing, not actually broken data on either side). -->
+    <template v-if="!aiCard">
     <div v-if="premiumLocked" class="auto-premium-notice">
       <i class="bi bi-lock-fill" aria-hidden="true"></i>
       <div class="auto-premium-notice-body">
@@ -314,6 +321,7 @@
         <pre><code>{{ resolvedRun }}</code></pre>
       </div>
     </div>
+    </template>
     </template>
 
   </div>
