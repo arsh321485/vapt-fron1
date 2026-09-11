@@ -338,9 +338,10 @@
                               :asset-ip="selectedAssetIp"
                               :asset-index="selectedAssetDemoIndex"
                               :automation-matched="resolveAutomationMatched(vuln)"
+                              :automation-level="resolveAutomationLevel(vuln)"
                             />
                             <span
-                              v-if="hasAutomationScript(vuln)"
+                              v-if="hasDownloadableScript(vuln)"
                               class="vuln-download-wrap"
                               :title="automationDownloadLocked ? (authStore.automationPremiumMessage || 'Automation scripts are not available on the Freemium plan. Upgrade to Premium.') : 'Download fix'"
                             >
@@ -350,7 +351,7 @@
                               :class="{ 'vuln-download-icon-btn--disabled': automationDownloadLocked }"
                               :disabled="automationDownloadLocked"
                               :aria-label="automationDownloadLocked ? 'Upgrade to Premium to download automation scripts' : 'Download fix'"
-                              @click.stop="downloadAutomationScript()"
+                              @click.stop="downloadAutomationScript(vuln)"
                             >
                               <i class="bi bi-download"></i>
                             </button>
@@ -496,9 +497,10 @@
                                 :asset-ip="selectedAssetIp"
                                 :asset-index="selectedAssetDemoIndex"
                                 :automation-matched="resolveAutomationMatched(closedItemAsVuln(item))"
+                                :automation-level="resolveAutomationLevel(closedItemAsVuln(item))"
                               />
                               <span
-                                v-if="hasAutomationScript(closedItemAsVuln(item))"
+                                v-if="hasDownloadableScript(closedItemAsVuln(item))"
                                 class="vuln-download-wrap"
                                 :title="automationDownloadLocked ? (authStore.automationPremiumMessage || 'Automation scripts are not available on the Freemium plan. Upgrade to Premium.') : 'Download fix'"
                               >
@@ -508,7 +510,7 @@
                                   :class="{ 'vuln-download-icon-btn--disabled': automationDownloadLocked }"
                                   :disabled="automationDownloadLocked"
                                   :aria-label="automationDownloadLocked ? 'Upgrade to Premium to download automation scripts' : 'Download fix'"
-                                  @click.stop="downloadAutomationScript()"
+                                  @click.stop="downloadAutomationScript(closedItemAsVuln(item))"
                                 >
                                   <i class="bi bi-download"></i>
                                 </button>
@@ -952,7 +954,14 @@ import {
   clearHeldItemAssetType,
 } from "@/utils/assetDummyData";
 import { filterSupportRequestsByVuln, mapSupportRequestsByStep } from "@/utils/supportRequests";
-import { resolveVulnPluginId as lookupVulnPluginId, resolveVulnCardId as lookupVulnCardId } from "@/utils/automationScriptDownload";
+import {
+  resolveVulnPluginId as lookupVulnPluginId,
+  resolveVulnCardId as lookupVulnCardId,
+  downloadAutomationScriptViaApi,
+  aiScriptExtension,
+  parseDownloadFilename,
+  triggerBlobFileDownload,
+} from "@/utils/automationScriptDownload";
 import {
   isNessusPluginId,
   vulnMatchName,
@@ -1853,26 +1862,50 @@ class TLSConfigurator:
     getAutomationForVuln(vuln) {
       return getMatchedAutomation(vuln, this.automationScriptMap);
     },
+    // Legacy curated-catalog match only. Kept as-is for the fallback path —
+    // use hasAutomationScript() below for anything user-facing (row download
+    // icon, etc.), it also covers the AI system.
     hasAutomationScript(vuln) {
       return isPositiveAutomationMatch(this.getAutomationForVuln(vuln));
     },
-    resolveAutomationMatched(vuln) {
-      // AI automation_card (new: every vulnerability) takes precedence over
-      // the older curated catalog when it has an opinion — same precedence
-      // AutomatedFixPanel.vue applies in the detail tab, so the row badge
-      // agrees with what opening the tab shows instead of contradicting it.
+    // AI automation_card (new: every vulnerability) takes precedence over the
+    // older curated catalog when it has an opinion — same precedence
+    // AutomatedFixPanel.vue applies in the detail tab. "partial" can't be
+    // expressed as a plain matched/unmatched boolean, so it's surfaced via
+    // resolveAutomationLevel() below instead — FixAvailableIndicator only
+    // resolves automationLevel when automationMatched is left null.
+    resolveAiCardFor(vuln) {
       const reportId = String(this.authStore.userLatestReportId || '').trim();
-      if (reportId) {
-        const aiCard = this.authStore.getCachedAiAutomationCard(
-          reportId,
-          vuln?.vul_name,
-          this.selectedAssetIp,
-          true,
-        );
-        if (aiCard) {
-          const status = String(aiCard.automation_status || '').trim().toLowerCase();
-          if (status) return status === 'full' || status === 'partial';
-        }
+      if (!reportId) return null;
+      return this.authStore.getCachedAiAutomationCard(reportId, vuln?.vul_name, this.selectedAssetIp, true);
+    },
+    // True when EITHER system has something downloadable for this
+    // vulnerability — this is what actually gates the row-level download
+    // icon, not the legacy-only hasAutomationScript() above. Without this,
+    // a vulnerability the AI system covers but the ~63-script curated
+    // catalog doesn't (most of them) showed "Automatable" on the badge with
+    // no download icon at all — the badge already reflected the AI verdict,
+    // this just brings the download affordance in line with it.
+    hasDownloadableScript(vuln) {
+      const aiCard = this.resolveAiCardFor(vuln);
+      if (aiCard) {
+        const status = String(aiCard.automation_status || '').trim().toLowerCase();
+        if (status === 'full' || status === 'partial') return true;
+      }
+      return this.hasAutomationScript(vuln);
+    },
+    resolveAutomationLevel(vuln) {
+      const aiCard = this.resolveAiCardFor(vuln);
+      const status = String(aiCard?.automation_status || '').trim().toLowerCase();
+      return status === 'partial' ? 'partial' : '';
+    },
+    resolveAutomationMatched(vuln) {
+      const aiCard = this.resolveAiCardFor(vuln);
+      if (aiCard) {
+        const status = String(aiCard.automation_status || '').trim().toLowerCase();
+        if (status === 'full') return true;
+        if (status === 'not_possible') return false;
+        if (status === 'partial') return null; // let automation-level="partial" win instead
       }
       const data = this.getAutomationForVuln(vuln);
       if (!data) return null;
@@ -1917,15 +1950,39 @@ class TLSConfigurator:
     isVulnDownloadDisabled(vuln) {
       return isAutomationNotAvailable(this.selectedAssetIp, this.selectedAssetDemoIndex, vuln?.severity);
     },
-    downloadAutomationScript() {
+    // Was building a Blob from `automationCode` — a hardcoded, unrelated
+    // (and syntactically broken) placeholder script shared by every
+    // vulnerability, never actually coming from any API. Fixed to fetch and
+    // download the real matched script for this specific vulnerability —
+    // from the AI system when that's what matched it (hasDownloadableScript
+    // above), falling back to the legacy curated catalog otherwise. Row icon
+    // only ever downloads the fix script (not verify) — matches its
+    // pre-existing single-button behavior; verify stays detail-panel-only.
+    async downloadAutomationScript(vuln) {
       if (this.automationDownloadLocked) return;
-      const blob = new Blob([this.automationCode], { type: 'text/x-python' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'automation_script.py';
-      a.click();
-      URL.revokeObjectURL(url);
+      const aiCard = this.resolveAiCardFor(vuln);
+      const aiStatus = String(aiCard?.automation_status || '').trim().toLowerCase();
+      if (aiCard?.card_id && (aiStatus === 'full' || aiStatus === 'partial')) {
+        const res = await this.authStore.downloadAiAutomationScript(aiCard.card_id, 'fix');
+        if (res.status && res.content != null) {
+          const ext = aiScriptExtension(aiCard.language);
+          const filename = parseDownloadFilename(res.headers, `${vuln?.vul_name || 'fix_script'}.${ext}`);
+          triggerBlobFileDownload(res.content, filename);
+        } else {
+          Swal.fire('Download failed', res.message || 'Could not download this script.', 'error');
+        }
+        return;
+      }
+      const pluginId = this.resolveVulnPluginId(vuln);
+      const res = await downloadAutomationScriptViaApi({
+        authStore: this.authStore,
+        pluginId,
+        isUser: true,
+        fallbackName: `${vuln?.vul_name || 'automation_script'}.py`,
+      });
+      if (!res.status) {
+        Swal.fire('Download failed', res.message || 'Could not download this script.', 'error');
+      }
     },
     viewFixDetail(item) {
       // Closed vulns stay under Fixed Recently only   scroll/highlight there (not Active Threats).

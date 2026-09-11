@@ -2,8 +2,13 @@
   <div
     class="auto-tab-content"
     :class="{
-      'auto-tab-content--greyed': !premiumLocked && hasPositiveMatch && !scriptAvailable,
-      'auto-tab-content--unmatched': !matchLoading && !premiumLocked && !hasPositiveMatch,
+      // Both of these are driven by the legacy curated-catalog match state —
+      // meaningless (and actively misleading, e.g. a stale 'Script file not
+      // available' overlay) whenever the AI card is what's actually being
+      // shown instead, so they're suppressed the same way the legacy content
+      // block itself is (see the !aiCard guard around it below).
+      'auto-tab-content--greyed': !aiCard && !premiumLocked && hasPositiveMatch && !scriptAvailable,
+      'auto-tab-content--unmatched': !aiCard && !matchLoading && !premiumLocked && !hasPositiveMatch,
     }"
   >
     <!-- AI Automation Card: covers every vulnerability, not just the curated
@@ -26,6 +31,8 @@
           <span class="ai-status-badge" :class="'ai-status-badge--' + aiStatusTier">
             <i class="bi" :class="aiStatusIcon"></i> {{ aiStatusLabel }}
           </span>
+          <span v-if="aiCard.os" class="ai-meta-chip"><i class="bi bi-pc-display me-1"></i>{{ aiCard.os }}</span>
+          <span v-if="aiCard.port" class="ai-meta-chip"><i class="bi bi-hdd-network me-1"></i>Port {{ aiCard.port }}</span>
         </div>
 
         <p v-if="aiStatusTier === 'not_possible'" class="ai-reason-text">
@@ -33,11 +40,81 @@
         </p>
 
         <template v-else>
-          <p v-if="aiCard.script_description" class="ai-description-text">{{ aiCard.script_description }}</p>
+          <div v-if="aiCard.script_name" class="detail-section">
+            <div class="ds-label">Script Name</div>
+            <p class="ds-text">{{ aiCard.script_name }}</p>
+          </div>
 
-          <div v-if="aiStatusTier === 'partial' && aiCard.what_must_remain_manual" class="ai-manual-note">
-            <i class="bi bi-info-circle-fill me-2"></i>
-            <strong>Manual steps still apply:</strong> {{ aiCard.what_must_remain_manual }}
+          <div v-if="aiCard.script_description" class="detail-section">
+            <div class="ds-label">Script Description</div>
+            <p class="ds-text">{{ aiCard.script_description }}</p>
+          </div>
+
+          <div v-if="aiCard.considerations_before || aiCard.considerations_after" class="two-col-grid">
+            <div v-if="aiCard.considerations_before" class="exec-check-card before-card">
+              <div class="ecc-header">⏱ Considerations before execution</div>
+              <p class="ds-text">{{ aiCard.considerations_before }}</p>
+            </div>
+            <div v-if="aiCard.considerations_after" class="exec-check-card after-card">
+              <div class="ecc-header">✅ Considerations after execution</div>
+              <p class="ds-text">{{ aiCard.considerations_after }}</p>
+            </div>
+          </div>
+
+          <div v-if="aiCard.libraries || aiCard.command_download_libraries" class="libs-row-card">
+            <div v-if="aiCard.libraries" class="libs-left">
+              <div class="ds-label">Libraries</div>
+              <div class="libs-tags">
+                <span v-for="lib in aiLibrariesList" :key="lib" class="lib-tag">{{ lib }}</span>
+              </div>
+            </div>
+            <div v-if="aiCard.command_download_libraries" class="libs-right">
+              <div class="ds-label">Command to download libraries</div>
+              <div class="cmd-inline">
+                <code>{{ aiCard.command_download_libraries }}</code>
+                <button
+                  type="button"
+                  class="copy-btn-sm"
+                  :title="copiedKey === 'ai-pip' ? 'Copied!' : 'Copy command'"
+                  @click.stop="copyText(aiCard.command_download_libraries, 'ai-pip')"
+                >
+                  {{ copiedKey === 'ai-pip' ? '✓' : '⎘' }}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="aiCard.what_can_be_automated || aiCard.what_must_remain_manual" class="two-col-grid">
+            <div v-if="aiCard.what_can_be_automated" class="assess-col-card green-card">
+              <div class="col-head green-head">✓ What can be automated</div>
+              <p class="ds-text">{{ aiCard.what_can_be_automated }}</p>
+            </div>
+            <div v-if="aiCard.what_must_remain_manual" class="assess-col-card red-card">
+              <div class="col-head red-head">✗ What must remain manual</div>
+              <p class="ds-text">{{ aiCard.what_must_remain_manual }}</p>
+            </div>
+          </div>
+
+          <div v-if="aiCard.recommended_approach" class="recommended-box">
+            <div class="rec-label">Recommended approach</div>
+            <div class="rec-text">{{ aiCard.recommended_approach }}</div>
+          </div>
+
+          <div v-if="aiCard.command_run_script" class="run-cmd-card" :style="aiTheme.runCard">
+            <div class="run-cmd-header" :style="{ color: aiTheme.runHeader }">
+              <span class="run-cmd-title"><i class="bi bi-terminal" aria-hidden="true"></i> Command to run script</span>
+            </div>
+            <div class="run-cmd-block">
+              <button
+                type="button"
+                class="copy-btn"
+                :title="copiedKey === 'ai-run' ? 'Copied!' : 'Copy command'"
+                @click.stop="copyText(aiCard.command_run_script, 'ai-run')"
+              >
+                {{ copiedKey === 'ai-run' ? '✓ Copied' : '⎘ Copy' }}
+              </button>
+              <pre><code>{{ aiCard.command_run_script }}</code></pre>
+            </div>
           </div>
 
           <div v-if="isUser" class="ai-download-actions">
@@ -163,7 +240,7 @@
             {{ autoDisplay.label }} <span class="cap-pct">[{{ autoDisplay.displayPct }}]</span>
           </div>
         </div>
-        <div class="cap-mid">
+        <div v-if="resolvedScriptName" class="cap-mid">
           <div class="cap-label">Script Name</div>
           <div class="cap-script">{{ resolvedScriptName }}</div>
         </div>
@@ -215,7 +292,7 @@
     </div>
 
     <!-- Row 2: Script description -->
-    <div class="detail-section">
+    <div v-if="fullDescription" class="detail-section">
       <div class="ds-label">Script Description</div>
       <p class="ds-text">{{ displayDescription }}</p>
       <button
@@ -229,8 +306,8 @@
     </div>
 
     <!-- Row 3: Before / After execution -->
-    <div class="two-col-grid">
-      <div class="exec-check-card before-card">
+    <div v-if="resolvedBefore.length || resolvedAfter.length" class="two-col-grid">
+      <div v-if="resolvedBefore.length" class="exec-check-card before-card">
         <div class="ecc-header">⏱ Considerations before execution</div>
         <ul class="chk-list">
           <li v-for="(line, i) in resolvedBefore" :key="'b' + i" class="chk-item">
@@ -238,7 +315,7 @@
           </li>
         </ul>
       </div>
-      <div class="exec-check-card after-card">
+      <div v-if="resolvedAfter.length" class="exec-check-card after-card">
         <div class="ecc-header">✅ Considerations after execution</div>
         <ul class="chk-list">
           <li v-for="(line, i) in resolvedAfter" :key="'a' + i" class="chk-item chk-after">
@@ -249,14 +326,14 @@
     </div>
 
     <!-- Row 4: Libraries + download command -->
-    <div class="libs-row-card">
-      <div class="libs-left">
+    <div v-if="resolvedLibraries.length || resolvedPip" class="libs-row-card">
+      <div v-if="resolvedLibraries.length" class="libs-left">
         <div class="ds-label">Libraries</div>
         <div class="libs-tags">
           <span v-for="lib in resolvedLibraries" :key="lib" class="lib-tag">{{ lib }}</span>
         </div>
       </div>
-      <div class="libs-right">
+      <div v-if="resolvedPip" class="libs-right">
         <div class="ds-label">Command to download libraries</div>
         <div class="cmd-inline">
           <code>{{ resolvedPip }}</code>
@@ -273,8 +350,8 @@
     </div>
 
     <!-- Row 5: Can / Cannot -->
-    <div class="two-col-grid">
-      <div class="assess-col-card green-card">
+    <div v-if="resolvedCan.length || resolvedManual.length" class="two-col-grid">
+      <div v-if="resolvedCan.length" class="assess-col-card green-card">
         <div class="col-head green-head">✓ What can be automated</div>
         <ul class="can-list">
           <li v-for="(line, i) in resolvedCan" :key="'c' + i" class="can-item">
@@ -282,7 +359,7 @@
           </li>
         </ul>
       </div>
-      <div class="assess-col-card red-card">
+      <div v-if="resolvedManual.length" class="assess-col-card red-card">
         <div class="col-head red-head">✗ What must remain manual</div>
         <ul class="can-list">
           <li v-for="(line, i) in resolvedManual" :key="'m' + i" class="cant-item">
@@ -293,7 +370,7 @@
     </div>
 
     <!-- Recommended approach -->
-    <div class="recommended-box">
+    <div v-if="resolvedRecommended" class="recommended-box">
       <div class="rec-label">Recommended approach</div>
       <div class="rec-text">{{ resolvedRecommended }}</div>
     </div>
@@ -305,7 +382,7 @@
     </div>
 
     <!-- Row 8: Command to run script -->
-    <div class="run-cmd-card" :style="theme.runCard">
+    <div v-if="resolvedRun" class="run-cmd-card" :style="theme.runCard">
       <div class="run-cmd-header" :style="{ color: theme.runHeader }">
         <span class="run-cmd-title"><i class="bi bi-terminal" aria-hidden="true"></i> Command to run script</span>
       </div>
@@ -366,64 +443,6 @@ const THEMES = {
   },
 };
 
-const DEFAULTS_BY_SEVERITY = {
-  critical: {
-    scriptName: 'nfh_c3_ripple20_isolate.py (VLAN isolation only)',
-    scriptDescription:
-      'Detection-only script. Connects to affected hosts, gathers version and configuration evidence, and outputs a verdict without making changes. Use results to decide whether to proceed with manual remediation. Full automation is not feasible until device identity and dependencies are confirmed.',
-    pipCommand: 'pip install paramiko',
-    libraries: ['paramiko', 're', 'subprocess'],
-    runCommand: 'python nfh_auto_detect.py --host <HOST> --dry-run',
-  },
-  high: {
-    scriptName: 'nfh_h1_struts_detect_multi.py',
-    scriptDescription:
-      'Two-phase script. Phase 1 runs pre-flight checks (connectivity, backups, version). Phase 2 applies remediation only after human approval. Phase 3 verifies the fix. Application-specific steps remain manual after staging validation.',
-    pipCommand: 'pip install paramiko',
-    libraries: ['paramiko', 'subprocess'],
-    runCommand: 'python nfh_auto_remediate.py --host <HOST> --dry-run',
-  },
-  medium: {
-    scriptName: 'nfh_auto_remediate.py',
-    scriptDescription:
-      'Partial automation script. Automates detection, backup, and verification steps; configuration changes and service reload require manual approval. Run with --dry-run first, then apply approved steps in a maintenance window.',
-    pipCommand: 'pip install paramiko requests',
-    libraries: ['paramiko', 'requests', 'ssl'],
-    runCommand: 'python nfh_auto_remediate.py --hosts-file hosts.txt --dry-run',
-  },
-  low: {
-    scriptName: 'nfh_auto_remediate.py',
-    scriptDescription:
-      'Full end-to-end remediation script. Detects vulnerable state, applies firewall or config rules via SSH, persists changes across reboots, and generates a JSON audit report. Low-risk finding with high automation confidence.',
-    pipCommand: 'pip install paramiko',
-    libraries: ['paramiko', 'subprocess'],
-    runCommand: 'python nfh_auto_remediate.py --remediate --dry-run',
-  },
-};
-
-const DEFAULT_BEFORE = [
-  'Confirm SSH or WinRM access to the target host',
-  'Raise a change request before any remediation in production',
-  'Verify backups exist where the script modifies configuration or packages',
-];
-const DEFAULT_AFTER = [
-  'Verify application connectivity after any service reload or reboot',
-  'Save script output as pre/post remediation audit evidence',
-  'Re-run Nessus targeted scan to confirm the finding is closed',
-];
-const DEFAULT_CAN = [
-  'Detect affected services and versions across listed assets',
-  'Apply network-level controls where appropriate (firewall rules)',
-  'Run post-remediation verification scans from the scanner',
-];
-const DEFAULT_MANUAL = [
-  'Validate business impact before applying patches in production',
-  'Coordinate maintenance window and application owner sign-off',
-  'Review remediation steps for environment-specific configuration',
-];
-const DEFAULT_REC =
-  'Use automation for detection and verification where possible. Perform configuration changes and patching manually per the remediation timeline, with staging validation first.';
-
 export default {
   name: 'AutomatedFixPanel',
   emits: ['view-code', 'feedback-change', 'os-data-change'],
@@ -468,6 +487,14 @@ export default {
       localData: null,
       osLoading: false,
       localAiCard: null,
+      // Card id resolved by loadAiCardIfNeeded()'s bulk-list match. Kept
+      // separate from localAiCard/resolvedCardId's other sources on purpose:
+      // resolvedCardId used to read this straight off localAiCard.card_id,
+      // which made it a dependency of a watcher that resets localAiCard —
+      // that circular read/reset ping-ponged the two forever and froze the
+      // tab. This field is never touched by that watcher, so the loop can't
+      // happen; it's set only here and by loadAiCardIfNeeded() below.
+      fetchedCardId: '',
       aiLoading: false,
       aiDownloading: null,
       aiDownloadError: '',
@@ -485,6 +512,7 @@ export default {
     vulnName() {
       this.refreshFeedbackState();
       this.localAiCard = null;
+      this.fetchedCardId = '';
       this.aiDownloadError = '';
       this.aiCodeView = null;
       this.loadAiCardIfNeeded();
@@ -492,6 +520,7 @@ export default {
     assetIp() {
       this.refreshFeedbackState();
       this.localAiCard = null;
+      this.fetchedCardId = '';
       this.aiDownloadError = '';
       this.aiCodeView = null;
       this.loadAiCardIfNeeded();
@@ -505,15 +534,15 @@ export default {
     },
     automationCard() {
       this.localAiCard = null;
+      this.fetchedCardId = '';
       this.aiDownloadError = '';
       this.aiCodeView = null;
     },
-    resolvedCardId() {
-      this.localAiCard = null;
-      this.aiDownloadError = '';
-      this.aiCodeView = null;
-      this.loadAiCardIfNeeded();
-    },
+    // NOTE: deliberately no watcher on resolvedCardId here. It used to reset
+    // localAiCard and re-fetch — but resolvedCardId itself reads
+    // fetchedCardId (set by that very fetch), so watching it created a
+    // read/reset loop that never settled and froze the tab. vulnName/assetIp
+    // above already cover every case that should trigger a re-fetch.
   },
   async mounted() {
     this.refreshFeedbackState();
@@ -531,7 +560,7 @@ export default {
         this.cardId ||
           this.automationCard?.card_id ||
           this.automationCard?.id ||
-          this.localAiCard?.card_id ||
+          this.fetchedCardId ||
           '',
       ).trim();
     },
@@ -574,6 +603,14 @@ export default {
       if (fromData) return fromData;
       return this.authStore.automationPremiumMessage
         || 'Automation scripts are not available on the Freemium plan. Upgrade to Premium.';
+    },
+    aiTheme() {
+      return THEMES[this.aiStatusTier === 'full' ? 'yes' : this.aiStatusTier] || THEMES.partial;
+    },
+    aiLibrariesList() {
+      const raw = String(this.aiCard?.libraries || '').trim();
+      if (!raw) return [];
+      return raw.split(/[,;]+/).map((s) => s.trim()).filter(Boolean);
     },
     hasPositiveMatch() {
       return isPositiveAutomationMatch(this.effectiveData);
@@ -648,20 +685,17 @@ export default {
         this.assetIndex,
       );
     },
-    sevKey() {
-      return String(canonSeverity(this.severity) || 'Medium').trim().toLowerCase();
-    },
-    sevDefaults() {
-      return DEFAULTS_BY_SEVERITY[this.sevKey] || DEFAULTS_BY_SEVERITY.medium;
-    },
     theme() {
       return THEMES[this.autoDisplay.tier] || THEMES.partial;
     },
+    // Real data only — API match first, then whatever the caller passed as
+    // a prop, else empty. No more canned per-severity placeholder text; a
+    // vulnerability with nothing real to show for a field just omits it.
     resolvedScriptName() {
-      return this._apiParsed?.scriptName || this.scriptName || this.sevDefaults.scriptName;
+      return this._apiParsed?.scriptName || this.scriptName || '';
     },
     fullDescription() {
-      return this._apiParsed?.scriptDescription || this.scriptDescription || this.sevDefaults.scriptDescription || '';
+      return this._apiParsed?.scriptDescription || this.scriptDescription || '';
     },
     displayDescription() {
       if (this.descriptionExpanded || this.fullDescription.length <= DESC_PREVIEW_LIMIT) {
@@ -673,38 +707,38 @@ export default {
       return this.fullDescription.length > DESC_PREVIEW_LIMIT;
     },
     resolvedPip() {
-      return this._apiParsed?.pipCommand || this.pipCommand || this.sevDefaults.pipCommand;
+      return this._apiParsed?.pipCommand || this.pipCommand || '';
     },
     resolvedRun() {
-      return this._apiParsed?.runCommand || this.runCommand || this.sevDefaults.runCommand;
+      return this._apiParsed?.runCommand || this.runCommand || '';
     },
     resolvedBefore() {
       const api = this._apiParsed?.beforeItems;
       if (api?.length) return api;
-      return this.beforeItems?.length ? this.beforeItems : DEFAULT_BEFORE;
+      return this.beforeItems?.length ? this.beforeItems : [];
     },
     resolvedAfter() {
       const api = this._apiParsed?.afterItems;
       if (api?.length) return api;
-      return this.afterItems?.length ? this.afterItems : DEFAULT_AFTER;
+      return this.afterItems?.length ? this.afterItems : [];
     },
     resolvedLibraries() {
       const api = this._apiParsed?.libraries;
       if (api?.length) return api;
-      return this.libraries?.length ? this.libraries : this.sevDefaults.libraries;
+      return this.libraries?.length ? this.libraries : [];
     },
     resolvedCan() {
       const api = this._apiParsed?.canAutomate;
       if (api?.length) return api;
-      return this.canAutomate?.length ? this.canAutomate : DEFAULT_CAN;
+      return this.canAutomate?.length ? this.canAutomate : [];
     },
     resolvedManual() {
       const api = this._apiParsed?.mustManual;
       if (api?.length) return api;
-      return this.mustManual?.length ? this.mustManual : DEFAULT_MANUAL;
+      return this.mustManual?.length ? this.mustManual : [];
     },
     resolvedRecommended() {
-      return this._apiParsed?.recommendedText || this.recommendedText || DEFAULT_REC;
+      return this._apiParsed?.recommendedText || this.recommendedText || '';
     },
     feedbackKey() {
       return buildScriptFeedbackKey({
@@ -766,14 +800,14 @@ export default {
     if (this._copyTimer) clearTimeout(this._copyTimer);
   },
   methods: {
-    // Only admin has a view-only GET for this — the team member endpoint is
-    // download-only, so the user side relies entirely on `automationCard`
-    // already being embedded on the vulnerability object passed in.
-    // Admin: match this vulnerability to its automation_card by name + host
-    // rather than by id — the per-asset vulnerabilities endpoint this panel's
-    // vulnName/assetIp come from doesn't carry a card_id (see
-    // fetchVulnerabilityCardsByReport for why), so an id lookup 404s no
-    // matter what. Name+host is the only join key both systems actually share.
+    // Both admin and team member have a confirmed bulk-list GET for this
+    // (fetchVulnerabilityCardsByReport / …ByReportUser — the user one is
+    // team-scoped server-side). Match this vulnerability to its
+    // automation_card by name + host rather than by id — the per-asset
+    // vulnerabilities endpoint this panel's vulnName/assetIp come from
+    // doesn't carry a card_id (different, older model than the new
+    // VulnerabilityCard system), so an id lookup 404s no matter what.
+    // Name+host is the only join key both systems actually share.
     async loadAiCardIfNeeded() {
       if (this.automationCard) return;
       const reportId = String(
@@ -799,6 +833,7 @@ export default {
         // list entry carries card_id as a sibling, not nested inside
         // automation_card itself) — the team-member download button needs it.
         this.localAiCard = { ...match.automation_card, card_id: match.card_id };
+        this.fetchedCardId = String(match.card_id || '').trim();
       }
     },
     async downloadAiScript(type) {
@@ -1395,7 +1430,13 @@ export default {
 .ai-auto-card--partial { border-color: #fde68a; background: #fffbeb; }
 .ai-auto-card--not_possible { border-color: #e2e8f0; background: #f8fafc; }
 
-.ai-auto-header { margin-bottom: 8px; }
+.ai-auto-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
 
 .ai-status-badge {
   display: inline-flex;
@@ -1409,6 +1450,18 @@ export default {
 .ai-status-badge--full { background: #dcfce7; color: #166534; }
 .ai-status-badge--partial { background: #fef3c7; color: #92400e; }
 .ai-status-badge--not_possible { background: #f1f5f9; color: #64748b; }
+
+.ai-meta-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
 
 .ai-reason-text,
 .ai-description-text {

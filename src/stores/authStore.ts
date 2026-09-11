@@ -400,8 +400,7 @@ export const useAuthStore = defineStore("auth", {
     // different, older model than the new VulnerabilityCard system), so
     // cards are matched by vulnerability name + host instead of by id.
     vulnerabilityCardsByReport: {} as Record<string, any[]>,
-    // Same cache, user-side (separate: unconfirmed whether a user-scoped
-    // mirror of the admin bulk endpoint exists — see fetchVulnerabilityCardsByReportUser).
+    // Same cache, user-side — see fetchVulnerabilityCardsByReportUser().
     userVulnerabilityCardsByReport: {} as Record<string, any[]>,
     uniqueIpCount: 0,
     assetRows: [] as any[],
@@ -6780,7 +6779,12 @@ export const useAuthStore = defineStore("auth", {
         if (!wantHost) return true;
         return String(c?.host_name || "").trim().toLowerCase() === wantHost;
       });
-      return match?.automation_card || null;
+      if (!match?.automation_card) return null;
+      // card_id is a sibling of automation_card on the list entry, not
+      // nested inside it — merge it in so callers (e.g. the row-level
+      // download button) can trigger the AI download endpoint without a
+      // second lookup.
+      return { ...match.automation_card, card_id: match.card_id };
     },
 
     // 🔹 AI automation cards — bulk list for a report (Admin). The existing
@@ -6814,13 +6818,10 @@ export const useAuthStore = defineStore("auth", {
     },
 
     // 🔹 AI automation cards — bulk list for a report (Team member).
-    // UNCONFIRMED with backend: mirrors fetchVulnerabilityCardsByReport's
-    // admin URL under /api/user/ by this codebase's usual admin/user
-    // endpoint-pairing convention. Fails gracefully (same as every other
-    // AI-card call here) if this path doesn't actually exist yet — nothing
-    // breaks, the AI section on the member side just stays hidden until this
-    // is confirmed or corrected with the backend.
-    // GET /api/user/upload_report/vulnerability-cards/?report_id={reportId}
+    // Confirmed with backend — same shape as the admin list, scoped to the
+    // caller's own assigned_team(s) server-side; response also carries a
+    // `teams` field (caller's active teams) that isn't currently used here.
+    // GET /api/user/upload_report/vulnerability-cards/?report_id={reportId}&team={optional}
     async fetchVulnerabilityCardsByReportUser(reportId: string, team?: string, force = false) {
       const key = String(reportId || "").trim();
       if (!key) return { status: false, cards: [] };

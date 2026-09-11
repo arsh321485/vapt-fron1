@@ -356,23 +356,8 @@
                               :asset-ip="selectedAssetIp"
                               :asset-index="selectedAssetDemoIndex"
                               :automation-matched="resolveAutomationMatched(v)"
+                              :automation-level="resolveAutomationLevel(v)"
                             />
-                            <span
-                              v-if="hasAutomationScript(v)"
-                              class="vuln-download-wrap"
-                              :title="automationDownloadLocked ? (authStore.automationPremiumMessage || 'Automation scripts are not available on the Freemium plan. Upgrade to Premium.') : 'Download fix'"
-                            >
-                            <button
-                              type="button"
-                              class="vuln-download-icon-btn"
-                              :class="{ 'vuln-download-icon-btn--disabled': automationDownloadLocked }"
-                              :disabled="automationDownloadLocked"
-                              :aria-label="automationDownloadLocked ? 'Upgrade to Premium to download automation scripts' : 'Download fix'"
-                              @click.stop="downloadAutomationScript()"
-                            >
-                              <i class="bi bi-download"></i>
-                            </button>
-                            </span>
                             <i class="bi text-muted" :class="expandedVulnIndex === i ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
                           </div>
                         </div>
@@ -516,23 +501,8 @@
                                 :asset-ip="selectedAssetIp"
                                 :asset-index="selectedAssetDemoIndex"
                                 :automation-matched="resolveAutomationMatched(closedItemAsVuln(item))"
+                                :automation-level="resolveAutomationLevel(closedItemAsVuln(item))"
                               />
-                              <span
-                                v-if="hasAutomationScript(closedItemAsVuln(item))"
-                                class="vuln-download-wrap"
-                                :title="automationDownloadLocked ? (authStore.automationPremiumMessage || 'Automation scripts are not available on the Freemium plan. Upgrade to Premium.') : 'Download fix'"
-                              >
-                                <button
-                                  type="button"
-                                  class="vuln-download-icon-btn"
-                                  :class="{ 'vuln-download-icon-btn--disabled': automationDownloadLocked }"
-                                  :disabled="automationDownloadLocked"
-                                  :aria-label="automationDownloadLocked ? 'Upgrade to Premium to download automation scripts' : 'Download fix'"
-                                  @click.stop="downloadAutomationScript()"
-                                >
-                                  <i class="bi bi-download"></i>
-                                </button>
-                              </span>
                             </div>
                           </div>
                           <div v-show="expandedClosedIndex === i" class="vuln-accordion-expand">
@@ -1338,23 +1308,29 @@ class TLSConfigurator:
         pickVulnDescription(res.data),
       );
     },
-    resolveAutomationMatched(vuln) {
-      // AI automation_card (new: every vulnerability) takes precedence over
-      // the older curated catalog when it has an opinion — same precedence
-      // AutomatedFixPanel.vue applies in the detail tab, so the row badge
-      // agrees with what opening the tab shows instead of contradicting it.
+    // AI automation_card (new: every vulnerability) takes precedence over the
+    // older curated catalog when it has an opinion — same precedence
+    // AutomatedFixPanel.vue applies in the detail tab. "partial" can't be
+    // expressed as a plain matched/unmatched boolean, so it's surfaced via
+    // resolveAutomationLevel() below instead — FixAvailableIndicator only
+    // resolves automationLevel when automationMatched is left null.
+    resolveAiCardFor(vuln) {
       const reportId = String(this.authStore.latestReportId || '').trim();
-      if (reportId) {
-        const aiCard = this.authStore.getCachedAiAutomationCard(
-          reportId,
-          vuln?.vul_name,
-          this.selectedAssetIp,
-          false,
-        );
-        if (aiCard) {
-          const status = String(aiCard.automation_status || '').trim().toLowerCase();
-          if (status) return status === 'full' || status === 'partial';
-        }
+      if (!reportId) return null;
+      return this.authStore.getCachedAiAutomationCard(reportId, vuln?.vul_name, this.selectedAssetIp, false);
+    },
+    resolveAutomationLevel(vuln) {
+      const aiCard = this.resolveAiCardFor(vuln);
+      const status = String(aiCard?.automation_status || '').trim().toLowerCase();
+      return status === 'partial' ? 'partial' : '';
+    },
+    resolveAutomationMatched(vuln) {
+      const aiCard = this.resolveAiCardFor(vuln);
+      if (aiCard) {
+        const status = String(aiCard.automation_status || '').trim().toLowerCase();
+        if (status === 'full') return true;
+        if (status === 'not_possible') return false;
+        if (status === 'partial') return null; // let automation-level="partial" win instead
       }
       const data = this.getAutomationForVuln(vuln);
       if (!data) return null;
