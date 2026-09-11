@@ -1,24 +1,12 @@
-Haan, frontend pe kaam chahiye — aur aaj ka caching fix sirf backend logic tha, API response shape same hai, to pehle diya hua plan bilkul valid hai, kuch naya nahi juda.
+{"error":"Vulnerability card not found or access denied"}
 
-Quick recap — kya banana hai
-2 naye APIs use karne honge:
-
-Admin — sirf dekhne ke liye (download nahi)
-GET /api/admin/automation-scripts/ai/<card_id>/
-→ status (full/partial/not_possible), description, considerations, language — script ka actual code nahi milega yaha.
-
-Team member — real download
-GET /api/user/automation-scripts/ai/<card_id>/download/?type=fix (ya ?type=verify)
-→ seedha file download ho jaati hai (jaise existing automation-scripts download button karta hai).
-
-UI — vulnerability card pe 3 states dikhane honge:
-
-Status	Kya dikhega
-Full	✅ green badge + Fix/Verify download buttons
-Partial	🟡 yellow badge + download button + "ye manual steps bhi karne honge" note
-Not possible	⚪ gray message + reason, koi button nahi
-Premium gate: Freemium admin/member ko premium_required: true milega — wahi "Upgrade to Premium" UI dikhao jo existing automation-scripts feature me hai.
-
-Ek gap abhi bhi hai: team member ke liye is codebase me koi existing "poora vulnerability card dekhne wala" screen nahi hai (sirf admin side hai) — frontend team ko decide karna hoga ki member side ye kaha dikhega.
-
-Chaho to main isi cheez ka pura English prompt phir se bana kar de dunga frontend dev ko seedha bhejne ke liye — bolo to abhi deta hoon.
+Request URL
+https://vaptbackend.secureitlab.com/api/admin/automation-scripts/ai/f24f01dc-ad75-410d-98dc-2b620c6c09c8/?_ts=1789107505261
+Request Method
+GET
+Status Code
+404 Not Found
+Remote Address
+38.242.247.151:443
+Referrer Policy
+strict-origin-when-cross-origin

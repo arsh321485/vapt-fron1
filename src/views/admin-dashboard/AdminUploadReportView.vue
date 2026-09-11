@@ -22,7 +22,9 @@
         </div>
 
         <!-- PLAN SUGGEST: continue with matched plan or pick another -->
-        <div v-if="planSuggestPrompt" class="aur-limit-overlay">
+        <!-- Never shown while agent generation is genuinely still running —
+             see generationInFlight(). -->
+        <div v-if="planSuggestPrompt && !generationInFlight" class="aur-limit-overlay">
           <div class="aur-limit-card">
             <button
               type="button"
@@ -83,7 +85,7 @@
         </div>
 
         <!-- PLAN LIMIT: keep same plan vs upgrade -->
-        <div v-else-if="planLimitPrompt" class="aur-limit-overlay">
+        <div v-else-if="planLimitPrompt && !generationInFlight" class="aur-limit-overlay">
           <div class="aur-limit-card">
             <p class="aur-limit-kicker">Plan limit</p>
             <h2 class="aur-limit-title">Extra IPs in this upload</h2>
@@ -1097,6 +1099,14 @@ export default {
         const generated = Number(s.cards_generated) || 0;
         return total > 0 && generated >= total;
       });
+    },
+    // Agent generation has genuinely started and isn't finished yet — nothing
+    // (plan suggestion, plan-limit prompt, payment) may pull the admin
+    // forward off this screen until it is. Reaching payment mid-generation
+    // was landing admins on /communication with a report the backend still
+    // considered not-ready, which then bounced them straight back here.
+    generationInFlight() {
+      return this.generating && !this.allAgentsReady;
     },
     hasExistingScope() {
       return !!(this.existingScope?.id || this.existingScopeEntries.length);
@@ -3204,6 +3214,11 @@ export default {
       }
       if (isActiveSubscription(this.subscription)) return false;
       if (this.planSuggestPrompt || this.planLimitPrompt || this.uploading) return false;
+      // Agents still generating for the existing report — never offer
+      // payment yet, that's what let an admin reach /communication with a
+      // report the backend still considered not-ready, then bounce them
+      // straight back here.
+      if (this.generationInFlight) return false;
 
       if (this.hasExistingReport) {
         this.viewMode = 'upload';
