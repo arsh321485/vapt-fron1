@@ -256,7 +256,7 @@
                       <h5 class="modal-title sr-modal-title in-process-modal-title">
                         <i class="bi bi-hourglass-split me-2 in-process-modal-icon"></i>Mitigation in progress
                       </h5>
-                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter: brightness(0);"></button>
+                      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body p-4" style="max-height:400px; overflow-y:auto;">
                       <div v-if="!inProcessItems.length" class="text-muted small">No in-process vulnerabilities.</div>
@@ -755,7 +755,35 @@
 
       <!-- Mitigation Timeline Extension Modal -->
       <div v-if="showMitigationExtensionModal" class="mte-modal-backdrop" @click.self="closeMitigationExtensionModal">
-        <div class="mte-modal-box" @click.stop>
+        <div class="mte-modal-box" @click.stop style="position:relative;">
+          <!-- Reason Detail Popup (inside modal) -->
+          <div v-if="showReasonDetailModal" class="reason-detail-overlay-inner" @click="closeReasonDetail">
+            <div class="reason-detail-box" @click.stop>
+              <div class="reason-detail-header">
+                <span class="reason-detail-title">Extension Reason</span>
+                <button type="button" class="mte-close-btn" @click="closeReasonDetail">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </div>
+              <div class="reason-detail-body">
+                <label class="reason-detail-label">Your Reason</label>
+                <p class="reason-detail-text">{{ selectedReasonText }}</p>
+                <template v-if="selectedAdminComment && (selectedReasonStatus === 'Approved' || selectedReasonStatus === 'Rejected')">
+                  <label class="reason-detail-label mt-3 d-block">
+                    Admin Comment
+                    <span
+                      class="mte-pill ms-1"
+                      :class="selectedReasonStatus === 'Approved' ? 'mte-status-approved' : 'mte-status-rejected'"
+                    >{{ selectedReasonStatus }}</span>
+                  </label>
+                  <p class="reason-detail-text reason-detail-admin-comment">{{ selectedAdminComment }}</p>
+                </template>
+              </div>
+              <div class="reason-detail-footer">
+                <button type="button" class="mte-btn-secondary" @click="closeReasonDetail">Close</button>
+              </div>
+            </div>
+          </div>
           <div class="mte-modal-header">
             <div>
               <h3 class="mte-modal-title">Mitigation timeline extension</h3>
@@ -800,7 +828,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="row in mteFilteredData.critical" :key="row.ip">
+                  <tr v-for="row in mteFilteredData.critical" :key="row.ip" class="mte-row-clickable" @click="openReasonDetail(row)">
                     <td>{{ row.ip }}</td>
                     <td class="mte-vulname" :title="row.vulName">{{ row.vulName }}</td>
                     <td><span class="mte-pill" :class="getMteStatusClass(row.status)">{{ row.status }}</span></td>
@@ -842,7 +870,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="row in mteFilteredData.high" :key="row.ip">
+                  <tr v-for="row in mteFilteredData.high" :key="row.ip" class="mte-row-clickable" @click="openReasonDetail(row)">
                     <td>{{ row.ip }}</td>
                     <td class="mte-vulname" :title="row.vulName">{{ row.vulName }}</td>
                     <td><span class="mte-pill" :class="getMteStatusClass(row.status)">{{ row.status }}</span></td>
@@ -884,7 +912,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="row in mteFilteredData.medium" :key="row.ip">
+                  <tr v-for="row in mteFilteredData.medium" :key="row.ip" class="mte-row-clickable" @click="openReasonDetail(row)">
                     <td>{{ row.ip }}</td>
                     <td class="mte-vulname" :title="row.vulName">{{ row.vulName }}</td>
                     <td><span class="mte-pill" :class="getMteStatusClass(row.status)">{{ row.status }}</span></td>
@@ -926,7 +954,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="row in mteFilteredData.low" :key="row.ip">
+                  <tr v-for="row in mteFilteredData.low" :key="row.ip" class="mte-row-clickable" @click="openReasonDetail(row)">
                     <td>{{ row.ip }}</td>
                     <td class="mte-vulname" :title="row.vulName">{{ row.vulName }}</td>
                     <td><span class="mte-pill" :class="getMteStatusClass(row.status)">{{ row.status }}</span></td>
@@ -1089,6 +1117,10 @@ export default {
       modalReason: '',
       riskUpdating: false,
       showMitigationExtensionModal: false,
+      showReasonDetailModal: false,
+      selectedReasonText: '',
+      selectedAdminComment: '',
+      selectedReasonStatus: '',
       mteOpenSections: {
         critical: false,
         high: false,
@@ -2048,6 +2080,9 @@ export default {
           : (item.date ? String(item.date).split('T')[0] : '—'),
         ext: item.extension_days ? `${item.extension_days} Days` : (item.ext || '—'),
         reason: item.reason || '—',
+        adminComment: item.admin_comment || item.review_comment || item.reviewer_comment ||
+          item.admin_remarks || item.admin_remark || item.decision_comment || item.status_comment ||
+          item.admin_reason || '',
         team: item.team || item.team_name || item.assigned_team || item.requested_by || item.by || '',
       });
 
@@ -2087,6 +2122,15 @@ export default {
     },
     closeMitigationExtensionModal() { this.showMitigationExtensionModal = false; this.mteOpenSections = { critical: false, high: false, medium: false, low: false }; },
     toggleMteSection(sec) { this.mteOpenSections[sec] = !this.mteOpenSections[sec]; },
+    openReasonDetail(row) {
+      this.selectedReasonText = row?.reason || '';
+      this.selectedAdminComment = row?.adminComment || '';
+      this.selectedReasonStatus = row?.status || '';
+      this.showReasonDetailModal = true;
+    },
+    closeReasonDetail() {
+      this.showReasonDetailModal = false;
+    },
     async openMsuModal() {
       this.showMsuModal = true;
       // Fetch user vuln register to get closed status (use cache)
@@ -2142,8 +2186,18 @@ export default {
     },
     liveRefreshPage(opts = {}) {
       const source = opts?.source || "mutation";
+      // Mitigation Timeline Extension modal has its own data (report rows
+      // with reason/admin comment) that runLiveDashboardSync()/loadMteExtensionData()
+      // don't touch — refresh it directly so an open modal stays live
+      // instead of needing a manual reopen or page refresh.
+      if (this.showMitigationExtensionModal) {
+        this.loadMteReportData();
+      }
       if (source === "poll") {
-        return this.refreshInProcessCount();
+        return Promise.all([
+          this.refreshInProcessCount(),
+          this.loadMteExtensionData(),
+        ]);
       }
       return this.runLiveDashboardSync(true);
     },
@@ -3397,10 +3451,75 @@ export default {
 .cv-pill-closed  { background: #dcfce7; color: #16a34a; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
 .cv-pill-default { background: #f1f5f9; color: #64748b; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
 .mte-extension { font-weight: 800; color: #1e293b !important; }
+.mte-row-clickable { cursor: pointer; }
+.mte-row-clickable:hover { background: #f8fafc; }
 .mte-reason {
   max-width: 170px; white-space: nowrap; overflow: hidden;
   text-overflow: ellipsis; cursor: pointer; color: #475569;
   font-weight: 600; position: relative;
+}
+.reason-detail-overlay-inner {
+  position: absolute;
+  inset: 0;
+  z-index: 999;
+  background: rgba(15, 23, 42, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+}
+.reason-detail-box {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(15,23,42,0.18);
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  z-index: 1000;
+}
+.reason-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+.reason-detail-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+}
+.reason-detail-body {
+  padding: 18px 20px;
+}
+.reason-detail-text {
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.6;
+  margin: 0;
+}
+.reason-detail-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+.reason-detail-admin-comment {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.reason-detail-footer {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 14px 20px 18px;
+  border-top: 1px solid #e5e7eb;
 }
 .mte-modal-footer {
   display: flex;
@@ -3653,19 +3772,19 @@ export default {
   border: none;
 }
 .sr-modal-header {
-  background: #f8f9fc;
-  border-bottom: 1px solid #e2e8f0;
+  background: #241447;
+  border-bottom: none;
   padding: 16px 20px;
 }
 .in-process-modal-title {
-  color: #1f2937;
+  color: #ffffff;
   font-weight: 800;
   margin: 0;
   display: flex;
   align-items: center;
 }
 .in-process-modal-icon {
-  color: #241447;
+  color: #ffffff;
 }
 .in-process-item-row {
   display: flex;

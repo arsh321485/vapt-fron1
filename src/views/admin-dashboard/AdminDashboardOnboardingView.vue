@@ -274,7 +274,7 @@
                       <h5 class="modal-title sr-modal-title in-process-modal-title">
                         <i class="bi bi-hourglass-split me-2 in-process-modal-icon"></i>Mitigation in progress
                       </h5>
-                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter: brightness(0);"></button>
+                      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body p-4" style="max-height:400px; overflow-y:auto;">
                       <div v-if="!inProcessItems.length" class="text-muted small">No in-process vulnerabilities.</div>
@@ -284,7 +284,7 @@
                             <div class="in-process-vuln-name" :title="item.vulnerability_name">{{ item.vulnerability_name }}</div>
                             <div class="in-process-asset">Asset: {{ item.asset }}</div>
                           </div>
-                          <button class="in-process-action-btn in-process-view-btn" @click="goToInProcessTimeline(item)">Fix now</button>
+                          <button class="in-process-action-btn in-process-view-btn" @click="goToInProcessTimeline(item)">View now</button>
                         </div>
                       </div>
                     </div>
@@ -1101,14 +1101,14 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="row in mteFilteredData.critical" :key="row.ip">
+                  <tr v-for="row in mteFilteredData.critical" :key="row.ip" class="mte-row-clickable" @click="openReasonDetail($event, row.reason, row.request_id)">
                     <td>{{ row.ip }}</td>
                     <td class="mte-vulname" :title="row.vulName">{{ row.vulName }}</td>
                     <td><span class="mte-pill" :class="getMteStatusClass(row.status)">{{ row.status }}</span></td>
                     <td>{{ row.by }}</td>
                     <td>{{ row.date }}</td>
                     <td class="mte-extension">{{ row.ext }}</td>
-                    <td class="mte-reason" :title="row.reason" @click="openReasonDetail($event, row.reason, row.request_id)">{{ truncateReason(row.reason) }}</td>
+                    <td class="mte-reason" :title="row.reason">{{ truncateReason(row.reason) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -1143,14 +1143,14 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="row in mteFilteredData.high" :key="row.ip">
+                  <tr v-for="row in mteFilteredData.high" :key="row.ip" class="mte-row-clickable" @click="openReasonDetail($event, row.reason, row.request_id)">
                     <td>{{ row.ip }}</td>
                     <td class="mte-vulname" :title="row.vulName">{{ row.vulName }}</td>
                     <td><span class="mte-pill" :class="getMteStatusClass(row.status)">{{ row.status }}</span></td>
                     <td>{{ row.by }}</td>
                     <td>{{ row.date }}</td>
                     <td class="mte-extension">{{ row.ext }}</td>
-                    <td class="mte-reason" :title="row.reason" @click="openReasonDetail($event, row.reason, row.request_id)">{{ truncateReason(row.reason) }}</td>
+                    <td class="mte-reason" :title="row.reason">{{ truncateReason(row.reason) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -1185,14 +1185,14 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="row in mteFilteredData.medium" :key="row.ip">
+                  <tr v-for="row in mteFilteredData.medium" :key="row.ip" class="mte-row-clickable" @click="openReasonDetail($event, row.reason, row.request_id)">
                     <td>{{ row.ip }}</td>
                     <td class="mte-vulname" :title="row.vulName">{{ row.vulName }}</td>
                     <td><span class="mte-pill" :class="getMteStatusClass(row.status)">{{ row.status }}</span></td>
                     <td>{{ row.by }}</td>
                     <td>{{ row.date }}</td>
                     <td class="mte-extension">{{ row.ext }}</td>
-                    <td class="mte-reason" :title="row.reason" @click="openReasonDetail($event, row.reason, row.request_id)">{{ truncateReason(row.reason) }}</td>
+                    <td class="mte-reason" :title="row.reason">{{ truncateReason(row.reason) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -1227,14 +1227,14 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="row in mteFilteredData.low" :key="row.ip">
+                  <tr v-for="row in mteFilteredData.low" :key="row.ip" class="mte-row-clickable" @click="openReasonDetail($event, row.reason, row.request_id)">
                     <td>{{ row.ip }}</td>
                     <td class="mte-vulname" :title="row.vulName">{{ row.vulName }}</td>
                     <td><span class="mte-pill" :class="getMteStatusClass(row.status)">{{ row.status }}</span></td>
                     <td>{{ row.by }}</td>
                     <td>{{ row.date }}</td>
                     <td class="mte-extension">{{ row.ext }}</td>
-                    <td class="mte-reason" :title="row.reason" @click="openReasonDetail($event, row.reason, row.request_id)">{{ truncateReason(row.reason) }}</td>
+                    <td class="mte-reason" :title="row.reason">{{ truncateReason(row.reason) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -2865,8 +2865,18 @@ export default {
     },
     liveRefreshPage(opts = {}) {
       const source = opts?.source || "mutation";
+      // Mitigation Timeline Extension modal has its own data (report rows
+      // with reason/admin comment) that loadDashboardData()/loadAdminMteData()
+      // don't touch — refresh it directly so an open modal stays live
+      // instead of needing a manual reopen or page refresh.
+      if (this.showMitigationExtensionModal) {
+        this.loadAdminMteReportData();
+      }
       if (source === "poll") {
-        return this.refreshInProcessCount();
+        return Promise.all([
+          this.refreshInProcessCount(),
+          this.loadAdminMteData(),
+        ]);
       }
       return this.loadDashboardData();
     },
@@ -3849,6 +3859,8 @@ mounted() {
 .mte-pill.sev { background: #f8dede; color: #b42318; }
 .mte-pill.status { background: #e5e7eb; color: #374151; }
 .mte-extension { font-weight: 800; color: #1e293b !important; }
+.mte-row-clickable { cursor: pointer; }
+.mte-row-clickable:hover { background: #f8fafc; }
 .mte-reason {
   max-width: 170px;
   white-space: nowrap;
@@ -5012,11 +5024,11 @@ mounted() {
   justify-content: flex-end;
 }
 .in-process-modal-title {
-  color: #1f2937;
+  color: #ffffff;
   font-weight: 800;
 }
 .in-process-modal-icon {
-  color: #241447;
+  color: #ffffff;
 }
 .in-process-action-btn {
   border: none;

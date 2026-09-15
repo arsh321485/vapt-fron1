@@ -619,7 +619,7 @@
                           <p class="sr-vul-name mb-0" :title="req.vul_name">{{ req.vul_name }}</p>
                         </div>
                         <button class="btn-view-requests" data-bs-toggle="modal" data-bs-target="#userSupportRequestModal"
-                          @click="selectedSupportRequest = req">
+                          @click="selectedSupportRequest = req; supportReplyText = ''">
                           <i class="bi bi-eye me-1"></i>View raised requests
                         </button>
                       </div>
@@ -670,6 +670,37 @@
                                 <p class="mb-0 text-muted" style="font-size:12px;">Date</p>
                                 <p class="mb-0 fw-semibold" style="font-size:14px;">{{ formatRequestDate(selectedSupportRequest.requested_at) }}</p>
                               </div>
+                            </div>
+
+                            <p class="sr-section-label mb-2 mt-4">Messages</p>
+                            <div v-if="supportRequestMessages(selectedSupportRequest).length" class="sr-message-thread">
+                              <div
+                                v-for="(m, mi) in supportRequestMessages(selectedSupportRequest)"
+                                :key="mi"
+                                class="sr-message-row"
+                                :class="{ 'sr-message-row-admin': supportMessageIsAdmin(m) }"
+                              >
+                                <span class="sr-message-sender">{{ supportMessageIsAdmin(m) ? 'Admin' : 'You' }}</span>
+                                <p class="sr-message-text mb-0">{{ supportMessageText(m) }}</p>
+                              </div>
+                            </div>
+                            <p v-else class="text-muted small mb-2">No messages yet.</p>
+                            <div class="d-flex gap-2 mt-2">
+                              <textarea
+                                v-model="supportReplyText"
+                                class="sr-textarea sr-reply-textarea"
+                                rows="2"
+                                placeholder="Type a message for the admin..."
+                              ></textarea>
+                              <button
+                                type="button"
+                                class="sr-btn-send"
+                                :disabled="!supportReplyText.trim() || sendingSupportReply"
+                                @click="sendSupportReply"
+                              >
+                                <span v-if="sendingSupportReply" class="spinner-border spinner-border-sm"></span>
+                                <span v-else>Send</span>
+                              </button>
                             </div>
                           </div>
                           <div class="modal-footer sr-modal-footer">
@@ -1024,6 +1055,8 @@ export default {
       loadingSupportRequests: false,
       supportRequestCount: 0,
       selectedSupportRequest: null,
+      supportReplyText: '',
+      sendingSupportReply: false,
       expandedDescriptions: {},
       descriptionPreviewLimit: 280,
       expandedVulnIndex: null,
@@ -1724,6 +1757,42 @@ class TLSConfigurator:
       } else {
         this.supportRequests = [];
         this.supportRequestCount = 0;
+      }
+    },
+    supportRequestMessages(req) {
+      const list = req?.messages || req?.replies || req?.thread || req?.conversation || [];
+      return Array.isArray(list) ? list : [];
+    },
+    supportMessageText(m) {
+      return m?.text || m?.message || m?.body || '';
+    },
+    supportMessageIsAdmin(m) {
+      const role = String(m?.sender_type || m?.role || m?.author_type || m?.sender || '').toLowerCase();
+      if (role) return role.includes('admin');
+      return !!m?.is_admin;
+    },
+    async sendSupportReply() {
+      const req = this.selectedSupportRequest;
+      const text = this.supportReplyText.trim();
+      if (!req || !text || this.sendingSupportReply) return;
+      const requestId = req._id || req.id;
+      const reportId = String(this.authStore.userLatestReportId || '').trim();
+      if (!requestId || !reportId) return;
+      this.sendingSupportReply = true;
+      const res = await this.authStore.sendUserSupportMessage(reportId, requestId, text);
+      this.sendingSupportReply = false;
+      if (!res.status) return;
+      // Optimistic append so the reply shows immediately even if the list
+      // refresh below lands the thread under a differently-named field.
+      const optimisticMsg = { text, sender_type: 'user', created_at: new Date().toISOString() };
+      req.messages = [...this.supportRequestMessages(req), optimisticMsg];
+      this.supportReplyText = '';
+      await this.loadSupportRequestsByHost(this.activeIndex);
+      const refreshed = this.supportRequests.find((r) => (r._id || r.id) === requestId);
+      if (refreshed) {
+        const already = this.supportRequestMessages(refreshed).some((m) => this.supportMessageText(m) === text);
+        if (!already) refreshed.messages = [...this.supportRequestMessages(refreshed), optimisticMsg];
+        this.selectedSupportRequest = refreshed;
       }
     },
     formatRequestDate(dateStr) {
@@ -3495,6 +3564,55 @@ class TLSConfigurator:
   resize: none;
   outline: none;
 }
+
+.sr-message-thread {
+  max-height: 160px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.sr-message-row {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+.sr-message-row-admin {
+  background: #eef8f8;
+  border-color: rgba(15, 105, 110, 0.18);
+}
+.sr-message-sender {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  margin-bottom: 2px;
+}
+.sr-message-row-admin .sr-message-sender { color: #0f696e; }
+.sr-message-text {
+  font-size: 0.8rem;
+  color: #374151;
+}
+.sr-reply-textarea {
+  flex: 1;
+}
+.sr-btn-send {
+  background: #241447;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.sr-btn-send:hover { background: #1a0f35; }
+.sr-btn-send:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .sr-modal-footer {
   padding: 14px 24px;

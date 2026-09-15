@@ -640,6 +640,37 @@
                             <p class="sr-section-label mb-2">Description</p>
                             <textarea class="sr-textarea" rows="4"
                               :value="selectedSupportRequest?.description || ''" readonly></textarea>
+
+                            <p class="sr-section-label mb-2 mt-4">Messages</p>
+                            <div v-if="supportRequestMessages(selectedSupportRequest).length" class="sr-message-thread">
+                              <div
+                                v-for="(m, mi) in supportRequestMessages(selectedSupportRequest)"
+                                :key="mi"
+                                class="sr-message-row"
+                                :class="{ 'sr-message-row-admin': supportMessageIsAdmin(m) }"
+                              >
+                                <span class="sr-message-sender">{{ supportMessageIsAdmin(m) ? 'Admin' : 'User' }}</span>
+                                <p class="sr-message-text mb-0">{{ supportMessageText(m) }}</p>
+                              </div>
+                            </div>
+                            <p v-else class="text-muted small mb-2">No messages yet.</p>
+                            <div class="d-flex gap-2 mt-2">
+                              <textarea
+                                v-model="supportReplyText"
+                                class="sr-textarea sr-reply-textarea"
+                                rows="2"
+                                placeholder="Type a reason / reply for the user..."
+                              ></textarea>
+                              <button
+                                type="button"
+                                class="sr-btn-send"
+                                :disabled="!supportReplyText.trim() || sendingSupportReply"
+                                @click="sendSupportReply"
+                              >
+                                <span v-if="sendingSupportReply" class="spinner-border spinner-border-sm"></span>
+                                <span v-else>Send</span>
+                              </button>
+                            </div>
                           </div>
                           <div class="modal-footer sr-modal-footer">
                             <button type="button" class="sr-btn-close" data-bs-dismiss="modal">Close</button>
@@ -800,6 +831,8 @@ export default {
       supportRequestCount: 0,
       loadingSupportRequests: false,
       selectedSupportRequest: null,
+      supportReplyText: '',
+      sendingSupportReply: false,
       activeIndex: null,
       selectedSeverity: "all",
       ipAddress: "",
@@ -1936,6 +1969,45 @@ class TLSConfigurator:
     },
     openSupportRequestModal(req) {
       this.selectedSupportRequest = req;
+      this.supportReplyText = '';
+    },
+    supportRequestMessages(req) {
+      const list = req?.messages || req?.replies || req?.thread || req?.conversation || [];
+      return Array.isArray(list) ? list : [];
+    },
+    supportMessageText(m) {
+      return m?.text || m?.message || m?.body || '';
+    },
+    supportMessageIsAdmin(m) {
+      const role = String(m?.sender_type || m?.role || m?.author_type || m?.sender || '').toLowerCase();
+      if (role) return role.includes('admin');
+      return !!m?.is_admin;
+    },
+    async sendSupportReply() {
+      const req = this.selectedSupportRequest;
+      const text = this.supportReplyText.trim();
+      if (!req || !text || this.sendingSupportReply) return;
+      const requestId = req._id || req.id;
+      const reportId = String(this.authStore.latestReportId || '').trim();
+      if (!requestId || !reportId) return;
+      this.sendingSupportReply = true;
+      const res = await this.authStore.sendAdminSupportMessage(reportId, requestId, text, 'public');
+      this.sendingSupportReply = false;
+      if (!res.status) return;
+      // Optimistic append so the reply shows immediately even if the list
+      // refresh below lands the thread under a differently-named field.
+      const optimisticMsg = { text, sender_type: 'admin', created_at: new Date().toISOString() };
+      req.messages = [...this.supportRequestMessages(req), optimisticMsg];
+      this.supportReplyText = '';
+      await this.refreshSupportRequestsForHost(this.activeIndex, this.assetFetchSeq);
+      const refreshed = this.supportRequestsByHost.find((r) => (r._id || r.id) === requestId);
+      if (refreshed) {
+        // Keep the just-sent reply visible even if the backend's thread
+        // field wasn't the one we guessed, or hasn't caught up yet.
+        const already = this.supportRequestMessages(refreshed).some((m) => this.supportMessageText(m) === text);
+        if (!already) refreshed.messages = [...this.supportRequestMessages(refreshed), optimisticMsg];
+        this.selectedSupportRequest = refreshed;
+      }
     },
     /**
      * The "raise support request" submit forms in this codebase post the
@@ -3349,6 +3421,55 @@ class TLSConfigurator:
   resize: none;
   outline: none;
 }
+
+.sr-message-thread {
+  max-height: 160px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.sr-message-row {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+.sr-message-row-admin {
+  background: #eef8f8;
+  border-color: rgba(15, 105, 110, 0.18);
+}
+.sr-message-sender {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  margin-bottom: 2px;
+}
+.sr-message-row-admin .sr-message-sender { color: #0f696e; }
+.sr-message-text {
+  font-size: 0.8rem;
+  color: #374151;
+}
+.sr-reply-textarea {
+  flex: 1;
+}
+.sr-btn-send {
+  background: #241447;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.sr-btn-send:hover { background: #1a0f35; }
+.sr-btn-send:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .sr-modal-footer {
   padding: 14px 24px;

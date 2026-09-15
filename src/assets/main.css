@@ -2498,6 +2498,71 @@ body:has(.sr-view-modal.show) .modal-backdrop {
   outline: none;
 }
 
+.sr-message-thread {
+  max-height: 160px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.sr-message-row {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+
+.sr-message-row-admin {
+  background: #eef8f8;
+  border-color: rgba(15, 105, 110, 0.18);
+}
+
+.sr-message-sender {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  margin-bottom: 2px;
+}
+
+.sr-message-row-admin .sr-message-sender {
+  color: #0f696e;
+}
+
+.sr-message-text {
+  font-size: 0.8rem;
+  color: #374151;
+}
+
+.sr-reply-textarea {
+  flex: 1;
+}
+
+.sr-btn-send {
+  background: #241447;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.sr-btn-send:hover {
+  background: #1a0f35;
+}
+
+.sr-btn-send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .sr-modal-footer {
   padding: 14px 24px;
   border-top: 1px solid #f1f5f9;

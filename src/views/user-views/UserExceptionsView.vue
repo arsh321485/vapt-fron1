@@ -61,10 +61,7 @@
                 </button>
                 <select v-model="selectedTeam" class="st-select">
                   <option value="all">All Teams</option>
-                  <option value="Patch Management">Patch Management</option>
-                  <option value="Configuration Management">Configuration Management</option>
-                  <option value="Network Security">Network Security</option>
-                  <option value="Architectural Flaws">Architectural Flaws</option>
+                  <option v-for="team in assignedTeams" :key="`team-${team}`" :value="team">{{ team }}</option>
                 </select>
               </div>
               <span class="st-count-badge">{{ filteredRequests.length }} requests</span>
@@ -179,6 +176,7 @@ export default {
             sortOrder: 'desc',
             activeTab: 'all',
             selectedTeam: 'all',
+            assignedTeams: [],
             currentPage: 1,
             itemsPerPage: 6,
         };
@@ -252,6 +250,12 @@ export default {
         },
     },
     async mounted() {
+        try {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            this.assignedTeams = Array.isArray(user.Member_role) ? user.Member_role : [];
+        } catch {
+            this.assignedTeams = [];
+        }
         await this.loadSupportRequests();
         this.initTooltips();
     },

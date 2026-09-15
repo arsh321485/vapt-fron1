@@ -20,7 +20,7 @@
                 <div v-else-if="comingFromUpload" class="pricing-return-banner mb-4">
                   Select a plan to continue. Freemium can keep this file — extra assets stay locked until you upgrade.
                 </div>
-                <p v-if="freemiumLockedExtrasNotice" class="text-center text-muted mb-0" style="font-size:0.9rem;">
+                <p v-if="freemiumLockedExtrasNotice" class="text-center text-muted mt-2 mb-4" style="font-size:0.9rem; line-height:1.6;">
                   {{ freemiumLockedExtrasNotice }}
                 </p>
               </div>

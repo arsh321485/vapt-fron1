@@ -69,6 +69,7 @@
               :value="item._key"
               v-model="selectedVulnKeys"
               @click.stop
+              @change="onVulnCheckboxChange(item)"
             />
             <span class="asset-ip av-vuln-list-name">{{ item.vul_name }}</span>
           </div>
@@ -111,9 +112,20 @@
               v-for="assetIp in item.assets"
               :key="assetIp"
               class="av-nested-asset-row"
-              :class="{ 'av-nested-asset-active': selectedKey === item._key && selectedPanelAsset === assetIp }"
-              @click.stop="onNestedAssetClick(item, assetIp)"
+              :class="{
+                'av-nested-asset-active': selectedKey === item._key && selectedPanelAsset === assetIp,
+                'av-nested-asset-row--checkable': showCheckboxes || showHoldCheckboxes,
+              }"
+              @click.stop="(showCheckboxes || showHoldCheckboxes) ? toggleAssetSelection(item, assetIp) : onNestedAssetClick(item, assetIp)"
             >
+              <input
+                v-if="showCheckboxes || showHoldCheckboxes"
+                type="checkbox"
+                class="form-check-input flex-shrink-0 av-nested-asset-checkbox"
+                :checked="isAssetSelected(item, assetIp)"
+                title="Select this asset"
+                @click.stop="toggleAssetSelection(item, assetIp)"
+              />
               <i class="bi bi-hdd-network av-nested-ip-icon"></i>
               <span class="av-nested-ip">{{ assetIp }}</span>
               <span
@@ -683,6 +695,37 @@
               :value="selectedSupportRequest.description || ''"
               readonly
             ></textarea>
+
+            <p class="sr-section-label mb-2 mt-4">Messages</p>
+            <div v-if="supportRequestMessages(selectedSupportRequest).length" class="sr-message-thread">
+              <div
+                v-for="(m, mi) in supportRequestMessages(selectedSupportRequest)"
+                :key="mi"
+                class="sr-message-row"
+                :class="{ 'sr-message-row-admin': supportMessageIsAdmin(m) }"
+              >
+                <span class="sr-message-sender">{{ supportMessageIsAdmin(m) ? 'Admin' : 'User' }}</span>
+                <p class="sr-message-text mb-0">{{ supportMessageText(m) }}</p>
+              </div>
+            </div>
+            <p v-else class="text-muted small mb-2">No messages yet.</p>
+            <div class="d-flex gap-2 mt-2">
+              <textarea
+                v-model="supportReplyText"
+                class="sr-textarea sr-reply-textarea"
+                rows="2"
+                placeholder="Type a reason / reply for the user..."
+              ></textarea>
+              <button
+                type="button"
+                class="sr-btn-send"
+                :disabled="!supportReplyText.trim() || sendingSupportReply"
+                @click="sendSupportReply"
+              >
+                <span v-if="sendingSupportReply" class="spinner-border spinner-border-sm"></span>
+                <span v-else>Send</span>
+              </button>
+            </div>
           </div>
           <div class="modal-footer sr-modal-footer">
             <button type="button" class="sr-btn-close" data-bs-dismiss="modal">Close</button>
@@ -727,6 +770,37 @@
             </div>
             <p class="sr-section-label mb-2">Description</p>
             <textarea class="sr-textarea" rows="4" :value="selectedSupportRequest.description || ''" readonly></textarea>
+
+            <p class="sr-section-label mb-2 mt-4">Messages</p>
+            <div v-if="supportRequestMessages(selectedSupportRequest).length" class="sr-message-thread">
+              <div
+                v-for="(m, mi) in supportRequestMessages(selectedSupportRequest)"
+                :key="mi"
+                class="sr-message-row"
+                :class="{ 'sr-message-row-admin': supportMessageIsAdmin(m) }"
+              >
+                <span class="sr-message-sender">{{ supportMessageIsAdmin(m) ? 'Admin' : 'You' }}</span>
+                <p class="sr-message-text mb-0">{{ supportMessageText(m) }}</p>
+              </div>
+            </div>
+            <p v-else class="text-muted small mb-2">No messages yet.</p>
+            <div class="d-flex gap-2 mt-2">
+              <textarea
+                v-model="supportReplyText"
+                class="sr-textarea sr-reply-textarea"
+                rows="2"
+                placeholder="Type a message for the admin..."
+              ></textarea>
+              <button
+                type="button"
+                class="sr-btn-send"
+                :disabled="!supportReplyText.trim() || sendingSupportReply"
+                @click="sendSupportReply"
+              >
+                <span v-if="sendingSupportReply" class="spinner-border spinner-border-sm"></span>
+                <span v-else>Send</span>
+              </button>
+            </div>
           </div>
           <div class="modal-footer sr-modal-footer">
             <button type="button" class="sr-btn-close" data-bs-dismiss="modal">Close</button>
@@ -998,6 +1072,10 @@ export default {
       showHoldCheckboxes: false,
       showUnholdCheckboxes: false,
       selectedVulnKeys: [],
+      // Per-vuln explicit asset picks made via the nested-asset checkboxes,
+      // keyed by vuln._key. Absent/empty for a key means "all assets of
+      // this vuln" (the vuln-level checkbox default).
+      selectedAssetIpsByVulnKey: {},
       activeAction: '',
       heldAssets: [],
       showHeld: false,
@@ -1007,6 +1085,8 @@ export default {
       supportRequestCount: 0,
       loadingSupportRequests: false,
       selectedSupportRequest: null,
+      supportReplyText: '',
+      sendingSupportReply: false,
       showCodeModal: false,
       showPythonModal: false,
       vulnSrStep: null,
@@ -1597,6 +1677,44 @@ export default {
       if (fromVisible.length) return fromVisible;
       return this.activeGroupedVulns.filter((v) => keys.has(v._key));
     },
+    // Hosts a delete/hold action should apply to for this vuln: the
+    // explicitly checked assets if the user picked any via the nested
+    // checkboxes, otherwise every asset under the vuln (vuln-level pick).
+    getSelectedHostsForVuln(vuln) {
+      const picks = this.selectedAssetIpsByVulnKey[vuln._key];
+      const source = picks && picks.length ? picks : (vuln.assets || []);
+      return source.map((ip) => String(ip || '').trim()).filter(Boolean);
+    },
+    isAssetSelected(item, assetIp) {
+      const picks = this.selectedAssetIpsByVulnKey[item._key];
+      if (picks && picks.length) return picks.includes(assetIp);
+      return this.selectedVulnKeys.includes(item._key);
+    },
+    toggleAssetSelection(item, assetIp) {
+      const key = item._key;
+      const allIps = (item.assets || []).map((ip) => String(ip));
+      let picks = this.selectedAssetIpsByVulnKey[key];
+      picks = picks && picks.length ? [...picks] : (this.selectedVulnKeys.includes(key) ? [...allIps] : []);
+      if (picks.includes(assetIp)) {
+        picks = picks.filter((ip) => ip !== assetIp);
+      } else {
+        picks = [...picks, assetIp];
+      }
+      this.selectedAssetIpsByVulnKey = { ...this.selectedAssetIpsByVulnKey, [key]: picks };
+      if (picks.length) {
+        if (!this.selectedVulnKeys.includes(key)) this.selectedVulnKeys = [...this.selectedVulnKeys, key];
+      } else {
+        this.selectedVulnKeys = this.selectedVulnKeys.filter((k) => k !== key);
+      }
+    },
+    onVulnCheckboxChange(item) {
+      // Checking/unchecking the vuln-level box resets to "all assets" /
+      // "no assets" rather than leaving a stale partial pick behind.
+      if (!this.selectedAssetIpsByVulnKey[item._key]) return;
+      const next = { ...this.selectedAssetIpsByVulnKey };
+      delete next[item._key];
+      this.selectedAssetIpsByVulnKey = next;
+    },
     collectAssetIpsFromVulns(vulns) {
       const ips = new Set();
       vulns.forEach(v => {
@@ -1608,6 +1726,7 @@ export default {
     },
     clearVulnSelections() {
       this.selectedVulnKeys = [];
+      this.selectedAssetIpsByVulnKey = {};
       this.groupedVulns.forEach(v => { v.selected = false; });
     },
     getBootstrapModal() {
@@ -1631,6 +1750,8 @@ export default {
       this.activeAction = 'delete';
       if (!this.showCheckboxes) {
         this.selectedVulnKeys = this.selectedKey ? [this.selectedKey] : [];
+        this.selectedAssetIpsByVulnKey = {};
+        this.collapsedAssetLists = {};
         this.showCheckboxes = true;
         return;
       }
@@ -1650,19 +1771,21 @@ export default {
         this.cancelDelete();
         return;
       }
+      const affectedHosts = [];
       for (const vuln of selected) {
         const pluginName = String(vuln.vul_name || vuln.plugin_name || '').trim();
-        const hosts = (vuln.assets || []).map((ip) => String(ip || '').trim()).filter(Boolean);
+        const hosts = this.getSelectedHostsForVuln(vuln);
         if (!pluginName || !hosts.length) continue;
         if (this.isUser) {
           await this.authStore.deleteUserVulnerabilityAssets(pluginName, hosts);
         } else {
           await this.authStore.deleteVulnerabilityAssets(pluginName, hosts);
         }
+        affectedHosts.push(...hosts);
       }
       await this.reloadAfterAssetActions();
       this.$emit('vuln-assets-deleted', {
-        hostNames: selected.flatMap((v) => v.assets || []),
+        hostNames: affectedHosts,
       });
       this.showCheckboxes = false;
       this.resetActions();
@@ -1678,6 +1801,8 @@ export default {
         return;
       }
       this.selectedVulnKeys = this.selectedKey ? [this.selectedKey] : [];
+      this.selectedAssetIpsByVulnKey = {};
+      this.collapsedAssetLists = {};
       this.showHoldCheckboxes = true;
     },
     cancelHold() {
@@ -1695,7 +1820,7 @@ export default {
       const optimistic = [];
       for (const vuln of selected) {
         const pluginName = String(vuln.vul_name || vuln.plugin_name || '').trim();
-        const hosts = (vuln.assets || []).map((ip) => String(ip || '').trim()).filter(Boolean);
+        const hosts = this.getSelectedHostsForVuln(vuln);
         if (!pluginName || !hosts.length) continue;
         const res = this.isUser
           ? await this.authStore.holdUserVulnerabilityAssets(pluginName, hosts)
@@ -2092,6 +2217,45 @@ export default {
     },
     openSupportRequestModal(req) {
       this.selectedSupportRequest = req;
+      this.supportReplyText = '';
+    },
+    supportRequestMessages(req) {
+      const list = req?.messages || req?.replies || req?.thread || req?.conversation || [];
+      return Array.isArray(list) ? list : [];
+    },
+    supportMessageText(m) {
+      return m?.text || m?.message || m?.body || '';
+    },
+    supportMessageIsAdmin(m) {
+      const role = String(m?.sender_type || m?.role || m?.author_type || m?.sender || '').toLowerCase();
+      if (role) return role.includes('admin');
+      return !!m?.is_admin;
+    },
+    async sendSupportReply() {
+      const req = this.selectedSupportRequest;
+      const text = this.supportReplyText.trim();
+      if (!req || !text || this.sendingSupportReply) return;
+      const requestId = req._id || req.id;
+      const reportId = String((this.isUser ? this.authStore.userLatestReportId : this.authStore.latestReportId) || '').trim();
+      if (!requestId || !reportId) return;
+      this.sendingSupportReply = true;
+      const res = this.isUser
+        ? await this.authStore.sendUserSupportMessage(reportId, requestId, text)
+        : await this.authStore.sendAdminSupportMessage(reportId, requestId, text, 'public');
+      this.sendingSupportReply = false;
+      if (!res.status) return;
+      // Optimistic append so the reply shows immediately even if the list
+      // refresh below lands the thread under a differently-named field.
+      const optimisticMsg = { text, sender_type: this.isUser ? 'user' : 'admin', created_at: new Date().toISOString() };
+      req.messages = [...this.supportRequestMessages(req), optimisticMsg];
+      this.supportReplyText = '';
+      await this.refreshSupportRequestsForVuln();
+      const refreshed = this.supportRequestsForVuln.find((r) => (r._id || r.id) === requestId);
+      if (refreshed) {
+        const already = this.supportRequestMessages(refreshed).some((m) => this.supportMessageText(m) === text);
+        if (!already) refreshed.messages = [...this.supportRequestMessages(refreshed), optimisticMsg];
+        this.selectedSupportRequest = refreshed;
+      }
     },
     async refreshSupportRequestsForVuln() {
       const vuln = this.selectedVuln;
@@ -4322,6 +4486,9 @@ export default {
   font-weight: 600;
   color: #0f696e;
 }
+
+.av-nested-asset-row--checkable { cursor: pointer; }
+.av-nested-asset-checkbox { margin: 0; cursor: pointer; }
 
 .av-nested-ip-icon { font-size: 0.7rem; color: #94a3b8; flex-shrink: 0; }
 .av-nested-ip { font-size: 0.78rem; font-weight: 500; }
