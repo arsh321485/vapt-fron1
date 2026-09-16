@@ -619,15 +619,20 @@
                           <p class="sr-vul-name mb-0" :title="req.vul_name">{{ req.vul_name }}</p>
                         </div>
                         <button class="btn-view-requests" data-bs-toggle="modal" data-bs-target="#userSupportRequestModal"
-                          @click="selectedSupportRequest = req; supportReplyText = ''">
+                          @click="openSupportRequestModal(req)">
                           <i class="bi bi-eye me-1"></i>View raised requests
                         </button>
                       </div>
                     </div>
 
                     <!-- Support Request Detail Modal -->
+                    <!-- Teleported to body: the accordion panel this tab lives
+                         in sets isolation:isolate, which traps the modal's
+                         stacking context below the fixed header bar and clips
+                         its top edge behind the navbar. -->
+                    <Teleport to="body">
                     <div class="modal fade sr-view-modal" id="userSupportRequestModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="false">
-                      <div class="modal-dialog modal-dialog-centered">
+                      <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
                         <div class="modal-content sr-modal-content">
                           <div class="modal-header sr-modal-header">
                             <div>
@@ -709,6 +714,7 @@
                         </div>
                       </div>
                     </div>
+                    </Teleport>
                   </div>
 
                 </div>
@@ -1771,6 +1777,31 @@ class TLSConfigurator:
       if (role) return role.includes('admin');
       return !!m?.is_admin;
     },
+    openSupportRequestModal(req) {
+      this.selectedSupportRequest = req;
+      this.supportReplyText = '';
+      this.refreshSupportRequestThread(req);
+    },
+    // The host-scoped list doesn't reliably include the admin's replies, so
+    // pull the full thread from the report-scoped endpoint (same resource
+    // the reply POST uses) and merge it in — this is what makes admin
+    // replies show up on the user's side.
+    async refreshSupportRequestThread(req) {
+      if (!req) return;
+      const requestId = req._id || req.id;
+      const reportId = String(this.authStore.userLatestReportId || '').trim();
+      if (!requestId || !reportId) return;
+      const res = await this.authStore.fetchUserSupportRequestsByReport(reportId, true, this.authStore.userSelectedTeam);
+      if (!res.status || !Array.isArray(res.data)) return;
+      const matched = res.data.find((r) => (r._id || r.id) === requestId);
+      if (!matched) return;
+      const messages = this.supportRequestMessages(matched);
+      if (!messages.length) return;
+      req.messages = messages;
+      if ((this.selectedSupportRequest?._id || this.selectedSupportRequest?.id) === requestId) {
+        this.selectedSupportRequest = { ...this.selectedSupportRequest, messages };
+      }
+    },
     async sendSupportReply() {
       const req = this.selectedSupportRequest;
       const text = this.supportReplyText.trim();
@@ -1789,11 +1820,11 @@ class TLSConfigurator:
       this.supportReplyText = '';
       await this.loadSupportRequestsByHost(this.activeIndex);
       const refreshed = this.supportRequests.find((r) => (r._id || r.id) === requestId);
-      if (refreshed) {
-        const already = this.supportRequestMessages(refreshed).some((m) => this.supportMessageText(m) === text);
-        if (!already) refreshed.messages = [...this.supportRequestMessages(refreshed), optimisticMsg];
-        this.selectedSupportRequest = refreshed;
-      }
+      const target = refreshed || req;
+      await this.refreshSupportRequestThread(target);
+      const already = this.supportRequestMessages(target).some((m) => this.supportMessageText(m) === text);
+      if (!already) target.messages = [...this.supportRequestMessages(target), optimisticMsg];
+      this.selectedSupportRequest = target;
     },
     formatRequestDate(dateStr) {
       if (!dateStr) return '';
@@ -3507,12 +3538,21 @@ class TLSConfigurator:
   border-radius: 14px;
   overflow: hidden;
   border: none;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.sr-modal-content .modal-body {
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .sr-modal-header {
   background: #241447;
   border-bottom: none;
-  padding: 18px 24px;
+  padding: 32px 24px 18px;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;

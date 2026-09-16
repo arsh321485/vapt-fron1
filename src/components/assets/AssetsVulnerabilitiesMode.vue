@@ -660,8 +660,13 @@
     </div>
 
     <!-- Support request detail modals -->
+    <!-- Teleported to body: an ancestor accordion panel sets isolation:isolate,
+         which traps this modal's stacking context below the fixed header bar
+         (isolation creates a new stacking context even though position:fixed
+         escapes normal layout) and clips its top edge behind the navbar. -->
+    <Teleport to="body">
     <div class="modal fade sr-view-modal" id="avAdminSupportModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="false">
-      <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content sr-modal-content">
           <div class="modal-header sr-modal-header">
             <div>
@@ -733,9 +738,11 @@
         </div>
       </div>
     </div>
+    </Teleport>
 
+    <Teleport to="body">
     <div class="modal fade sr-view-modal" id="avUserSupportModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="false">
-      <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content sr-modal-content">
           <div class="modal-header sr-modal-header">
             <div>
@@ -808,6 +815,7 @@
         </div>
       </div>
     </div>
+    </Teleport>
 
     <!-- Code Modal -->
     <PythonInstallGuideModal
@@ -2218,6 +2226,30 @@ export default {
     openSupportRequestModal(req) {
       this.selectedSupportRequest = req;
       this.supportReplyText = '';
+      this.refreshSupportRequestThread(req);
+    },
+    // The host-scoped list used to populate supportRequestsForVuln doesn't
+    // reliably include the other side's replies, so pull the full thread
+    // from the report-scoped endpoint (same resource the reply POST uses)
+    // and merge it in — this is what makes admin replies show up for the
+    // user and vice versa.
+    async refreshSupportRequestThread(req) {
+      if (!req) return;
+      const requestId = req._id || req.id;
+      const reportId = String((this.isUser ? this.authStore.userLatestReportId : this.authStore.latestReportId) || '').trim();
+      if (!requestId || !reportId) return;
+      const res = this.isUser
+        ? await this.authStore.fetchUserSupportRequestsByReport(reportId, true, this.authStore.userSelectedTeam)
+        : await this.authStore.getSupportRequestsByReport(reportId, true);
+      if (!res.status || !Array.isArray(res.data)) return;
+      const matched = res.data.find((r) => (r._id || r.id) === requestId);
+      if (!matched) return;
+      const messages = this.supportRequestMessages(matched);
+      if (!messages.length) return;
+      req.messages = messages;
+      if ((this.selectedSupportRequest?._id || this.selectedSupportRequest?.id) === requestId) {
+        this.selectedSupportRequest = { ...this.selectedSupportRequest, messages };
+      }
     },
     supportRequestMessages(req) {
       const list = req?.messages || req?.replies || req?.thread || req?.conversation || [];
@@ -2251,11 +2283,11 @@ export default {
       this.supportReplyText = '';
       await this.refreshSupportRequestsForVuln();
       const refreshed = this.supportRequestsForVuln.find((r) => (r._id || r.id) === requestId);
-      if (refreshed) {
-        const already = this.supportRequestMessages(refreshed).some((m) => this.supportMessageText(m) === text);
-        if (!already) refreshed.messages = [...this.supportRequestMessages(refreshed), optimisticMsg];
-        this.selectedSupportRequest = refreshed;
-      }
+      const target = refreshed || req;
+      await this.refreshSupportRequestThread(target);
+      const already = this.supportRequestMessages(target).some((m) => this.supportMessageText(m) === text);
+      if (!already) target.messages = [...this.supportRequestMessages(target), optimisticMsg];
+      this.selectedSupportRequest = target;
     },
     async refreshSupportRequestsForVuln() {
       const vuln = this.selectedVuln;

@@ -470,7 +470,6 @@ import {
 import {
   persistTeamsDeepLink,
   extractTeamsDeepLink,
-  redirectToTeamsTabUrl,
   landOnTeamsAdminDashboardChannel,
   openTeamsOAuthPopup,
 } from '@/utils/teamsDeepLink';
@@ -1141,7 +1140,10 @@ export default {
     async startAdminTeamsLogin() {
       await this.syncAdminConnectionState();
       if (this.adminTeamsConnected) {
-        if (redirectToTeamsTabUrl()) return;
+        // "Teams connected" on Sign In must land on the website dashboard,
+        // same as the "Slack connected" button — not jump out to the Teams
+        // app/channel. (That channel deep link is still used elsewhere, for
+        // the initial "Get Started" connect flow.)
         await this.finishAdminOAuthSignIn();
         return;
       }

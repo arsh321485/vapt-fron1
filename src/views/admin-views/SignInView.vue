@@ -160,7 +160,6 @@ import { markAdminSetPasswordEmailIfNew, markPostLoginSuccess } from '@/utils/po
 import {
   extractTeamsDeepLink,
   persistTeamsDeepLink,
-  redirectToTeamsTabUrl,
   landOnTeamsAdminDashboardChannel,
   openTeamsOAuthPopup,
 } from '@/utils/teamsDeepLink'
@@ -282,7 +281,10 @@ export default {
         try {
           useAuthStore().setAdminLoginMethod('teams')
         } catch (_) { /* ignore */ }
-        if (redirectToTeamsTabUrl()) return
+        // "Teams connected" must land on the website dashboard, same as the
+        // "Slack connected" button — not jump out to the Teams app/channel.
+        // (That channel deep link is still used elsewhere, for the initial
+        // "Get Started" connect flow.)
         await this.finishOAuthSignIn()
         return
       }

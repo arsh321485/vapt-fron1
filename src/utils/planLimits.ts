@@ -868,10 +868,9 @@ export function localPremiumEstimate(assetCount, mode, billingCycle) {
 
 /**
  * Custom tier (>250 assets) local estimate, for display only while waiting
- * on the real amount from checkoutCustom()'s Stripe session. UNCONFIRMED
- * ASSUMPTION: same per-IP rate as Premium's Annual cycle ($1.25/IP/month,
- * billed as one annual charge — Custom is Annual-only per its own "Commitment"
- * note on this page) — adjust here if the backend prices Custom differently.
+ * on the real amount from checkoutCustom()'s Stripe session. Custom is
+ * Annual-only: $1.25/asset/month, billed as one annual charge of $15/asset
+ * (matches the backend's checkout/custom/ pricing exactly).
  */
 export function localCustomEstimate(assetCount) {
   const n = Number(assetCount) || 0;

@@ -20,7 +20,7 @@
                 <div v-else-if="comingFromUpload" class="pricing-return-banner mb-4">
                   Select a plan to continue. Freemium can keep this file — extra assets stay locked until you upgrade.
                 </div>
-                <p v-if="freemiumLockedExtrasNotice" class="text-center text-muted mt-2 mb-4" style="font-size:0.9rem; line-height:1.6;">
+                <p v-if="freemiumLockedExtrasNotice" class="text-center text-muted mx-auto mt-2 mb-4" style="font-size:0.95rem; line-height:1.6; max-width:600px;">
                   {{ freemiumLockedExtrasNotice }}
                 </p>
               </div>
@@ -326,6 +326,10 @@
                           class="form-control pricing-input"
                           placeholder="e.g. 300+"
                         />
+                        <p v-if="customAssetsTooLow" class="text-danger small mt-1 mb-0">
+                          250 or fewer assets — use the
+                          <a href="#" @click.prevent="selectPlan('premium')">Premium plan</a> instead.
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -526,6 +530,7 @@ import {
   formatUsd,
   getMySubscription,
   isBillingAuthError,
+  isCustomRequiresPremiumError,
   isScopeBlocksFreemiumError,
   submitCustomLead,
 } from '@/services/billingApi';
@@ -610,8 +615,8 @@ const PLAN_CONFIG = {
   custom: {
     id: 'custom',
     name: 'Custom',
-    priceLabel: '$1.25 / IP / year',
-    priceNote: 'for 250+ assets—pay by card via Stripe, same as Premium',
+    priceLabel: '$15 / IP / year',
+    priceNote: 'for 250+ assets · $1.25/IP/month billed annually, pay by card via Stripe',
     cta: 'Get Started',
     featured: false,
     featuresHeading: 'Everything in Premium, plus:',
@@ -786,7 +791,7 @@ export default {
       if (!count) return '';
       const extra = extraIpCount(count, planAssetLimit('freemium'));
       if (extra <= 0) return '';
-      return `This report has ${count} IPs. Freemium shows 5 now — ${extra} stay locked until you upgrade (no re-upload).`;
+      return `This report has ${count} IPs.`;
     },
     autoSelectNotice() {
       const count = this.detectedAssetCount;
@@ -831,8 +836,17 @@ export default {
         this.leadForm.name &&
         this.leadForm.email &&
         this.leadForm.company &&
-        this.leadForm.assets
+        this.leadForm.assets &&
+        !this.customAssetsTooLow
       );
+    },
+    // Custom only kicks in above Premium's 250-asset ceiling — checkoutCustom()
+    // 400s below that. Catch it here too so the button visibly disables and
+    // explains why, instead of only failing after a round trip to Stripe.
+    customAssetsTooLow() {
+      const n = Number(this.leadForm.assets);
+      if (!this.leadForm.assets || !Number.isFinite(n)) return false;
+      return n <= 250;
     },
     selectedCycle() {
       return this.billingCycles.find((c) => c.id === this.billingCycle) || this.billingCycles[2];
@@ -896,7 +910,7 @@ export default {
         if (this.premiumMode === 'testing') return '$20 / IP / year · testing included';
         return `${this.selectedCycle.rate} · Management`;
       }
-      if (this.selectedPlan === 'custom') return '$1.25 / IP / year · Management';
+      if (this.selectedPlan === 'custom') return '$15 / IP / year · Management';
       return 'Custom quote';
     },
     summaryTotal() {
@@ -919,7 +933,7 @@ export default {
         if (local?.amount_due && Number(local.amount_due) > 0) {
           return formatUsd(local.amount_due, local.currency || 'usd');
         }
-        return '$1.25 / IP / year';
+        return '$15 / IP / year';
       }
       return 'Contact sales';
     },
@@ -1704,8 +1718,9 @@ export default {
      * of only ever notifying sales. Still best-effort-notifies sales in the
      * background (non-blocking — a lead-notify failure must never stop a
      * real checkout) so the team still knows a Custom account paid.
-     * Relies on checkoutCustom() — see that function's comment: the backend
-     * endpoint it calls is unconfirmed/likely not built yet.
+     * Custom only kicks in above Premium's 250-asset ceiling — the backend
+     * 400s below that (see isCustomRequiresPremiumError), which is caught
+     * below and routes the admin to the Premium flow instead of a dead end.
      */
     async submitCustomCheckout() {
       if (!this.canContinueCustom) return;
@@ -1746,6 +1761,17 @@ export default {
           return;
         }
         this.checkoutError = message;
+        if (isCustomRequiresPremiumError(error)) {
+          await Swal.fire({
+            icon: 'info',
+            title: 'Use Premium instead',
+            text: message,
+            confirmButtonColor: '#241447',
+            confirmButtonText: 'Switch to Premium',
+          });
+          this.selectPlan('premium');
+          return;
+        }
         await Swal.fire({ icon: 'error', title: 'Checkout failed', text: message, confirmButtonColor: '#241447' });
       } finally {
         this.checkoutLoading = false;

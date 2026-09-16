@@ -213,13 +213,12 @@ export async function submitCustomLead(payload: {
   return res.data as { detail?: string };
 }
 
-// UNCONFIRMED WITH BACKEND — endpoint doesn't exist yet as of this writing.
-// Mirrors checkoutPremium()'s exact shape/convention for the >250-asset
-// Custom tier, so a paid Custom admin flows through the exact same
-// hasPaidPlan()/subscription-status machinery Premium already uses (no new
-// frontend routing needed once this exists — see the backend prompt this
-// was written alongside). Fails safely: a wrong/missing endpoint here just
-// surfaces "Checkout failed" and creates no Stripe session — no money moves.
+// Custom tier (>250 assets, Annual-only, $1.25/asset/month → $15/asset/year,
+// uncapped) checkout — mirrors checkoutPremium()'s exact shape/convention so
+// a paid Custom admin flows through the exact same hasPaidPlan()/
+// subscription-status machinery Premium already uses. amount_due in the
+// response is asset_count * 15 (the API-authoritative total — always prefer
+// it over any locally-computed estimate once it arrives).
 export async function checkoutCustom(payload: { asset_count: number }) {
   const res = await endpoint.post(`${BILLING_BASE}/checkout/custom/`, {
     asset_count: payload.asset_count,
@@ -229,6 +228,22 @@ export async function checkoutCustom(payload: { asset_count: number }) {
     session_id: string;
     amount_due: string;
   };
+}
+
+/**
+ * Custom checkout blocks asset_count <= 250 (400 on checkout/custom/) with
+ * `{ detail: "250 or fewer assets — use the Premium plan instead.", asset_count }`
+ * — this tier only kicks in above Premium's 250-asset ceiling. Detect it so
+ * the caller can route the admin to the Premium flow instead of just
+ * surfacing a dead-end error.
+ */
+export function isCustomRequiresPremiumError(error: unknown): boolean {
+  const err = error as { response?: { status?: number; data?: Record<string, unknown> } };
+  if (Number(err?.response?.status) !== 400) return false;
+  const data = err.response?.data;
+  if (data && typeof data === "object" && "asset_count" in data) return true;
+  const text = billingErrorMessage(error, "").toLowerCase();
+  return text.includes("premium") && /250/.test(text);
 }
 
 export interface CheckoutConfirmResponse extends BillingAssetBreakdown {

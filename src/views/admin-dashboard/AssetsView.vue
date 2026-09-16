@@ -613,8 +613,13 @@
                     </div>
 
                     <!-- View Requests Modal -->
+                    <!-- Teleported to body: the accordion panel this tab lives
+                         in sets isolation:isolate, which traps the modal's
+                         stacking context below the fixed header bar and clips
+                         its top edge behind the navbar. -->
+                    <Teleport to="body">
                     <div class="modal fade sr-view-modal" id="viewRequestsModal" tabindex="-1" aria-labelledby="viewRequestsModalLabel" aria-hidden="true" data-bs-backdrop="false">
-                      <div class="modal-dialog modal-dialog-centered">
+                      <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
                         <div class="modal-content sr-modal-content">
                           <div class="modal-header sr-modal-header">
                             <div>
@@ -678,6 +683,7 @@
                         </div>
                       </div>
                     </div>
+                    </Teleport>
                   </div>
 
                   <!-- Related Tab -->
@@ -1970,6 +1976,27 @@ class TLSConfigurator:
     openSupportRequestModal(req) {
       this.selectedSupportRequest = req;
       this.supportReplyText = '';
+      this.refreshSupportRequestThread(req);
+    },
+    // The host-scoped list doesn't reliably include the user's replies, so
+    // pull the full thread from the report-scoped endpoint (same resource
+    // the reply POST uses) and merge it in — this is what makes user
+    // replies show up on the admin's side.
+    async refreshSupportRequestThread(req) {
+      if (!req) return;
+      const requestId = req._id || req.id;
+      const reportId = String(this.authStore.latestReportId || '').trim();
+      if (!requestId || !reportId) return;
+      const res = await this.authStore.getSupportRequestsByReport(reportId, true);
+      if (!res.status || !Array.isArray(res.data)) return;
+      const matched = res.data.find((r) => (r._id || r.id) === requestId);
+      if (!matched) return;
+      const messages = this.supportRequestMessages(matched);
+      if (!messages.length) return;
+      req.messages = messages;
+      if ((this.selectedSupportRequest?._id || this.selectedSupportRequest?.id) === requestId) {
+        this.selectedSupportRequest = { ...this.selectedSupportRequest, messages };
+      }
     },
     supportRequestMessages(req) {
       const list = req?.messages || req?.replies || req?.thread || req?.conversation || [];
@@ -2001,13 +2028,13 @@ class TLSConfigurator:
       this.supportReplyText = '';
       await this.refreshSupportRequestsForHost(this.activeIndex, this.assetFetchSeq);
       const refreshed = this.supportRequestsByHost.find((r) => (r._id || r.id) === requestId);
-      if (refreshed) {
-        // Keep the just-sent reply visible even if the backend's thread
-        // field wasn't the one we guessed, or hasn't caught up yet.
-        const already = this.supportRequestMessages(refreshed).some((m) => this.supportMessageText(m) === text);
-        if (!already) refreshed.messages = [...this.supportRequestMessages(refreshed), optimisticMsg];
-        this.selectedSupportRequest = refreshed;
-      }
+      const target = refreshed || req;
+      await this.refreshSupportRequestThread(target);
+      // Keep the just-sent reply visible even if the backend's thread
+      // field wasn't the one we guessed, or hasn't caught up yet.
+      const already = this.supportRequestMessages(target).some((m) => this.supportMessageText(m) === text);
+      if (!already) target.messages = [...this.supportRequestMessages(target), optimisticMsg];
+      this.selectedSupportRequest = target;
     },
     /**
      * The "raise support request" submit forms in this codebase post the
@@ -3364,12 +3391,21 @@ class TLSConfigurator:
   border-radius: 14px;
   overflow: hidden;
   border: none;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.sr-modal-content .modal-body {
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .sr-modal-header {
   background: #241447;
   border-bottom: none;
-  padding: 18px 24px;
+  padding: 32px 24px 18px;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
