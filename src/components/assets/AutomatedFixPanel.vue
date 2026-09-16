@@ -119,6 +119,7 @@
 
           <div v-if="isUser" class="ai-download-actions">
             <button
+              v-if="aiCard.fix_script"
               type="button"
               class="ai-download-btn"
               :disabled="!!aiDownloading"
@@ -128,6 +129,7 @@
               <i v-else class="bi bi-download me-1"></i> Download Fix Script
             </button>
             <button
+              v-if="aiCard.verify_script"
               type="button"
               class="ai-download-btn ai-download-btn--verify"
               :disabled="!!aiDownloading"
