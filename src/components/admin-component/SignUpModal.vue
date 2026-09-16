@@ -864,10 +864,18 @@ export default {
     },
     hasActiveAuthSession() {
       const authStore = useAuthStore();
+      // The Teams/Slack member-login popup runs in its own window, so it can
+      // only leave the session behind in localStorage (shared cross-tab),
+      // never in this tab's own sessionStorage. setAuth() always writes both
+      // — checking only sessionStorage here made "<Platform> connected" look
+      // for a session that could never be found outside the original popup,
+      // forcing a full re-auth on every click even right after a real login.
       return !!(
         sessionStorage.getItem('authorization') ||
+        localStorage.getItem('authorization') ||
         authStore.authenticated ||
-        sessionStorage.getItem('authenticated') === 'true'
+        sessionStorage.getItem('authenticated') === 'true' ||
+        localStorage.getItem('authenticated') === 'true'
       );
     },
     getSessionUser() {

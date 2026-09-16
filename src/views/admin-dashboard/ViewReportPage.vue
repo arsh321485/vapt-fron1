@@ -348,12 +348,18 @@ export default {
       };
     },
     openFindings() {
-      const apiOpen = this.teamCardConfigs.reduce((sum, cfg) => sum + ((this.teamDetail[cfg.name] || {}).open || 0), 0);
+      // Sum every team bucket teamDetail actually has — not just the 4 named
+      // teams in teamCardConfigs. A finding with no matching team (e.g.
+      // "Unassigned") still gets its own teamDetail entry (see the fetch
+      // logic below) but was silently dropped from this total before,
+      // undercounting Open/Closed whenever severities landed outside the
+      // 4 curated teams.
+      const apiOpen = Object.values(this.teamDetail).reduce((sum, t) => sum + (t.open || 0), 0);
       if (apiOpen > 0) return apiOpen;
       return this.tableData.filter(v => String(v.status).toLowerCase() === 'open').length;
     },
     closedFindings() {
-      const apiClosed = this.teamCardConfigs.reduce((sum, cfg) => sum + ((this.teamDetail[cfg.name] || {}).closed || 0), 0);
+      const apiClosed = Object.values(this.teamDetail).reduce((sum, t) => sum + (t.closed || 0), 0);
       if (apiClosed > 0) return apiClosed;
       return this.tableData.filter(v => String(v.status).toLowerCase() !== 'open').length;
     },

@@ -1,56 +1,810 @@
-Frontend Integration Prompt: Show AI-Generated Automation Scripts
-Problem: AutomatedFixPanel.vue aur asset/vuln list rows sirf curated plugin_id library (match/{plugin_id}/, download/{plugin_id}/) check karte hain — sirf ~129 specific Nessus plugins cover hote hain. Har report ka har vulnerability ab AI (GPT-4o) se automation_card generate hota hai — ye kabhi frontend pe dikhta hi nahi.
-
-1. Data already available — koi extra API call nahi chahiye
-Jo vulnerability-cards list already fetch ho rahi hai (GET /api/{admin,user}/upload_report/vulnerability-cards/?report_id=<id>), uske har card object mein ab ek automation_card field bhi already hai:
-
-
 {
-  "vulnerability_name": "SSL Self-Signed Certificate",
-  "host_name": "192.168.0.6",
-  "card_id": "289f5814-f83e-4d16-9bdd-76e56b9c3189",
-  "automation_card": {
-    "automation_status": "full",        // "full" | "partial" | "not_possible" | missing (not yet generated)
-    "automation_possible": "Yes",       // "Yes" | "Partial" | "No"
-    "language": "python",               // ab hamesha "python"
-    "severity": "medium", "os": "windows",
-    "fix_script": "import subprocess\n...",
-    "fix_script_filename": "SSL_Self_Signed_Certificate_windows_fix.py",
-    "verify_script": "import subprocess\n...",
-    "verify_script_filename": "SSL_Self_Signed_Certificate_windows_verify.py",
-    "script_description": "...", "recommended_approach": "...",
-    "what_can_be_automated": "...", "what_must_remain_manual": "...",
-    "libraries": "...", "command_download_libraries": "...", "command_run_script": "...",
-    "considerations_before": "...", "considerations_after": "...",
-    "download_count": 0,
-    "premium_required": false           // true = Freemium, fix_script/verify_script come back as ""
-  }
+    "report_id": "6aaa5f222d480471bdca4394",
+    "report_generated_on": "2026-09-16",
+    "vul_management_program": "NFH INT Jan 2026_xdinzr.html",
+    "total_assets": 42,
+    "risk_score": 34,
+    "vulnerabilities": {
+        "critical": 2,
+        "high": 5,
+        "medium": 82,
+        "low": 25
+    },
+    "vulnerabilities_fixed": {
+        "report_id": "6aaa5f222d480471bdca4394",
+        "total_fixed": 1,
+        "critical_fixed": 0,
+        "high_fixed": 0,
+        "medium_fixed": 1,
+        "low_fixed": 0
+    },
+    "team_distribution": [
+        {
+            "team": "Patch Management",
+            "count": 9,
+            "percentage": 10.98
+        },
+        {
+            "team": "Configuration Management",
+            "count": 51,
+            "percentage": 62.2
+        },
+        {
+            "team": "Network Security",
+            "count": 22,
+            "percentage": 26.83
+        },
+        {
+            "team": "Architectural Flaws",
+            "count": 0,
+            "percentage": 0.0
+        },
+        {
+            "team": "Unassigned",
+            "count": 0,
+            "percentage": 0.0
+        }
+    ],
+    "vulnerabilities_detail": [
+        {
+            "vulnerability_name": "Apache Struts 2 'action:' Parameter Arbitrary Remote Command Execution",
+            "assets": "192.168.1.53",
+            "port": "",
+            "assigned_team": "Patch Management",
+            "risk_factor": "High",
+            "found_date": "2026-09-16T09:19:34.250000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "Apache Struts CVE-2018-11776 Results With No Namespace Remote Code Execution (S2-057) (remote)",
+            "assets": "192.168.1.53",
+            "port": "",
+            "assigned_team": "Patch Management",
+            "risk_factor": "High",
+            "found_date": "2026-09-16T09:19:34.290000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "Web Application Potentially Vulnerable to Clickjacking",
+            "assets": "192.168.1.230",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:34.343000",
+            "status": "in_progress"
+        },
+        {
+            "vulnerability_name": "ICMP Timestamp Request Remote Date Disclosure",
+            "assets": "192.168.1.230",
+            "port": "",
+            "assigned_team": "Network Security",
+            "risk_factor": "Low",
+            "found_date": "2026-09-16T09:19:34.384000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate Cannot Be Trusted",
+            "assets": "192.168.2.96",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:34.417000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "ICMP Timestamp Request Remote Date Disclosure",
+            "assets": "192.168.2.96",
+            "port": "",
+            "assigned_team": "Network Security",
+            "risk_factor": "Low",
+            "found_date": "2026-09-16T09:19:34.454000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate Cannot Be Trusted",
+            "assets": "192.168.253.20",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:34.493000",
+            "status": "closed"
+        },
+        {
+            "vulnerability_name": "ICMP Timestamp Request Remote Date Disclosure",
+            "assets": "192.168.253.20",
+            "port": "",
+            "assigned_team": "Network Security",
+            "risk_factor": "Low",
+            "found_date": "2026-09-16T09:19:34.543000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate Cannot Be Trusted",
+            "assets": "192.168.253.22",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:34.570000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "ICMP Timestamp Request Remote Date Disclosure",
+            "assets": "192.168.253.22",
+            "port": "",
+            "assigned_team": "Network Security",
+            "risk_factor": "Low",
+            "found_date": "2026-09-16T09:19:34.593000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SMB Signing not required",
+            "assets": "172.17.1.11",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:34.619000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "ICMP Timestamp Request Remote Date Disclosure",
+            "assets": "192.168.1.1",
+            "port": "",
+            "assigned_team": "Network Security",
+            "risk_factor": "Low",
+            "found_date": "2026-09-16T09:19:34.646000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate Cannot Be Trusted",
+            "assets": "192.168.1.22",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:34.668000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Self-Signed Certificate",
+            "assets": "192.168.1.22",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:34.705000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "ICMP Timestamp Request Remote Date Disclosure",
+            "assets": "192.168.1.22",
+            "port": "",
+            "assigned_team": "Network Security",
+            "risk_factor": "Low",
+            "found_date": "2026-09-16T09:19:34.746000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "Apache Struts CVE-2018-11776 Results With No Namespace Remote Code Execution (S2-057) (remote)",
+            "assets": "192.168.1.104",
+            "port": "",
+            "assigned_team": "Patch Management",
+            "risk_factor": "High",
+            "found_date": "2026-09-16T09:19:34.769000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate Cannot Be Trusted",
+            "assets": "192.168.1.104",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:34.793000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate with Wrong Hostname",
+            "assets": "192.168.1.104",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:34.818000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Self-Signed Certificate",
+            "assets": "192.168.1.104",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:34.841000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "TLS Version 1.0 Protocol Detection",
+            "assets": "192.168.1.104",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:34.883000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "TLS Version 1.1 Deprecated Protocol",
+            "assets": "192.168.1.104",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:34.935000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL/TLS Diffie-Hellman Modulus &lt;= 1024 Bits (Logjam)",
+            "assets": "192.168.1.104",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Low",
+            "found_date": "2026-09-16T09:19:34.963000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate Cannot Be Trusted",
+            "assets": "192.168.30.26",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:34.987000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate Cannot Be Trusted",
+            "assets": "192.168.50.35",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:35.012000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate Cannot Be Trusted",
+            "assets": "192.168.200.20",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:35.036000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "TLS Version 1.0 Protocol Detection",
+            "assets": "192.168.200.20",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:35.063000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "TLS Version 1.1 Deprecated Protocol",
+            "assets": "192.168.200.20",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:35.088000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "ICMP Timestamp Request Remote Date Disclosure",
+            "assets": "192.168.200.20",
+            "port": "",
+            "assigned_team": "Network Security",
+            "risk_factor": "Low",
+            "found_date": "2026-09-16T09:19:35.113000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate Cannot Be Trusted",
+            "assets": "192.168.251.20",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:35.141000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate with Wrong Hostname",
+            "assets": "192.168.251.20",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:35.173000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Self-Signed Certificate",
+            "assets": "192.168.251.20",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:35.196000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "TLS Version 1.0 Protocol Detection",
+            "assets": "192.168.251.20",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:35.217000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "TLS Version 1.1 Deprecated Protocol",
+            "assets": "192.168.251.20",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:35.244000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "ICMP Timestamp Request Remote Date Disclosure",
+            "assets": "192.168.251.20",
+            "port": "",
+            "assigned_team": "Network Security",
+            "risk_factor": "Low",
+            "found_date": "2026-09-16T09:19:35.274000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate Cannot Be Trusted",
+            "assets": "192.168.253.17",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:35.295000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate Expiry",
+            "assets": "192.168.253.17",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:35.324000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate with Wrong Hostname",
+            "assets": "192.168.253.17",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:35.345000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "ICMP Timestamp Request Remote Date Disclosure",
+            "assets": "192.168.253.17",
+            "port": "",
+            "assigned_team": "Network Security",
+            "risk_factor": "Low",
+            "found_date": "2026-09-16T09:19:35.368000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate Chain Contains RSA Keys Less Than 2048 bits",
+            "assets": "192.168.253.17",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Low",
+            "found_date": "2026-09-16T09:19:35.390000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "Web Server Transmits Cleartext Credentials",
+            "assets": "192.168.253.17",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Low",
+            "found_date": "2026-09-16T09:19:35.413000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate Cannot Be Trusted",
+            "assets": "192.168.253.21",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:35.436000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Self-Signed Certificate",
+            "assets": "192.168.253.21",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:35.464000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "ICMP Timestamp Request Remote Date Disclosure",
+            "assets": "192.168.253.21",
+            "port": "",
+            "assigned_team": "Network Security",
+            "risk_factor": "Low",
+            "found_date": "2026-09-16T09:19:35.486000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "HSTS Missing From HTTPS Server (RFC 6797)",
+            "assets": "192.168.253.23",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:35.510000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate Cannot Be Trusted",
+            "assets": "192.168.253.23",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:35.532000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Self-Signed Certificate",
+            "assets": "192.168.253.23",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:35.574000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "Web Application Potentially Vulnerable to Clickjacking",
+            "assets": "192.168.253.23",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:35.608000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "ICMP Timestamp Request Remote Date Disclosure",
+            "assets": "192.168.253.23",
+            "port": "",
+            "assigned_team": "Network Security",
+            "risk_factor": "Low",
+            "found_date": "2026-09-16T09:19:35.635000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "ICMP Timestamp Request Remote Date Disclosure",
+            "assets": "192.168.253.24",
+            "port": "",
+            "assigned_team": "Network Security",
+            "risk_factor": "Low",
+            "found_date": "2026-09-16T09:19:35.658000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate Cannot Be Trusted",
+            "assets": "192.168.253.28",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:35.681000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate Expiry",
+            "assets": "192.168.253.28",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:35.727000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Self-Signed Certificate",
+            "assets": "192.168.253.28",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:35.751000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "Web Application Potentially Vulnerable to Clickjacking",
+            "assets": "192.168.253.28",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:35.791000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "ICMP Timestamp Request Remote Date Disclosure",
+            "assets": "192.168.253.28",
+            "port": "",
+            "assigned_team": "Network Security",
+            "risk_factor": "Low",
+            "found_date": "2026-09-16T09:19:35.819000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate Cannot Be Trusted",
+            "assets": "192.168.253.30",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:35.841000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate with Wrong Hostname",
+            "assets": "192.168.253.30",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:35.871000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Self-Signed Certificate",
+            "assets": "192.168.253.30",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:35.893000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "ICMP Timestamp Request Remote Date Disclosure",
+            "assets": "192.168.253.30",
+            "port": "",
+            "assigned_team": "Network Security",
+            "risk_factor": "Low",
+            "found_date": "2026-09-16T09:19:35.915000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "Microsoft Message Queuing RCE (CVE-2023-21554, QueueJumper)",
+            "assets": "192.168.254.11",
+            "port": "",
+            "assigned_team": "Patch Management",
+            "risk_factor": "Critical",
+            "found_date": "2026-09-16T09:19:35.938000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate Cannot Be Trusted",
+            "assets": "192.168.254.11",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:35.961000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "ICMP Timestamp Request Remote Date Disclosure",
+            "assets": "192.168.254.11",
+            "port": "",
+            "assigned_team": "Network Security",
+            "risk_factor": "Low",
+            "found_date": "2026-09-16T09:19:35.996000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "Treck TCP/IP stack multiple vulnerabilities. (Ripple20)",
+            "assets": "192.168.254.13",
+            "port": "",
+            "assigned_team": "Patch Management",
+            "risk_factor": "Critical",
+            "found_date": "2026-09-16T09:19:36.022000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "ICMP Timestamp Request Remote Date Disclosure",
+            "assets": "192.168.254.13",
+            "port": "",
+            "assigned_team": "Network Security",
+            "risk_factor": "Low",
+            "found_date": "2026-09-16T09:19:36.045000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate Cannot Be Trusted",
+            "assets": "192.168.254.30",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:36.067000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Self-Signed Certificate",
+            "assets": "192.168.254.30",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:36.102000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate Cannot Be Trusted",
+            "assets": "192.168.254.31",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:36.130000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "ICMP Timestamp Request Remote Date Disclosure",
+            "assets": "192.168.254.31",
+            "port": "",
+            "assigned_team": "Network Security",
+            "risk_factor": "Low",
+            "found_date": "2026-09-16T09:19:36.152000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "MongoDB 3.6.x / 4.0.x / 4.2.x / 4.4.x &lt; 4.4.30 / 5.0.x &lt; 5.0.32 / 6.0.x &lt; 6.0.27 / 7.0.x &lt; 7.0.28 / 8.0.x &lt; 8.0.17 / 8.2.x &lt; 8.2.3 Uninitialized Heap Memory Leak (CVE-2025-14847)",
+            "assets": "192.168.254.32",
+            "port": "",
+            "assigned_team": "Patch Management",
+            "risk_factor": "High",
+            "found_date": "2026-09-16T09:19:36.175000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "MongoDB Unauthenicated Uninitialized Heap Memory Leak (MongoBleed) (CVE-2025-14847) (Direct Check)",
+            "assets": "192.168.254.32",
+            "port": "",
+            "assigned_team": "Patch Management",
+            "risk_factor": "High",
+            "found_date": "2026-09-16T09:19:36.196000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate Cannot Be Trusted",
+            "assets": "192.168.254.32",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:36.218000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "ICMP Timestamp Request Remote Date Disclosure",
+            "assets": "192.168.254.32",
+            "port": "",
+            "assigned_team": "Network Security",
+            "risk_factor": "Low",
+            "found_date": "2026-09-16T09:19:36.241000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "Apache Struts 2 REST Plugin XStream XML Request Deserialization RCE",
+            "assets": "192.168.254.102",
+            "port": "",
+            "assigned_team": "Patch Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:36.266000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate Cannot Be Trusted",
+            "assets": "192.168.254.102",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:36.290000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "ICMP Timestamp Request Remote Date Disclosure",
+            "assets": "192.168.254.102",
+            "port": "",
+            "assigned_team": "Network Security",
+            "risk_factor": "Low",
+            "found_date": "2026-09-16T09:19:36.313000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate Cannot Be Trusted",
+            "assets": "192.168.254.103",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:36.336000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "ICMP Timestamp Request Remote Date Disclosure",
+            "assets": "192.168.254.103",
+            "port": "",
+            "assigned_team": "Network Security",
+            "risk_factor": "Low",
+            "found_date": "2026-09-16T09:19:36.357000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "ICMP Timestamp Request Remote Date Disclosure",
+            "assets": "192.168.254.104",
+            "port": "",
+            "assigned_team": "Network Security",
+            "risk_factor": "Low",
+            "found_date": "2026-09-16T09:19:36.378000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "Apache Struts 2 REST Plugin XStream XML Request Deserialization RCE",
+            "assets": "192.168.254.106",
+            "port": "",
+            "assigned_team": "Patch Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:36.400000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate Cannot Be Trusted",
+            "assets": "192.168.254.106",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:36.424000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "ICMP Timestamp Request Remote Date Disclosure",
+            "assets": "192.168.254.106",
+            "port": "",
+            "assigned_team": "Network Security",
+            "risk_factor": "Low",
+            "found_date": "2026-09-16T09:19:36.447000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate Cannot Be Trusted",
+            "assets": "10.0.11.1",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:36.469000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate Cannot Be Trusted",
+            "assets": "10.0.11.3",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:36.498000",
+            "status": "open"
+        },
+        {
+            "vulnerability_name": "SSL Certificate Cannot Be Trusted",
+            "assets": "10.0.11.7",
+            "port": "",
+            "assigned_team": "Configuration Management",
+            "risk_factor": "Medium",
+            "found_date": "2026-09-16T09:19:36.525000",
+            "status": "open"
+        }
+    ],
+    "risk_rating": "Critical Risk",
+    "executive_summary": "The security assessment identified a total of 114 distinct security findings across 42 assets. The overall security posture is currently rated as Critical Risk, primarily driven by 2 critical vulnerabilities and 5 high-severity findings that require immediate remediation to reduce the attack surface.",
+    "asset_classification": {
+        "web_app": 0,
+        "firewall": 0,
+        "server": 5,
+        "assets": 37
+    }
 }
-fix_script/verify_script empty string + premium_required: true = Freemium plan, show the upgrade lock instead of content.
-
-2. Priority logic (in AutomatedFixPanel.vue and any "Automatable" badge check)
-
-if card.automation_card && card.automation_card.automation_status in ("full", "partial"):
-    → show AI-generated content (this is the primary path now — covers every vuln)
-elif card.automation_card && card.automation_card.automation_status == "not_possible":
-    → show "Automation not possible" + card.automation_card.reason_not_possible
-elif card has a plugin_id:
-    → fall back to existing curated match/{plugin_id}/ lookup (legacy ~129-plugin coverage)
-else:
-    → "No automated fix available"
-3. Download buttons
-Download Fix Script: GET /api/user/automation-scripts/ai/{card_id}/download/?type=fix
-Download Verify Script (naya button, abhi tak website pe bhi missing tha — Slack/Teams mein humne turant add kiya): GET /api/user/automation-scripts/ai/{card_id}/download/?type=verify — sirf tab dikhao jab automation_card.verify_script non-empty ho.
-Dono real files return karte hain (Content-Disposition: attachment), same jaisa download/{plugin_id}/ already kaam karta hai — no new download-handling logic chahiye.
-
-4. Admin (read-only) view
-GET /api/admin/automation-scripts/ai/{card_id}/ — same shape jaisa upar diya (fix_script/verify_script hamesha stripped for admin, "team members can download this in their team channel" jaisi baat — admin sirf preview dekhta hai, download nahi karta, matching current admin-side curated behavior).
-
-Scope nahi hai is change mein (agar chahiye to bata dena, alag se karna padega)
-Feedback (👍👎) — abhi sirf curated plugin_id ke liye hai, AI cards ke liye feedback tracking nahi hai backend mein.
-Stats widget — abhi plugin_id-based hai; AI-wide stats ke liye alag endpoint chahiye hoga.
-Backend mein ye sab already ready hai, koi naya endpoint banane ki zaroorat nahi — sirf frontend logic update karna hai.
 
 
+https://vaptbackend.secureitlab.com/api/admin/adminregister/report/download-data/?_ts=1789552821281
 
-website me phle plugin id se fetch hokr aa rha tha data abhi gpt ai se automation script ka ara hai vhi ana chahiye uske liye ye prompt backedn engineer ne diya hai isko properly website me integrate kro admin user both side phle integration ke phle mujhe plan do
+
