@@ -1024,6 +1024,15 @@ export default {
       // arriving with source=upload/resume, skipping this page entirely —
       // removed per request: Stripe should only ever be reached by an
       // explicit click on "Continue to payment" below, never automatically.
+    } else if (this.fileAssetCount > 250) {
+      // Landed on plain /pricingplan (e.g. top-nav "Pricing" link) with no
+      // plan/assets query — still honor a previously detected 250+ asset
+      // scope/report so the plan list highlights Custom same as step 2.
+      this.autoSelectedPlan = 'custom';
+      this.autoSelectedFromAssets = this.fileAssetCount;
+      if (!this.leadForm.assets) {
+        this.leadForm.assets = String(this.fileAssetCount);
+      }
     }
   },
   beforeUnmount() {
@@ -1101,7 +1110,8 @@ export default {
       if (this.fromScopeFile && !this.fromScanReport) {
         const fromQuery = Number(this.$route.query.assets) || 0;
         const fromMeta = peekPendingUploadMeta()?.count || 0;
-        let detected = fromQuery || fromMeta || detectedFileAssetCount(this.currentSubscription);
+        const fromStored = peekBillableAssetCount();
+        let detected = fromQuery || fromMeta || fromStored || detectedFileAssetCount(this.currentSubscription);
         try {
           const payload = {
             plan: 'premium',
