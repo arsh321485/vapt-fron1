@@ -88,8 +88,27 @@ function flushLivePages(opts = {}) {
   livePages.forEach((vm) => runPage(vm, opts));
 }
 
+// Bulk actions (hold/unhold/delete N selected assets in a sequential for-loop)
+// call the mutation API once per item, and each success independently fires
+// notifyLiveData(). Real network latency between awaited loop iterations is
+// almost always longer than the 30ms debounce below, so each item ends up
+// re-triggering its own full assets/hold-list refresh — N items, N refreshes.
+// Wrap such loops in suppressLiveSync(fn) so only the caller's own explicit
+// reload (after the loop) hits the network.
+let suppressDepth = 0;
+
+export async function suppressLiveSync(fn) {
+  suppressDepth++;
+  try {
+    return await fn();
+  } finally {
+    suppressDepth = Math.max(0, suppressDepth - 1);
+  }
+}
+
 export function notifyLiveData(reason = "mutation") {
   if (typeof window === "undefined") return;
+  if (suppressDepth > 0) return;
   if (debounceTimer) clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
     debounceTimer = null;

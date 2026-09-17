@@ -991,6 +991,7 @@ import {
   clearHeldItemAssetType,
 } from "@/utils/assetDummyData";
 import { filterSupportRequestsByVuln, mapSupportRequestsByStep } from "@/utils/supportRequests";
+import { suppressLiveSync } from "@/utils/livePageSync";
 import {
   resolveVulnPluginId as lookupVulnPluginId,
   resolveVulnCardId as lookupVulnCardId,
@@ -2160,9 +2161,11 @@ class TLSConfigurator:
         return;
       }
       this.rememberHostAssetTypes(selected);
-      for (const item of selected) {
-        await this.authStore.deleteUserAsset(item.asset, reportId);
-      }
+      await suppressLiveSync(async () => {
+        for (const item of selected) {
+          await this.authStore.deleteUserAsset(item.asset, reportId);
+        }
+      });
       await this.reloadAssetsAndHeld();
       this.showCheckboxes = false;
       this.resetActions();
@@ -2198,15 +2201,17 @@ class TLSConfigurator:
         this.resetActions();
         return;
       }
-      for (const item of selected) {
-        this.hostAssetTypeMap = clearHeldItemAssetType(
-          this.hostAssetTypeMap,
-          item.plugin_name || item.vul_name || '',
-          item.asset || item.ip,
-        );
-        const res = await this.authStore.unholdUserAsset(item.asset);
-        if (!res.status) continue;
-      }
+      await suppressLiveSync(async () => {
+        for (const item of selected) {
+          this.hostAssetTypeMap = clearHeldItemAssetType(
+            this.hostAssetTypeMap,
+            item.plugin_name || item.vul_name || '',
+            item.asset || item.ip,
+          );
+          const res = await this.authStore.unholdUserAsset(item.asset);
+          if (!res.status) continue;
+        }
+      });
       await this.reloadAssetsAndHeld();
       this.resetActions();
     },
@@ -2433,9 +2438,11 @@ class TLSConfigurator:
         ...this.heldAssets.filter((row) => !heldHosts.has(String(row.asset || row.ip || '').trim().toLowerCase())),
       ];
       this.showHeld = true;
-      for (const item of selected) {
-        await this.authStore.holdUserAsset(item.asset);
-      }
+      await suppressLiveSync(async () => {
+        for (const item of selected) {
+          await this.authStore.holdUserAsset(item.asset);
+        }
+      });
       await this.reloadAssetsAndHeld();
       this.showHoldCheckboxes = false;
       this.resetActions();

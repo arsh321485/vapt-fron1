@@ -4,6 +4,8 @@ export function stopLivePageSync(): void;
 
 export function notifyLiveData(reason?: string): void;
 
+export function suppressLiveSync<T>(fn: () => Promise<T> | T): Promise<T>;
+
 export function isUnsafeToLiveRefresh(opts?: {
   source?: string;
 }): boolean;

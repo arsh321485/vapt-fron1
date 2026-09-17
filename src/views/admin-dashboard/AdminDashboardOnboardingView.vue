@@ -793,17 +793,13 @@
                 <div class="col-md-3" v-for="(vuln, i) in uniqueMitigationVulns.slice(0, 8)" :key="(vuln.plugin_name || 'vuln') + i">
                   <div class="cv-vuln-card">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="cv-vuln-assets"><i class="bi bi-hdd-network me-1"></i>{{ getVulnAssetCount(vuln) ?? 1 }} assets</span>
+                        <span class="cv-vuln-assets"><i class="bi bi-hdd-network me-1"></i>{{ getVulnAssetCount(vuln) ?? 1 }} affected assets</span>
                       <span class="cv-sev-badge" :class="'cv-badge-' + (vuln.risk_factor || '').toLowerCase()">{{ (vuln.risk_factor || '').toUpperCase() }}</span>
                     </div>
                     <h6 class="cv-vuln-name" :title="vuln.plugin_name">{{ vuln.plugin_name }}</h6>
-                    <div class="d-flex align-items-center mt-auto pt-2">
-                      <i class="bi bi-person me-1" style="color:#94a3b8; font-size:0.78rem;"></i>
-                        <span class="cv-affected-label">{{ getVulnAssetCount(vuln) ?? 1 }} affected assets</span>
-                    </div>
                     <button
                       type="button"
-                      class="cv-more-details-btn cv-more-details-btn-sm"
+                      class="cv-more-details-btn cv-more-details-btn-sm mt-auto"
                       @click="openCommonVulnModal"
                     >
                       More details <i class="bi bi-arrow-right"></i>

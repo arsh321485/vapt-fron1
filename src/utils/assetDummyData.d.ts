@@ -61,9 +61,10 @@ export function assetTypeBadgeMeta(assetType: unknown): {
 } | null;
 export function resolveHostAssetType(
   hostName: unknown,
-  catalog?: unknown[],
+  catalog?: unknown[] | Map<string, unknown>,
   extra?: unknown,
 ): string;
+export function buildAssetCatalogHostIndex(catalog?: unknown[]): Map<string, unknown>;
 export function heldVulnTypeKey(pluginName: unknown, hostName: unknown): string;
 export function loadHeldItemTypeMap(): Record<string, string>;
 export function persistHeldItemTypeMap(map: unknown): void;

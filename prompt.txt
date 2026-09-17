@@ -1,18 +1,38 @@
+Subject: New asset_type_totals field on both "All Vulnerabilities" APIs
+
+Dono endpoints ab ek naya top-level field return karte hain:
+
+
+GET /api/admin/adminasset/report/<report_id>/vulnerabilities/
+GET /api/user/asset/report/<report_id>/vulnerabilities/
+Response shape (naya field highlighted):
+
+
 {
-    "plan": "premium",
-    "mode": "management",
-    "billing_cycle": "annual",
-    "asset_count": 0,
-    "price_per_ip": "1.25",
-    "amount_due": "0.00",
-    "currency": "usd",
-    "visible_asset_count": 0,
-    "locked_asset_count": 0,
-    "original_asset_count": 0,
-    "billable_asset_count": 0
+    "report_id": "6aab98af8deb6d77d9751632",
+    "total": 5,
+    "asset_type_totals": {
+        "other": 49,
+        "web_app": 0,
+        "firewall": 0,
+        "server": 0
+    },
+    "vulnerabilities": [ ... unchanged ... ]
 }
+Isse kaise use karna hai: "All Vulnerabilities" page ke top pe jo "Assets / Web App / Firewall / Server" filter tabs hain, unke pass ab ek overall/report-level count badge dikha sakte ho (jaise "Assets (49)") — bina har vulnerability ke asset_type_counts ko manually loop-sum kiye. Yeh number already correctly deduped hai (ek asset ek hi baar count hota hai, chahe uski multiple vulnerabilities ho) — isliye is field ko seedha use karo, khud se sum mat nikalna.
 
-https://vaptbackend.secureitlab.com/api/admin/billing/plans/estimate/
+User-side (/api/user/asset/...) me yeh count sirf us member ki apni team se relevant assets tak scoped hai — admin ke poore-report wale number se alag ho sakta hai, yeh expected/correct hai.
+
+Koi backward-incompatible change nahi hai — vulnerabilities array aur baaki fields bilkul waise hi hain, sirf yeh ek naya field add hua hai.
 
 
-jab slack se manual scop file dalkr ya manual scop enter krke aye to oricing par yha ips get hokr nhi aa rhi hai is api respoinse me bhi 0 aa rha hai abhi iske phle prompt diya tha mene iske liye to ye tumne fix kiya hai kya btao also agr backedn se krne ki need hai to backedn ke liye prompt de do
+ye api user admin side ke hai All vul tab par ke isme count properly nhi aa rha hai assest , web app , firewall , server ke according 
+
+    "asset_type_totals": {
+        "other": 49,
+        "web_app": 0,
+        "firewall": 0,
+        "server": 0
+    },
+
+    ye fetch kran ahi uoer tabs me 

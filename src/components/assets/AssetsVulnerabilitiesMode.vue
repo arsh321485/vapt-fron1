@@ -942,6 +942,7 @@ import {
   ASSET_TYPE_FILTERS,
   assetTypeFromFilterKey,
   resolveHostAssetType,
+  buildAssetCatalogHostIndex,
   resolveAssetType,
   normalizeAssetTypeCounts,
   hasAssetTypeCounts,
@@ -956,6 +957,7 @@ import {
   loadHeldItemTypeMap,
 } from '@/utils/assetDummyData';
 import { filterSupportRequestsByVuln, mapSupportRequestsByStep } from '@/utils/supportRequests';
+import { suppressLiveSync } from '@/utils/livePageSync';
 import {
   resolveVulnPluginId as lookupVulnPluginId,
   resolveVulnCardId as lookupVulnCardId,
@@ -1129,6 +1131,9 @@ export default {
     assetCatalog() {
       if (this.isUser) return this.authStore.cachedUserAssets || [];
       return this.authStore.assetRows || [];
+    },
+    assetCatalogHostIndex() {
+      return buildAssetCatalogHostIndex(this.assetCatalog);
     },
     groupedVulns() {
       const map = new Map();
@@ -1522,9 +1527,20 @@ export default {
       const row = (vuln?.rows || []).find((r) =>
         String(r.asset || r.host_name || '').trim().toLowerCase() === target,
       );
-      return resolveHostAssetType(ip, this.assetCatalog, row);
+      return resolveHostAssetType(ip, this.assetCatalogHostIndex, row);
     },
     assetTypeTabCount(type) {
+      // Backend now returns deduped, report-level asset counts per type
+      // (asset_type_totals on the .../vulnerabilities/ response) — use that
+      // directly instead of counting grouped vulns client-side, which was
+      // counting vulnerabilities matching a type, not distinct assets, and
+      // could disagree with the per-vuln/per-host classification sources.
+      const totals = this.isUser
+        ? this.authStore.userAllReportVulnerabilitiesAssetTypeTotals
+        : this.authStore.allReportVulnerabilitiesAssetTypeTotals;
+      if (totals) {
+        return normalizeAssetTypeCounts(totals)[assetTypeFromFilterKey(type)] || 0;
+      }
       return this.vulnsGroupedByType(type).length;
     },
     assetsForVulnType(vuln, wanted) {
@@ -1617,35 +1633,52 @@ export default {
     async ensureVulnAssetRows(vuln) {
       const key = vuln?._key;
       if (!key || this.vulnAssetRowsByKey[key]) return;
-      const plugin = vuln.plugin_name || vuln.vul_name;
-      if (!plugin) return;
-      const res = this.isUser
-        ? await this.authStore.fetchUserVulnerabilityAssets(plugin, this.authStore.userSelectedTeam)
-        : await this.authStore.fetchVulnerabilityAssets(plugin);
-      if (!res?.status) return;
-      const name = vuln.vul_name || vuln.plugin_name || plugin;
-      const openOnly = new Set(
-        (vuln.assets || []).map((ip) => String(ip || '').trim().toLowerCase()).filter(Boolean),
-      );
-      const rows = (res?.assets || [])
-        .map((row) => ({
-          host_name: row.host_name || row.asset || row.host || '',
-          asset_type: resolveAssetType(row),
-          severity: row.severity || '',
-          status: row.status || '',
-          operating_system: row.operating_system || row.os || '',
-        }))
-        .filter((row) => {
-          if (!isRealScanHost(row.host_name)) return false;
-          const host = String(row.host_name || '').trim();
-          const lower = host.toLowerCase();
-          if (openOnly.size && !openOnly.has(lower)) return false;
-          if (this.closedVulnHostSet.has(closedVulnHostKey(name, host))) return false;
-          if (this.closedVulnHostSet.has(closedVulnHostKey(key, host))) return false;
-          if (!isActiveVulnStatus(rowStatusValue(row) || 'open')) return false;
-          return true;
-        });
-      this.vulnAssetRowsByKey = { ...this.vulnAssetRowsByKey, [key]: rows };
+      // Fetching this key is itself async, and writing the result into
+      // vulnAssetRowsByKey feeds back into filteredVulns (via
+      // assetsForVulnType), which re-triggers the `filteredVulns` watcher ->
+      // ensureVisibleVulnAssetRows() -> this, for every vuln still visible.
+      // The vulnAssetRowsByKey[key] guard above only catches *completed*
+      // fetches, so every one of those re-entrant passes was re-firing a
+      // fresh duplicate request for every vuln whose fetch hadn't resolved
+      // yet — a combinatorial request storm (hundreds of duplicate
+      // .../assets/ calls). Track in-flight keys too so re-entrant calls
+      // skip them instead of re-requesting.
+      if (!this._vulnAssetRowsInFlight) this._vulnAssetRowsInFlight = new Set();
+      if (this._vulnAssetRowsInFlight.has(key)) return;
+      this._vulnAssetRowsInFlight.add(key);
+      try {
+        const plugin = vuln.plugin_name || vuln.vul_name;
+        if (!plugin) return;
+        const res = this.isUser
+          ? await this.authStore.fetchUserVulnerabilityAssets(plugin, this.authStore.userSelectedTeam)
+          : await this.authStore.fetchVulnerabilityAssets(plugin);
+        if (!res?.status) return;
+        const name = vuln.vul_name || vuln.plugin_name || plugin;
+        const openOnly = new Set(
+          (vuln.assets || []).map((ip) => String(ip || '').trim().toLowerCase()).filter(Boolean),
+        );
+        const rows = (res?.assets || [])
+          .map((row) => ({
+            host_name: row.host_name || row.asset || row.host || '',
+            asset_type: resolveAssetType(row),
+            severity: row.severity || '',
+            status: row.status || '',
+            operating_system: row.operating_system || row.os || '',
+          }))
+          .filter((row) => {
+            if (!isRealScanHost(row.host_name)) return false;
+            const host = String(row.host_name || '').trim();
+            const lower = host.toLowerCase();
+            if (openOnly.size && !openOnly.has(lower)) return false;
+            if (this.closedVulnHostSet.has(closedVulnHostKey(name, host))) return false;
+            if (this.closedVulnHostSet.has(closedVulnHostKey(key, host))) return false;
+            if (!isActiveVulnStatus(rowStatusValue(row) || 'open')) return false;
+            return true;
+          });
+        this.vulnAssetRowsByKey = { ...this.vulnAssetRowsByKey, [key]: rows };
+      } finally {
+        this._vulnAssetRowsInFlight.delete(key);
+      }
     },
     setAssetTypeFilter(type) {
       if (this.assetTypeFilter === type) return;
@@ -1757,7 +1790,9 @@ export default {
       if (this.activeAction === 'hold') return;
       this.activeAction = 'delete';
       if (!this.showCheckboxes) {
-        this.selectedVulnKeys = this.selectedKey ? [this.selectedKey] : [];
+        // Match All Assets tab: entering checkbox mode starts with nothing
+        // selected, even if a vuln is currently open in the detail panel.
+        this.selectedVulnKeys = [];
         this.selectedAssetIpsByVulnKey = {};
         this.collapsedAssetLists = {};
         this.showCheckboxes = true;
@@ -1780,17 +1815,19 @@ export default {
         return;
       }
       const affectedHosts = [];
-      for (const vuln of selected) {
-        const pluginName = String(vuln.vul_name || vuln.plugin_name || '').trim();
-        const hosts = this.getSelectedHostsForVuln(vuln);
-        if (!pluginName || !hosts.length) continue;
-        if (this.isUser) {
-          await this.authStore.deleteUserVulnerabilityAssets(pluginName, hosts);
-        } else {
-          await this.authStore.deleteVulnerabilityAssets(pluginName, hosts);
+      await suppressLiveSync(async () => {
+        for (const vuln of selected) {
+          const pluginName = String(vuln.vul_name || vuln.plugin_name || '').trim();
+          const hosts = this.getSelectedHostsForVuln(vuln);
+          if (!pluginName || !hosts.length) continue;
+          if (this.isUser) {
+            await this.authStore.deleteUserVulnerabilityAssets(pluginName, hosts);
+          } else {
+            await this.authStore.deleteVulnerabilityAssets(pluginName, hosts);
+          }
+          affectedHosts.push(...hosts);
         }
-        affectedHosts.push(...hosts);
-      }
+      });
       await this.reloadAfterAssetActions();
       this.$emit('vuln-assets-deleted', {
         hostNames: affectedHosts,
@@ -1808,7 +1845,9 @@ export default {
         }
         return;
       }
-      this.selectedVulnKeys = this.selectedKey ? [this.selectedKey] : [];
+      // Match All Assets tab: entering checkbox mode starts with nothing
+      // selected, even if a vuln is currently open in the detail panel.
+      this.selectedVulnKeys = [];
       this.selectedAssetIpsByVulnKey = {};
       this.collapsedAssetLists = {};
       this.showHoldCheckboxes = true;
@@ -1826,34 +1865,36 @@ export default {
       }
       const wanted = assetTypeFromFilterKey(this.assetTypeFilter);
       const optimistic = [];
-      for (const vuln of selected) {
-        const pluginName = String(vuln.vul_name || vuln.plugin_name || '').trim();
-        const hosts = this.getSelectedHostsForVuln(vuln);
-        if (!pluginName || !hosts.length) continue;
-        const res = this.isUser
-          ? await this.authStore.holdUserVulnerabilityAssets(pluginName, hosts)
-          : await this.authStore.holdVulnerabilityAssets(pluginName, hosts);
-        if (!res?.status) continue;
-        hosts.forEach((host) => {
-          this.hostAssetTypeMap = stampHeldItemAssetType(
-            this.hostAssetTypeMap,
-            pluginName,
-            host,
-            wanted,
-          );
-          optimistic.push({
-            plugin_name: pluginName,
-            vul_name: pluginName,
-            host_name: host,
-            asset: host,
-            ip: host,
-            member_type: '',
-            asset_type: wanted,
-            severity: vuln.severity || '',
-            selected: false,
+      await suppressLiveSync(async () => {
+        for (const vuln of selected) {
+          const pluginName = String(vuln.vul_name || vuln.plugin_name || '').trim();
+          const hosts = this.getSelectedHostsForVuln(vuln);
+          if (!pluginName || !hosts.length) continue;
+          const res = this.isUser
+            ? await this.authStore.holdUserVulnerabilityAssets(pluginName, hosts)
+            : await this.authStore.holdVulnerabilityAssets(pluginName, hosts);
+          if (!res?.status) continue;
+          hosts.forEach((host) => {
+            this.hostAssetTypeMap = stampHeldItemAssetType(
+              this.hostAssetTypeMap,
+              pluginName,
+              host,
+              wanted,
+            );
+            optimistic.push({
+              plugin_name: pluginName,
+              vul_name: pluginName,
+              host_name: host,
+              asset: host,
+              ip: host,
+              member_type: '',
+              asset_type: wanted,
+              severity: vuln.severity || '',
+              selected: false,
+            });
           });
-        });
-      }
+        }
+      });
       if (optimistic.length) {
         const keys = new Set(optimistic.map((row) => heldVulnTypeKey(row.plugin_name, row.host_name)));
         this.heldAssets = [
@@ -1879,6 +1920,7 @@ export default {
         return;
       }
       const byPlugin = new Map();
+      const selectedKeys = new Set();
       selected.forEach((item) => {
         const pluginName = String(item.plugin_name || item.vul_name || '').trim();
         const host = String(item.host_name || item.asset || item.ip || '').trim();
@@ -1886,14 +1928,24 @@ export default {
         this.hostAssetTypeMap = clearHeldItemAssetType(this.hostAssetTypeMap, pluginName, host);
         if (!byPlugin.has(pluginName)) byPlugin.set(pluginName, []);
         byPlugin.get(pluginName).push(host);
+        selectedKeys.add(heldVulnTypeKey(pluginName, host));
       });
-      for (const [pluginName, hosts] of byPlugin.entries()) {
-        if (this.isUser) {
-          await this.authStore.unholdUserVulnerabilityAssets(pluginName, hosts);
-        } else {
-          await this.authStore.unholdVulnerabilityAssets(pluginName, hosts);
+      // Optimistic: drop from the held panel immediately instead of waiting on
+      // the unhold POST + reload round-trip — matches the instant feel of the
+      // All Assets tab's unhold.
+      this.heldAssets = this.heldAssets.filter(
+        (row) => !selectedKeys.has(heldVulnTypeKey(row.plugin_name, row.host_name)),
+      );
+      this.showHeld = this.heldAssets.length > 0;
+      await suppressLiveSync(async () => {
+        for (const [pluginName, hosts] of byPlugin.entries()) {
+          if (this.isUser) {
+            await this.authStore.unholdUserVulnerabilityAssets(pluginName, hosts);
+          } else {
+            await this.authStore.unholdVulnerabilityAssets(pluginName, hosts);
+          }
         }
-      }
+      });
       await this.reloadAfterAssetActions();
       this.resetActions();
     },
@@ -1941,12 +1993,19 @@ export default {
       this.showHeld = this.heldAssets.length > 0;
     },
     async reloadAfterAssetActions() {
+      // Hold/unhold/delete already update vulnerabilityRows and the held/deleted
+      // lookup sets locally (see stripDeletedVulnerabilityPluginHosts /
+      // addHeldVulnerabilityAssets in authStore) — filteredVulns picks that up
+      // reactively. Re-running the full loadVulnerabilities() cascade here
+      // (register + all-report-vulns + per-host closed-fix checks + automation
+      // scripts) was redundant and, under load, slow enough to time out and
+      // blank the whole list. Match the All Assets tab: just resync assets +
+      // the held-list panel.
       if (this.isUser) {
         await this.authStore.fetchUserAssets(true, this.authStore.userSelectedTeam);
       } else {
         await this.authStore.fetchAssets(true);
       }
-      await this.loadVulnerabilities();
       await this.loadHeldAssets();
       this.$emit('held-changed');
     },
@@ -2030,9 +2089,12 @@ export default {
         this.closedFixRecords = [];
       } finally {
         this.loadingClosedFix = false;
-        // Force asset lists to rebuild without closed hosts
-        this.vulnAssetRowsByKey = {};
-        this.ensureVisibleVulnAssetRows();
+        // No need to wipe vulnAssetRowsByKey and re-fetch every vuln's asset
+        // list here: assetsForVulnType() already re-applies closedVulnHostSet
+        // reactively (via keepOpen()) on every read, including for cached
+        // rows. Wiping the cache just doubled every per-vuln .../assets/
+        // request on load (and again on every "mark closed" action) for a
+        // filter that was already being recomputed live.
       }
     },
     canonSeverity(sev) {

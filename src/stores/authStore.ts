@@ -488,6 +488,9 @@ export const useAuthStore = defineStore("auth", {
     allReportVulnerabilities: [] as any[],
     allReportVulnerabilitiesTotal: 0,
     allReportVulnerabilitiesFetched: false,
+    // Deduped, report-level asset counts per type ({other, web_app, firewall, server}) —
+    // straight from the backend, not summed client-side from individual vulns.
+    allReportVulnerabilitiesAssetTypeTotals: null as Record<string, number> | null,
     heldVulnerabilityAssets: [] as any[],
     heldVulnerabilityAssetsFetched: false,
     deletedVulnerabilityAssets: [] as any[],
@@ -496,6 +499,8 @@ export const useAuthStore = defineStore("auth", {
     userAllReportVulnerabilitiesTotal: 0,
     userAllReportVulnerabilitiesFetched: false,
     cachedUserAllReportVulnerabilitiesTeam: undefined as string | undefined,
+    // Deduped, team-scoped asset counts per type — straight from the backend.
+    userAllReportVulnerabilitiesAssetTypeTotals: null as Record<string, number> | null,
     userHeldVulnerabilityAssets: [] as any[],
     userHeldVulnerabilityAssetsFetched: false,
     cachedUserHeldVulnerabilityAssetsTeam: undefined as string | undefined,
@@ -5132,9 +5137,12 @@ export const useAuthStore = defineStore("auth", {
           error.response?.data || error.message,
         );
 
-        this.vulnerabilityRows = [];
-        this.vulnerabilityCount = 0;
-        this.latestReportId = null; // optional reset
+        // Don't wipe vulnerabilityRows/latestReportId here — a single transient
+        // fetch failure (timeout, blip) would otherwise blank the whole "All
+        // Vulnerabilities" tab, and resolveReportId()'s fallback path would
+        // then keep re-triggering this same fetch on every subsequent action
+        // since latestReportId stayed null. Keep the last-known-good data and
+        // just report the failure.
 
         return {
           status: false,
@@ -6163,6 +6171,10 @@ export const useAuthStore = defineStore("auth", {
         this.allReportVulnerabilities = filterPlatformLabelVulnRows(Array.isArray(vulns) ? vulns : []);
         this.allReportVulnerabilitiesTotal = this.allReportVulnerabilities.length;
         this.allReportVulnerabilitiesFetched = true;
+        this.allReportVulnerabilitiesAssetTypeTotals =
+          res.data?.asset_type_totals && typeof res.data.asset_type_totals === "object"
+            ? res.data.asset_type_totals
+            : null;
 
         if (res.data?.report_id) {
           this.latestReportId = res.data.report_id;
@@ -6172,6 +6184,7 @@ export const useAuthStore = defineStore("auth", {
           status: true,
           data: this.allReportVulnerabilities,
           total: this.allReportVulnerabilitiesTotal,
+          assetTypeTotals: this.allReportVulnerabilitiesAssetTypeTotals,
           reportId: res.data?.report_id || reportId,
         };
       } catch (error: any) {
@@ -6179,9 +6192,8 @@ export const useAuthStore = defineStore("auth", {
           "[authStore] fetchAllReportVulnerabilities error:",
           error.response?.data || error.message,
         );
-        this.allReportVulnerabilities = [];
-        this.allReportVulnerabilitiesTotal = 0;
-        this.allReportVulnerabilitiesFetched = false;
+        // Keep last-known-good data on a transient failure instead of wiping —
+        // see fetchVulnerabilityRegister for why.
 
         return {
           status: false,
@@ -7055,6 +7067,10 @@ export const useAuthStore = defineStore("auth", {
         this.userAllReportVulnerabilitiesTotal = this.userAllReportVulnerabilities.length;
         this.userAllReportVulnerabilitiesFetched = true;
         this.cachedUserAllReportVulnerabilitiesTeam = teamParam;
+        this.userAllReportVulnerabilitiesAssetTypeTotals =
+          res.data?.asset_type_totals && typeof res.data.asset_type_totals === "object"
+            ? res.data.asset_type_totals
+            : null;
 
         if (res.data?.report_id) {
           this.userLatestReportId = res.data.report_id;
@@ -7064,6 +7080,7 @@ export const useAuthStore = defineStore("auth", {
           status: true,
           data: this.userAllReportVulnerabilities,
           total: this.userAllReportVulnerabilitiesTotal,
+          assetTypeTotals: this.userAllReportVulnerabilitiesAssetTypeTotals,
           reportId: res.data?.report_id || reportId,
           teams: res.data?.teams ?? [],
         };
@@ -7072,9 +7089,8 @@ export const useAuthStore = defineStore("auth", {
           "[authStore] fetchUserAllReportVulnerabilities error:",
           error.response?.data || error.message,
         );
-        this.userAllReportVulnerabilities = [];
-        this.userAllReportVulnerabilitiesTotal = 0;
-        this.userAllReportVulnerabilitiesFetched = false;
+        // Keep last-known-good data on a transient failure instead of wiping —
+        // see fetchVulnerabilityRegister for why.
         return {
           status: false,
           message:

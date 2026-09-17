@@ -809,6 +809,7 @@ import {
   stampHeldItemAssetType,
   clearHeldItemAssetType,
 } from "@/utils/assetDummyData";
+import { suppressLiveSync } from "@/utils/livePageSync";
 
 export default {
   name: "AssetsView",
@@ -1658,9 +1659,11 @@ class TLSConfigurator:
     async confirmDelete() {
       const selected = (this.sourceAssetRows || []).filter(a => a.selected);
       this.rememberHostAssetTypes(selected);
-      for (const asset of selected) {
-        await this.authStore.deleteAsset(asset.asset);
-      }
+      await suppressLiveSync(async () => {
+        for (const asset of selected) {
+          await this.authStore.deleteAsset(asset.asset);
+        }
+      });
       await this.reloadAssetsAndHeld();
       this.showCheckboxes = false;
       this.activeAction = "";
@@ -1782,9 +1785,11 @@ class TLSConfigurator:
         ...this.heldAssets.filter((row) => !heldHosts.has(String(row.asset || row.ip || '').trim().toLowerCase())),
       ];
       this.showHeld = true;
-      for (const item of selected) {
-        await this.authStore.holdAsset(item.asset);
-      }
+      await suppressLiveSync(async () => {
+        for (const item of selected) {
+          await this.authStore.holdAsset(item.asset);
+        }
+      });
       await this.reloadAssetsAndHeld();
       this.showHoldCheckboxes = false;
       this.resetActions();
@@ -1820,32 +1825,34 @@ class TLSConfigurator:
         return;
       }
 
-      for (const item of selected) {
-        this.hostAssetTypeMap = clearHeldItemAssetType(
-          this.hostAssetTypeMap,
-          item.plugin_name || item.vul_name || '',
-          item.ip || item.asset,
-        );
-        const res = await this.authStore.unholdAsset(item.ip);
-
-        if (res.status && res.restoredAsset) {
-          const a = res.restoredAsset;
-
-          this.authStore.assetRows.unshift({
-            asset: a.asset,
-            name: a.host_information?.["DNS Name"] || "",
-            severity_counts: a.severity_counts,
-            host_information: a.host_information,
-            isInternal: true,
-            held: false,
-            selected: false,
-          });
-
-          this.heldAssets = this.heldAssets.filter(
-            h => h.ip !== item.ip
+      await suppressLiveSync(async () => {
+        for (const item of selected) {
+          this.hostAssetTypeMap = clearHeldItemAssetType(
+            this.hostAssetTypeMap,
+            item.plugin_name || item.vul_name || '',
+            item.ip || item.asset,
           );
+          const res = await this.authStore.unholdAsset(item.ip);
+
+          if (res.status && res.restoredAsset) {
+            const a = res.restoredAsset;
+
+            this.authStore.assetRows.unshift({
+              asset: a.asset,
+              name: a.host_information?.["DNS Name"] || "",
+              severity_counts: a.severity_counts,
+              host_information: a.host_information,
+              isInternal: true,
+              held: false,
+              selected: false,
+            });
+
+            this.heldAssets = this.heldAssets.filter(
+              h => h.ip !== item.ip
+            );
+          }
         }
-      }
+      });
       await this.reloadAssetsAndHeld();
       this.resetActions();
     },

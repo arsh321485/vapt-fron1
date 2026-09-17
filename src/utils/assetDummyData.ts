@@ -396,17 +396,47 @@ export function assetTypeBadgeMeta(assetType) {
   return ASSET_TYPE_DISPLAY.find((item) => item.type === type) || null;
 }
 
-/** Classify a host using the assets API row first, then register/vuln extras, then hostname inference. */
+/**
+ * Map every identifying field (host name, asset, ip, resolved ip) of each
+ * catalog row to that row, lowercased. Build once per catalog and reuse
+ * across many resolveHostAssetType() calls instead of re-scanning the whole
+ * array per host — that linear scan, repeated per host per vuln per tab
+ * (asset-type tab counts recompute over every vuln), is what made the
+ * heavier "Server" tab visibly slower to update than a small tab like
+ * "Assets" after hold/unhold/delete.
+ */
+export function buildAssetCatalogHostIndex(catalog) {
+  const map = new Map();
+  (catalog || []).forEach((asset) => {
+    [getAssetHostName(asset), asset?.asset, asset?.ip, asset?.host_name, getAssetResolvedIp(asset)].forEach(
+      (value) => {
+        const key = String(value || "").trim().toLowerCase();
+        if (key && !map.has(key)) map.set(key, asset);
+      },
+    );
+  });
+  return map;
+}
+
+/**
+ * Classify a host using the assets API row first, then register/vuln extras,
+ * then hostname inference. `catalog` may be the raw assets array (linear
+ * scan) or a Map from buildAssetCatalogHostIndex (O(1) lookup) — pass the
+ * index when calling this inside a loop over many hosts.
+ */
 export function resolveHostAssetType(hostName, catalog = [], extra = null) {
   const ip = String(hostName || "").trim().toLowerCase();
   if (!ip) return "other";
   const extraType = normalizeAssetType(extra?.asset_type ?? extra?.assetType);
   if (extraType) return extraType;
-  const match = (catalog || []).find((asset) =>
-    [getAssetHostName(asset), asset?.asset, asset?.ip, asset?.host_name, getAssetResolvedIp(asset)].some(
-      (value) => String(value || "").trim().toLowerCase() === ip,
-    ),
-  );
+  const match =
+    catalog instanceof Map
+      ? catalog.get(ip)
+      : (catalog || []).find((asset) =>
+          [getAssetHostName(asset), asset?.asset, asset?.ip, asset?.host_name, getAssetResolvedIp(asset)].some(
+            (value) => String(value || "").trim().toLowerCase() === ip,
+          ),
+        );
   if (match) return resolveAssetType(match);
   if (extra && typeof extra === "object") {
     return resolveAssetType({ ...extra, asset: hostName || extra.asset });
