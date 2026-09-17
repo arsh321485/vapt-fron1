@@ -27,9 +27,21 @@ function normalizePath(path: string): string {
   return String(path || "").split("?")[0].replace(/\/+$/, "") || "/";
 }
 
+// Session-only storage doesn't survive the (often long, real-world-hours)
+// wait for a Super Admin to manually process a scope/report — a paid admin
+// who closes the tab (or comes back the next day) would lose this cache and
+// get bounced back to the plan picker the moment hasReport flips true, even
+// though the live subscription is genuinely active. Persist to both, same as
+// scopeScanGate.ts's SCOPE_FILE_AWAITING_KEY for the identical scenario.
 export function setCachedPaidPlan(paid: boolean) {
+  const value = paid ? "1" : "0";
   try {
-    sessionStorage.setItem(PAID_PLAN_CACHE_KEY, paid ? "1" : "0");
+    sessionStorage.setItem(PAID_PLAN_CACHE_KEY, value);
+  } catch {
+    /* ignore */
+  }
+  try {
+    localStorage.setItem(PAID_PLAN_CACHE_KEY, value);
   } catch {
     /* ignore */
   }
@@ -37,7 +49,12 @@ export function setCachedPaidPlan(paid: boolean) {
 
 export function hasCachedPaidPlan(): boolean {
   try {
-    return sessionStorage.getItem(PAID_PLAN_CACHE_KEY) === "1";
+    if (sessionStorage.getItem(PAID_PLAN_CACHE_KEY) === "1") return true;
+  } catch {
+    /* ignore */
+  }
+  try {
+    return localStorage.getItem(PAID_PLAN_CACHE_KEY) === "1";
   } catch {
     return false;
   }
@@ -46,6 +63,11 @@ export function hasCachedPaidPlan(): boolean {
 export function clearCachedPaidPlan() {
   try {
     sessionStorage.removeItem(PAID_PLAN_CACHE_KEY);
+  } catch {
+    /* ignore */
+  }
+  try {
+    localStorage.removeItem(PAID_PLAN_CACHE_KEY);
   } catch {
     /* ignore */
   }
