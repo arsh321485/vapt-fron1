@@ -1174,14 +1174,26 @@ export default {
         // No report on file under Management — but a scope may still exist on this
         // admin (e.g. submitted via the Slack/Teams bot, which deep-links straight
         // to /pricingplan?source=slack with no ?mode=/assets= of its own, so we'd
-        // otherwise never know to ask for management_testing). Re-probe before
-        // concluding "nothing to bill" and, if scope is real, switch this session
-        // into scope/testing mode so Step 2 prices and locks correctly.
-        if (data?.needs_scope) {
+        // otherwise never know to ask for management_testing). The backend does
+        // NOT send a needs_scope flag here — a scope-only admin's management
+        // estimate just comes back all zeros ({asset_count: 0, amount_due: "0.00",
+        // ...}) — so treat "nothing billable in this response" itself as the
+        // signal to re-probe, and prefer amount_due/asset_count over the
+        // unique_ip_count fields (which the scope/testing endpoint never sets).
+        const managementFoundNothing =
+          !fromEstimate &&
+          !(Number(data?.asset_count) > 0) &&
+          !(Number(data?.amount_due) > 0);
+        if (data?.needs_scope || managementFoundNothing) {
           try {
             const scopeData = await estimatePlan({ plan: 'premium', mode: 'management_testing' });
-            const fromScope = uniqueIpCountFields(scopeData) || detectedFileAssetCount(scopeData);
-            if (fromScope && !scopeData?.needs_scope) {
+            const fromScope =
+              Number(scopeData?.asset_count) ||
+              Number(scopeData?.billable_asset_count) ||
+              uniqueIpCountFields(scopeData) ||
+              detectedFileAssetCount(scopeData) ||
+              0;
+            if (fromScope > 0 && !scopeData?.needs_scope) {
               detected = Math.max(detected, fromScope);
               this.estimate = scopeData;
               setPremiumEntrySource('scope');
@@ -1193,7 +1205,7 @@ export default {
               }
             }
           } catch {
-            /* genuinely no scope either — keep the management (needs_scope) estimate */
+            /* genuinely no scope either — keep the management (empty) estimate */
           }
         }
       } catch {

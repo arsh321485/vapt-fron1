@@ -1,15 +1,18 @@
-Nahi — yeh popup message website ki frontend side pe implement karna hai, jo maine khud nahi kiya hai (mera access sirf backend/Django code tak hai, website ke actual UI/React code tak nahi).
+{
+    "plan": "premium",
+    "mode": "management",
+    "billing_cycle": "annual",
+    "asset_count": 0,
+    "price_per_ip": "1.25",
+    "amount_due": "0.00",
+    "currency": "usd",
+    "visible_asset_count": 0,
+    "locked_asset_count": 0,
+    "original_asset_count": 0,
+    "billable_asset_count": 0
+}
 
-Maine jo kiya hai:
-
-Backend me sirf plumbing add ki — Premium/Custom checkout ab source (jaise "slack") accept karta hai aur Stripe ke payment-success redirect URL me &source=slack add kar deta hai (/billing/success?session_id=...&source=slack).
-Jo abhi tak nahi hua (frontend developer ko karna hai):
-
-/billing/success page pe source=slack query param check karna
-Agar slack mile, to ek clear popup/alert dikhana: "Payment successful! Head back to Slack to continue — set your risk criteria there."
-Maine iske liye already ek prompt likh diya tha (pichle message me) jo aap frontend developer ko de sakte ho — usme yeh exact requirement (API se source bhejna + success page pe check karke popup dikhana) detail me likha hai.
-
-To seedha jawaab: backend ready hai, lekin website pe asli popup abhi frontend developer ko banana hai — main khud wo nahi kar sakta is setup me.
+https://vaptbackend.secureitlab.com/api/admin/billing/plans/estimate/
 
 
-jese choose prcing plan krke slack se ate hai website par and pricing choose krke payment krte hai to fr 1 msg ata hai head back to salck vo yha se ane ke badd aa nhi rha hai check kro and proper usko implement krdo
+jab slack se manual scop file dalkr ya manual scop enter krke aye to oricing par yha ips get hokr nhi aa rhi hai is api respoinse me bhi 0 aa rha hai abhi iske phle prompt diya tha mene iske liye to ye tumne fix kiya hai kya btao also agr backedn se krne ki need hai to backedn ke liye prompt de do
