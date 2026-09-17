@@ -1,19 +1,15 @@
-Subject: Extend Timeline modal — "Select Vulnerability" dropdown scope confirmation
+Nahi — yeh popup message website ki frontend side pe implement karna hai, jo maine khud nahi kiya hai (mera access sirf backend/Django code tak hai, website ke actual UI/React code tak nahi).
 
-Current observed behavior: Jab user "Extend Timeline" open karta hai ek asset ke liye jiski multiple severities ki vulnerabilities hain (e.g. 192.168.253.20 — 1 Medium + 1 Low), dropdown me dono dikhte hain, chahe modal header sirf ek severity ("MEDIUM") badge dikhata hai.
+Maine jo kiya hai:
 
-Backend confirm kiya hai: /api/user/dashboard/mitigation-timeline-extension/options/?severity=medium&asset=192.168.253.20&team=<team> call kabhi bhi Low-severity vuln return nahi karta — is API se sirf exact-severity-match wali vulnerabilities aati hain. Isliye jo 2 vulnerabilities dropdown me dikh rahi hain, wo is severity-filtered endpoint se nahi aa rahi — lagta hai dropdown kahin aur se (jaise already-loaded "Active Threats" list) populate ho raha hai.
+Backend me sirf plumbing add ki — Premium/Custom checkout ab source (jaise "slack") accept karta hai aur Stripe ke payment-success redirect URL me &source=slack add kar deta hai (/billing/success?session_id=...&source=slack).
+Jo abhi tak nahi hua (frontend developer ko karna hai):
 
-Confirm karna hai:
+/billing/success page pe source=slack query param check karna
+Agar slack mile, to ek clear popup/alert dikhana: "Payment successful! Head back to Slack to continue — set your risk criteria there."
+Maine iske liye already ek prompt likh diya tha (pichle message me) jo aap frontend developer ko de sakte ho — usme yeh exact requirement (API se source bhejna + success page pe check karke popup dikhana) detail me likha hai.
 
-"Select Vulnerability" dropdown ka data source kya hai — yeh severity-filtered mitigation-timeline-extension/options/ API call kar raha hai, ya asset ki poori already-loaded vulnerability list (jaise "Active Threats" panel) se le raha hai?
-Expected/desired behavior (confirm karo agar yeh sahi hai):
-
-Jab asset select ho, dropdown me us asset ki saari vulnerabilities (kisi bhi severity ki, user ki team ke scope me) dikhni chahiye — sirf ek clicked-severity tak restrict nahi honi chahiye.
-Jab user dropdown se ek specific vulnerability chuне, us specific vulnerability ki apni severity ke hisab se "Original Deadline" field update honi chahiye (kyunki Critical/High/Medium/Low har ek ka alag deadline hota hai risk-criteria se) — abhi jo "Original Deadline" pehle se hi fix dikh raha hai (jaise "5 Days" upar hi), wo galat ho sakta hai agar user Low-severity wali vulnerability chunta hai jiska apna alag deadline hai.
-Agar upar wala expected-behavior confirm ho: Backend side, main mitigation-timeline-extension/options/ API ko update kar dunga taaki severity param optional ho jaye, aur jab sirf asset diya ho, yeh asset ki saari vulnerabilities apne-apne severity + original_deadline_days ke saath ek vulnerability_details list me return kare — taaki frontend ek hi API call se poori list aur har vuln ka sahi deadline dikha sake, bina hardcoded ya missing values ke.
-
-Batana — konsi cheez confirm karni hai aur backend change chahiye ki nahi.
+To seedha jawaab: backend ready hai, lekin website pe asli popup abhi frontend developer ko banana hai — main khud wo nahi kar sakta is setup me.
 
 
-ye user side extend timeline krte hai vha sari vul drop down me get hokr nhi aa rhi thi vo uske loye propmt hai check krao
+jese choose prcing plan krke slack se ate hai website par and pricing choose krke payment krte hai to fr 1 msg ata hai head back to salck vo yha se ane ke badd aa nhi rha hai check kro and proper usko implement krdo

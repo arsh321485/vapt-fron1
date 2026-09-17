@@ -535,7 +535,7 @@ import {
   submitCustomLead,
 } from '@/services/billingApi';
 import { setCachedPaidPlan } from '@/utils/authenticatedHome';
-import { captureChatHandoffSource, consumeHandoffError, hasChatHandoffSource, maybeShowReturnToChatPlatformPopup } from '@/utils/adminHandoff';
+import { captureChatHandoffSource, consumeHandoffError, hasChatHandoffSource, maybeShowReturnToChatPlatformPopup, readChatHandoffSource } from '@/utils/adminHandoff';
 import { peekPendingUploadMeta } from '@/utils/pendingUpload';
 import { useAuthStore } from '@/stores/authStore';
 import { countUniqueIpHosts } from '@/utils/assetDummyData';
@@ -1171,6 +1171,31 @@ export default {
         // Only trust estimate when it has genuine unique_ip_count — never host_count.
         const fromEstimate = uniqueIpCountFields(data);
         if (fromEstimate) detected = Math.max(detected, fromEstimate);
+        // No report on file under Management — but a scope may still exist on this
+        // admin (e.g. submitted via the Slack/Teams bot, which deep-links straight
+        // to /pricingplan?source=slack with no ?mode=/assets= of its own, so we'd
+        // otherwise never know to ask for management_testing). Re-probe before
+        // concluding "nothing to bill" and, if scope is real, switch this session
+        // into scope/testing mode so Step 2 prices and locks correctly.
+        if (data?.needs_scope) {
+          try {
+            const scopeData = await estimatePlan({ plan: 'premium', mode: 'management_testing' });
+            const fromScope = uniqueIpCountFields(scopeData) || detectedFileAssetCount(scopeData);
+            if (fromScope && !scopeData?.needs_scope) {
+              detected = Math.max(detected, fromScope);
+              this.estimate = scopeData;
+              setPremiumEntrySource('scope');
+              this.premiumMode = 'testing';
+              if (String(this.$route.query.mode || '').toLowerCase() !== 'testing') {
+                this.$router.replace({
+                  query: { ...this.$route.query, mode: 'testing' },
+                }).catch(() => {});
+              }
+            }
+          } catch {
+            /* genuinely no scope either — keep the management (needs_scope) estimate */
+          }
+        }
       } catch {
         /* keep assets/subscription count */
       }
@@ -1671,6 +1696,10 @@ export default {
         }
         const billable = this.billedAssetCount;
         if (billable) payload.asset_count = billable;
+        // Stripe redirects the browser away and back — echo the Teams/Slack
+        // handoff source through the backend's success_url so /billing/success
+        // can still show the "head back to Slack/Teams" popup after that trip.
+        if (hasChatHandoffSource()) payload.source = readChatHandoffSource();
         if (this.fromScopeFile && !this.fromScanReport) {
           setBillingReturnTo('/waiting-for-report');
         } else {
@@ -1759,7 +1788,10 @@ export default {
         } else {
           setBillingReturnTo('/communication');
         }
-        const data = await checkoutCustom({ asset_count: assetCount });
+        const data = await checkoutCustom({
+          asset_count: assetCount,
+          source: hasChatHandoffSource() ? readChatHandoffSource() : undefined,
+        });
         if (!data?.checkout_url) {
           throw new Error('Stripe checkout URL was not returned.');
         }

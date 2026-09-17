@@ -187,6 +187,10 @@ export async function checkoutPremium(payload: {
   mode: PremiumMode;
   billing_cycle?: BillingCycle;
   asset_count?: number;
+  /** Teams/Slack bot handoff — echoed back onto the Stripe success_url so
+   * /billing/success can show the "head back to Slack/Teams" popup even
+   * after the redirect round-trip to Stripe. */
+  source?: string;
 }) {
   const body: Record<string, string | number> = { mode: payload.mode };
   if (payload.mode === "management" && payload.billing_cycle) {
@@ -194,6 +198,9 @@ export async function checkoutPremium(payload: {
   }
   if (payload.asset_count) {
     body.asset_count = payload.asset_count;
+  }
+  if (payload.source) {
+    body.source = payload.source;
   }
   const res = await endpoint.post(`${BILLING_BASE}/checkout/premium/`, body);
   return res.data as {
@@ -219,10 +226,12 @@ export async function submitCustomLead(payload: {
 // subscription-status machinery Premium already uses. amount_due in the
 // response is asset_count * 15 (the API-authoritative total — always prefer
 // it over any locally-computed estimate once it arrives).
-export async function checkoutCustom(payload: { asset_count: number }) {
-  const res = await endpoint.post(`${BILLING_BASE}/checkout/custom/`, {
-    asset_count: payload.asset_count,
-  });
+export async function checkoutCustom(payload: { asset_count: number; source?: string }) {
+  const body: Record<string, string | number> = { asset_count: payload.asset_count };
+  if (payload.source) {
+    body.source = payload.source;
+  }
+  const res = await endpoint.post(`${BILLING_BASE}/checkout/custom/`, body);
   return res.data as {
     checkout_url: string;
     session_id: string;
