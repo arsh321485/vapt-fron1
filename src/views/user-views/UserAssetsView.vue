@@ -1871,6 +1871,10 @@ class TLSConfigurator:
       const team = this.authStore.userSelectedTeam;
       const result = await this.authStore.fetchUserAssets(true, team);
       await this.authStore.fetchUserVulnerabilityRegister(true, team);
+      // Also refresh asset_type_totals for this team — the "All Vulnerabilities"
+      // tab's Assets/Web App/Firewall/Server badges read this, and it has no
+      // other proven trigger tied to the team dropdown besides this reload path.
+      await this.authStore.fetchUserAllReportVulnerabilities(true, team);
       if (result.status) {
         this.assets = this.authStore.cachedUserAssets;
         this.rememberHostAssetTypes(this.assets);

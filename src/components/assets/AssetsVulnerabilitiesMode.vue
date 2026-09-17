@@ -958,6 +958,7 @@ import {
 } from '@/utils/assetDummyData';
 import { filterSupportRequestsByVuln, mapSupportRequestsByStep } from '@/utils/supportRequests';
 import { suppressLiveSync } from '@/utils/livePageSync';
+import userTeamFilterWatch from '@/utils/userTeamFilterWatch';
 import {
   resolveVulnPluginId as lookupVulnPluginId,
   resolveVulnCardId as lookupVulnCardId,
@@ -980,6 +981,7 @@ const DESC_LIMIT = 160;
 
 export default {
   name: 'AssetsVulnerabilitiesMode',
+  mixins: [userTeamFilterWatch],
   components: {
     ManualRemediationStepsPanel,
     AutomatedFixPanel,
@@ -1466,6 +1468,17 @@ export default {
     await this.authStore.refreshAutomationPremiumLock(this.isUser);
   },
   methods: {
+    // Team dropdown changed (header). This component has no other reactive
+    // link to userSelectedTeam — the register/all-vulns fetches below only
+    // pick up a new team when explicitly re-called with it. Without this,
+    // asset_type_totals (the tab-bar Assets/Web App/Firewall/Server counts)
+    // stayed stuck on whatever team was selected at mount, even after the
+    // dropdown changed.
+    async onUserSelectedTeamChanged(team) {
+      if (!this.isUser) return;
+      await this.authStore.fetchUserAssets(true, team);
+      await Promise.all([this.loadVulnerabilities(), this.loadHeldAssets()]);
+    },
     isVulnHostDeleted(vuln, ip) {
       const plugin = String(vuln?._key || vuln?.vul_name || vuln?.plugin_name || '')
         .trim()
@@ -1530,17 +1543,11 @@ export default {
       return resolveHostAssetType(ip, this.assetCatalogHostIndex, row);
     },
     assetTypeTabCount(type) {
-      // Backend now returns deduped, report-level asset counts per type
-      // (asset_type_totals on the .../vulnerabilities/ response) — use that
-      // directly instead of counting grouped vulns client-side, which was
-      // counting vulnerabilities matching a type, not distinct assets, and
-      // could disagree with the per-vuln/per-host classification sources.
-      const totals = this.isUser
-        ? this.authStore.userAllReportVulnerabilitiesAssetTypeTotals
-        : this.authStore.allReportVulnerabilitiesAssetTypeTotals;
-      if (totals) {
-        return normalizeAssetTypeCounts(totals)[assetTypeFromFilterKey(type)] || 0;
-      }
+      // Vulnerability count for this asset type (distinct vulnerabilities
+      // affecting assets of this type) — not an asset count. Sourced from
+      // the register/grouped-vulns chain, which is already correctly
+      // team-scoped (fetchUserVulnerabilityRegister(true, team) via the
+      // proven reloadAssetsAndHeld() reload path).
       return this.vulnsGroupedByType(type).length;
     },
     assetsForVulnType(vuln, wanted) {

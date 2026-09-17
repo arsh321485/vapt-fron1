@@ -485,6 +485,9 @@ export const useAuthStore = defineStore("auth", {
     cachedUserVulnRegister: [] as any[],
     userVulnRegisterFetched: false,
     cachedUserVulnRegisterTeam: undefined as string | undefined,
+    // Guards against an older, slower in-flight register fetch resolving
+    // after a newer team-switch's fetch and clobbering it with stale rows.
+    userVulnRegisterSeq: 0,
     allReportVulnerabilities: [] as any[],
     allReportVulnerabilitiesTotal: 0,
     allReportVulnerabilitiesFetched: false,
@@ -501,6 +504,10 @@ export const useAuthStore = defineStore("auth", {
     cachedUserAllReportVulnerabilitiesTeam: undefined as string | undefined,
     // Deduped, team-scoped asset counts per type — straight from the backend.
     userAllReportVulnerabilitiesAssetTypeTotals: null as Record<string, number> | null,
+    // Guards against an older, slower in-flight request (e.g. the initial
+    // mount's fetch for the previously-selected team) resolving AFTER a newer
+    // team-switch's request and clobbering it with stale data.
+    userAllReportVulnerabilitiesSeq: 0,
     userHeldVulnerabilityAssets: [] as any[],
     userHeldVulnerabilityAssetsFetched: false,
     cachedUserHeldVulnerabilityAssetsTeam: undefined as string | undefined,
@@ -546,6 +553,11 @@ export const useAuthStore = defineStore("auth", {
       this.cachedUserClosedVulnsTeam = undefined;
       this.userAllReportVulnerabilitiesFetched = false;
       this.cachedUserAllReportVulnerabilitiesTeam = undefined;
+      // Clear immediately too, not just the fetch-cache flags above — otherwise
+      // the Assets/Web App/Firewall/Server tab-bar badges keep showing the
+      // previous team's asset_type_totals for the moment between the team
+      // switch and the next fetch actually landing.
+      this.userAllReportVulnerabilitiesAssetTypeTotals = null;
       this.userHeldVulnerabilityAssetsFetched = false;
       this.cachedUserHeldVulnerabilityAssetsTeam = undefined;
       this.cachedUserAllTickets = {};
@@ -5036,10 +5048,17 @@ export const useAuthStore = defineStore("auth", {
       ) {
         return { status: true, data: this.cachedUserVulnRegister };
       }
+      this.userVulnRegisterSeq += 1;
+      const seq = this.userVulnRegisterSeq;
       try {
         const res = await endpoint.get(`/api/user/register/register/latest/vulns/`, {
           params: teamParam ? { team: teamParam } : {},
         });
+        // A newer call (e.g. a later team switch) started after this one —
+        // this response is for a stale team selection, don't apply it.
+        if (seq !== this.userVulnRegisterSeq) {
+          return { status: true, data: this.cachedUserVulnRegister, stale: true };
+        }
         const rows = res.data?.rows ?? [];
         this.userLatestReportId = res.data?.report_id || null;
         const incoming = filterPlatformLabelVulnRows(Array.isArray(rows) ? rows : []);
@@ -7051,6 +7070,9 @@ export const useAuthStore = defineStore("auth", {
         };
       }
 
+      this.userAllReportVulnerabilitiesSeq += 1;
+      const seq = this.userAllReportVulnerabilitiesSeq;
+
       try {
         const reportId = await this.resolveUserReportId();
         if (!reportId) {
@@ -7061,6 +7083,18 @@ export const useAuthStore = defineStore("auth", {
           `/api/user/asset/report/${reportId}/vulnerabilities/`,
           { params: teamParam ? { team: teamParam } : {} },
         );
+
+        // A newer call (e.g. a later team switch) started after this one —
+        // this response is for a stale team selection, don't apply it.
+        if (seq !== this.userAllReportVulnerabilitiesSeq) {
+          return {
+            status: true,
+            data: this.userAllReportVulnerabilities,
+            total: this.userAllReportVulnerabilitiesTotal,
+            assetTypeTotals: this.userAllReportVulnerabilitiesAssetTypeTotals,
+            stale: true,
+          };
+        }
 
         const vulns = res.data?.vulnerabilities ?? [];
         this.userAllReportVulnerabilities = filterPlatformLabelVulnRows(Array.isArray(vulns) ? vulns : []);
