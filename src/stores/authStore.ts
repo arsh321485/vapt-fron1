@@ -149,10 +149,20 @@ function normalizeHeldVulnerabilityList(payload: any, extra: Record<string, any>
   return out;
 }
 
+/**
+ * Unique per FINDING, not per vuln+host — the same vulnerability can hit one
+ * host on multiple ports/services (e.g. a self-signed cert on both :5989 and
+ * :9080), each a distinct row with its own status. A plugin::host-only key
+ * collapsed those into one another on merge, silently dropping whichever
+ * port's row didn't survive (e.g. losing a "closed" row because a same-vuln,
+ * same-host, different-port "open" row shared its key and overwrote it).
+ */
 function vulnRegisterRowKey(row: any) {
+  if (row?.id) return String(row.id);
   const plugin = String(row?.vul_name || row?.plugin_name || "").trim().toLowerCase();
   const host = String(row?.asset || row?.host_name || "").trim().toLowerCase();
-  return `${plugin}::${host}`;
+  const port = String(row?.port || "").trim().toLowerCase();
+  return `${plugin}::${host}::${port}`;
 }
 
 /** Keep sibling vulns on the same host when backend delete removes the whole host. */
