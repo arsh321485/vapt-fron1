@@ -5,7 +5,7 @@
       <div class="av-left-header left-panel-header">
         <div class="d-flex justify-content-between align-items-center mb-2">
           <h2 class="av-left-title assets-title">All Vulnerabilities</h2>
-          <span class="av-count-badge assets-count-badge">{{ filteredVulns.length }} {{ filteredVulns.length === 1 ? 'Vul' : 'Vulns' }}</span>
+          <span v-if="!loading" class="av-count-badge assets-count-badge">{{ filteredVulns.length }} {{ filteredVulns.length === 1 ? 'Vul' : 'Vulns' }}</span>
         </div>
         <div class="asset-type-filters mb-3">
           <button
@@ -20,7 +20,7 @@
             @click="setAssetTypeFilter(filter.key)"
           >
             {{ filter.label }}
-            <span class="asset-type-filter-count">{{ assetTypeTabCount(filter.key) }}</span>
+            <span v-if="!loading" class="asset-type-filter-count">{{ assetTypeTabCount(filter.key) }}</span>
           </button>
         </div>
         <div class="d-flex gap-3 mb-3">
@@ -497,6 +497,11 @@
                                 <span :class="getStatusBadgeClass('closed')">
                                   <span :class="getStatusDotClass('closed')"></span>{{ getStatusLabel('closed') }}
                                 </span>
+                                <span
+                                  v-if="(item.closed_count || 1) > 1"
+                                  class="closed-count-badge"
+                                  :title="(item.closed_count || 1) + ' assets had this vulnerability closed'"
+                                >{{ item.closed_count }} assets</span>
                               </div>
                             </div>
                             <div class="d-flex align-items-center gap-3 flex-shrink-0 vuln-accordion-actions">
@@ -957,7 +962,7 @@ import {
   loadHeldItemTypeMap,
 } from '@/utils/assetDummyData';
 import { filterSupportRequestsByVuln, mapSupportRequestsByStep } from '@/utils/supportRequests';
-import { suppressLiveSync } from '@/utils/livePageSync';
+import { suppressLiveSync, notifyLiveData } from '@/utils/livePageSync';
 import userTeamFilterWatch from '@/utils/userTeamFilterWatch';
 import {
   resolveVulnPluginId as lookupVulnPluginId,
@@ -1305,28 +1310,30 @@ export default {
         .filter((v) => (v.assets || []).length > 0 && isActiveVulnStatus(v.status));
     },
     closedRecentlyItems() {
-      const items = [];
-      const seen = new Set();
-      const pushItem = (name, host, rec = null) => {
-        const key = closedVulnHostKey(name, host);
-        if (!name || seen.has(key)) return;
-        seen.add(key);
-        const pluginId = rec?.plugin_id || rec?.nessus_plugin_id || null;
-        const fixId = extractFixVulnerabilityId(rec) || null;
-        items.push({
-          _id: fixId || key,
-          fix_vulnerability_id: fixId,
-          vulnerability_name: name,
-          plugin_name: name,
-          host_name: host,
-          status: 'closed',
-          severity: this.canonSeverity(rec?.severity || rec?.risk_factor || ''),
-          plugin_id: pluginId,
-          nessus_plugin_id: rec?.nessus_plugin_id || pluginId || null,
-          vulnerability_id: rec?.vulnerability_id || rec?.id || null,
-          id: rec?.id || null,
-          description: pickVulnDescription(rec),
-        });
+      // One row per vulnerability NAME (matches how the open/active list is
+      // grouped) — a vuln closed on several hosts, or closed more than once
+      // over time for the same host, used to collapse down to a single row
+      // with no way to tell how many instances that represented. Now every
+      // distinct host it was closed on is kept in host_names, so the row can
+      // show a count instead of silently dropping the repeats.
+      const groups = new Map();
+      const order = [];
+      const addRecord = (name, host, rec = null) => {
+        if (!name || !host) return;
+        const nameKey = String(name).trim().toLowerCase();
+        if (!nameKey) return;
+        let group = groups.get(nameKey);
+        if (!group) {
+          group = { name, hostKeys: new Set(), hosts: [], rec };
+          groups.set(nameKey, group);
+          order.push(nameKey);
+        }
+        const hostKey = String(host).trim().toLowerCase();
+        if (!group.hostKeys.has(hostKey)) {
+          group.hostKeys.add(hostKey);
+          group.hosts.push(host);
+        }
+        if (!group.rec) group.rec = rec;
       };
       // Authoritative: closed fix API records
       (this.closedFixRecords || []).forEach((rec) => {
@@ -1335,7 +1342,7 @@ export default {
         const name = closedRecordVulnName(rec);
         const host = closedRecordHostName(rec);
         if (!name || !host || !isRealScanHost(host)) return;
-        pushItem(name, host, rec);
+        addRecord(name, host, rec);
       });
       // Fallback: register rows marked closed
       (this.groupedVulns || []).forEach((v) => {
@@ -1344,10 +1351,32 @@ export default {
           if (isActiveVulnStatus(rowStatusValue(row) || 'open')) return;
           const host = String(row.asset || row.host_name || '').trim();
           if (!host || !isRealScanHost(host)) return;
-          pushItem(name, host, row);
+          addRecord(name, host, row);
         });
       });
-      return items;
+      return order.map((nameKey) => {
+        const group = groups.get(nameKey);
+        const rec = group.rec;
+        const pluginId = rec?.plugin_id || rec?.nessus_plugin_id || null;
+        const fixId = extractFixVulnerabilityId(rec) || null;
+        const key = closedVulnHostKey(group.name, group.hosts[0]);
+        return {
+          _id: fixId || key,
+          fix_vulnerability_id: fixId,
+          vulnerability_name: group.name,
+          plugin_name: group.name,
+          host_name: group.hosts[0],
+          host_names: group.hosts,
+          closed_count: group.hosts.length,
+          status: 'closed',
+          severity: this.canonSeverity(rec?.severity || rec?.risk_factor || ''),
+          plugin_id: pluginId,
+          nessus_plugin_id: rec?.nessus_plugin_id || pluginId || null,
+          vulnerability_id: rec?.vulnerability_id || rec?.id || null,
+          id: rec?.id || null,
+          description: pickVulnDescription(rec),
+        };
+      });
     },
     vulnsForCurrentType() {
       return this.vulnsGroupedByType(this.assetTypeFilter);
@@ -1464,7 +1493,9 @@ export default {
     } else {
       await this.authStore.fetchAssets(false);
     }
+    this.loading = true;
     await Promise.all([this.loadVulnerabilities(), this.loadHeldAssets()]);
+    this.loading = false;
     await this.authStore.refreshAutomationPremiumLock(this.isUser);
   },
   methods: {
@@ -1477,7 +1508,9 @@ export default {
     async onUserSelectedTeamChanged(team) {
       if (!this.isUser) return;
       await this.authStore.fetchUserAssets(true, team);
+      this.loading = true;
       await Promise.all([this.loadVulnerabilities(), this.loadHeldAssets()]);
+      this.loading = false;
     },
     isVulnHostDeleted(vuln, ip) {
       const plugin = String(vuln?._key || vuln?.vul_name || vuln?.plugin_name || '')
@@ -1836,6 +1869,7 @@ export default {
         }
       });
       await this.reloadAfterAssetActions();
+      notifyLiveData('delete');
       this.$emit('vuln-assets-deleted', {
         hostNames: affectedHosts,
       });
@@ -1911,6 +1945,7 @@ export default {
         this.showHeld = true;
       }
       await this.reloadAfterAssetActions();
+      notifyLiveData('hold');
       this.showHoldCheckboxes = false;
       this.resetActions();
     },
@@ -1954,6 +1989,7 @@ export default {
         }
       });
       await this.reloadAfterAssetActions();
+      notifyLiveData('unhold');
       this.resetActions();
     },
     resetActions() {
@@ -2035,7 +2071,11 @@ export default {
       }
     },
     async loadVulnerabilities() {
-      this.loading = true;
+      // loading stays true (owned by the caller, alongside loadHeldAssets())
+      // until closed-fix records are in too — those change which hosts count
+      // as open, so flipping loading off before they land made the tab/header
+      // counts render a too-high number that visibly dropped a step or two
+      // once closedFixRecords (and the held list) finished loading.
       if (this.isUser) {
         await Promise.all([
           this.authStore.fetchUserVulnerabilityRegister(true, this.authStore.userSelectedTeam),
@@ -2047,7 +2087,6 @@ export default {
           this.authStore.fetchAllReportVulnerabilities(true),
         ]);
       }
-      this.loading = false;
       await this.loadClosedFixRecords();
       await this.loadAutomationScripts();
       this.selectFirstNonEmptyType();
@@ -2414,6 +2453,9 @@ export default {
       if (!item) return { vul_name: '', severity: '', status: 'closed', assets: [] };
       const name = item.vulnerability_name || item.plugin_name || item.vul_name || '';
       const host = item.host_name || item.asset || item.host || '';
+      const hosts = Array.isArray(item.host_names) && item.host_names.length
+        ? item.host_names
+        : (host ? [host] : []);
       const pluginId = item.plugin_id || item.nessus_plugin_id || null;
       return {
         ...item,
@@ -2422,7 +2464,7 @@ export default {
         vulnerability_name: item.vulnerability_name || name,
         severity: this.canonSeverity(item.severity || item.risk_factor || ''),
         status: 'closed',
-        assets: host ? [host] : [],
+        assets: hosts,
         plugin_id: pluginId,
         nessus_plugin_id: item.nessus_plugin_id || pluginId || null,
         fix_vulnerability_id: item.fix_vulnerability_id || extractFixVulnerabilityId(item) || null,
@@ -4865,6 +4907,18 @@ export default {
 
 /* Fixed Recently */
 .fixed-divider { height: 1px; background: rgba(203, 196, 208, 0.25); }
+.closed-count-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 20px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #166534;
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+  white-space: nowrap;
+}
 .fixed-recently-scroll {
   display: flex;
   flex-direction: column;

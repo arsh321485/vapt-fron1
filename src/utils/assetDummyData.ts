@@ -510,13 +510,35 @@ function lookupPluginHoldStamp(map, pluginName, hostName) {
   return "";
 }
 
+/**
+ * Any stamp recorded for this host, regardless of which flow held it:
+ * a whole-asset hold, or a held vulnerability under any plugin name.
+ * A host only has one real type tab, so whichever tab it was held from
+ * should win everywhere the host shows up (All Assets and All Vulnerabilities
+ * both read this map, keyed differently — asset-level calls pass no plugin
+ * name, vuln-level calls pass the plugin name of a *different* vuln on the
+ * same host — so an exact-key match alone misses the stamp).
+ */
+function lookupAnyHoldStampForHost(map, host) {
+  if (!host) return "";
+  if (map?.[`hold-asset:${host}`]) return map[`hold-asset:${host}`];
+  if (map?.[`hold:${host}`]) return map[`hold:${host}`];
+  const suffix = `::${host}`;
+  for (const [key, value] of Object.entries(map || {})) {
+    if (!value || !key.endsWith(suffix)) continue;
+    if (key.startsWith("hold-vuln:") || key.startsWith("hold:")) return value;
+  }
+  return "";
+}
+
 function lookupHoldStamp(map, pluginName, hostName) {
   const host = String(hostName || "").trim().toLowerCase();
   const plugin = String(pluginName || "").trim();
-  if (plugin) return lookupPluginHoldStamp(map, plugin, host);
-  if (host && map?.[`hold-asset:${host}`]) return map[`hold-asset:${host}`];
-  if (host && map?.[`hold:${host}`]) return map[`hold:${host}`];
-  return "";
+  if (plugin) {
+    const exact = lookupPluginHoldStamp(map, plugin, host);
+    if (exact) return exact;
+  }
+  return lookupAnyHoldStampForHost(map, host);
 }
 
 export function stampHeldItemAssetType(map, pluginName, hostName, assetType, options = {}) {

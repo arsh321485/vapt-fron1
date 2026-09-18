@@ -2032,13 +2032,16 @@ th.sev-low { color: var(--sev-low-text) !important; }
   border-radius: 12px 12px 0 0;
 }
 
-/* Manual Fix: compact description so at least one full step is visible */
+/* Manual Fix: compact description so at least one full step is visible.
+   !important guards against per-view duplicate .vuln-accordion-item--expanded /
+   .av-detail-tab-content rules (same specificity, loaded after this file)
+   silently cancelling the taller manual-tab sizing on some pages. */
 .vuln-accordion-item--manual.vuln-accordion-item--expanded {
-  height: calc(100vh - 148px);
-  height: calc(100dvh - 148px);
-  max-height: calc(100vh - 148px);
-  max-height: calc(100dvh - 148px);
-  min-height: 420px;
+  height: calc(100vh - 148px) !important;
+  height: calc(100dvh - 148px) !important;
+  max-height: calc(100vh - 148px) !important;
+  max-height: calc(100dvh - 148px) !important;
+  min-height: 420px !important;
 }
 
 .vuln-accordion-item--manual .av-description-block {
@@ -2059,7 +2062,14 @@ th.sev-low { color: var(--sev-low-text) !important; }
 .vuln-accordion-item--manual .av-detail-tab-content,
 .vuln-accordion-item--manual .av-detail-tab-content--manual {
   flex: 1 1 auto !important;
-  min-height: min(52vh, 28rem);
+  min-height: min(58vh, 30rem) !important;
+  height: auto !important;
+  max-height: none !important;
+  /* Without a reserved gutter, the scrollbar overlays the last ~15px of this
+     box instead of its own space, clipping the right-aligned "Complete all
+     steps" footer button under it once the step list is tall enough to
+     scroll. */
+  scrollbar-gutter: stable !important;
 }
 
 .vuln-accordion-item--manual .mf-fix-info-card {

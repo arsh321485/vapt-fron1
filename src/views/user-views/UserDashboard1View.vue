@@ -1370,12 +1370,16 @@ export default {
         const high     = vulns.filter(v => (v.risk_factor || '').toLowerCase() === 'high').length;
         const medium   = vulns.filter(v => (v.risk_factor || '').toLowerCase() === 'medium').length;
         const low      = vulns.filter(v => (v.risk_factor || '').toLowerCase() === 'low').length;
-        const assetsSet = new Set();
+        // Sum every vulnerability's affected-asset count for this team — matches
+        // the per-vulnerability "N affected assets" cards below it (which add up
+        // to this total), instead of de-duplicating hosts that show up under more
+        // than one vulnerability type down to a single count.
+        let affectedAssets = 0;
         vulns.forEach(v => {
-          if (Array.isArray(v.assets)) v.assets.forEach(a => { if (isRealScanHost(a)) assetsSet.add(a); });
-          else if (isRealScanHost(v.host_name)) assetsSet.add(v.host_name);
+          if (Array.isArray(v.assets)) affectedAssets += v.assets.filter(isRealScanHost).length;
+          else if (isRealScanHost(v.host_name)) affectedAssets += 1;
         });
-        return { ...cfg, total, critical, high, medium, low, affectedAssets: assetsSet.size || 0 };
+        return { ...cfg, total, critical, high, medium, low, affectedAssets };
       });
     },
     uniqueVulns() {

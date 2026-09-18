@@ -809,7 +809,7 @@ import {
   stampHeldItemAssetType,
   clearHeldItemAssetType,
 } from "@/utils/assetDummyData";
-import { suppressLiveSync } from "@/utils/livePageSync";
+import { suppressLiveSync, notifyLiveData } from "@/utils/livePageSync";
 
 export default {
   name: "AssetsView",
@@ -1421,8 +1421,8 @@ class TLSConfigurator:
         this.refreshSupportRequestsForHost(this.activeIndex, requestSeq);
       }
     },
-    async reloadAssetsAndHeld() {
-      await this.authStore.fetchAssets(true);
+    async reloadAssetsAndHeld(force = true) {
+      await this.authStore.fetchAssets(force);
       this.rememberHostAssetTypes(this.authStore.assetRows);
       await this.loadHeldAssets();
       this.resetPaginationIfNeeded();
@@ -1665,6 +1665,7 @@ class TLSConfigurator:
         }
       });
       await this.reloadAssetsAndHeld();
+      notifyLiveData("delete");
       this.showCheckboxes = false;
       this.activeAction = "";
     },
@@ -1791,6 +1792,7 @@ class TLSConfigurator:
         }
       });
       await this.reloadAssetsAndHeld();
+      notifyLiveData("hold");
       this.showHoldCheckboxes = false;
       this.resetActions();
     },
@@ -1854,6 +1856,7 @@ class TLSConfigurator:
         }
       });
       await this.reloadAssetsAndHeld();
+      notifyLiveData("unhold");
       this.resetActions();
     },
     async loadHeldAssets() {
@@ -2274,17 +2277,22 @@ class TLSConfigurator:
       await this.authStore.getReportStatus();
     }
 
-    // Always refresh register first so fix_vulnerability_id is available before asset vulns load.
-    await this.authStore.fetchVulnerabilityRegister(true);
-    await this.authStore.refreshAutomationPremiumLock(false);
-    await this.reloadAssetsAndHeld();
+    // Register must resolve before reloadAssetsAndHeld() (asset vuln lookups
+    // cross-reference fix_vulnerability_id from the register), but the premium
+    // lock check has no dependency on either — run it alongside instead of
+    // after. Both fetches also reuse the store's own cache when data is
+    // already fresh (force=false), instead of always re-hitting the network.
+    await Promise.all([
+      this.authStore.fetchVulnerabilityRegister(false).then(() => this.reloadAssetsAndHeld(false)),
+      this.authStore.refreshAutomationPremiumLock(false),
+    ]);
 
     await this.applyRouteQueryContext();
   },
   async activated() {
     this.openFixPanelAlerts();
-    await this.authStore.fetchVulnerabilityRegister(true);
-    await this.reloadAssetsAndHeld();
+    await this.authStore.fetchVulnerabilityRegister(false);
+    await this.reloadAssetsAndHeld(false);
     await this.applyRouteQueryContext();
   },
 };

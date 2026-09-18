@@ -726,7 +726,7 @@
                 <div v-if="showExtPopup" class="ext-popup-backdrop" @click.self="closeExtPopup">
                   <div class="ext-popup-box" @click.stop>
                     <div class="ext-drawer-accent" :class="'ext-accent-' + extPopupSeverity"></div>
-                    <div class="ext-popup-header">
+                    <div class="ext-popup-header" :class="'ext-header-' + extPopupSeverity">
                       <div class="ext-header-left">
                         <div class="ext-header-icon" :class="'ext-icon-' + extPopupSeverity">
                           <i class="bi" :class="{
@@ -991,7 +991,7 @@ import {
   clearHeldItemAssetType,
 } from "@/utils/assetDummyData";
 import { filterSupportRequestsByVuln, mapSupportRequestsByStep } from "@/utils/supportRequests";
-import { suppressLiveSync } from "@/utils/livePageSync";
+import { suppressLiveSync, notifyLiveData } from "@/utils/livePageSync";
 import {
   resolveVulnPluginId as lookupVulnPluginId,
   resolveVulnCardId as lookupVulnCardId,
@@ -1084,6 +1084,10 @@ export default {
       extPopupVulListApi: [],
       extPopupOriginalDeadlineDays: null,
       extPopupOptionsLoading: false,
+      // original_deadline_days is a per-severity policy value, not per-vuln —
+      // cache it so re-selecting a vuln of a severity we already resolved
+      // doesn't refire the network call.
+      extPopupDeadlineBySeverity: {},
       showCodeModal: false,
       showPythonModal: false,
       assetSrStep: null,
@@ -1280,11 +1284,32 @@ class TLSConfigurator:
       if (this.extPopupAssetListApi.length > 0) return this.extPopupAssetListApi;
       return this.assets.map(a => a.asset).filter(Boolean);
     },
+    extPopupVulSeverityMap() {
+      // Every active vulnerability on this asset, mapped to its own real
+      // severity — used to build the full (not severity-filtered) dropdown
+      // list, and to look up the correct severity once one is picked.
+      const map = {};
+      (this.authStore.selectedAssetVulnerabilities || [])
+        .filter(v => isActiveVulnStatus(v?.status))
+        .forEach(v => {
+          const name = v?.vul_name;
+          if (!name || map[name]) return;
+          // Lowercase to match the popup's severity classes/comparisons
+          // (ext-icon-low, ext-header-critical, extPopupSeverity === 'high', …) —
+          // canonSeverity() returns "Low"/"Critical" for display elsewhere, which
+          // silently failed every one of those strict lowercase checks here.
+          map[name] = canonSeverity(v.severity || v.risk_factor || '').toLowerCase();
+        });
+      return map;
+    },
     extPopupVulList() {
-      // An asset can have multiple separate findings that share the same
-      // vulnerability name (e.g. the same CVE on different ports) — dedupe
-      // by name so the dropdown doesn't show "SSL RC4 Cipher Suites
-      // Supported" (or any other name) two or more times.
+      // Previously seeded from a severity-scoped API call (extPopupVulListApi)
+      // using only the asset's single "worst" severity — so a Low vulnerability
+      // never appeared here at all when the same asset also had a Medium/High
+      // one. List every active vuln on the asset instead, regardless of severity.
+      if (Object.keys(this.extPopupVulSeverityMap).length > 0) {
+        return Object.keys(this.extPopupVulSeverityMap);
+      }
       if (this.extPopupVulListApi.length > 0) return [...new Set(this.extPopupVulListApi)];
       if (!this.extPopupAsset) return [];
       // Same "active" definition Active Threats uses (isActiveVulnStatus) —
@@ -1849,8 +1874,10 @@ class TLSConfigurator:
     async loadAssets(force = false) {
       this.loading = true;
       const team = this.authStore.userSelectedTeam;
-      const result = await this.authStore.fetchUserAssets(force, team);
-      await this.authStore.fetchUserVulnerabilityRegister(force, team);
+      const [result] = await Promise.all([
+        this.authStore.fetchUserAssets(force, team),
+        this.authStore.fetchUserVulnerabilityRegister(force, team),
+      ]);
       if (result.status) {
         this.assets = this.authStore.cachedUserAssets;
         this.rememberHostAssetTypes(this.assets);
@@ -1866,15 +1893,19 @@ class TLSConfigurator:
       }
       this.loading = false;
     },
-    async reloadAssetsAndHeld() {
+    async reloadAssetsAndHeld(force = true) {
       this.loading = true;
       const team = this.authStore.userSelectedTeam;
-      const result = await this.authStore.fetchUserAssets(true, team);
-      await this.authStore.fetchUserVulnerabilityRegister(true, team);
       // Also refresh asset_type_totals for this team — the "All Vulnerabilities"
       // tab's Assets/Web App/Firewall/Server badges read this, and it has no
       // other proven trigger tied to the team dropdown besides this reload path.
-      await this.authStore.fetchUserAllReportVulnerabilities(true, team);
+      // These three are independent fetches — run them together instead of
+      // one after another, and reuse the store's own cache when force=false.
+      const [result] = await Promise.all([
+        this.authStore.fetchUserAssets(force, team),
+        this.authStore.fetchUserVulnerabilityRegister(force, team),
+        this.authStore.fetchUserAllReportVulnerabilities(force, team),
+      ]);
       if (result.status) {
         this.assets = this.authStore.cachedUserAssets;
         this.rememberHostAssetTypes(this.assets);
@@ -2171,6 +2202,7 @@ class TLSConfigurator:
         }
       });
       await this.reloadAssetsAndHeld();
+      notifyLiveData("delete");
       this.showCheckboxes = false;
       this.resetActions();
     },
@@ -2217,6 +2249,7 @@ class TLSConfigurator:
         }
       });
       await this.reloadAssetsAndHeld();
+      notifyLiveData("unhold");
       this.resetActions();
     },
     resetActions() {
@@ -2273,8 +2306,31 @@ class TLSConfigurator:
         this.extPopupOriginalDeadlineDays = null;
       }
     },
+    // Resolves the "Original Deadline" for a given severity (a per-severity
+    // policy value, not per-vuln) and sets it as the popup's active severity —
+    // called whenever the selected vulnerability changes, so the header badge
+    // and deadline always match the actually-selected vuln instead of staying
+    // locked to whatever severity the popup opened with.
+    async onExtPopupVulSeverityResolved(severity) {
+      if (!severity) return;
+      this.extPopupSeverity = severity;
+      if (Object.prototype.hasOwnProperty.call(this.extPopupDeadlineBySeverity, severity)) {
+        this.extPopupOriginalDeadlineDays = this.extPopupDeadlineBySeverity[severity];
+        this.clearInvalidExtDeadline();
+        return;
+      }
+      this.extPopupOptionsLoading = true;
+      const team = (this.selectedAsset?.assigned_teams && this.selectedAsset.assigned_teams[0]) || undefined;
+      const res = await this.authStore.fetchUserMitigationTimelineExtensionOptions(severity, this.extPopupAsset || undefined, team);
+      this.extPopupOptionsLoading = false;
+      const days = res.status && res.data ? (res.data.original_deadline_days ?? null) : null;
+      this.extPopupDeadlineBySeverity = { ...this.extPopupDeadlineBySeverity, [severity]: days };
+      if (this.extPopupSeverity === severity) {
+        this.extPopupOriginalDeadlineDays = days;
+        this.clearInvalidExtDeadline();
+      }
+    },
     async openExtPopup() {
-      this.extPopupSeverity = this.inferExtSeverity();
       this.extPopupAsset = this.activeIndex || "";
       this.extPopupVulName = "";
       this.extPopupExtension = "";
@@ -2282,8 +2338,11 @@ class TLSConfigurator:
       this.extPopupAssetListApi = [];
       this.extPopupVulListApi = [];
       this.extPopupOriginalDeadlineDays = null;
+      this.extPopupDeadlineBySeverity = {};
       this.showExtPopup = true;
-      await this.fetchExtPopupOptions(this.extPopupSeverity, this.extPopupAsset || null);
+      // Badge/deadline default before anything is picked — updates for real
+      // once a specific vulnerability is selected (see extPopupVulName watch).
+      await this.onExtPopupVulSeverityResolved(this.inferExtSeverity());
     },
     async onExtPopupAssetChange() {
       this.extPopupVulName = "";
@@ -2303,6 +2362,7 @@ class TLSConfigurator:
       this.extPopupAssetListApi = [];
       this.extPopupVulListApi = [];
       this.extPopupOriginalDeadlineDays = null;
+      this.extPopupDeadlineBySeverity = {};
       this.extPopupOptionsLoading = false;
     },
     getVulnAssets(vuln) {
@@ -2448,6 +2508,7 @@ class TLSConfigurator:
         }
       });
       await this.reloadAssetsAndHeld();
+      notifyLiveData("hold");
       this.showHoldCheckboxes = false;
       this.resetActions();
     },
@@ -2463,6 +2524,11 @@ class TLSConfigurator:
     },
     searchQuery() {
       this.currentPage = 1;
+    },
+    extPopupVulName(name) {
+      if (!name) return;
+      const severity = this.extPopupVulSeverityMap[name];
+      if (severity) this.onExtPopupVulSeverityResolved(severity);
     },
     assetSrVulnName() {
       this.loadAssetSrRequestsForVuln().then(() => {
@@ -2503,15 +2569,17 @@ class TLSConfigurator:
 
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     [...tooltipTriggerList].map(el => new bootstrap.Tooltip(el));
-    // Keep behavior consistent with navigation: always fetch fresh on entry.
-    await this.loadAssets(true);
-    await this.loadHeldAssets();
-    this.syncTotalAssets();
-    await this.authStore.refreshAutomationPremiumLock(true);
+    // Reuse the store's cache when it's already fresh instead of always
+    // re-hitting the network on entry. The premium lock check has no
+    // dependency on the asset/held data, so it runs alongside instead of after.
+    await Promise.all([
+      this.loadAssets(false).then(() => this.loadHeldAssets()).then(() => this.syncTotalAssets()),
+      this.authStore.refreshAutomationPremiumLock(true),
+    ]);
   },
   async activated() {
     this.openFixPanelAlerts();
-    await this.reloadAssetsAndHeld();
+    await this.reloadAssetsAndHeld(false);
     await this.applyRouteQueryContext();
   },
   beforeUnmount() {
@@ -3730,7 +3798,15 @@ class TLSConfigurator:
   background: linear-gradient(135deg, #241447 0%, #0f696e 100%);
   flex-shrink: 0;
   margin-top: 52px;
+  transition: background 0.2s ease;
 }
+/* Header tint follows the selected vulnerability's severity — low keeps the
+   original teal brand default, higher severities shift toward red/orange so
+   the whole drawer (not just the small icon tint) reads as more urgent. */
+.ext-header-critical { background: linear-gradient(135deg, #241447 0%, #9e1b0d 100%); }
+.ext-header-high     { background: linear-gradient(135deg, #241447 0%, #c2410c 100%); }
+.ext-header-medium   { background: linear-gradient(135deg, #241447 0%, #b45309 100%); }
+.ext-header-low      { background: linear-gradient(135deg, #241447 0%, #0f696e 100%); }
 .ext-header-left { display: flex; align-items: center; gap: 12px; }
 .ext-header-icon {
   width: 42px; height: 42px; border-radius: 10px;
@@ -3739,10 +3815,10 @@ class TLSConfigurator:
   display: flex; align-items: center; justify-content: center;
   font-size: 18px; flex-shrink: 0; color: #fff;
 }
-.ext-icon-critical { background: rgba(239,68,68,0.25); border-color: rgba(239,68,68,0.4); color: #fca5a5; }
-.ext-icon-high     { background: rgba(245,158,11,0.25); border-color: rgba(245,158,11,0.4); color: #fcd34d; }
-.ext-icon-medium   { background: rgba(251,191,36,0.2);  border-color: rgba(251,191,36,0.35); color: #fde68a; }
-.ext-icon-low      { background: rgba(20,184,166,0.25); border-color: rgba(20,184,166,0.4); color: #5eead4; }
+.ext-icon-critical { background: rgba(239,68,68,0.4);  border-color: rgba(252,165,165,0.6); color: #fecaca; }
+.ext-icon-high     { background: rgba(249,115,22,0.4); border-color: rgba(253,186,116,0.6); color: #fed7aa; }
+.ext-icon-medium   { background: rgba(245,158,11,0.4); border-color: rgba(252,211,77,0.6);  color: #fde68a; }
+.ext-icon-low      { background: rgba(20,184,166,0.4); border-color: rgba(94,234,212,0.6);  color: #99f6e4; }
 .ext-popup-title { font-size: 0.85rem; font-weight: 600; color: #fff; margin: 0 0 3px; line-height: 1.2; }
 .ext-popup-subtitle { font-size: 0.68rem; color: rgba(255,255,255,0.65); display: flex; align-items: center; gap: 6px; }
 .ext-header-close {

@@ -1,7 +1,7 @@
 <template>
   <RouterView v-slot="{ Component }">
     <ErrorBoundary>
-      <keep-alive :include="['AdminDashboardOnboardingView', 'UserDashboard1View']">
+      <keep-alive :include="['AdminDashboardOnboardingView', 'UserDashboard1View', 'AssetsView', 'UserAssetsView', 'VulnerabilityRegisterView']">
         <component :is="Component" />
       </keep-alive>
     </ErrorBoundary>

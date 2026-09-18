@@ -2419,12 +2419,16 @@ export default {
       const matchKey = Object.keys(teams).find(k => normalize(k) === normalize(teamKey));
       if (!matchKey) return 0;
       const vulns = teams[matchKey]?.vulnerabilities || [];
-      const assetsSet = new Set();
+      // Sum every vulnerability's affected-asset count for this team — matches
+      // the per-vulnerability "N affected assets" cards below it, instead of
+      // de-duplicating hosts that show up under more than one vulnerability
+      // type down to a single count.
+      let affectedAssets = 0;
       vulns.forEach(v => {
-        if (Array.isArray(v.assets)) v.assets.forEach(a => assetsSet.add(a));
-        else if (v.host_name) assetsSet.add(v.host_name);
+        if (Array.isArray(v.assets)) affectedAssets += v.assets.length;
+        else if (v.host_name) affectedAssets += 1;
       });
-      return assetsSet.size;
+      return affectedAssets;
     },
     getMitigationRiskColor(risk) {
       const map = { Critical: severityHex("critical"), High: severityHex("high"), Medium: severityHex("medium"), Low: severityHex("low") };
