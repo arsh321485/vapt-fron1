@@ -1354,29 +1354,40 @@ export default {
           addRecord(name, host, row);
         });
       });
-      return order.map((nameKey) => {
-        const group = groups.get(nameKey);
-        const rec = group.rec;
-        const pluginId = rec?.plugin_id || rec?.nessus_plugin_id || null;
-        const fixId = extractFixVulnerabilityId(rec) || null;
-        const key = closedVulnHostKey(group.name, group.hosts[0]);
-        return {
-          _id: fixId || key,
-          fix_vulnerability_id: fixId,
-          vulnerability_name: group.name,
-          plugin_name: group.name,
-          host_name: group.hosts[0],
-          host_names: group.hosts,
-          closed_count: group.hosts.length,
-          status: 'closed',
-          severity: this.canonSeverity(rec?.severity || rec?.risk_factor || ''),
-          plugin_id: pluginId,
-          nessus_plugin_id: rec?.nessus_plugin_id || pluginId || null,
-          vulnerability_id: rec?.vulnerability_id || rec?.id || null,
-          id: rec?.id || null,
-          description: pickVulnDescription(rec),
-        };
-      });
+      // Scope to the active asset-type tab (Assets/Web App/Firewall/Server) —
+      // same as the open "Active Threats" list and "Mitigation on Hold" —
+      // so a vuln closed on a Server host only shows under Fixed Recently on
+      // the Server tab, not on every tab regardless of where it was closed.
+      const wanted = assetTypeFromFilterKey(this.assetTypeFilter);
+      return order
+        .map((nameKey) => {
+          const group = groups.get(nameKey);
+          const hosts = group.hosts.filter(
+            (host) => resolveHostAssetType(host, this.assetCatalogHostIndex) === wanted,
+          );
+          if (!hosts.length) return null;
+          const rec = group.rec;
+          const pluginId = rec?.plugin_id || rec?.nessus_plugin_id || null;
+          const fixId = extractFixVulnerabilityId(rec) || null;
+          const key = closedVulnHostKey(group.name, hosts[0]);
+          return {
+            _id: fixId || key,
+            fix_vulnerability_id: fixId,
+            vulnerability_name: group.name,
+            plugin_name: group.name,
+            host_name: hosts[0],
+            host_names: hosts,
+            closed_count: hosts.length,
+            status: 'closed',
+            severity: this.canonSeverity(rec?.severity || rec?.risk_factor || ''),
+            plugin_id: pluginId,
+            nessus_plugin_id: rec?.nessus_plugin_id || pluginId || null,
+            vulnerability_id: rec?.vulnerability_id || rec?.id || null,
+            id: rec?.id || null,
+            description: pickVulnDescription(rec),
+          };
+        })
+        .filter(Boolean);
     },
     vulnsForCurrentType() {
       return this.vulnsGroupedByType(this.assetTypeFilter);

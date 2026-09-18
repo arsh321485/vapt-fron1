@@ -1,1 +1,1 @@
-why the user assest page and admin side assest page taking little more time for loading the data check this also i want the wesbite runs smoothly no refresh no loading at every click it works properly dont chnage anything only lokk this that on admin user both side website runs smoothly and properly every oages every thing
+see on admin user both side if i closed any vul from all vul tab so it should be shown in fixed recenlty only in All vul tabs bascially from where we closed the vul show onkly in that tab same like hold assest on both admin user side
