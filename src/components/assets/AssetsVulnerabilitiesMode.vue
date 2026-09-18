@@ -257,7 +257,7 @@
 
       <div class="av-right-scroll right-panel-scroll">
         <div class="av-right-inner">
-        <div v-if="activeDetailTab === 'vulnerabilities'">
+        <div v-if="activeDetailTab === 'vulnerabilities'" class="vuln-tab-panel">
         <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap vuln-filter-bar">
           <div class="d-flex gap-2 flex-wrap align-items-center">
             <button class="sev-pill" :class="{ 'sev-pill-active': activeFilters.includes('All') }" @click="setSeverityFilter('All')">All</button>
@@ -469,7 +469,7 @@
         </div>
 
                     <!-- Fixed Recently: closed vulns / closed hosts only -->
-                    <div v-if="closedRecentlyItems.length" class="mt-5">
+                    <div v-if="closedRecentlyItems.length" class="fixed-recently-section">
                       <div class="d-flex align-items-center mb-3">
                         <h3 class="section-label">Fixed Recently</h3>
                         <div class="fixed-divider flex-grow-1 ms-3"></div>
@@ -3309,6 +3309,20 @@ export default {
 
 .av-right-inner {
   max-width: 100%;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Vulnerabilities tab: stretch to fill the scroll panel so Fixed Recently can
+   sit flush at the bottom (see .fixed-recently-section) instead of leaving
+   blank space below it whenever Active Threats + Fixed Recently together are
+   shorter than the panel. */
+.vuln-tab-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .asset-detail-title {
@@ -4918,6 +4932,10 @@ export default {
 
 /* Fixed Recently */
 .fixed-divider { height: 1px; background: rgba(203, 196, 208, 0.25); }
+.fixed-recently-section {
+  margin-top: auto;
+  padding-top: 32px;
+}
 .closed-count-badge {
   display: inline-flex;
   align-items: center;
@@ -4934,7 +4952,10 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: min(70vh, 36rem);
+  /* ~3 collapsed rows before scrolling, instead of growing the page — was
+     min(70vh, 36rem), tall enough to fit 6-8 rows before ever scrolling.
+     (232px was still fitting a 4th row — trimmed further.) */
+  max-height: 178px;
   overflow-y: auto;
   padding-right: 4px;
   overscroll-behavior: contain;

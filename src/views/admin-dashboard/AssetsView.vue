@@ -273,7 +273,7 @@
                 <div class="right-panel-scroll">
 
                   <!-- Vulnerabilities Tab -->
-                  <div v-if="activeTab === 'vulnerabilities'">
+                  <div v-if="activeTab === 'vulnerabilities'" class="vuln-tab-panel">
                     <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap vuln-filter-bar">
                       <div class="d-flex gap-2 flex-wrap align-items-center">
                         <button class="sev-pill" :class="{ 'sev-pill-active': activeFilters.includes('All') }" @click="setSeverityFilter('All')">All</button>
@@ -463,14 +463,14 @@
                     </div>
 
                     <!-- Fixed Recently -->
-                    <div v-if="closedFixVulnerabilities.length" class="mt-5">
+                    <div v-if="closedFixVulnerabilitiesGrouped.length" class="fixed-recently-section">
                       <div class="d-flex align-items-center mb-3">
                         <h3 class="section-label">Fixed Recently</h3>
                         <div class="fixed-divider flex-grow-1 ms-3"></div>
                       </div>
                       <div class="fixed-recently-scroll fixed-recently-scroll--compact">
                         <div
-                          v-for="(item, i) in closedFixVulnerabilities"
+                          v-for="(item, i) in closedFixVulnerabilitiesGrouped"
                           :key="item.fix_vulnerability_id || i"
                           :id="'fixed-recent-' + (item.fix_vulnerability_id || i)"
                           class="vuln-accordion-item"
@@ -493,6 +493,11 @@
                                 <span :class="getStatusBadgeClass('closed')">
                                   <span :class="getStatusDotClass('closed')"></span>{{ getStatusLabel('closed') }}
                                 </span>
+                                <span
+                                  v-if="(item.closed_count || 1) > 1"
+                                  class="closed-count-badge"
+                                  :title="(item.closed_count || 1) + ' separate findings of this vulnerability were closed on this asset'"
+                                >{{ item.closed_count }} findings</span>
                               </div>
                             </div>
                             <div class="d-flex align-items-center gap-3 flex-shrink-0 vuln-accordion-actions">
@@ -967,6 +972,27 @@ class TLSConfigurator:
         this.closedFixVulnerabilities,
         this.activeIndex,
       );
+    },
+    closedFixVulnerabilitiesGrouped() {
+      // One row per vulnerability name — the same vuln can be closed more than
+      // once for this asset (e.g. found on separate ports), which showed as
+      // duplicate-looking rows here. Collapse to a single row with a count,
+      // same as Fixed Recently on the All Vulnerabilities tab.
+      const groups = new Map();
+      const order = [];
+      (this.closedFixVulnerabilities || []).forEach((item) => {
+        const name = String(item?.plugin_name || item?.vulnerability_name || item?.vul_name || '').trim();
+        if (!name) return;
+        const key = name.toLowerCase();
+        let group = groups.get(key);
+        if (!group) {
+          group = { ...item, closed_count: 0 };
+          groups.set(key, group);
+          order.push(key);
+        }
+        group.closed_count += 1;
+      });
+      return order.map((key) => groups.get(key));
     },
     sourceAssetRows() {
       return filterAssetsByType(this.authStore.assetRows || [], this.assetTypeFilter);
@@ -3229,21 +3255,50 @@ class TLSConfigurator:
   cursor: pointer;
 }
 
+/* Vulnerabilities tab: stretch to fill the scroll panel so Fixed Recently can
+   sit flush at the bottom (see .fixed-recently-section) instead of leaving
+   blank space below it whenever Active Threats + Fixed Recently together are
+   shorter than the panel. */
+.vuln-tab-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
 /* Fixed Recently */
 .fixed-divider { height: 1px; background: rgba(203, 196, 208, 0.25); }
+.fixed-recently-section {
+  margin-top: auto;
+  padding-top: 32px;
+}
+.closed-count-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 20px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #166534;
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+  white-space: nowrap;
+}
 
 .fixed-recently-scroll {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: min(70vh, 36rem);
+  /* ~3 collapsed rows before scrolling, instead of growing the page — was
+     min(70vh, 36rem), tall enough to fit 6-8 rows before ever scrolling.
+     (232px was still fitting a 4th row — trimmed further.) */
+  max-height: 178px;
   overflow-y: auto;
   padding-right: 4px;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
 }
 .fixed-recently-scroll--compact {
-  max-height: min(70vh, 36rem);
+  max-height: 178px;
 }
 .fixed-recently-scroll::-webkit-scrollbar {
   width: 6px;

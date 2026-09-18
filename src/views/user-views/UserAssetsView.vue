@@ -255,7 +255,7 @@
                 <div class="right-panel-scroll">
 
                   <!-- Vulnerabilities Tab -->
-                  <div v-if="activeTab === 'vulnerabilities'">
+                  <div v-if="activeTab === 'vulnerabilities'" class="vuln-tab-panel">
                     <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap vuln-filter-bar">
                       <div class="d-flex gap-2 flex-wrap align-items-center">
                         <button class="sev-pill" :class="{ 'sev-pill-active': activeFilters.includes('All') }" @click="setSeverityFilter('All')">All</button>
@@ -459,14 +459,14 @@
                     </div>
 
                     <!-- Fixed Recently -->
-                    <div v-if="closedFixVulnerabilities.length" class="mt-5">
+                    <div v-if="closedFixVulnerabilitiesGrouped.length" class="fixed-recently-section">
                       <div class="d-flex align-items-center mb-3">
                         <h3 class="section-label">Fixed Recently</h3>
                         <div class="fixed-divider flex-grow-1 ms-3"></div>
                       </div>
                       <div class="fixed-recently-scroll fixed-recently-scroll--compact">
                         <div
-                          v-for="(item, i) in closedFixVulnerabilities"
+                          v-for="(item, i) in closedFixVulnerabilitiesGrouped"
                           :key="item.fix_vulnerability_id || i"
                           :id="'fixed-recent-' + (item.fix_vulnerability_id || i)"
                           class="vuln-accordion-item"
@@ -489,6 +489,11 @@
                                 <span :class="getStatusBadgeClass('closed')">
                                   <span :class="getStatusDotClass('closed')"></span>{{ getStatusLabel('closed') }}
                                 </span>
+                                <span
+                                  v-if="(item.closed_count || 1) > 1"
+                                  class="closed-count-badge"
+                                  :title="(item.closed_count || 1) + ' separate findings of this vulnerability were closed on this asset'"
+                                >{{ item.closed_count }} findings</span>
                               </div>
                             </div>
                             <div class="d-flex align-items-center gap-3 flex-shrink-0 vuln-accordion-actions">
@@ -971,7 +976,6 @@ import {
   pickVulnDescription,
   canonSeverity,
   extractFixVulnerabilityId,
-  isActiveVulnStatus,
 } from "@/utils/assetVulnerabilities";
 import { useAuthStore } from "@/stores/authStore";
 import userTeamFilterWatch from "@/utils/userTeamFilterWatch";
@@ -1170,6 +1174,27 @@ class TLSConfigurator:
         this.activeIndex,
       );
     },
+    closedFixVulnerabilitiesGrouped() {
+      // One row per vulnerability name — the same vuln can be closed more than
+      // once for this asset (e.g. found on separate ports), which showed as
+      // duplicate-looking rows here. Collapse to a single row with a count,
+      // same as Fixed Recently on the All Vulnerabilities tab.
+      const groups = new Map();
+      const order = [];
+      (this.closedFixVulnerabilities || []).forEach((item) => {
+        const name = String(item?.plugin_name || item?.vulnerability_name || item?.vul_name || '').trim();
+        if (!name) return;
+        const key = name.toLowerCase();
+        let group = groups.get(key);
+        if (!group) {
+          group = { ...item, closed_count: 0 };
+          groups.set(key, group);
+          order.push(key);
+        }
+        group.closed_count += 1;
+      });
+      return order.map((key) => groups.get(key));
+    },
     filteredVulnerabilities() {
       // Active Threats: never include closed   those belong only under Fixed Recently
       let vulns = filterActiveThreatVulnerabilities(
@@ -1285,39 +1310,38 @@ class TLSConfigurator:
       return this.assets.map(a => a.asset).filter(Boolean);
     },
     extPopupVulSeverityMap() {
-      // Every active vulnerability on this asset, mapped to its own real
+      // Every truly-open vulnerability on this asset, mapped to its own real
       // severity — used to build the full (not severity-filtered) dropdown
       // list, and to look up the correct severity once one is picked.
+      // Source from openAssetVulnerabilities (not the raw selectedAssetVulnerabilities)
+      // — that raw list's own `status` field isn't reliably updated the moment
+      // a vulnerability is closed via the Fix tab, so a status-only filter let
+      // already-closed vulns slip into this dropdown. openAssetVulnerabilities
+      // already cross-checks closedFixVulnerabilities (the authoritative
+      // Fix-tab records), same as Active Threats/Fixed Recently use.
       const map = {};
-      (this.authStore.selectedAssetVulnerabilities || [])
-        .filter(v => isActiveVulnStatus(v?.status))
-        .forEach(v => {
-          const name = v?.vul_name;
-          if (!name || map[name]) return;
-          // Lowercase to match the popup's severity classes/comparisons
-          // (ext-icon-low, ext-header-critical, extPopupSeverity === 'high', …) —
-          // canonSeverity() returns "Low"/"Critical" for display elsewhere, which
-          // silently failed every one of those strict lowercase checks here.
-          map[name] = canonSeverity(v.severity || v.risk_factor || '').toLowerCase();
-        });
+      (this.openAssetVulnerabilities || []).forEach(v => {
+        const name = v?.vul_name;
+        if (!name || map[name]) return;
+        // Lowercase to match the popup's severity classes/comparisons
+        // (ext-icon-low, ext-header-critical, extPopupSeverity === 'high', …) —
+        // canonSeverity() returns "Low"/"Critical" for display elsewhere, which
+        // silently failed every one of those strict lowercase checks here.
+        map[name] = canonSeverity(v.severity || v.risk_factor || '').toLowerCase();
+      });
       return map;
     },
     extPopupVulList() {
       // Previously seeded from a severity-scoped API call (extPopupVulListApi)
       // using only the asset's single "worst" severity — so a Low vulnerability
       // never appeared here at all when the same asset also had a Medium/High
-      // one. List every active vuln on the asset instead, regardless of severity.
+      // one. List every open vuln on the asset instead, regardless of severity.
       if (Object.keys(this.extPopupVulSeverityMap).length > 0) {
         return Object.keys(this.extPopupVulSeverityMap);
       }
       if (this.extPopupVulListApi.length > 0) return [...new Set(this.extPopupVulListApi)];
       if (!this.extPopupAsset) return [];
-      // Same "active" definition Active Threats uses (isActiveVulnStatus) —
-      // a strict `status === 'open'` check misses rows with an empty/other
-      // in-progress status, silently leaving nothing to select here even
-      // though those same vulnerabilities show as open elsewhere on this page.
-      const names = this.authStore.selectedAssetVulnerabilities
-        .filter(v => isActiveVulnStatus(v?.status))
+      const names = (this.openAssetVulnerabilities || [])
         .map(v => v.vul_name)
         .filter(Boolean);
       return [...new Set(names)];
@@ -3440,21 +3464,50 @@ class TLSConfigurator:
   cursor: pointer;
 }
 
+/* Vulnerabilities tab: stretch to fill the scroll panel so Fixed Recently can
+   sit flush at the bottom (see .fixed-recently-section) instead of leaving
+   blank space below it whenever Active Threats + Fixed Recently together are
+   shorter than the panel. */
+.vuln-tab-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
 /* Fixed Recently */
 .fixed-divider { height: 1px; background: rgba(203, 196, 208, 0.25); }
+.fixed-recently-section {
+  margin-top: auto;
+  padding-top: 32px;
+}
+.closed-count-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 20px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #166534;
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+  white-space: nowrap;
+}
 
 .fixed-recently-scroll {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: min(70vh, 36rem);
+  /* ~3 collapsed rows before scrolling, instead of growing the page — was
+     min(70vh, 36rem), tall enough to fit 6-8 rows before ever scrolling.
+     (232px was still fitting a 4th row — trimmed further.) */
+  max-height: 178px;
   overflow-y: auto;
   padding-right: 4px;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
 }
 .fixed-recently-scroll--compact {
-  max-height: min(70vh, 36rem);
+  max-height: 178px;
 }
 .fixed-recently-scroll::-webkit-scrollbar {
   width: 6px;

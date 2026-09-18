@@ -2062,7 +2062,19 @@ th.sev-low { color: var(--sev-low-text) !important; }
 .vuln-accordion-item--manual .av-detail-tab-content,
 .vuln-accordion-item--manual .av-detail-tab-content--manual {
   flex: 1 1 auto !important;
-  min-height: min(58vh, 30rem) !important;
+  /* min-height: 0 (not a large forced value) is the standard flexbox rule for
+     a scrolling flex child. .vuln-accordion-body/.vuln-accordion-expand both
+     clip (overflow: hidden) and rely entirely on THIS box's own
+     overflow-y: auto to reveal everything — a forced min-height here that
+     exceeds the space actually available above it (e.g. on a shorter/laptop
+     viewport) rendered this box TALLER than its flex parent's box, and that
+     excess — including the Complete Step / Complete all steps buttons at the
+     bottom of the last card — got clipped by the ancestors' overflow: hidden
+     instead of becoming reachable via scroll.
+     The generous min-height on the accordion card itself (below) already
+     keeps at least a full step visible; this box just needs to fill
+     whatever space that leaves without ever exceeding it. */
+  min-height: 0 !important;
   height: auto !important;
   max-height: none !important;
   /* Without a reserved gutter, the scrollbar overlays the last ~15px of this
