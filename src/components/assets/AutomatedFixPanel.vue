@@ -497,7 +497,12 @@ export default {
       // tab. This field is never touched by that watcher, so the loop can't
       // happen; it's set only here and by loadAiCardIfNeeded() below.
       fetchedCardId: '',
-      aiLoading: false,
+      // Starts true (not false) — mounted() always calls loadAiCardIfNeeded(),
+      // and until that resolves, aiCard is still null too, so the template
+      // fell straight through to the legacy "No automated fix available" red
+      // banner for a frame on every first-open, before the real card (or the
+      // legacy match) had a chance to load.
+      aiLoading: true,
       aiDownloading: null,
       aiDownloadError: '',
       aiCodeView: null,
@@ -811,12 +816,22 @@ export default {
     // VulnerabilityCard system), so an id lookup 404s no matter what.
     // Name+host is the only join key both systems actually share.
     async loadAiCardIfNeeded() {
-      if (this.automationCard) return;
+      // Every early-return path must still clear aiLoading — it now starts
+      // true, so any exit that skips the fetch (automationCard already
+      // provided, or no report/vuln name to look up yet) has to resolve it
+      // itself, or the template would stay stuck on the loading spinner.
+      if (this.automationCard) {
+        this.aiLoading = false;
+        return;
+      }
       const reportId = String(
         (this.isUser ? this.authStore.userLatestReportId : this.authStore.latestReportId) || '',
       ).trim();
       const wantName = String(this.vulnName || '').trim().toLowerCase();
-      if (!reportId || !wantName) return;
+      if (!reportId || !wantName) {
+        this.aiLoading = false;
+        return;
+      }
       this.aiLoading = true;
       const res = this.isUser
         ? await this.authStore.fetchVulnerabilityCardsByReportUser(reportId)

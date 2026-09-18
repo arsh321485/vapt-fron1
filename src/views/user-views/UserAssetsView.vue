@@ -490,10 +490,9 @@
                                   <span :class="getStatusDotClass('closed')"></span>{{ getStatusLabel('closed') }}
                                 </span>
                                 <span
-                                  v-if="(item.closed_count || 1) > 1"
                                   class="closed-count-badge"
-                                  :title="(item.closed_count || 1) + ' separate findings of this vulnerability were closed on this asset'"
-                                >{{ item.closed_count }} findings</span>
+                                  :title="(item.closed_count || 1) + ' separate finding(s) of this vulnerability were closed on this asset'"
+                                >{{ item.closed_count || 1 }} Vuln{{ (item.closed_count || 1) > 1 ? 's' : '' }}</span>
                               </div>
                             </div>
                             <div class="d-flex align-items-center gap-3 flex-shrink-0 vuln-accordion-actions">
@@ -1179,21 +1178,36 @@ class TLSConfigurator:
       // once for this asset (e.g. found on separate ports), which showed as
       // duplicate-looking rows here. Collapse to a single row with a count,
       // same as Fixed Recently on the All Vulnerabilities tab.
+      //
+      // The count itself can't come from closedFixVulnerabilities (the
+      // dedicated closed-vulns endpoint) — it only ever returns one record
+      // per vulnerability name, even when several separate findings for it
+      // were each closed, so grouping that array alone always showed a count
+      // of 1. allAssetThreatVulns instead carries every individual finding
+      // for this asset (each correctly flagged open/closed), so it's the one
+      // that can actually tell how many were closed.
       const groups = new Map();
       const order = [];
       (this.closedFixVulnerabilities || []).forEach((item) => {
         const name = String(item?.plugin_name || item?.vulnerability_name || item?.vul_name || '').trim();
         if (!name) return;
         const key = name.toLowerCase();
-        let group = groups.get(key);
-        if (!group) {
-          group = { ...item, closed_count: 0 };
-          groups.set(key, group);
+        if (!groups.has(key)) {
+          groups.set(key, { ...item, closed_count: 0 });
           order.push(key);
         }
-        group.closed_count += 1;
       });
-      return order.map((key) => groups.get(key));
+      (this.allAssetThreatVulns || []).forEach((v) => {
+        if (!matchesVulnStatusFilter(v, ['closed'])) return;
+        const key = String(v?.vul_name || v?.plugin_name || '').trim().toLowerCase();
+        const group = groups.get(key);
+        if (group) group.closed_count += 1;
+      });
+      return order.map((key) => {
+        const group = groups.get(key);
+        if (group.closed_count < 1) group.closed_count = 1;
+        return group;
+      });
     },
     filteredVulnerabilities() {
       // Active Threats: never include closed   those belong only under Fixed Recently

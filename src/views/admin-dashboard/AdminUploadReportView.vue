@@ -36,27 +36,23 @@
             </button>
             <p class="aur-limit-kicker">Recommended plan</p>
             <h2 class="aur-limit-title">Continue with {{ planSuggestPrompt.suggestedName }}?</h2>
+            <p v-if="planSuggestPrompt.count" class="aur-limit-copy">
+              This {{ planSuggestPrompt.source === 'upload' ? 'report' : 'scope' }} has
+              <strong>{{ displayedPlanIpCount }}</strong>
+              IP{{ displayedPlanIpCount === 1 ? '' : 's' }}
+              <template v-if="planSuggestFileCount > 1">
+                combined from <strong>{{ planSuggestFileCount }}</strong> files
+              </template>.
+            </p>
             <p class="aur-limit-copy">
-              <template v-if="planSuggestPrompt.count">
-                This {{ planSuggestPrompt.source === 'upload' ? 'report' : 'scope' }} has
-                <strong>{{ displayedPlanIpCount }}</strong>
-                IP{{ displayedPlanIpCount === 1 ? '' : 's' }}
-                <template v-if="planSuggestFileCount > 1">
-                  combined from <strong>{{ planSuggestFileCount }}</strong> files
-                </template>.
-                Based on that count,
-              </template>
-              <strong>{{ planSuggestPrompt.suggestedName }}</strong> is recommended.
-              You can continue with it, or choose a different plan.
-              If you choose a smaller plan, you will upload a new report that fits that plan.
+              Select the plan that best fits your requirements and access the capabilities you need to manage, track, and remediate vulnerabilities effectively.
             </p>
             <ul
               v-if="planSuggestPrompt.source === 'upload' && planSuggestDisplayedFiles.length"
               class="aur-uploaded-files"
             >
               <li v-for="(entry, idx) in planSuggestDisplayedFiles" :key="entry.name + '-' + idx">
-                <i class="bi bi-file-earmark-text"></i>
-                <span class="aur-uploaded-file-name">{{ entry.name }}</span>
+                <span class="aur-uploaded-file-name" :title="entry.name">{{ shortFileName(entry.name) }}</span>
                 <span v-if="entry.ipCount" class="aur-uploaded-file-ips">{{ entry.ipCount }} IP{{ entry.ipCount === 1 ? '' : 's' }}</span>
               </li>
             </ul>
@@ -1234,7 +1230,17 @@ export default {
         const n = String(file?.name || '').trim();
         if (n && !byName.has(n)) byName.set(n, { name: n, ipCount: 0 });
       });
-      return [...byName.values()];
+      const list = [...byName.values()];
+      // A freshly-picked/uploaded file has no per-file breakdown yet from
+      // existingReport.files (that only arrives once the backend has
+      // processed it), so it always landed here with ipCount: 0 — even
+      // though the total is already known and shown just above ("This
+      // report has 13 IPs"). With exactly one file, that total IS this
+      // file's count, so show it instead of leaving the badge blank.
+      if (list.length === 1 && !list[0].ipCount && this.displayedPlanIpCount) {
+        list[0] = { ...list[0], ipCount: this.displayedPlanIpCount };
+      }
+      return list;
     },
     existingReportIpCount() {
       return this.recommendAssetCount();
@@ -1342,6 +1348,14 @@ export default {
     // a function" the moment that branch renders (i.e. whenever there's an
     // existing report on file — exactly the reported crash).
     freemiumLocksUploadScope,
+    // Word-based truncation (not just CSS overflow ellipsis) so the IP-count
+    // badge next to it in .aur-uploaded-files never gets crowded out by a
+    // long report name — full name is still available on hover via title.
+    shortFileName(name, wordLimit = 3) {
+      const words = String(name || '').trim().split(/\s+/).filter(Boolean);
+      if (words.length <= wordLimit) return words.join(' ');
+      return words.slice(0, wordLimit).join(' ') + '...';
+    },
     toastNotice(icon, title, text = '', ms = 2400) {
       return Swal.fire({
         toast: true,

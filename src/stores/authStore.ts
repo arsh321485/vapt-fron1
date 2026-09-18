@@ -7821,20 +7821,28 @@ export const useAuthStore = defineStore("auth", {
           `/api/admin/adminasset/report/${reportId}/asset/${asset}/vulnerabilities/`,
         );
 
-        // Register rows are the source of truth for fix_vulnerability_id.
+        // The per-asset vulnerabilities/ endpoint is the source of truth for
+        // which findings exist (one row per instance — the same vuln name can
+        // legitimately appear more than once, e.g. found on separate ports,
+        // each with its own status). The register is coarser: one row per
+        // (vuln name, asset), so preferring it as the primary source (as this
+        // used to) silently collapsed those repeated findings down to a
+        // single row, dropping ones the API correctly returned. Register rows
+        // are still the source of truth for fix_vulnerability_id, so they're
+        // merged in afterward, same as the user-side equivalent of this fetch.
         await this.fetchVulnerabilityRegister(false);
         const apiVulns = normalizeAssetVulnerabilityList(res.data.vulnerabilities || []);
-        let vulns = buildVulnsFromRegister(
-          this.vulnerabilityRows,
-          asset,
-          this.deletedVulnerabilityAssets,
-        );
+        let vulns = apiVulns;
         if (!vulns.length) {
-          vulns = apiVulns;
-        } else {
-          vulns = mergeDescriptionsIntoVulns(vulns, apiVulns);
+          vulns = buildVulnsFromRegister(
+            this.vulnerabilityRows,
+            asset,
+            this.deletedVulnerabilityAssets,
+          );
+        } else if (this.vulnerabilityRows?.length) {
+          vulns = mergeDescriptionsIntoVulns(vulns, this.vulnerabilityRows);
+          vulns = enrichVulnsFromRegister(vulns, this.vulnerabilityRows, asset);
         }
-        vulns = enrichVulnsFromRegister(vulns, this.vulnerabilityRows, asset);
         vulns = filterDeletedVulnsForHost(vulns, asset, this.deletedVulnerabilityAssets);
 
         // ✅ vulnerabilities list

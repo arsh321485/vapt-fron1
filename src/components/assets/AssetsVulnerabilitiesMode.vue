@@ -1359,7 +1359,18 @@ export default {
       // so a vuln closed on a Server host only shows under Fixed Recently on
       // the Server tab, not on every tab regardless of where it was closed.
       const wanted = assetTypeFromFilterKey(this.assetTypeFilter);
-      return order
+      // Scope to whichever vulnerability is selected in the left list — this
+      // panel's "Active Threats" above already only shows that one vuln (via
+      // panelVulns), so Fixed Recently showing every OTHER closed vuln in the
+      // whole tab underneath it was inconsistent. Same idea as the All Assets
+      // tab, where selecting an asset scopes both sections to just that asset.
+      const selectedName = this.selectedVuln?.vul_name
+        ? String(this.selectedVuln.vul_name).trim().toLowerCase()
+        : '';
+      const filteredOrder = selectedName
+        ? order.filter((nameKey) => nameKey === selectedName)
+        : order;
+      return filteredOrder
         .map((nameKey) => {
           const group = groups.get(nameKey);
           const hosts = group.hosts.filter(
@@ -2099,7 +2110,12 @@ export default {
         ]);
       }
       await this.loadClosedFixRecords();
-      await this.loadAutomationScripts();
+      // Not awaited — automation-script matching only feeds the AUTOMATABLE
+      // badges (each AutomatedFixPanel also resolves its own loading state
+      // independently), it doesn't affect the vuln list or counts the
+      // loading spinner is actually gating. Awaiting it here just added a
+      // 3rd sequential network round trip before the spinner could clear.
+      this.loadAutomationScripts();
       this.selectFirstNonEmptyType();
       if (this.filteredVulns.length) {
         this.selectVulnFromList(this.filteredVulns[0]);
@@ -2130,8 +2146,14 @@ export default {
           ),
         ];
         const collected = [];
-        for (let i = 0; i < hosts.length; i += 8) {
-          const slice = hosts.slice(i, i + 8);
+        // Admin has no bulk "closed vulns for this report" endpoint (unlike
+        // fetchUserClosedVulns, one call for everything) — it's one request
+        // per unique host, batched. A batch of 8 meant a report with, say,
+        // 17 hosts paid for 3 sequential round trips just for this step.
+        // Batching wider cuts that to 1 round trip for most reports.
+        const BATCH_SIZE = 20;
+        for (let i = 0; i < hosts.length; i += BATCH_SIZE) {
+          const slice = hosts.slice(i, i + BATCH_SIZE);
           const parts = await Promise.all(
             slice.map(async (host) => {
               const res = await this.authStore.getClosedVulnerabilities(reportId, host);
