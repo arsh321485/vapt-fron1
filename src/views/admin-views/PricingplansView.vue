@@ -453,7 +453,7 @@
                   <p class="pricing-summary-includes">Includes</p>
                   <ul class="list-unstyled mb-0">
                     <li
-                      v-for="(feature, idx) in activePlan.features"
+                      v-for="(feature, idx) in orderSummaryFeatures"
                       :key="'sum-' + idx"
                       class="pricing-summary-feature"
                       :class="{ 'is-excluded': !feature.included }"
@@ -856,6 +856,20 @@ export default {
     },
     premiumModeLabel() {
       return this.premiumMode === 'testing' ? 'Management + Testing' : 'Management';
+    },
+    // activePlan.features is a static marketing list (rates as of the
+    // Annual cycle). The order summary reflects a specific billing cycle
+    // the shopper picked, so the "upload report (from $X/IP)" line needs to
+    // quote that cycle's rate instead of always showing the Annual one.
+    orderSummaryFeatures() {
+      const features = this.activePlan?.features || [];
+      if (this.activePlan?.id !== 'premium') return features;
+      const rate = (this.selectedCycle?.rate || '$1.25 / IP').replace(/\s*\/\s*/, '/');
+      return features.map((feature) =>
+        this.isManagementFeature(feature.text)
+          ? { ...feature, text: `Management: upload report (from ${rate})` }
+          : feature,
+      );
     },
     estimateAssetLabel() {
       if (this.needsScope) return '';

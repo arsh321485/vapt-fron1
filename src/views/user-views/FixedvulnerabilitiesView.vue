@@ -213,7 +213,14 @@ export default {
     async loadData() {
       const store = useAuthStore();
       this.loading = true;
-      const result = await store.fetchUserClosedVulns(false, store.userSelectedTeam);
+      // Always force-refresh: this page's whole job is to say what's been
+      // fixed, but authStore.cachedUserClosedVulns is a single shared value
+      // that any other flow (completing steps elsewhere, another session)
+      // can leave stale here — force=false previously served that leftover
+      // snapshot (sometimes "nothing fixed yet") even after a vuln had
+      // genuinely been closed, since nothing else reliably invalidates it
+      // before this page mounts.
+      const result = await store.fetchUserClosedVulns(true, store.userSelectedTeam);
       if (result.status) {
         this.allRows = result.data.closed_vulnerabilities || [];
         this.reportId = result.data.report_id;
@@ -222,6 +229,11 @@ export default {
     },
   },
   async mounted() {
+    // Opt into the livePageSync background poll (see utils/livePageSync.js) so
+    // a fix completed in a different session is picked up here too —
+    // BroadcastChannel-based mutation sync only reaches other tabs of the
+    // same browser profile.
+    this._vaptLiveAllowPoll = true;
     await this.loadData();
   },
 };

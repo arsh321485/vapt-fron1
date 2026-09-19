@@ -94,6 +94,7 @@ export function normalizeReportVulnerabilityList(list: unknown): Record<string, 
 export function buildDeletedVulnAssetSet(
   deletedRows: unknown,
 ): Set<string>;
+export function deletedVulnAssetKey(pluginName: unknown, hostName: unknown): string;
 export function enrichReportVulnerabilitiesFromRegister(
   grouped: Record<string, unknown>[],
   registerRows: unknown,

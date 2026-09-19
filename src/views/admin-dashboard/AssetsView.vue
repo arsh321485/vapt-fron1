@@ -1450,6 +1450,10 @@ class TLSConfigurator:
       if (this.activeAction) return;
       await this.authStore.fetchVulnerabilityRegister(true);
       await this.authStore.fetchAssets(true);
+      // A vuln deleted from another session (e.g. the user's own portal)
+      // otherwise stayed visible here until a full reload, since
+      // fetchSingleAssetVulnerabilities filters against this cached list.
+      await this.authStore.fetchDeletedVulnerabilityAssets(true);
       this.rememberHostAssetTypes(this.authStore.assetRows);
       await this.loadHeldAssets();
       if (!this.activeIndex) return;
@@ -2070,7 +2074,13 @@ class TLSConfigurator:
       this.sendingSupportReply = true;
       const res = await this.authStore.sendAdminSupportMessage(reportId, requestId, text, 'public');
       this.sendingSupportReply = false;
-      if (!res.status) return;
+      if (!res.status) {
+        // Previously failed silently — clicking Send just appeared to do
+        // nothing, with no way to tell a real failure apart from a slow
+        // network call. Surface whatever reason the backend gave.
+        Swal.fire('Message not sent', res.message || 'Could not send this message. Please try again.', 'error');
+        return;
+      }
       // Optimistic append so the reply shows immediately even if the list
       // refresh below lands the thread under a differently-named field.
       const optimisticMsg = { text, sender_type: 'admin', created_at: new Date().toISOString() };
@@ -2280,6 +2290,11 @@ class TLSConfigurator:
     },
   },
   async mounted() {
+    // Opt into the livePageSync background poll (see utils/livePageSync.js) so
+    // a delete/hold made from a different session (e.g. a user's own portal)
+    // is picked up here too — BroadcastChannel-based mutation sync only
+    // reaches other tabs of the same browser profile.
+    this._vaptLiveAllowPoll = true;
     this.openFixPanelAlerts();
 
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');

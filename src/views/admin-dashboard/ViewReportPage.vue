@@ -180,10 +180,10 @@
                     <colgroup>
                       <col style="width: 56px;" />
                       <col />
-                      <col style="width: 140px;" />
-                      <col style="width: 170px;" />
-                      <col style="width: 140px;" />
-                      <col style="width: 140px;" />
+                      <col style="width: 130px;" />
+                      <col style="width: 220px;" />
+                      <col style="width: 110px;" />
+                      <col style="width: 130px;" />
                       <col style="width: 90px;" />
                     </colgroup>
                     <thead>
@@ -206,7 +206,7 @@
                       </tr>
                       <tr v-else v-for="row in filteredData" :key="row.id">
                         <td>{{ row.id }}</td>
-                        <td class="vuln-name-cell" :title="row.name">{{ row.name }}</td>
+                        <td :title="row.name"><span class="vuln-name-cell">{{ truncateVulnName(row.name) }}</span></td>
                         <td>{{ row.asset }}</td>
                         <td><span :class="['team-pill', 'team-pill-' + row.team]">{{ row.teamLabel }}</span></td>
                         <td><span :class="['sev-pill', row.severity]">{{ row.severity }}</span></td>
@@ -472,6 +472,11 @@ export default {
 
   methods: {
     formatStatusLabel,
+    truncateVulnName(name, wordLimit = 4) {
+      const words = String(name || '').trim().split(/\s+/).filter(Boolean);
+      if (words.length <= wordLimit) return words.join(' ');
+      return words.slice(0, wordLimit).join(' ') + '...';
+    },
     async liveRefreshPage() {
       await this.loadReportData(true);
     },
@@ -1326,7 +1331,20 @@ ${this.getExportLayoutCss()}
   max-height: 420px;
   width: 100%;
 }
-.simple-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.table-wrap::-webkit-scrollbar {
+  width: 6px;
+}
+.table-wrap::-webkit-scrollbar-thumb {
+  background: #cbc4d0;
+  border-radius: 10px;
+}
+/* border-collapse: collapse + a sticky <th> is a known Chrome rendering bug —
+   the collapsed border at the thead/tbody boundary shifts/duplicates while
+   the header is pinned mid-scroll, which is what made the divider under row 1
+   look crooked compared to the rest. border-collapse: separate with zero
+   spacing renders identically here (borders are only ever set on one side,
+   td's border-bottom) without that sticky-header glitch. */
+.simple-table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
 .simple-table th {
   background: #f4f5f8;
   font-size: 10px;
@@ -1356,15 +1374,16 @@ ${this.getExportLayoutCss()}
 .simple-table tbody tr:hover td {
   background: #fafbfe;
 }
+/* Truncation is done by word count in truncateVulnName() (full name is
+   still on the <td>'s title attribute for hover) rather than a CSS
+   line-clamp — `display: -webkit-box` for that clamp overrides a table
+   cell's `display: table-cell` if set on the <td> itself, which stops the
+   cell sharing row-height/border sync with its siblings and was what made
+   row dividers sit at inconsistent heights. */
 .vuln-name-cell {
   font-weight: 600;
   color: #1f2a42;
-  white-space: normal;
-  word-break: break-word;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  white-space: nowrap;
 }
 .sev-pill { font-size: 10px; font-weight: 800; border-radius: 6px; padding: 4px 8px; text-transform: uppercase; }
 .sev-pill.critical { background: #f8dede; color: #b42318; }

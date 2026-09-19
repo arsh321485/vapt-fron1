@@ -771,7 +771,7 @@
               </template>
               <template v-else-if="selectedSupportRequest.step_requested">
                 <span
-                  v-for="step in selectedSupportRequest.step_requested.split(',')"
+                  v-for="step in String(selectedSupportRequest.step_requested).split(',')"
                   :key="step"
                   class="sr-step-pill"
                 >Step {{ step.trim() }}</span>
@@ -1510,14 +1510,27 @@ export default {
     },
   },
   async mounted() {
+    // Opt into the livePageSync background poll (see utils/livePageSync.js) so
+    // a hold/unhold made from a different session (e.g. admin panel on
+    // another device) is picked up here too — BroadcastChannel-based mutation
+    // sync only reaches other tabs of the same browser profile.
+    this._vaptLiveAllowPoll = true;
     if (this.isUser) {
       await this.authStore.fetchUserAssets(false, this.authStore.userSelectedTeam);
     } else {
       await this.authStore.fetchAssets(false);
     }
     this.loading = true;
-    await Promise.all([this.loadVulnerabilities(), this.loadHeldAssets()]);
+    // loadHeldAssets() only feeds the separate "Mitigation on Hold" panel,
+    // which has no loading state of its own — it simply doesn't render
+    // until its data arrives. Gating the Active Threats spinner on it too
+    // meant that list stayed stuck on a spinner for however much longer the
+    // held-assets round trip took, even after the vuln data (and the tab
+    // counts computed from it) had already rendered correctly above it.
+    const heldPromise = this.loadHeldAssets();
+    await this.loadVulnerabilities();
     this.loading = false;
+    await heldPromise;
     await this.authStore.refreshAutomationPremiumLock(this.isUser);
   },
   methods: {
@@ -1531,8 +1544,10 @@ export default {
       if (!this.isUser) return;
       await this.authStore.fetchUserAssets(true, team);
       this.loading = true;
-      await Promise.all([this.loadVulnerabilities(), this.loadHeldAssets()]);
+      const heldPromise = this.loadHeldAssets();
+      await this.loadVulnerabilities();
       this.loading = false;
+      await heldPromise;
     },
     isVulnHostDeleted(vuln, ip) {
       const plugin = String(vuln?._key || vuln?.vul_name || vuln?.plugin_name || '')
@@ -2011,6 +2026,25 @@ export default {
         }
       });
       await this.reloadAfterAssetActions();
+      // reloadAfterAssetActions() force-refetches the held-list from the
+      // backend, which can still include the item(s) we just unheld if the
+      // backend hasn't caught up with the unhold POST yet (read-after-write
+      // lag) — silently undoing the optimistic removal above and leaving the
+      // vuln excluded from Active Threats/tab counts until a full page
+      // reload, by which point the backend had settled. Re-apply the
+      // removal we already know is correct regardless of what that refetch
+      // returned.
+      byPlugin.forEach((hosts, pluginName) => {
+        if (this.isUser) {
+          this.authStore.removeUserHeldVulnerabilityAssets(pluginName, hosts);
+        } else {
+          this.authStore.removeHeldVulnerabilityAssets(pluginName, hosts);
+        }
+      });
+      this.heldAssets = this.heldAssets.filter(
+        (row) => !selectedKeys.has(heldVulnTypeKey(row.plugin_name, row.host_name)),
+      );
+      this.showHeld = this.heldAssets.length > 0;
       notifyLiveData('unhold');
       this.resetActions();
     },
@@ -2042,6 +2076,7 @@ export default {
           heldItemAssetType(
             { plugin_name: pluginName, host_name: hostName, asset: hostName },
             this.hostAssetTypeMap,
+            this.assetCatalogHostIndex,
           );
         return {
           plugin_name: pluginName,
@@ -2083,14 +2118,23 @@ export default {
           this.authStore.fetchUserVulnerabilityRegister(true, team),
           this.authStore.fetchUserAllReportVulnerabilities(true, team),
           this.authStore.fetchUserAssets(true, team),
+          this.authStore.fetchUserDeletedVulnerabilityAssets(true),
         ]);
       } else {
         await Promise.all([
           this.authStore.fetchVulnerabilityRegister(true),
           this.authStore.fetchAllReportVulnerabilities(true),
           this.authStore.fetchAssets(true),
+          this.authStore.fetchDeletedVulnerabilityAssets(true),
         ]);
       }
+      // The above only resyncs vulnerability/asset/deleted-list data — the
+      // "Mitigation on hold" panel here has its own store fetch
+      // (fetchUser/fetchHeldVulnerabilityAssets) that isn't part of it, so a
+      // hold/unhold made elsewhere (e.g. from the admin side) never reached
+      // this tab until a full page reload remounted the component. Refresh
+      // it here too so it updates live like the All Assets tab already does.
+      await this.loadHeldAssets();
     },
     async loadVulnerabilities() {
       // loading stays true (owned by the caller, alongside loadHeldAssets())
@@ -2235,6 +2279,12 @@ export default {
       this.supportRequestCount = 0;
       this.ensureVulnAssetRows(item);
       this.hydrateVulnDescription(item);
+      // Was only fetched when the Support Requests tab itself was clicked,
+      // so the tab's count badge sat at 0 (looking like "no requests") until
+      // someone actually opened it — the whole point of the badge is to let
+      // the admin see a raised request without having to go looking for it.
+      // Not awaited: shouldn't block the vuln detail panel from rendering.
+      this.refreshSupportRequestsForVuln();
       this.$nextTick(() => this.scrollToAccordion(item._key));
     },
     async openVulnSupportModal() {
@@ -2416,7 +2466,13 @@ export default {
         ? await this.authStore.sendUserSupportMessage(reportId, requestId, text)
         : await this.authStore.sendAdminSupportMessage(reportId, requestId, text, 'public');
       this.sendingSupportReply = false;
-      if (!res.status) return;
+      if (!res.status) {
+        // Previously failed silently — clicking Send just appeared to do
+        // nothing, with no way to tell a real failure apart from a slow
+        // network call. Surface whatever reason the backend gave.
+        Swal.fire('Message not sent', res.message || 'Could not send this message. Please try again.', 'error');
+        return;
+      }
       // Optimistic append so the reply shows immediately even if the list
       // refresh below lands the thread under a differently-named field.
       const optimisticMsg = { text, sender_type: this.isUser ? 'user' : 'admin', created_at: new Date().toISOString() };

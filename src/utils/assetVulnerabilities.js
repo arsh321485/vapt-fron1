@@ -333,7 +333,7 @@ export function normalizeReportVulnerabilityList(list) {
     .filter(Boolean);
 }
 
-function deletedVulnAssetKey(pluginName, hostName) {
+export function deletedVulnAssetKey(pluginName, hostName) {
   return `${String(pluginName || '').trim().toLowerCase()}::${String(hostName || '').trim()}`;
 }
 

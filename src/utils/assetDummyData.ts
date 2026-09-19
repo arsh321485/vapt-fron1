@@ -596,12 +596,21 @@ export function mergeHostAssetTypeMap(map, rows) {
   return next;
 }
 
-export function heldItemAssetType(held, hostTypeMap = {}, _catalog = []) {
+export function heldItemAssetType(held, hostTypeMap = {}, catalog = []) {
   const host = String(held?.host_name || held?.asset || held?.ip || "").trim().toLowerCase();
   const plugin = String(held?.plugin_name || held?.vul_name || "").trim();
   const holdStamp = lookupHoldStamp(hostTypeMap, plugin, host);
   if (holdStamp) return holdStamp;
-  // Never infer and never use catalog/API host type (SSH → server).
+  // No local stamp — this session never saw the hold action itself (e.g. an
+  // admin held it and this is the user's own session, which never wrote a
+  // sessionStorage stamp). Fall back to the host's real asset_type from the
+  // asset catalog this session already fetched from the API, instead of
+  // defaulting to "other"/Assets and silently misfiling — or hiding — the
+  // held item under the wrong type tab.
+  if (host && catalog && (Array.isArray(catalog) ? catalog.length : catalog.size)) {
+    const resolved = resolveHostAssetType(host, catalog);
+    if (resolved && resolved !== "other") return resolved;
+  }
   return "other";
 }
 

@@ -157,6 +157,30 @@ function normalizeHeldVulnerabilityList(payload: any, extra: Record<string, any>
  * port's row didn't survive (e.g. losing a "closed" row because a same-vuln,
  * same-host, different-port "open" row shared its key and overwrote it).
  */
+/**
+ * `axios` with `responseType: "text"` applies that to error responses too,
+ * so a JSON error body like `{"detail":"..."}` lands as an unparsed string
+ * on `error.response.data` — `error.response.data.detail` is then reading a
+ * property off a string and silently comes back `undefined`. That masked
+ * every real backend reason (no script for this OS, premium required, not
+ * matched, etc.) behind the generic "Download failed" fallback. Parse the
+ * string ourselves before falling back.
+ */
+function extractTextResponseErrorDetail(error: any): string {
+  const data = error?.response?.data;
+  if (!data) return "";
+  if (typeof data === "object") return data.detail || data.message || "";
+  if (typeof data === "string") {
+    try {
+      const parsed = JSON.parse(data);
+      return parsed?.detail || parsed?.message || "";
+    } catch {
+      return "";
+    }
+  }
+  return "";
+}
+
 function vulnRegisterRowKey(row: any) {
   if (row?.id) return String(row.id);
   const plugin = String(row?.vul_name || row?.plugin_name || "").trim().toLowerCase();
@@ -181,6 +205,21 @@ function mergeVulnRowsPreservingDeletedHostSiblings(
     deletedHosts.add(host);
   });
   const incomingKeys = new Set((incoming || []).map(vulnRegisterRowKey));
+  // Whole hosts present in this response, regardless of which key each of
+  // their findings landed under. A stale previous row should only survive
+  // the merge when its host vanished entirely from `incoming` (the actual
+  // "backend delete removed the whole host" case this function exists for).
+  // Checking only the row's own key previously let a row survive whenever
+  // *that exact key* was merely missing — e.g. because the backend handed
+  // the same finding a different id on this fetch — even though its host,
+  // and often that very finding under a new key, was still right there in
+  // `incoming`. Every such near-miss added a stray duplicate that never got
+  // pruned again, since the same host qualifies for this path forever once
+  // anything on it has ever been deleted, and repeat mutation-triggered
+  // refetches (hold/unhold/delete elsewhere) kept re-running this merge.
+  const incomingHosts = new Set(
+    (incoming || []).map((row) => String(row?.asset || row?.host_name || "").trim().toLowerCase()),
+  );
   const map = new Map<string, any>();
   (incoming || []).forEach((row) => {
     const key = vulnRegisterRowKey(row);
@@ -191,7 +230,7 @@ function mergeVulnRowsPreservingDeletedHostSiblings(
     const key = vulnRegisterRowKey(row);
     const host = String(row?.asset || row?.host_name || "").trim().toLowerCase();
     if (deletedSet.has(key) || incomingKeys.has(key)) return;
-    if (deletedHosts.has(host)) map.set(key, row);
+    if (deletedHosts.has(host) && !incomingHosts.has(host)) map.set(key, row);
   });
   return [...map.values()];
 }
@@ -6708,7 +6747,7 @@ export const useAuthStore = defineStore("auth", {
         return {
           status: false,
           content: null,
-          message: error.response?.data?.detail || "Download failed",
+          message: extractTextResponseErrorDetail(error) || "Download failed",
         };
       }
     },
@@ -6728,7 +6767,7 @@ export const useAuthStore = defineStore("auth", {
         return {
           status: false,
           content: null,
-          message: error.response?.data?.detail || "Download failed",
+          message: extractTextResponseErrorDetail(error) || "Download failed",
         };
       }
     },
@@ -8073,6 +8112,19 @@ export const useAuthStore = defineStore("auth", {
     // ✅ Set Auth
     setAuth(token: string, user: any, refreshToken?: string | null) {
       const safeUser = user && typeof user === "object" ? user : {};
+      // All the cachedUser*/cachedAdmin* state below is keyed by reportId/team,
+      // never by who's logged in. If a different account authenticates in this
+      // same tab without an explicit logout first (e.g. QA testing several
+      // accounts against the same shared demo report back-to-back), whatever
+      // was cached for the previous account — support requests, assets,
+      // register rows — stayed in memory and got served straight to the new
+      // account on its first page load, since those fetches default to
+      // force=false. Clear it whenever the authenticated identity changes.
+      const previousId = String(this.user?.id || this.user?._id || this.user?.email || "").trim().toLowerCase();
+      const nextId = String(safeUser?.id || safeUser?._id || safeUser?.email || "").trim().toLowerCase();
+      if (previousId && nextId && previousId !== nextId) {
+        this.clearCache();
+      }
       this.token = token;
       this.user = safeUser;
       this.authenticated = true;

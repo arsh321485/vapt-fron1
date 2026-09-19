@@ -660,7 +660,7 @@
                                 <span class="sr-step-pill">All Steps</span>
                               </template>
                               <template v-else-if="selectedSupportRequest.step_requested">
-                                <span v-for="step in selectedSupportRequest.step_requested?.split(',')" :key="step" class="sr-step-pill">Step {{ step.trim() }}</span>
+                                <span v-for="step in String(selectedSupportRequest.step_requested).split(',')" :key="step" class="sr-step-pill">Step {{ step.trim() }}</span>
                               </template>
                               <template v-else>
                                 <span class="text-muted small">No step specified</span>
@@ -1876,7 +1876,13 @@ class TLSConfigurator:
       this.sendingSupportReply = true;
       const res = await this.authStore.sendUserSupportMessage(reportId, requestId, text);
       this.sendingSupportReply = false;
-      if (!res.status) return;
+      if (!res.status) {
+        // Previously failed silently — clicking Send just appeared to do
+        // nothing, with no way to tell a real failure apart from a slow
+        // network call. Surface whatever reason the backend gave.
+        Swal.fire('Message not sent', res.message || 'Could not send this message. Please try again.', 'error');
+        return;
+      }
       // Optimistic append so the reply shows immediately even if the list
       // refresh below lands the thread under a differently-named field.
       const optimisticMsg = { text, sender_type: 'user', created_at: new Date().toISOString() };
@@ -1900,6 +1906,10 @@ class TLSConfigurator:
       const team = this.authStore.userSelectedTeam;
       const result = await this.authStore.fetchUserAssets(true, team);
       await this.authStore.fetchUserVulnerabilityRegister(true, team);
+      // A vuln deleted from another session (e.g. the admin panel) otherwise
+      // stayed visible here until a full reload, since
+      // fetchUserSingleAssetVulnerabilities filters against this cached list.
+      await this.authStore.fetchUserDeletedVulnerabilityAssets(true);
       if (result.status) this.assets = this.authStore.cachedUserAssets;
       this.rememberHostAssetTypes(this.assets);
       await this.loadHeldAssets();
@@ -1980,6 +1990,7 @@ class TLSConfigurator:
               plugin_name: "",
             },
             this.hostAssetTypeMap,
+            this.assets,
           );
         return {
           asset: host,
@@ -2603,6 +2614,11 @@ class TLSConfigurator:
     },
   },
   async mounted() {
+    // Opt into the livePageSync background poll (see utils/livePageSync.js) so
+    // a hold/unhold made from a different session (e.g. admin panel on
+    // another device) is picked up here too — BroadcastChannel-based mutation
+    // sync only reaches other tabs of the same browser profile.
+    this._vaptLiveAllowPoll = true;
     this.openFixPanelAlerts();
 
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
