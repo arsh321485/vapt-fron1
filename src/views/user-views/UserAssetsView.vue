@@ -359,7 +359,7 @@
                             <i class="bi text-muted" :class="expandedVulnIndex === idx ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
                           </div>
                         </div>
-                        <div v-show="expandedVulnIndex === idx" class="vuln-accordion-expand">
+                        <div v-if="expandedVulnIndex === idx" class="vuln-accordion-expand">
                           <div class="vuln-accordion-body">
                             <div class="vuln-accordion-static">
                             <!-- Description -->
@@ -521,7 +521,7 @@
                               </span>
                             </div>
                           </div>
-                          <div v-show="expandedClosedIndex === i" class="vuln-accordion-expand">
+                          <div v-if="expandedClosedIndex === i" class="vuln-accordion-expand">
                             <div class="vuln-accordion-body">
                               <div class="vuln-accordion-static">
                                 <div class="av-description-block">

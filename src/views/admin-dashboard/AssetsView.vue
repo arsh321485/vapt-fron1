@@ -361,7 +361,7 @@
                             <i class="bi text-muted" :class="expandedVulnIndex === i ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
                           </div>
                         </div>
-                        <div v-show="expandedVulnIndex === i" class="vuln-accordion-expand">
+                        <div v-if="expandedVulnIndex === i" class="vuln-accordion-expand">
                           <div class="vuln-accordion-body">
                             <div class="vuln-accordion-static">
                             <!-- Description -->
@@ -442,7 +442,7 @@
                                     <span class="av-asset-os-lbl">{{ v.operating_system }}</span>
                                   </div>
                                   <ManualRemediationStepsPanel
-                                    :key="'mf-' + fixIdForVuln(v) + '-' + selectedAssetIp"
+                                    :key="'mf-' + String(v.plugin_id || v.nessus_plugin_id || v.id || v.vul_name) + '-' + selectedAssetIp"
                                     :is-user="false"
                                     :vuln-name="v.vul_name"
                                     :asset-ip="selectedAssetIp"
@@ -509,7 +509,7 @@
                               />
                             </div>
                           </div>
-                          <div v-show="expandedClosedIndex === i" class="vuln-accordion-expand">
+                          <div v-if="expandedClosedIndex === i" class="vuln-accordion-expand">
                             <div class="vuln-accordion-body">
                               <div class="vuln-accordion-static">
                                 <div class="av-description-block">
@@ -576,7 +576,7 @@
                                       <span class="av-asset-os-lbl">{{ closedItemAsVuln(item).operating_system }}</span>
                                     </div>
                                     <ManualRemediationStepsPanel
-                                      :key="'closed-mf-' + fixIdForVuln(closedItemAsVuln(item)) + '-' + selectedAssetIp"
+                                      :key="'closed-mf-' + String(closedItemAsVuln(item).plugin_id || closedItemAsVuln(item).nessus_plugin_id || closedItemAsVuln(item).id || closedItemAsVuln(item).vul_name) + '-' + selectedAssetIp"
                                       :is-user="false"
                                       :vuln-name="closedItemAsVuln(item).vul_name"
                                       :asset-ip="selectedAssetIp"
