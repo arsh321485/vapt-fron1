@@ -235,7 +235,8 @@ import { MOCK_MANUAL_STEPS } from '@/constants/mockManualRemediationSteps';
 import { getTeamColor } from '@/utils/teamColors';
 import { useAuthStore } from '@/stores/authStore';
 import { FREEMIUM_RETEST_MESSAGE } from '@/utils/planLimits';
-import { pickVulnDescription } from '@/utils/assetVulnerabilities';
+import { pickVulnDescription, extractCreatedFixVulnerabilityId } from '@/utils/assetVulnerabilities';
+import { notifyLiveData } from '@/utils/livePageSync';
 
 /** Keep manual-fix steps in memory so tab switches / remounts do not replay the loader. */
 const fixPanelCache = new Map();
@@ -821,22 +822,40 @@ export default {
 
       try {
         // Ensure we create/lookup against the latest uploaded report (not a stale localStorage id).
-        await this.authStore.resolveReportId();
+        const reportId = await this.authStore.resolveReportId();
         if (seq !== this._fixInitSeq) return;
 
         let preloadedId = this.fixId || '';
-        if (!preloadedId) {
-          preloadedId = await this.authStore.resolveAdminFixVulnerabilityId(
-            this.assetIp,
-            this.vulnName,
-            {
-              severity: this.severity,
-              vulnId: this.vulnId || undefined,
-              allowCreate: false,
-            },
-          );
+        let createdData = null;
+        // Mirror the user-side flow exactly: call create directly, every
+        // time, instead of checking the local vulnerability register first.
+        // The backend create endpoint is idempotent (safe to call repeatedly,
+        // it will not duplicate an existing record) — but the old
+        // register-lookup-first pass could match a stale/partial register
+        // row and return an id WITHOUT ever calling create, which is what
+        // let admin skip the step-generation trigger the user flow always
+        // fires on every open.
+        if (!preloadedId && reportId && this.assetIp && this.vulnName) {
+          const payload = {
+            plugin_name: this.vulnName,
+            risk_factor: this.severity || 'Medium',
+          };
+          if (this.vulnId) payload.id = this.vulnId;
+          const createRes = await this.authStore.createFixVulnerability(reportId, this.assetIp, payload);
+          if (seq !== this._fixInitSeq) return;
+          if (createRes.status && createRes.data) {
+            preloadedId = extractCreatedFixVulnerabilityId(createRes.data);
+            if (Array.isArray(createRes.data.steps) && createRes.data.steps.length) {
+              createdData = createRes.data;
+            }
+          }
+          if (!preloadedId) {
+            preloadedId = extractCreatedFixVulnerabilityId(createRes.details || {});
+          }
         }
         if (!preloadedId) {
+          // Fall back to the register lookup (covers cases the direct create
+          // call above couldn't run, e.g. report id not resolved yet).
           preloadedId = await this.authStore.resolveAdminFixVulnerabilityId(
             this.assetIp,
             this.vulnName,
@@ -853,6 +872,19 @@ export default {
           this.fixNotStarted = true;
           this.persistFixCache();
           this.scheduleAdminFixPoll(seq);
+          return;
+        }
+
+        if (createdData) {
+          this.fixVulnerabilityId = preloadedId;
+          this.fixNotStarted = false;
+          this.fixVulnData = {
+            assigned_team: createdData.assigned_team || '',
+            assigned_team_members: createdData.steps[0]?.assigned_team_members || [],
+          };
+          this.applyStepsFromApi(createdData);
+          this.clearFixPoll();
+          this.persistFixCache();
           return;
         }
 
@@ -1095,6 +1127,7 @@ export default {
 
         if (res.status) {
           step.submitting = false;
+          notifyLiveData('fix-step-complete');
           if (this.isUser) {
             this.applyStepProgressFromPost(res, task.id);
           }
@@ -1154,6 +1187,7 @@ export default {
           this.selectedOs,
         );
         if (res.status) {
+          notifyLiveData('fix-step-complete-all');
           this.applyStepProgressFromPost(res);
           await this.refreshStepsFromApi(res);
           const closed =
@@ -1194,6 +1228,7 @@ export default {
       try {
         const res = await this.authStore.sendUserFixVerification(this.fixVulnerabilityId);
         if (res.status) {
+          notifyLiveData('fix-retest-requested');
           const nextStatus = String(
             res.vulnerability_status || 'open/review',
           ).toLowerCase();

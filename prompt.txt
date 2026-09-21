@@ -1,16 +1,50 @@
-Backend bilkul sahi kaam kar raha hai — maine bilkul isi exact card ke liye (sakshidhote.sitl@gmail.com member se) real download call simulate kiya, aur dono automation cards (Privileged Database Access, Legacy Software) status 200 ke saath successfully download hue, sahi filename aur content ke saath (1609 aur 1973 bytes ki real Python script files).
+BACKEND CHECK NEEDED — "Manual Fix" step generation, admin side only
 
-Team-matching, admin-linking, plan-check — sab sahi pass ho gaya. Isliye yeh backend bug nahi hai — jo exact API call frontend ko karni chahiye, wo successfully kaam karti hai jab main use call karta hoon.
+CONTEXT
+Frontend already calls the exact two endpoints in the exact sequence described in the last
+backend prompt (verified directly against the current source, not guessing):
 
-Iska matlab "Download failed" popup frontend side se aa raha hai — jaise:
+  Admin create : POST /api/admin/adminregister/fix-vulnerability/report/<report_id>/asset/<host_name>/create/
+  Admin steps  : GET  /api/admin/adminregister/fix-vulnerability/<fix_vuln_id>/step-complete/
 
-Frontend galat URL/card_id bhej raha ho
-Response ko (blob/file) sahi handle na kar raha ho
-Ya koi network/CORS issue us specific browser session me
-Frontend developer ke liye check karne wala exact detail chahiye — Browser DevTools ke Network tab me "Download" button click karte waqt jo request jaati hai, uska exact URL aur response status/body dekh kar bata dijiye (ya screenshot le lijiye), phir main confirm kar ke frontend-dev prompt likh dunga.
+  User create  : POST /api/user/register/fix-vulnerability/report/<report_id>/asset/<host_name>/create/
+  User steps   : GET  /api/user/register/fix-vulnerability/<fix_vuln_id>/step-complete/?os=...
 
-Maine yeh result already dekh liya hai aur upar bata diya — backend confirmed sahi kaam kar raha hai (dono cards 200 status ke saath download ho gaye). Ab wait kar raha hoon — Network tab ka exact URL/response bhej dijiye jab convenient ho, tab frontend-side root cause confirm karunga.
+Request body on create already matches what's expected: { id, plugin_name, risk_factor }.
+The `_id` from the create response is already captured and reused as `fix_vuln_id` for the
+steps call. So "the UI never asks for it" is not the issue — it does ask, every time the tab
+opens (and now also retries a few times automatically if steps aren't ready yet).
+
+WHAT WE'RE ACTUALLY SEEING
+- On admin: opening "Manual Fix" for a vulnerability the very first time often shows
+  "Fix Not Started" with 0 steps.
+- Opening the SAME vulnerability from the USER side first (which hits the user create
+  endpoint), then going back to admin, makes it show correctly.
+- This means the admin create endpoint is returning success, but the record it creates does
+  not yet have steps — while the user create endpoint's record does end up with steps.
+
+PLEASE CHECK ON THE BACKEND
+1. Does POST /api/admin/adminregister/fix-vulnerability/report/<report_id>/asset/<host_name>/create/
+   trigger the same step-generation process (AI job / template expansion / whatever populates
+   `steps`) that POST /api/user/register/fix-vulnerability/report/<report_id>/asset/<host_name>/create/
+   triggers? Please confirm by checking the handler code for both routes side by side.
+2. If they call the same underlying function, is there a delay (async job/queue) between
+   creation and steps being ready? If yes, roughly how long, so we can size our retry window
+   on the frontend correctly (we currently retry every 4s for ~30s after create).
+3. Are the admin-created and user-created fix-vulnerability records for the same
+   (report, asset, vulnerability) actually the SAME document, or does the backend create two
+   separate documents depending on which side calls it? If they're separate documents, that
+   alone explains why admin never gets steps until the user-side path independently creates
+   a populated one for the same vulnerability — and would need a real backend fix (e.g. admin
+   create should find-or-create the same underlying record the user path uses, not a separate
+   one keyed by caller role).
+
+Once you confirm which of these it is, we'll adjust the frontend gracefully-handle it (either
+just keep the existing retry loop if it's a fixed short delay, or nothing needed on the
+frontend at all if you fix the create endpoint to trigger generation / share the same
+document).
 
 
 
-kabhi kabhi user side script download nhi ho rhit hi proepr recheck kro
+
+backend engineer ko ye promptdiya tha unne check kraya vha kuch chnage ki need nhi hai ap frontedn se kra lo iske l liye because user side bhi frontedn ,me properl manual fix me turant data get hio rha hai
