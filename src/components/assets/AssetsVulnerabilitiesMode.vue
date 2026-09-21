@@ -2192,10 +2192,11 @@ export default {
         const collected = [];
         // Admin has no bulk "closed vulns for this report" endpoint (unlike
         // fetchUserClosedVulns, one call for everything) — it's one request
-        // per unique host, batched. A batch of 8 meant a report with, say,
-        // 17 hosts paid for 3 sequential round trips just for this step.
-        // Batching wider cuts that to 1 round trip for most reports.
-        const BATCH_SIZE = 20;
+        // per unique host, batched. Widening the batch further cuts reports
+        // with 40-80+ hosts from 3-5 sequential round trips down to 1-2.
+        // The real fix is a bulk admin endpoint mirroring fetchUserClosedVulns
+        // — flagged to backend; this only reduces the pain until that lands.
+        const BATCH_SIZE = 40;
         for (let i = 0; i < hosts.length; i += BATCH_SIZE) {
           const slice = hosts.slice(i, i + BATCH_SIZE);
           const parts = await Promise.all(

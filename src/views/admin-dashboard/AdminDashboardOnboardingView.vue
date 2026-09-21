@@ -2425,9 +2425,18 @@ export default {
       // the per-vulnerability "N affected assets" cards below it, instead of
       // de-duplicating hosts that show up under more than one vulnerability
       // type down to a single count.
+      //
+      // Uses getVulnAssetCount() (vulnAssetCountMap, from
+      // fetchAdminMitigationVulnAssetCount) as the source of truth per vuln,
+      // not mitigationByTeamData's own embedded `assets` list — that list can
+      // be stale/incomplete for a vulnerability (seen: 16 vs the same vuln's
+      // own accurate card showing 58), which made this team total disagree
+      // with the per-vulnerability cards directly below it.
       let affectedAssets = 0;
       vulns.forEach(v => {
-        if (Array.isArray(v.assets)) affectedAssets += v.assets.length;
+        const accurate = this.getVulnAssetCount(v);
+        if (accurate) affectedAssets += accurate;
+        else if (Array.isArray(v.assets)) affectedAssets += v.assets.length;
         else if (v.host_name) affectedAssets += 1;
       });
       return affectedAssets;

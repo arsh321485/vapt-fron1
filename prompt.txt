@@ -1,1 +1,1 @@
-see image abhi bhi turant yha api hit nhi hio rha hai abhi bhi dusre tab se return ane par aa jata hai data but esa nhi hona chahiye turant ana chahiye and agr loading par bhi hai to ye jo fix not stated yet ye mesg hai iske jagah loading ka msg dikhao fr but phli bat user side jese turant spi hit hiota hai step ka vese admin me bhi hoi 
+on admin side on common vulnerability on network tab there is 16 affetected assest than why it shows below 58 affected assest please get it properly
