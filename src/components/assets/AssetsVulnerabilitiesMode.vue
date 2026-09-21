@@ -1528,7 +1528,15 @@ export default {
     // held-assets round trip took, even after the vuln data (and the tab
     // counts computed from it) had already rendered correctly above it.
     const heldPromise = this.loadHeldAssets();
-    await this.loadVulnerabilities();
+    // false: AssetsView.vue/UserAssetsView.vue's own mount already fetches
+    // the register + report vulnerabilities with force=false right before
+    // this tab can even be reached — forcing another full refetch here was
+    // a guaranteed-redundant network call on every "All Vulnerabilities" tab
+    // visit. Still fetches for real if the cache is genuinely empty (e.g. a
+    // direct deep link straight to this tab) — fetchVulnerabilityRegister()/
+    // fetchAllReportVulnerabilities() only skip the network call when data
+    // is already cached.
+    await this.loadVulnerabilities(false);
     this.loading = false;
     await heldPromise;
     await this.authStore.refreshAutomationPremiumLock(this.isUser);
@@ -2136,21 +2144,25 @@ export default {
       // it here too so it updates live like the All Assets tab already does.
       await this.loadHeldAssets();
     },
-    async loadVulnerabilities() {
+    async loadVulnerabilities(force = true) {
       // loading stays true (owned by the caller, alongside loadHeldAssets())
       // until closed-fix records are in too — those change which hosts count
       // as open, so flipping loading off before they land made the tab/header
       // counts render a too-high number that visibly dropped a step or two
       // once closedFixRecords (and the held list) finished loading.
+      //
+      // force defaults to true because most callers (team-change, post-
+      // mutation refreshes) need a real refetch; only the initial mount
+      // passes false to reuse the parent page's already-fresh cache.
       if (this.isUser) {
         await Promise.all([
-          this.authStore.fetchUserVulnerabilityRegister(true, this.authStore.userSelectedTeam),
-          this.authStore.fetchUserAllReportVulnerabilities(true, this.authStore.userSelectedTeam),
+          this.authStore.fetchUserVulnerabilityRegister(force, this.authStore.userSelectedTeam),
+          this.authStore.fetchUserAllReportVulnerabilities(force, this.authStore.userSelectedTeam),
         ]);
       } else {
         await Promise.all([
-          this.authStore.fetchVulnerabilityRegister(true),
-          this.authStore.fetchAllReportVulnerabilities(true),
+          this.authStore.fetchVulnerabilityRegister(force),
+          this.authStore.fetchAllReportVulnerabilities(force),
         ]);
       }
       await this.loadClosedFixRecords();

@@ -1,1 +1,1 @@
-on admin side on common vulnerability on network tab there is 16 affetected assest than why it shows below 58 affected assest please get it properly
+see the image yha jab hum admin side all vulnerabiity tab par ate hai to ye thoda time leta hai data loading me itna nhi kena chahiye and also unncesarry jo api hit hote hai vo nhi hina chahiye jo use ho rhe vahi hit krao only

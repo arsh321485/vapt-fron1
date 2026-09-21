@@ -2421,19 +2421,23 @@ export default {
       const matchKey = Object.keys(teams).find(k => normalize(k) === normalize(teamKey));
       if (!matchKey) return 0;
       const vulns = teams[matchKey]?.vulnerabilities || [];
-      // Sum every vulnerability's affected-asset count for this team — matches
-      // the per-vulnerability "N affected assets" cards below it, instead of
-      // de-duplicating hosts that show up under more than one vulnerability
-      // type down to a single count.
-      //
-      // Uses getVulnAssetCount() (vulnAssetCountMap, from
-      // fetchAdminMitigationVulnAssetCount) as the source of truth per vuln,
-      // not mitigationByTeamData's own embedded `assets` list — that list can
-      // be stale/incomplete for a vulnerability (seen: 16 vs the same vuln's
-      // own accurate card showing 58), which made this team total disagree
-      // with the per-vulnerability cards directly below it.
+      // mitigationByTeamData.vulnerabilities is one row per affected
+      // host/finding, NOT deduplicated by vulnerability type (that's why its
+      // length matches the Critical/High/Medium/Low counts above, not the
+      // "Vulnerabilities (Team) — N" distinct-type count shown below). So we
+      // must dedupe by plugin_name before summing, or a vuln type found on
+      // 17 hosts gets its accurate asset count (getVulnAssetCount(),
+      // vulnAssetCountMap from fetchAdminMitigationVulnAssetCount) added 17
+      // times over — this is exactly what produced 1011 instead of ~63 for
+      // Network Security's 2 actual vulnerability types (58 + 5 assets).
+      const seen = new Set();
       let affectedAssets = 0;
       vulns.forEach(v => {
+        const key = String(v.plugin_name || '').trim().toLowerCase();
+        if (key) {
+          if (seen.has(key)) return;
+          seen.add(key);
+        }
         const accurate = this.getVulnAssetCount(v);
         if (accurate) affectedAssets += accurate;
         else if (Array.isArray(v.assets)) affectedAssets += v.assets.length;
