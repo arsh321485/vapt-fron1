@@ -18,8 +18,7 @@
               <div class="pm-page-header">
                 <div>
                   <h2 class="pm-title">
-                    Team Perfrormance Monitoring
-
+                    Team Performance Monitoring
                   </h2>
 
                 </div>

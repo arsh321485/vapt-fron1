@@ -93,16 +93,21 @@ export function triggerBlobFileDownload(blob, filename) {
   URL.revokeObjectURL(url);
 }
 
-/** AI automation card id: the vulnerability-card id the ai automation_card is keyed to. */
+/**
+ * AI automation card id: the vulnerability-card id the ai automation_card is
+ * keyed to. Deliberately does NOT fall back to vuln.id/_id/vulnerability_id —
+ * those are the vulnerability's own id, not a card id, and passing one to the
+ * download endpoint (/api/user/automation-scripts/ai/{card_id}/download/)
+ * just 404s as "Download failed". Returning '' here instead lets
+ * AutomatedFixPanel's own name+host card lookup (fetchedCardId) resolve the
+ * real id when the list row doesn't carry card_id.
+ */
 export function resolveVulnCardId(vuln) {
   if (!vuln) return '';
   return String(
     vuln.card_id ||
       vuln.automation_card_id ||
       vuln.vulnerability_card_id ||
-      vuln.id ||
-      vuln._id ||
-      vuln.vulnerability_id ||
       '',
   ).trim();
 }

@@ -665,13 +665,15 @@
                         </tr>
                         <tr v-for="row in adminMteTeams" :key="row.team">
                           <td>
-                            <span class="dash-mte-team-name">{{ row.team }}</span>
-                            <span
-                              v-if="teamHasPendingRequests(row)"
-                              class="dash-mte-team-alert"
-                              title="New timeline extension request — click to review"
-                              @click.stop="openMitigationExtensionForTeam(row.team)"
-                            >*</span>
+                            <span class="dash-mte-team-cell">
+                              <span class="dash-mte-team-name">{{ row.team }}</span>
+                              <span
+                                v-if="teamHasPendingRequests(row)"
+                                class="dash-mte-team-alert"
+                                title="New timeline extension request — click to review"
+                                @click.stop="openMitigationExtensionForTeam(row.team)"
+                              >*</span>
+                            </span>
                           </td>
                           <td><span class="dash-mte-pill critical">{{ String(row.critical || 0).padStart(2,'0') }}</span></td>
                           <td><span class="dash-mte-pill high">{{ String(row.high || 0).padStart(2,'0') }}</span></td>
@@ -3613,6 +3615,11 @@ mounted() {
   color: #334155;
   padding-left: 12px;
 }
+.dash-mte-team-cell {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 3px;
+}
 .dash-mte-team-name {
   position: relative;
 }
@@ -3620,12 +3627,11 @@ mounted() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-left: 4px;
+  flex-shrink: 0;
   color: #b42318;
   font-size: 14px;
   font-weight: 900;
   cursor: pointer;
-  vertical-align: text-top;
 }
 .dash-mte-table th.sev-critical { color: #b42318; }
 .dash-mte-table th.sev-high { color: #dc2626; }

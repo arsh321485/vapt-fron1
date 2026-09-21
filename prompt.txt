@@ -1,1 +1,16 @@
-see image one and than second when i click on support request tha there the 1 red ount apprears n=but i want as soon as support request raised the count will apprear not need to when go to support quest and than show the count it i m on vul that also on support request count shown because the admin clearly see that here user raised a request and he can check 
+Backend bilkul sahi kaam kar raha hai — maine bilkul isi exact card ke liye (sakshidhote.sitl@gmail.com member se) real download call simulate kiya, aur dono automation cards (Privileged Database Access, Legacy Software) status 200 ke saath successfully download hue, sahi filename aur content ke saath (1609 aur 1973 bytes ki real Python script files).
+
+Team-matching, admin-linking, plan-check — sab sahi pass ho gaya. Isliye yeh backend bug nahi hai — jo exact API call frontend ko karni chahiye, wo successfully kaam karti hai jab main use call karta hoon.
+
+Iska matlab "Download failed" popup frontend side se aa raha hai — jaise:
+
+Frontend galat URL/card_id bhej raha ho
+Response ko (blob/file) sahi handle na kar raha ho
+Ya koi network/CORS issue us specific browser session me
+Frontend developer ke liye check karne wala exact detail chahiye — Browser DevTools ke Network tab me "Download" button click karte waqt jo request jaati hai, uska exact URL aur response status/body dekh kar bata dijiye (ya screenshot le lijiye), phir main confirm kar ke frontend-dev prompt likh dunga.
+
+Maine yeh result already dekh liya hai aur upar bata diya — backend confirmed sahi kaam kar raha hai (dono cards 200 status ke saath download ho gaye). Ab wait kar raha hoon — Network tab ka exact URL/response bhej dijiye jab convenient ho, tab frontend-side root cause confirm karunga.
+
+
+
+kabhi kabhi user side script download nhi ho rhit hi proepr recheck kro
