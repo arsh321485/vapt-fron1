@@ -7,8 +7,20 @@
       <span>Loading fix details…</span>
     </div>
 
+    <!-- Card/step generation still running for this report (confirmed by
+         backend: can take ~45s-several minutes after upload, independent of
+         admin vs user) — shown instead of a bare empty state so a transient
+         wait doesn't read as a permanent failure, on both sides. -->
+    <div v-if="cardGenPending && !showFixLoading && assetIp" class="mf-not-started">
+      <span class="spinner-border spinner-border-sm text-primary mf-not-started-icon" aria-hidden="true"></span>
+      <div class="mf-not-started-text">
+        <span class="mf-not-started-title">Generating your remediation plan…</span>
+        <span class="mf-not-started-sub">{{ cardGenRemainingText ? `About ${cardGenRemainingText} left.` : 'This can take a minute for large reports — checking again shortly.' }}</span>
+      </div>
+    </div>
+
     <!-- Admin: fix not started — only show in All Assets tab, not All Vulns tab -->
-    <div v-if="!isUser && fixNotStarted && !showFixLoading && assetIp" class="mf-not-started">
+    <div v-else-if="!isUser && fixNotStarted && !showFixLoading && assetIp" class="mf-not-started">
       <i class="bi bi-hourglass-split mf-not-started-icon" aria-hidden="true"></i>
       <div class="mf-not-started-text">
         <span class="mf-not-started-title">Fix Not Started</span>
@@ -303,6 +315,13 @@ export default {
       _loadedFixCacheKey: '',
       _fixPollTimer: null,
       _fixPollAttempts: 0,
+      // True while the backend's per-report card/step generation job is
+      // still running (confirmed by backend: this can take ~45s-several
+      // minutes on large reports, independent of admin vs user) — shown
+      // instead of "Fix Not Started" so a transient wait doesn't read as a
+      // permanent failure.
+      cardGenPending: false,
+      cardGenRemainingText: '',
     };
   },
   computed: {
@@ -457,6 +476,7 @@ export default {
         if (stepsRes.status && Array.isArray(stepsRes.data?.steps) && stepsRes.data.steps.length) {
           if (stepsRes.status) this.emitDescriptionIfPresent(stepsRes.data);
           this.fixNotStarted = false;
+          this.cardGenPending = false;
           this.fixVulnData = {
             ...(this.fixVulnData || {}),
             assigned_team: stepsRes.data.assigned_team || this.fixVulnData?.assigned_team || '',
@@ -470,6 +490,7 @@ export default {
         } else {
           // Cached session still has no steps — the generation agent may
           // still be running, so keep checking instead of leaving it stale.
+          await this.refreshAdminCardGenStatus(this.authStore.latestReportId);
           this.scheduleAdminFixPoll(seq);
         }
       } catch {
@@ -689,14 +710,39 @@ export default {
       if (!this.isUser || !this.vulnName || !this.assetIp) return;
       if (this.restoreCachedFixIfReady()) return;
 
-      this.loadingFixVuln = true;
+      const seq = ++this._fixInitSeq;
+      this.clearFixPoll();
+      this._fixPollAttempts = 0;
+      this.cardGenPending = false;
+      this.cardGenRemainingText = '';
       this.fixVulnerabilityId = null;
       this.fixVulnData = null;
       this.vulnerabilityStatus = '';
       this.allStepsCompletedFlag = false;
       this.requestingRetest = false;
+
+      await this.loadUserFixData(seq, { silent: false });
+    },
+    // There is no user-facing equivalent of the admin upload-status endpoint
+    // (backend: it checks request.user.id against the report's owning
+    // admin, so a team-member caller gets 403) — so unlike admin we can't
+    // show an ETA here, just keep retrying quietly for the same generation
+    // window while the "Generating your remediation plan…" state covers it.
+    scheduleUserFixPoll(seq) {
+      this.clearFixPoll();
+      if (this._fixPollAttempts >= 40) return; // ~5.3 min, matches admin's window
+      this._fixPollAttempts += 1;
+      this._fixPollTimer = setTimeout(() => {
+        this._fixPollTimer = null;
+        if (seq !== this._fixInitSeq) return;
+        this.loadUserFixData(seq, { silent: true });
+      }, 8000);
+    },
+    async loadUserFixData(seq, { silent }) {
+      if (!silent) this.loadingFixVuln = true;
       try {
         const reportId = await this.authStore.resolveUserReportId();
+        if (seq !== this._fixInitSeq) return;
         if (!reportId) return;
         const payload = {
           plugin_name: this.vulnName,
@@ -704,9 +750,9 @@ export default {
         };
         if (this.vulnId) payload.id = this.vulnId;
         const createRes = await this.authStore.createUserFixVulnerability(reportId, this.assetIp, payload);
+        if (seq !== this._fixInitSeq) return;
 
         // Robust fixId extraction from multiple possible response shapes
-        console.log('[ManualFix] createRes:', JSON.stringify(createRes));
         let fixId = null;
         if (createRes.status && createRes.data) {
           const d = createRes.data;
@@ -716,8 +762,10 @@ export default {
           this.emitDescriptionIfPresent(d);
           // Check if create response itself has steps
           if (d.steps?.length) {
-            console.log('[ManualFix] Steps found in createRes:', d.steps.length);
             this.applyStepsFromApi(d);
+            this.cardGenPending = false;
+            this.clearFixPoll();
+            return;
           }
         }
         if (!fixId && createRes.details) {
@@ -725,10 +773,10 @@ export default {
           fixId = det.fix_vulnerability_id || det._id || det.id || null;
         }
         if (!fixId) {
-          console.warn('[ManualFix] Could not resolve fixId. Full createRes:', createRes);
+          this.cardGenPending = true;
+          this.scheduleUserFixPoll(seq);
           return;
         }
-        console.log('[ManualFix] fixId resolved:', fixId);
         this.fixVulnerabilityId = fixId;
 
         // Try both OS keys — use whichever returns steps
@@ -737,11 +785,11 @@ export default {
         this.selectedOs = primaryOs;
 
         let stepsRes = await this.authStore.getUserFixVulnerabilitySteps(fixId, primaryOs);
-        console.log('[ManualFix] stepsRes primaryOs:', primaryOs, JSON.stringify(stepsRes?.data?.steps?.length));
+        if (seq !== this._fixInitSeq) return;
         if (!stepsRes.status || !stepsRes.data?.steps?.length) {
           // Try fallback OS
           const fallbackRes = await this.authStore.getUserFixVulnerabilitySteps(fixId, fallbackOs);
-          console.log('[ManualFix] stepsRes fallbackOs:', fallbackOs, JSON.stringify(fallbackRes?.data?.steps?.length));
+          if (seq !== this._fixInitSeq) return;
           if (fallbackRes.status && fallbackRes.data?.steps?.length) {
             stepsRes = fallbackRes;
             this.selectedOs = fallbackOs;
@@ -750,6 +798,7 @@ export default {
 
         if (stepsRes.status) this.emitDescriptionIfPresent(stepsRes.data);
         if (stepsRes.status && Array.isArray(stepsRes.data?.steps) && stepsRes.data.steps.length) {
+          this.cardGenPending = false;
           this.fixVulnData = {
             ...this.fixVulnData,
             assigned_team: stepsRes.data.assigned_team || this.fixVulnData?.assigned_team || '',
@@ -760,11 +809,16 @@ export default {
             solution: this.fixVulnData?.solution || '',
           };
           this.applyStepsFromApi(stepsRes.data);
+          this.clearFixPoll();
         } else {
-          console.warn('[ManualFix] No steps returned for fixId:', fixId, 'os:', primaryOs);
+          // Record exists but the report's card-generation job hasn't
+          // produced this vulnerability's steps yet — keep retrying instead
+          // of leaving it silently at "0 tasks".
+          this.cardGenPending = true;
+          this.scheduleUserFixPoll(seq);
         }
       } finally {
-        this.loadingFixVuln = false;
+        if (seq === this._fixInitSeq && !silent) this.loadingFixVuln = false;
       }
     },
     clearFixPoll() {
@@ -773,19 +827,46 @@ export default {
         this._fixPollTimer = null;
       }
     },
-    // Steps are generated by an async agent right after a fix session is
-    // created — the first lookup can legitimately land before it's done.
-    // Keep re-checking quietly for a while instead of leaving the admin
-    // stuck on "Fix Not Started" until they happen to reopen the tab.
+    // Backend-confirmed: card/step generation is a background job tied to
+    // report UPLOAD, not to this create call — it can take ~45s for small
+    // reports up to several minutes for large ones, on either side. Keep
+    // re-checking for that whole window instead of giving up after ~30s.
     scheduleAdminFixPoll(seq) {
       this.clearFixPoll();
-      if (this._fixPollAttempts >= 8) return; // ~32s of retries, then give up quietly
+      if (this._fixPollAttempts >= 40) return; // ~5.3 min of retries, then give up quietly
       this._fixPollAttempts += 1;
       this._fixPollTimer = setTimeout(() => {
         this._fixPollTimer = null;
         if (seq !== this._fixInitSeq) return;
         this.loadAdminFixData(seq, { silent: true });
-      }, 4000);
+      }, 8000);
+    },
+    // Admin-only status endpoint (backend: team-member/user callers get 403
+    // on this route) — used purely to show an accurate "About Xs left"
+    // instead of guessing, while the poll above keeps retrying the real
+    // create+steps calls regardless of whether this succeeds.
+    async refreshAdminCardGenStatus(reportId) {
+      if (!reportId) {
+        this.cardGenPending = false;
+        this.cardGenRemainingText = '';
+        return;
+      }
+      try {
+        const res = await this.authStore.fetchUploadReportStatus(reportId);
+        if (res.status && res.data) {
+          const complete = res.data.cards_generation_complete === true;
+          this.cardGenPending = !complete;
+          this.cardGenRemainingText = complete ? '' : String(res.data.remaining_time_text || '').trim();
+        } else {
+          // Status unavailable — still let the caller know generation is
+          // presumably ongoing (no other explanation for empty steps).
+          this.cardGenPending = true;
+          this.cardGenRemainingText = '';
+        }
+      } catch {
+        this.cardGenPending = true;
+        this.cardGenRemainingText = '';
+      }
     },
     async initAdminFixVuln() {
       if (this.isUser || !this.vulnName || !this.assetIp) return;
@@ -869,6 +950,7 @@ export default {
         if (seq !== this._fixInitSeq) return;
 
         if (!preloadedId) {
+          await this.refreshAdminCardGenStatus(reportId);
           this.fixNotStarted = true;
           this.persistFixCache();
           this.scheduleAdminFixPoll(seq);
@@ -878,6 +960,7 @@ export default {
         if (createdData) {
           this.fixVulnerabilityId = preloadedId;
           this.fixNotStarted = false;
+          this.cardGenPending = false;
           this.fixVulnData = {
             assigned_team: createdData.assigned_team || '',
             assigned_team_members: createdData.steps[0]?.assigned_team_members || [],
@@ -903,6 +986,7 @@ export default {
         if (stepsRes.status) this.emitDescriptionIfPresent(stepsRes.data);
         if (stepsRes.status && Array.isArray(stepsRes.data?.steps) && stepsRes.data.steps.length) {
           this.fixNotStarted = false;
+          this.cardGenPending = false;
           this.fixVulnData = {
             assigned_team: stepsRes.data.assigned_team || '',
             assigned_team_members: stepsRes.data.steps[0]?.assigned_team_members || [],
@@ -917,6 +1001,7 @@ export default {
         const cardSteps = Array.isArray(cardData?.steps) ? cardData.steps : [];
         if (cardSteps.length) {
           this.fixNotStarted = false;
+          this.cardGenPending = false;
           this.fixVulnData = {
             solution: cardData?.solution || '',
             assigned_team: cardData?.assigned_team || '',
@@ -931,6 +1016,11 @@ export default {
           return;
         }
 
+        // Steps still aren't populated for an existing/newly-created record —
+        // check whether it's because the report's card-generation job is
+        // still running, so the empty state reads as "still working" rather
+        // than "nothing happened".
+        await this.refreshAdminCardGenStatus(reportId);
         if (stepsRes.notFound && !cardData) {
           this.fixNotStarted = true;
           this.subtasks = [];
