@@ -1,4 +1,1 @@
-kahi kahi aa jata hai manual fix admin side sari steps kahi kahi first time n=me nhi aa rha user side jese all time ata hai vese hi anyone
-
-
-
+see image abhi bhi turant yha api hit nhi hio rha hai abhi bhi dusre tab se return ane par aa jata hai data but esa nhi hona chahiye turant ana chahiye and agr loading par bhi hai to ye jo fix not stated yet ye mesg hai iske jagah loading ka msg dikhao fr but phli bat user side jese turant spi hit hiota hai step ka vese admin me bhi hoi 

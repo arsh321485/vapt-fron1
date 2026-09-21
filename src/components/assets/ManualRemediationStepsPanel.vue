@@ -490,12 +490,18 @@ export default {
         } else {
           // Cached session still has no steps — the generation agent may
           // still be running, so keep checking instead of leaving it stale.
-          await this.refreshAdminCardGenStatus(this.authStore.latestReportId);
-          this.scheduleAdminFixPoll(seq);
+          // cardGenPending mirrors "do we still have retry budget left", not
+          // whether the (best-effort, admin-only) ETA check succeeded — so a
+          // failed/slow status call can never wrongly show "Fix Not Started"
+          // while we're still actively retrying.
+          const stillTrying = this.scheduleAdminFixPoll(seq);
+          this.cardGenPending = stillTrying;
+          if (stillTrying) this.refreshAdminCardGenEta(this.authStore.latestReportId);
+          else this.fixNotStarted = true;
         }
       } catch {
         /* keep cached UI, next poll attempt will retry */
-        this.scheduleAdminFixPoll(seq);
+        this.cardGenPending = this.scheduleAdminFixPoll(seq);
       }
     },
     getTeamColor,
@@ -730,13 +736,14 @@ export default {
     // window while the "Generating your remediation plan…" state covers it.
     scheduleUserFixPoll(seq) {
       this.clearFixPoll();
-      if (this._fixPollAttempts >= 40) return; // ~5.3 min, matches admin's window
+      if (this._fixPollAttempts >= 40) return false; // ~5.3 min, matches admin's window
       this._fixPollAttempts += 1;
       this._fixPollTimer = setTimeout(() => {
         this._fixPollTimer = null;
         if (seq !== this._fixInitSeq) return;
         this.loadUserFixData(seq, { silent: true });
       }, 8000);
+      return true;
     },
     async loadUserFixData(seq, { silent }) {
       if (!silent) this.loadingFixVuln = true;
@@ -773,8 +780,7 @@ export default {
           fixId = det.fix_vulnerability_id || det._id || det.id || null;
         }
         if (!fixId) {
-          this.cardGenPending = true;
-          this.scheduleUserFixPoll(seq);
+          this.cardGenPending = this.scheduleUserFixPoll(seq);
           return;
         }
         this.fixVulnerabilityId = fixId;
@@ -814,8 +820,7 @@ export default {
           // Record exists but the report's card-generation job hasn't
           // produced this vulnerability's steps yet — keep retrying instead
           // of leaving it silently at "0 tasks".
-          this.cardGenPending = true;
-          this.scheduleUserFixPoll(seq);
+          this.cardGenPending = this.scheduleUserFixPoll(seq);
         }
       } finally {
         if (seq === this._fixInitSeq && !silent) this.loadingFixVuln = false;
@@ -831,41 +836,35 @@ export default {
     // report UPLOAD, not to this create call — it can take ~45s for small
     // reports up to several minutes for large ones, on either side. Keep
     // re-checking for that whole window instead of giving up after ~30s.
+    // Returns whether another attempt was actually scheduled — callers use
+    // this (not the ETA check below) to decide whether to show "still
+    // generating" vs the real "Fix Not Started" dead end, so that state is
+    // never at the mercy of a secondary status call failing or being slow.
     scheduleAdminFixPoll(seq) {
       this.clearFixPoll();
-      if (this._fixPollAttempts >= 40) return; // ~5.3 min of retries, then give up quietly
+      if (this._fixPollAttempts >= 40) return false; // ~5.3 min of retries, then give up
       this._fixPollAttempts += 1;
       this._fixPollTimer = setTimeout(() => {
         this._fixPollTimer = null;
         if (seq !== this._fixInitSeq) return;
         this.loadAdminFixData(seq, { silent: true });
       }, 8000);
+      return true;
     },
     // Admin-only status endpoint (backend: team-member/user callers get 403
-    // on this route) — used purely to show an accurate "About Xs left"
-    // instead of guessing, while the poll above keeps retrying the real
-    // create+steps calls regardless of whether this succeeds.
-    async refreshAdminCardGenStatus(reportId) {
-      if (!reportId) {
-        this.cardGenPending = false;
-        this.cardGenRemainingText = '';
-        return;
-      }
+    // on this route) — best-effort only, purely to fill in an accurate
+    // "About Xs left" ETA. Never gates cardGenPending itself (that's owned
+    // by scheduleAdminFixPoll's return value), so a failure or slow response
+    // here can never wrongly flip the UI to "Fix Not Started".
+    async refreshAdminCardGenEta(reportId) {
+      if (!reportId) return;
       try {
         const res = await this.authStore.fetchUploadReportStatus(reportId);
-        if (res.status && res.data) {
-          const complete = res.data.cards_generation_complete === true;
-          this.cardGenPending = !complete;
-          this.cardGenRemainingText = complete ? '' : String(res.data.remaining_time_text || '').trim();
-        } else {
-          // Status unavailable — still let the caller know generation is
-          // presumably ongoing (no other explanation for empty steps).
-          this.cardGenPending = true;
-          this.cardGenRemainingText = '';
+        if (res.status && res.data && res.data.cards_generation_complete !== true) {
+          this.cardGenRemainingText = String(res.data.remaining_time_text || '').trim();
         }
       } catch {
-        this.cardGenPending = true;
-        this.cardGenRemainingText = '';
+        /* best effort only */
       }
     },
     async initAdminFixVuln() {
@@ -950,10 +949,11 @@ export default {
         if (seq !== this._fixInitSeq) return;
 
         if (!preloadedId) {
-          await this.refreshAdminCardGenStatus(reportId);
-          this.fixNotStarted = true;
+          const stillTrying = this.scheduleAdminFixPoll(seq);
+          this.cardGenPending = stillTrying;
+          this.fixNotStarted = !stillTrying;
+          if (stillTrying) this.refreshAdminCardGenEta(reportId);
           this.persistFixCache();
-          this.scheduleAdminFixPoll(seq);
           return;
         }
 
@@ -1016,13 +1016,15 @@ export default {
           return;
         }
 
-        // Steps still aren't populated for an existing/newly-created record —
-        // check whether it's because the report's card-generation job is
-        // still running, so the empty state reads as "still working" rather
-        // than "nothing happened".
-        await this.refreshAdminCardGenStatus(reportId);
+        // Steps still aren't populated for an existing/newly-created record.
+        // As long as we still have retry budget left, this always reads as
+        // "still working" (cardGenPending), never the dead-end "Fix Not
+        // Started" copy — that only appears once retries are exhausted.
+        const stillTrying = this.scheduleAdminFixPoll(seq);
+        this.cardGenPending = stillTrying;
+        if (stillTrying) this.refreshAdminCardGenEta(reportId);
         if (stepsRes.notFound && !cardData) {
-          this.fixNotStarted = true;
+          this.fixNotStarted = !stillTrying;
           this.subtasks = [];
         } else {
           // Fix session exists (agent created it) but steps not populated yet.
@@ -1037,9 +1039,6 @@ export default {
           }
         }
         this.persistFixCache();
-        // Steps still aren't populated — the generation agent may still be
-        // running, so keep polling instead of leaving this as a dead end.
-        this.scheduleAdminFixPoll(seq);
       } finally {
         if (seq === this._fixInitSeq && !silent) this.loadingFixVuln = false;
       }
