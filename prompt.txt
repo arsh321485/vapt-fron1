@@ -1,1 +1,1 @@
-see the image yha jab hum admin side all vulnerabiity tab par ate hai to ye thoda time leta hai data loading me itna nhi kena chahiye and also unncesarry jo api hit hote hai vo nhi hina chahiye jo use ho rhe vahi hit krao only
+All vul tab me ye vul ke according assest web app server and firewall me qki nhi aa rha count check krna agr frontedn se krne ki need ho to krdo 

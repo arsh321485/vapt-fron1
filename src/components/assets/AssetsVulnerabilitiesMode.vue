@@ -2147,9 +2147,13 @@ export default {
     async loadVulnerabilities(force = true) {
       // loading stays true (owned by the caller, alongside loadHeldAssets())
       // until closed-fix records are in too — those change which hosts count
-      // as open, so flipping loading off before they land made the tab/header
-      // counts render a too-high number that visibly dropped a step or two
-      // once closedFixRecords (and the held list) finished loading.
+      // as open, so flipping loading off (or letting this run unawaited)
+      // before they land renders a too-high count that then visibly ticks
+      // down once closedFixRecords finishes. That flicker is worse than the
+      // extra wait, so this stays awaited on both sides — the real fix for
+      // admin's slower load is the bulk closed-vulns endpoint requested from
+      // backend (loadClosedFixRecords still has no such endpoint to call),
+      // not skipping the wait and showing a wrong number in the meantime.
       //
       // force defaults to true because most callers (team-change, post-
       // mutation refreshes) need a real refetch; only the initial mount
