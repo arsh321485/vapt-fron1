@@ -1736,13 +1736,21 @@ export default {
       }
       return groups;
     },
+    // Keyed by "team::plugin_name", not plugin_name alone — this API groups
+    // asset counts per team, and the same vulnerability name can legitimately
+    // appear under more than one team's list (e.g. affecting hosts owned by
+    // both). A name-only key let whichever team Object.values() happened to
+    // iterate last silently overwrite the earlier team's asset_count for
+    // that name, so getTeamAssetCount() could add up a wrong figure that
+    // came from a different team entirely.
     vulnAssetCountMap() {
       if (!this.vulnAssetCountData?.teams) return {};
       const map = {};
       const norm = (s) => String(s || '').trim().toLowerCase();
-      for (const teamData of Object.values(this.vulnAssetCountData.teams)) {
+      for (const [team, teamData] of Object.entries(this.vulnAssetCountData.teams)) {
+        const teamKey = norm(team);
         for (const v of (teamData.vulnerabilities || [])) {
-          map[norm(v.plugin_name)] = v.asset_count;
+          map[`${teamKey}::${norm(v.plugin_name)}`] = v.asset_count;
         }
       }
       return map;
@@ -2415,6 +2423,29 @@ export default {
       if (!matchKey) return 0;
       return (teams[matchKey]?.vulnerabilities || []).filter(v => (v.risk_factor || '').toLowerCase() === sev).length;
     },
+    // Real distinct-host count per vuln type, computed straight from this
+    // team's own rows — same host fields/logic as uniqueMitigationVulns()'s
+    // per-card assetCount, so a fallback here always agrees with what the
+    // "Vulnerabilities (Team)" cards below show for the same vuln.
+    hostCountsByVulnName(vulns) {
+      const addHost = (set, value) => {
+        const host = String(value || '').trim();
+        if (isRealScanHost(host)) set.add(host);
+      };
+      const map = new Map();
+      (vulns || []).forEach((v) => {
+        const key = String(v.plugin_name || '').trim().toLowerCase();
+        if (!key) return;
+        if (!map.has(key)) map.set(key, new Set());
+        const hosts = map.get(key);
+        if (Array.isArray(v.assets)) v.assets.forEach((a) => addHost(hosts, a));
+        addHost(hosts, v.host_name);
+        addHost(hosts, v.asset);
+        addHost(hosts, v.ip);
+        addHost(hosts, v.hostname);
+      });
+      return map;
+    },
     getTeamAssetCount(teamKey) {
       const teams = this.mitigationByTeamData?.teams || this.mitigationByTeamData || {};
       const normalize = s => String(s).toLowerCase().replace(/\s+/g, ' ').trim();
@@ -2430,6 +2461,7 @@ export default {
       // vulnAssetCountMap from fetchAdminMitigationVulnAssetCount) added 17
       // times over — this is exactly what produced 1011 instead of ~63 for
       // Network Security's 2 actual vulnerability types (58 + 5 assets).
+      const hostCounts = this.hostCountsByVulnName(vulns);
       const seen = new Set();
       let affectedAssets = 0;
       vulns.forEach(v => {
@@ -2438,8 +2470,16 @@ export default {
           if (seen.has(key)) return;
           seen.add(key);
         }
-        const accurate = this.getVulnAssetCount(v);
-        if (accurate) affectedAssets += accurate;
+        const accurate = this.getVulnAssetCount(v, teamKey);
+        const ownHostCount = key ? (hostCounts.get(key)?.size || 0) : 0;
+        // The cross-team vuln-asset-count API can simply have no entry for
+        // this vuln under THIS team (e.g. the same vuln type also affects
+        // hosts assigned to a different team, and that API attributes the
+        // asset_count to only one team) — falling straight to "+1 per type"
+        // in that case undercounts whenever this team's own rows list more
+        // than one host for it. Prefer this team's own real host count first.
+        if (ownHostCount) affectedAssets += ownHostCount;
+        else if (accurate) affectedAssets += accurate;
         else if (Array.isArray(v.assets)) affectedAssets += v.assets.length;
         else if (v.host_name) affectedAssets += 1;
       });
@@ -2501,11 +2541,17 @@ export default {
       return '';
     },
 
-    // Normalized lookup so API plugin_name capitalization/spacing differences don't break mapping
-    getVulnAssetCount(vuln) {
+    // Normalized lookup so API plugin_name capitalization/spacing differences
+    // don't break mapping. Team defaults to the active tab — every existing
+    // template call site already only ever renders vulns belonging to that
+    // team — but getTeamAssetCount() below passes each team explicitly since
+    // it iterates every team, not just the active one.
+    getVulnAssetCount(vuln, team = this.mitigationActiveTab) {
       const key = String(vuln?.plugin_name || '').trim().toLowerCase();
       if (!key) return vuln?.assetCount ?? 0;
-      return this.vulnAssetCountMap[key] ?? vuln?.assetCount ?? 0;
+      const teamKey = String(team || '').trim().toLowerCase();
+      const scoped = this.vulnAssetCountMap[`${teamKey}::${key}`];
+      return scoped ?? vuln?.assetCount ?? 0;
     },
     async overlaySetActive(asset) {
       if (!asset?.asset) return;

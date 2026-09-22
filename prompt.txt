@@ -1,1 +1,1 @@
-refresh krke check kiya ab in progress badge nhi a rha hai uper but agr esa bar bar hua to uske liye kuch krn a hot o krdo frontedn se also backedn se kuch ho to promtp de do mujhe
+see image backe prompt dala to automatabke to aa gya but uske automation script ka real data get q nhi hua hai ye phle n=btao code nhi kro

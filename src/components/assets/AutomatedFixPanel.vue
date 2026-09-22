@@ -173,16 +173,18 @@
       </template>
     </div>
 
-    <!-- Register/report row already told us (via automationStatus) that this
-         vulnerability's automation_card hasn't been generated yet — a
-         distinct, explicit "still generating" signal from the backend, not
+    <!-- Register/report row already told us (via automationStatus) either
+         that this vulnerability's automation_card hasn't been generated yet,
+         or that it HAS ("full"/"partial") but the separate bulk card-details
+         lookup hasn't matched a record for this exact vuln+host yet — never
          the same thing as "no verdict found" below (which the legacy catalog
          would otherwise report as "No [0%] Automation Possible", wrongly
-         implying a permanent answer). Only trusted once aiLoading's own bulk
-         card lookup has also come up empty, so a genuine aiCard always wins. -->
+         implying a permanent/negative answer in both cases). Only trusted
+         once aiLoading's own bulk card lookup has also come up empty, so a
+         genuine aiCard always wins. -->
     <div v-else-if="showAutomationInProgress" class="auto-empty-state auto-empty-state--progress">
       <i class="bi bi-hourglass-split" aria-hidden="true"></i>
-      <span>Automation Script: In Progress — still being generated for this vulnerability.</span>
+      <span>{{ automationInProgressMessage }}</span>
     </div>
 
     <!-- Legacy curated automation-scripts catalog (~63 scripts) — only shown
@@ -599,13 +601,38 @@ export default {
       if (!d || d.matched === false) return null;
       return d;
     },
-    // Only trust the "still generating" signal once this panel's own bulk
-    // card lookup has also finished and come up empty — otherwise a report
-    // that hasn't updated automationStatus yet (or a caller that simply
-    // hasn't wired the prop, default '') would flash "In Progress" ahead of
-    // a real aiCard that's about to load.
+    // Only trust automationStatus once this panel's own bulk card lookup has
+    // also finished and come up empty — otherwise a report that hasn't
+    // updated automationStatus yet (or a caller that simply hasn't wired the
+    // prop, default '') would flash this state ahead of a real aiCard that's
+    // about to load.
+    //
+    // Two distinct reasons land here, both of which must NOT fall through to
+    // the confident negative "No automated fix available" below:
+    //  - 'generating': automation_status is missing/null — the register row
+    //    itself doesn't know yet, i.e. the automation_card hasn't been
+    //    generated at all.
+    //  - 'syncing': automation_status is already "full"/"partial" — the
+    //    register row confirms a real verdict exists — but the separate
+    //    bulk per-report card-details lookup (a different backend endpoint)
+    //    hasn't matched a record for this exact vuln+host yet. Showing "No
+    //    automated fix available" here would directly contradict the
+    //    row-level badge, which already trusts automation_status and is
+    //    correctly showing "Automatable"/"Partial Automatable".
+    automationStatusPendingReason() {
+      if (this.aiCard || this.aiLoading) return null;
+      const status = String(this.automationStatus || '').trim().toLowerCase();
+      if (status === 'in_progress') return 'generating';
+      if (status === 'full' || status === 'partial') return 'syncing';
+      return null;
+    },
     showAutomationInProgress() {
-      return !this.aiCard && !this.aiLoading && this.automationStatus === 'in_progress';
+      return this.automationStatusPendingReason != null;
+    },
+    automationInProgressMessage() {
+      return this.automationStatusPendingReason === 'syncing'
+        ? 'Automation Script Available — full details are still syncing for this vulnerability.'
+        : 'Automation Script: In Progress — still being generated for this vulnerability.';
     },
     aiStatusTier() {
       const status = String(this.aiCard?.automation_status || '').trim().toLowerCase();
@@ -864,18 +891,36 @@ export default {
         return;
       }
       this.aiLoading = true;
-      const res = this.isUser
-        ? await this.authStore.fetchVulnerabilityCardsByReportUser(reportId)
-        : await this.authStore.fetchVulnerabilityCardsByReport(reportId);
-      this.aiLoading = false;
-      if (!res.status) return;
       const wantHost = String(this.assetIp || '').trim().toLowerCase();
-      const match = (res.cards || []).find((c) => {
+      const findMatch = (cards) => (cards || []).find((c) => {
         const name = String(c?.vulnerability_name || '').trim().toLowerCase();
         if (name !== wantName) return false;
         if (!wantHost) return true;
         return String(c?.host_name || '').trim().toLowerCase() === wantHost;
       });
+      const fetchCards = (force) => this.isUser
+        ? this.authStore.fetchVulnerabilityCardsByReportUser(reportId, undefined, force)
+        : this.authStore.fetchVulnerabilityCardsByReport(reportId, force);
+
+      let res = await fetchCards(false);
+      let match = findMatch(res.cards);
+      // The bulk list is cached per-report and normally only fetched once —
+      // a card generated/regenerated AFTER that first fetch (e.g.
+      // automation_status flipping null → "full") never shows up until
+      // something forces a refetch. automation_status already confirms a
+      // card exists for "full"/"partial", so when the cached list doesn't
+      // have it, retry once with a forced refetch before giving up — rather
+      // than sitting on stale data and showing "still syncing" forever even
+      // once generation is actually complete.
+      const statusConfirmsReady = ['full', 'partial'].includes(
+        String(this.automationStatus || '').trim().toLowerCase(),
+      );
+      if (!match?.automation_card && statusConfirmsReady) {
+        res = await fetchCards(true);
+        match = findMatch(res.cards);
+      }
+      this.aiLoading = false;
+      if (!res.status) return;
       if (match?.automation_card) {
         // Keep the outer card_id alongside the automation_card fields (the
         // list entry carries card_id as a sibling, not nested inside

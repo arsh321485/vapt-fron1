@@ -153,6 +153,9 @@
           </div>
 
           <p class="aur-progress-hint">Please wait — do not close this window until all agents are ready</p>
+          <p v-if="anyReportStalled" class="aur-progress-hint aur-progress-hint--stalled">
+            This is taking longer than usual — we're still working on it.
+          </p>
         </div>
 
         <template v-else>
@@ -1108,10 +1111,23 @@ export default {
       return this.reportIds.every((id) => {
         const s = this.statusByReportId[id];
         if (!s) return false;
+        // Backend's own explicit flag is authoritative when present — trust
+        // it over re-deriving from counts. A report that legitimately
+        // generates zero cards (e.g. a clean scan) would otherwise leave
+        // cards_total at 0 forever and the total > 0 check below would
+        // never pass, polling endlessly and never redirecting.
+        if (typeof s.cards_generation_complete === 'boolean') {
+          return s.cards_generation_complete;
+        }
         const total = Number(s.cards_total) || 0;
         const generated = Number(s.cards_generated) || 0;
         return total > 0 && generated >= total;
       });
+    },
+    // Backend-flagged as taking longer than its own expected window —
+    // informational only, never gates allAgentsReady/redirect.
+    anyReportStalled() {
+      return this.reportIds.some((id) => this.statusByReportId[id]?.stalled === true);
     },
     // Agent generation has genuinely started and isn't finished yet — nothing
     // (plan suggestion, plan-limit prompt, payment) may pull the admin
@@ -4745,6 +4761,11 @@ export default {
   color: #9ca3af;
   margin: 10px 0 0;
   text-align: center;
+}
+
+.aur-progress-hint--stalled {
+  color: #b45309;
+  font-weight: 600;
 }
 
 .aur-generating { text-align: center; }

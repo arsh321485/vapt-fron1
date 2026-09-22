@@ -25,10 +25,18 @@ export default {
     automationLevel: { type: String, default: '' },
     automationPct: { type: [String, Number], default: '' },
     automationMatched: { type: Boolean, default: null }, // from bulk API: true/false/null
-    // Row-level automation_status from the register/report listing — takes
-    // precedence over automationMatched/automationLevel when present, since
-    // it's the most direct per-row signal and is the only one that can tell
-    // "not generated yet" (in_progress) apart from "genuinely not automatable".
+    // Row-level automation_status from the register/report listing — the
+    // authoritative signal whenever the caller wires it (both current call
+    // sites always do, resolving it per-asset from the register row).
+    // automationMatched/automationLevel come from a SEPARATE bulk
+    // automation-cards fetch that's cached per-report and only ever
+    // re-fetched once, at first load — a card regenerated afterwards (e.g.
+    // automation_status flipping null → "full") never updates that cache,
+    // so trusting it over a fresh automation_status re-introduces exactly
+    // the stale-badge bug this prop exists to avoid ("NON AUTOMATABLE" shown
+    // for vulnerabilities the register confirms are already "full").
+    // automationMatched/automationLevel are only consulted as a fallback for
+    // a caller that hasn't wired automationStatus at all (prop stays '').
     automationStatus: { type: String, default: '' },
   },
   computed: {
@@ -40,10 +48,10 @@ export default {
         return resolveAutomationDisplay('partial', this.automationPct, canonSeverity(this.severity), this.assetIp, this.assetIndex);
       }
       if (status === 'in_progress') return { tier: 'unknown', label: '', pct: null, barWidth: 0, displayPct: '' };
-      // Real API data available → use it
+      // automationStatus prop not wired by this caller at all — fall back to
+      // the older aiCard-match-driven signals.
       if (this.automationMatched === true)  return { tier: 'yes',     label: 'Yes',     pct: 100, barWidth: 100, displayPct: '100%' };
       if (this.automationMatched === false) return { tier: 'no',      label: 'No',      pct: 0,   barWidth: 100, displayPct: '0%'   };
-      // automationLevel/pct props se API data available hai
       if (this.automationLevel || this.automationPct) {
         return resolveAutomationDisplay(
           this.automationLevel,
@@ -53,7 +61,6 @@ export default {
           this.assetIndex,
         );
       }
-      // No API data yet — hide badge
       return { tier: 'hidden', label: '', pct: null, barWidth: 0, displayPct: '' };
     },
     iconClass() {

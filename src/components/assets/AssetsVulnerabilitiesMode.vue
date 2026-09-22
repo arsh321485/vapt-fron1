@@ -2934,28 +2934,24 @@ export default {
     resolveFixIdForAsset(vuln, asset) {
       return lookupFixVulnerabilityId(this.rawRows, vuln, asset) || String(vuln?.fix_vulnerability_id || '');
     },
-    // Backend now returns automation_status directly on each register row
-    // ("full" | "partial" | "not_possible" | null/missing — null meaning the
-    // automation_card for this report+vuln+host hasn't been generated yet).
-    // Resolve it per-asset the same way as the ids above, and normalize the
-    // "not generated yet" case to the explicit 'in_progress' sentinel so
-    // AutomatedFixPanel/FixAvailableIndicator can tell "still generating"
-    // apart from "this prop simply wasn't wired for this caller".
+    // Backend returns automation_status directly on each register row
+    // ("full" | "partial" | "not_possible" | null/missing — null OR the key
+    // being entirely absent both mean the automation_card for this
+    // report+vuln+host hasn't been generated/deployed yet). Resolve it
+    // per-asset the same way as the ids above, normalized to the explicit
+    // 'in_progress' sentinel whenever there's no definite verdict.
     //
-    // Distinguishes the KEY being absent (backend hasn't deployed this field
-    // for this row yet — return '' so callers fall back to their existing,
-    // already-correct signal) from the key being present but null (backend
-    // explicitly confirms no automation_card exists yet — return
-    // 'in_progress'). Without this split, every row defaulted to
-    // 'in_progress' before the backend change shipped and incorrectly
-    // overrode vulnerabilities that already had a real aiCard loaded.
+    // This is deliberately just a fallback signal, never a blind override:
+    // both consumers (AutomatedFixPanel, FixAvailableIndicator) only trust
+    // it once they've confirmed their own real, per-vuln aiCard/match data
+    // is ALSO unavailable — otherwise a vulnerability that already has a
+    // real aiCard loaded, but whose register row simply hasn't gotten this
+    // newer field yet, would incorrectly flip back to "In Progress".
     resolveAutomationStatusForAsset(vuln, asset) {
       const row = lookupRegisterRow(this.rawRows, vuln, asset);
-      const source = row && 'automation_status' in row
-        ? row
-        : (vuln && 'automation_status' in vuln ? vuln : null);
-      if (!source) return '';
-      const status = String(source.automation_status || '').trim().toLowerCase();
+      const raw = (row && 'automation_status' in row ? row.automation_status : undefined)
+        ?? (vuln && vuln.automation_status);
+      const status = String(raw || '').trim().toLowerCase();
       return status || 'in_progress';
     },
     resolveVulnCardId(vuln) {

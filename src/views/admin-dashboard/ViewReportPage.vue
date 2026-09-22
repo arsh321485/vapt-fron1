@@ -143,25 +143,7 @@
               <div class="card">
                 <div class="table-head">
                   <h3>Detailed Vulnerability Log</h3>
-                  <div class="filters no-export" ref="logFilters">
-                    <div class="filter-dropdown">
-                      <button
-                        class="filter-btn"
-                        type="button"
-                        :class="{ active: severityFilter !== 'all' || teamFilter !== 'all' || statusFilter !== 'all' }"
-                        @click.stop="toggleFilterMenu"
-                      >
-                        Filter{{ activeFilterLabel }}
-                      </button>
-                      <div v-show="filterMenuOpen" class="filter-menu" role="menu">
-                        <p class="filter-menu-label">Severity</p>
-                        <button type="button" role="menuitem" :class="{ selected: severityFilter === 'all' }" @click="setSeverityFilter('all')">All</button>
-                        <button type="button" role="menuitem" :class="{ selected: severityFilter === 'critical' }" @click="setSeverityFilter('critical')">Critical</button>
-                        <button type="button" role="menuitem" :class="{ selected: severityFilter === 'high' }" @click="setSeverityFilter('high')">High</button>
-                        <button type="button" role="menuitem" :class="{ selected: severityFilter === 'medium' }" @click="setSeverityFilter('medium')">Medium</button>
-                        <button type="button" role="menuitem" :class="{ selected: severityFilter === 'low' }" @click="setSeverityFilter('low')">Low</button>
-                      </div>
-                    </div>
+                  <div class="filters no-export">
                     <button
                       class="filter-btn"
                       type="button"
@@ -255,7 +237,6 @@ export default {
   data() {
     return {
       teamFilter: 'all',
-      severityFilter: 'all',
       statusFilter: 'all',
       charts: [],
       statsLoading: false,
@@ -265,7 +246,6 @@ export default {
       tableLoading: false,
       tableData: [],
       exportMenuOpen: false,
-      filterMenuOpen: false,
       severitySort: null,
       pdfExporting: false,
       reportMetaLoading: false,
@@ -319,7 +299,6 @@ export default {
       const rank = { critical: 4, high: 3, medium: 2, low: 1 };
       const rows = this.tableData.filter((row) =>
         (this.teamFilter === 'all' || row.team === this.teamFilter) &&
-        (this.severityFilter === 'all' || String(row.severity).toLowerCase() === this.severityFilter) &&
         (this.statusFilter === 'all' || String(row.status).toLowerCase() === this.statusFilter)
       );
       if (!this.severitySort) return rows;
@@ -328,11 +307,6 @@ export default {
         const db = rank[String(b.severity || '').toLowerCase()] || 0;
         return this.severitySort === 'desc' ? db - da : da - db;
       });
-    },
-    activeFilterLabel() {
-      if (this.severityFilter === 'all') return '';
-      const label = this.severityFilter.charAt(0).toUpperCase() + this.severityFilter.slice(1);
-      return `: ${label}`;
     },
     totalVulnerabilities() {
       const { critical, high, medium, low } = this.vulnStats;
@@ -454,8 +428,6 @@ export default {
     this._onDocClick = (e) => {
       const exportEl = this.$refs.exportDropdown;
       if (exportEl && !exportEl.contains(e.target)) this.exportMenuOpen = false;
-      const filterEl = this.$refs.logFilters;
-      if (filterEl && !filterEl.contains(e.target)) this.filterMenuOpen = false;
     };
     document.addEventListener('click', this._onDocClick);
     await this.loadReportData();
@@ -744,15 +716,6 @@ export default {
     toggleExportMenu(e) {
       e.stopPropagation();
       this.exportMenuOpen = !this.exportMenuOpen;
-      this.filterMenuOpen = false;
-    },
-    toggleFilterMenu() {
-      this.filterMenuOpen = !this.filterMenuOpen;
-      this.exportMenuOpen = false;
-    },
-    setSeverityFilter(severity) {
-      this.severityFilter = severity;
-      this.filterMenuOpen = false;
     },
     toggleSeveritySort() {
       this.severitySort = this.severitySort === 'desc' ? 'asc' : 'desc';
@@ -1272,7 +1235,6 @@ ${this.getExportLayoutCss()}
 
 .table-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .filters { display: flex; gap: 8px; flex-shrink: 0; position: relative; }
-.filter-dropdown { position: relative; }
 .filter-btn {
   border: 1px solid #d9dce6;
   border-radius: 999px;
@@ -1288,42 +1250,6 @@ ${this.getExportLayoutCss()}
   color: #0f696e;
   background: #e6f7f8;
 }
-.filter-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  min-width: 168px;
-  background: #fff;
-  border: 1px solid #e7e8ef;
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(36, 20, 71, .12);
-  padding: 6px;
-  z-index: 20;
-}
-.filter-menu-label {
-  margin: 0;
-  padding: 6px 12px 4px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: #8b95a7;
-}
-.filter-menu button {
-  display: block;
-  width: 100%;
-  text-align: left;
-  border: none;
-  background: transparent;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #242c40;
-  cursor: pointer;
-}
-.filter-menu button:hover { background: #f4f5f8; }
-.filter-menu button.selected { background: #e6f7f8; color: #0f696e; }
 .table-wrap {
   margin-top: 10px;
   overflow-x: auto;
