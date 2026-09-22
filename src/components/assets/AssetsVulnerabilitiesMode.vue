@@ -343,6 +343,7 @@
                   :asset-index="panelVulnDemoIndex(v)"
                   :automation-matched="resolveAutomationMatched(v)"
                   :automation-level="resolveAutomationLevel(v)"
+                  :automation-status="resolveAutomationStatusForAsset(v, v.assets?.[0])"
                 />
                 <span
                   v-if="isUser && hasDownloadableScript(v)"
@@ -436,6 +437,7 @@
                       :must-manual="mustManual"
                       :recommended-text="recommendedText"
                       :automation-card="v.automation_card || null"
+                      :automation-status="resolveAutomationStatusForAsset(v, selectedPanelAsset || v.assets?.[0])"
                       :card-id="resolveVulnCardId(v)"
                       @view-code="showCodeModal = true"
                     />
@@ -452,8 +454,8 @@
                         :vuln-name="v.vul_name"
                         :asset-ip="asset"
                         :severity="v.severity"
-                        :vuln-id="String(v.plugin_id || v.nessus_plugin_id || v.vulnerability_id || v.id || '')"
-                        :fix-id="String(v.fix_vulnerability_id || '')"
+                        :vuln-id="resolveVulnIdForAsset(v, asset)"
+                        :fix-id="resolveFixIdForAsset(v, asset)"
                         :asset-os="assetMetaFor(v, asset).os || ''"
                         @open-support-modal="onManualFixSupportModal"
                         @team-resolved="onPanelTeamResolved"
@@ -511,6 +513,7 @@
                                 :asset-index="i % 3"
                                 :automation-matched="resolveAutomationMatched(closedItemAsVuln(item))"
                                 :automation-level="resolveAutomationLevel(closedItemAsVuln(item))"
+                                :automation-status="resolveAutomationStatusForAsset(closedItemAsVuln(item), closedItemAsVuln(item).assets?.[0])"
                               />
                               <span
                                 v-if="isUser && hasDownloadableScript(closedItemAsVuln(item))"
@@ -590,6 +593,7 @@
                                     :must-manual="mustManual"
                                     :recommended-text="recommendedText"
                                     :automation-card="closedItemAsVuln(item).automation_card || null"
+                                    :automation-status="resolveAutomationStatusForAsset(closedItemAsVuln(item), selectedPanelAsset || closedItemAsVuln(item).assets?.[0])"
                                     :card-id="resolveVulnCardId(closedItemAsVuln(item))"
                                     @view-code="showCodeModal = true"
                                   />
@@ -609,8 +613,8 @@
                                       :vuln-name="closedItemAsVuln(item).vul_name"
                                       :asset-ip="asset"
                                       :severity="closedItemAsVuln(item).severity"
-                                      :vuln-id="String(closedItemAsVuln(item).plugin_id || closedItemAsVuln(item).nessus_plugin_id || closedItemAsVuln(item).vulnerability_id || closedItemAsVuln(item).id || '')"
-                                      :fix-id="String(closedItemAsVuln(item).fix_vulnerability_id || '')"
+                                      :vuln-id="resolveVulnIdForAsset(closedItemAsVuln(item), asset)"
+                                      :fix-id="resolveFixIdForAsset(closedItemAsVuln(item), asset)"
                                       :asset-os="assetMetaFor(closedItemAsVuln(item), asset).os || ''"
                                       @open-support-modal="onManualFixSupportModal"
                                       @team-resolved="onPanelTeamResolved"
@@ -942,7 +946,7 @@ import FixAvailableIndicator from '@/components/assets/FixAvailableIndicator.vue
 import AutomationNotSafeBanner from '@/components/assets/AutomationNotSafeBanner.vue';
 import FixPanelHeaderAlerts from '@/components/assets/FixPanelHeaderAlerts.vue';
 import TruncatedVulnName from '@/components/common/TruncatedVulnName.vue';
-import { isAutomationNotAvailable, matchesVulnStatusFilter, isActiveVulnStatus, rowStatusValue, closedVulnHostKey, closedRecordVulnName, closedRecordHostName, buildClosedVulnHostSet, normalizeReportVulnerability, pickVulnDescription, lookupFixVulnerabilityId, extractFixVulnerabilityId, vulnNameKey } from '@/utils/assetVulnerabilities';
+import { isAutomationNotAvailable, matchesVulnStatusFilter, isActiveVulnStatus, rowStatusValue, closedVulnHostKey, closedRecordVulnName, closedRecordHostName, buildClosedVulnHostSet, normalizeReportVulnerability, pickVulnDescription, lookupFixVulnerabilityId, lookupRegisterRow, extractFixVulnerabilityId, vulnNameKey } from '@/utils/assetVulnerabilities';
 import {
   ASSET_TYPE_FILTERS,
   assetTypeFromFilterKey,
@@ -2903,6 +2907,56 @@ export default {
         registerRows: this.rawRows || [],
         automationScriptMap: this.automationScriptMap,
       });
+    },
+    // groupedVulns() can key a vuln off its report-summary entry (no
+    // matching register row attached) whenever that name doesn't line up
+    // with how the register-row pass keyed the same vuln — register rows
+    // prefer vul_name first, the report-summary merge prefers plugin_name
+    // first — so v.id/v.rows/v.fix_vulnerability_id can be empty even
+    // though a real register row for this exact host+vuln exists.
+    // lookupRegisterRow() re-resolves straight against rawRows by host +
+    // name, sidestepping that join entirely; both ids below share the scan.
+    // The manual-fix create endpoint requires `id` = the vulnerability
+    // register row's own database id (a Mongo id, not the Nessus plugin_id,
+    // and distinct from fix_vulnerability_id which doesn't exist until this
+    // very call creates it).
+    resolveVulnIdForAsset(vuln, asset) {
+      const row = lookupRegisterRow(this.rawRows, vuln, asset);
+      const rowId = row && (row.id ?? row._id);
+      if (rowId != null && String(rowId).trim()) return String(rowId).trim();
+      return String(vuln?.plugin_id || vuln?.nessus_plugin_id || vuln?.vulnerability_id || vuln?.id || '');
+    },
+    // A fix-vulnerability session may already exist for this vuln+asset
+    // (created on an earlier visit, by automation, or by another team
+    // member) — reuse it via its own fix_vulnerability_id instead of
+    // letting the panel call create() again, which both wastes a call and,
+    // for vulns without a resolvable register `id` (see above), 400s.
+    resolveFixIdForAsset(vuln, asset) {
+      return lookupFixVulnerabilityId(this.rawRows, vuln, asset) || String(vuln?.fix_vulnerability_id || '');
+    },
+    // Backend now returns automation_status directly on each register row
+    // ("full" | "partial" | "not_possible" | null/missing — null meaning the
+    // automation_card for this report+vuln+host hasn't been generated yet).
+    // Resolve it per-asset the same way as the ids above, and normalize the
+    // "not generated yet" case to the explicit 'in_progress' sentinel so
+    // AutomatedFixPanel/FixAvailableIndicator can tell "still generating"
+    // apart from "this prop simply wasn't wired for this caller".
+    //
+    // Distinguishes the KEY being absent (backend hasn't deployed this field
+    // for this row yet — return '' so callers fall back to their existing,
+    // already-correct signal) from the key being present but null (backend
+    // explicitly confirms no automation_card exists yet — return
+    // 'in_progress'). Without this split, every row defaulted to
+    // 'in_progress' before the backend change shipped and incorrectly
+    // overrode vulnerabilities that already had a real aiCard loaded.
+    resolveAutomationStatusForAsset(vuln, asset) {
+      const row = lookupRegisterRow(this.rawRows, vuln, asset);
+      const source = row && 'automation_status' in row
+        ? row
+        : (vuln && 'automation_status' in vuln ? vuln : null);
+      if (!source) return '';
+      const status = String(source.automation_status || '').trim().toLowerCase();
+      return status || 'in_progress';
     },
     resolveVulnCardId(vuln) {
       return lookupVulnCardId(vuln);

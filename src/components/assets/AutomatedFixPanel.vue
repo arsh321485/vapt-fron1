@@ -6,9 +6,9 @@
       // meaningless (and actively misleading, e.g. a stale 'Script file not
       // available' overlay) whenever the AI card is what's actually being
       // shown instead, so they're suppressed the same way the legacy content
-      // block itself is (see the !aiCard guard around it below).
-      'auto-tab-content--greyed': !aiCard && !premiumLocked && hasPositiveMatch && !scriptAvailable,
-      'auto-tab-content--unmatched': !aiCard && !matchLoading && !premiumLocked && !hasPositiveMatch,
+      // block itself is (see the !aiCard && !aiLoading guard around it below).
+      'auto-tab-content--greyed': !aiCard && !aiLoading && !premiumLocked && hasPositiveMatch && !scriptAvailable,
+      'auto-tab-content--unmatched': !aiCard && !aiLoading && !matchLoading && !premiumLocked && !hasPositiveMatch && !showAutomationInProgress,
     }"
   >
     <!-- AI Automation Card: covers every vulnerability, not just the curated
@@ -173,13 +173,30 @@
       </template>
     </div>
 
+    <!-- Register/report row already told us (via automationStatus) that this
+         vulnerability's automation_card hasn't been generated yet — a
+         distinct, explicit "still generating" signal from the backend, not
+         the same thing as "no verdict found" below (which the legacy catalog
+         would otherwise report as "No [0%] Automation Possible", wrongly
+         implying a permanent answer). Only trusted once aiLoading's own bulk
+         card lookup has also come up empty, so a genuine aiCard always wins. -->
+    <div v-else-if="showAutomationInProgress" class="auto-empty-state auto-empty-state--progress">
+      <i class="bi bi-hourglass-split" aria-hidden="true"></i>
+      <span>Automation Script: In Progress — still being generated for this vulnerability.</span>
+    </div>
+
     <!-- Legacy curated automation-scripts catalog (~63 scripts) — only shown
-         when the new AI system (above) has no verdict for this vulnerability
-         at all. Once aiCard exists, it's the authoritative answer; showing
-         both side by side let them contradict each other (AI says "not
-         possible" while the old catalog says "Yes 100%" for the same vuln —
-         confusing, not actually broken data on either side). -->
-    <template v-if="!aiCard">
+         once the new AI system (above) is confirmed to have no verdict for
+         this vulnerability. Waits on !aiLoading too, not just !aiCard —
+         aiCard is also falsy while the AI check is still in flight, and
+         without this the legacy catalog's own "No [0%]" default rendered
+         underneath the "Checking AI automation feasibility…" spinner before
+         the AI check had actually finished, showing a possibly-wrong verdict
+         for a beat. Once aiCard exists, it's the authoritative answer;
+         showing both side by side let them contradict each other (AI says
+         "not possible" while the old catalog says "Yes 100%" for the same
+         vuln — confusing, not actually broken data on either side). -->
+    <template v-if="!aiCard && !aiLoading && !showAutomationInProgress">
     <div v-if="premiumLocked" class="auto-premium-notice">
       <i class="bi bi-lock-fill" aria-hidden="true"></i>
       <div class="auto-premium-notice-body">
@@ -475,6 +492,12 @@ export default {
     // when already loaded; falls back to a lazy admin-only fetch by cardId.
     automationCard: { type: Object, default: null },
     cardId: { type: [String, Number], default: '' },
+    // Row-level automation_status from the register/report listing —
+    // "full" | "partial" | "not_possible" | "in_progress" (the caller
+    // normalizes a null/missing backend value to "in_progress"). Lets this
+    // panel show a "still generating" state immediately, distinct from "no
+    // verdict" (see showAutomationInProgress below).
+    automationStatus: { type: String, default: '' },
   },
   data() {
     return {
@@ -575,6 +598,14 @@ export default {
       const d = this.automationCard || this.localAiCard;
       if (!d || d.matched === false) return null;
       return d;
+    },
+    // Only trust the "still generating" signal once this panel's own bulk
+    // card lookup has also finished and come up empty — otherwise a report
+    // that hasn't updated automationStatus yet (or a caller that simply
+    // hasn't wired the prop, default '') would flash "In Progress" ahead of
+    // a real aiCard that's about to load.
+    showAutomationInProgress() {
+      return !this.aiCard && !this.aiLoading && this.automationStatus === 'in_progress';
     },
     aiStatusTier() {
       const status = String(this.aiCard?.automation_status || '').trim().toLowerCase();
@@ -1424,6 +1455,22 @@ export default {
   font-size: 13px;
   font-weight: 600;
   padding: 12px 0;
+}
+.auto-empty-state--progress {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  color: #92400e;
+  background: #fef9ec;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 12px 14px;
+}
+.auto-empty-state--progress .bi {
+  font-size: 16px;
+  flex-shrink: 0;
 }
 .auto-unmatched-notice {
   background: #fef2f2;

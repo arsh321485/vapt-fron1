@@ -1071,6 +1071,7 @@
             </div>
           </div>
 
+          <div class="mte-modal-body">
           <div class="mte-severity-card mte-critical">
             <div class="mte-severity-head" @click="toggleMteSection('critical')">
               <div class="mte-severity-left">
@@ -1238,8 +1239,7 @@
               </table>
             </div>
           </div>
-
-
+          </div>
 
           <div class="mte-modal-footer">
           </div>
@@ -3770,6 +3770,13 @@ mounted() {
   font-weight: 600;
 }
 
+.mte-modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 16px;
+}
 .mte-severity-card {
   margin: 10px 24px 0;
   border-radius: 14px;

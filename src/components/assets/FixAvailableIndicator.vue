@@ -25,9 +25,21 @@ export default {
     automationLevel: { type: String, default: '' },
     automationPct: { type: [String, Number], default: '' },
     automationMatched: { type: Boolean, default: null }, // from bulk API: true/false/null
+    // Row-level automation_status from the register/report listing — takes
+    // precedence over automationMatched/automationLevel when present, since
+    // it's the most direct per-row signal and is the only one that can tell
+    // "not generated yet" (in_progress) apart from "genuinely not automatable".
+    automationStatus: { type: String, default: '' },
   },
   computed: {
     display() {
+      const status = String(this.automationStatus || '').trim().toLowerCase();
+      if (status === 'full') return { tier: 'yes', label: 'Yes', pct: 100, barWidth: 100, displayPct: '100%' };
+      if (status === 'not_possible') return { tier: 'no', label: 'No', pct: 0, barWidth: 100, displayPct: '0%' };
+      if (status === 'partial') {
+        return resolveAutomationDisplay('partial', this.automationPct, canonSeverity(this.severity), this.assetIp, this.assetIndex);
+      }
+      if (status === 'in_progress') return { tier: 'unknown', label: '', pct: null, barWidth: 0, displayPct: '' };
       // Real API data available → use it
       if (this.automationMatched === true)  return { tier: 'yes',     label: 'Yes',     pct: 100, barWidth: 100, displayPct: '100%' };
       if (this.automationMatched === false) return { tier: 'no',      label: 'No',      pct: 0,   barWidth: 100, displayPct: '0%'   };
@@ -53,13 +65,13 @@ export default {
     labelText() {
       if (this.display.tier === 'no')      return 'Non automatable';
       if (this.display.tier === 'partial') return 'Partial automatable';
-      if (this.display.tier === 'unknown') return 'Checking...';
+      if (this.display.tier === 'unknown') return 'In Progress';
       return 'Automatable';
     },
     tooltip() {
       if (this.display.tier === 'yes')     return 'Automatable — full automation';
       if (this.display.tier === 'no')      return 'Non automatable — manual only';
-      if (this.display.tier === 'unknown') return 'Fetching automation status...';
+      if (this.display.tier === 'unknown') return 'Automation Script: In Progress — still being generated';
       return 'Partial automatable';
     },
   },

@@ -5536,17 +5536,23 @@ export const useAuthStore = defineStore("auth", {
 
       if (!options.allowCreate) return "";
 
+      // The create endpoint's `id` field is required server-side (400 "This
+      // field is required." without it) — it's the vulnerability's own
+      // register-row id, which we just refreshed above via
+      // fetchVulnerabilityRegister. Without it, calling create() can only
+      // ever 400; skip the call so callers just keep polling (which
+      // re-refreshes the register each time) until the row — and its id —
+      // actually shows up, instead of hammering a request we know will fail.
+      if (!options.vulnId) return "";
+
       const reportId = await this.resolveReportId();
       if (!reportId || !asset || !vulnName) return "";
 
       const payload: Record<string, any> = {
         plugin_name: vulnName,
         risk_factor: options.severity || "Medium",
+        id: options.vulnId,
       };
-      // Pass the vulnerability UUID id — required by backend create endpoint.
-      if (options.vulnId) {
-        payload.id = options.vulnId;
-      }
 
       const res = await this.createFixVulnerability(reportId, asset, payload);
       if (res.status && res.data) {

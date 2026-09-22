@@ -220,7 +220,7 @@
                     :vuln-name="selectedVuln ? selectedVuln.vul_name : ''"
                     :asset-ip="selectedOsGroups.length ? (selectedOsGroups[0].assets[0] && selectedOsGroups[0].assets[0].host_name) || '' : ''"
                     :severity="selectedVuln ? selectedVuln.severity || 'Medium' : 'Medium'"
-                    :vuln-id="selectedVuln ? String(selectedVuln.id || selectedVuln._id || '') : ''"
+                    :vuln-id="resolveVulnIdForAsset(selectedVuln, selectedOsGroups.length ? (selectedOsGroups[0].assets[0] && selectedOsGroups[0].assets[0].host_name) || '' : '')"
                     :asset-os="selectedOsGroups.length ? selectedOsGroups[0].osLabel || '' : ''"
                     :fix-id="manualFixVulnId"
                   />
@@ -303,6 +303,7 @@ import {
   enrichReportVulnerabilitiesFromRegister,
   isAutomationNotAvailable,
   lookupFixVulnerabilityId,
+  lookupRegisterRow,
   normalizeReportVulnerabilityList,
 } from '@/utils/assetVulnerabilities';
 import { resolveAssetType } from '@/utils/assetDummyData';
@@ -392,14 +393,16 @@ if __name__ == "__main__":
         ? this.authStore.userAllReportVulnerabilities
         : this.authStore.allReportVulnerabilities;
     },
-    groupedVulns() {
-      const list = normalizeReportVulnerabilityList(this.reportVulnRows);
-      const registerRows = this.isUser
+    registerRows() {
+      return this.isUser
         ? this.authStore.cachedUserVulnRegister
         : this.authStore.vulnerabilityRows;
+    },
+    groupedVulns() {
+      const list = normalizeReportVulnerabilityList(this.reportVulnRows);
       return enrichReportVulnerabilitiesFromRegister(
         list,
-        registerRows,
+        this.registerRows,
         this.deletedVulnAssetRows,
       );
     },
@@ -500,6 +503,17 @@ if __name__ == "__main__":
   methods: {
     defaultFixTab() {
       return 'auto';
+    },
+    // The manual-fix create endpoint requires `id` = the vulnerability
+    // register row's own database id, distinct from plugin_id and from
+    // fix_vulnerability_id (which doesn't exist until this call creates it).
+    // enrichReportVulnerabilitiesFromRegister() doesn't copy a row id onto
+    // the grouped vuln, so scan the raw register rows directly by host+name.
+    resolveVulnIdForAsset(vuln, asset) {
+      const row = lookupRegisterRow(this.registerRows, vuln, asset);
+      const rowId = row && (row.id ?? row._id);
+      if (rowId != null && String(rowId).trim()) return String(rowId).trim();
+      return String(vuln?.plugin_id || vuln?.nessus_plugin_id || vuln?.vulnerability_id || vuln?.id || '');
     },
     setFixMethodTab(tab) {
       this.fixMethodTab = tab;

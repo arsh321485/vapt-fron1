@@ -14,8 +14,8 @@
     <div v-if="cardGenPending && !showFixLoading && assetIp" class="mf-not-started">
       <span class="spinner-border spinner-border-sm text-primary mf-not-started-icon" aria-hidden="true"></span>
       <div class="mf-not-started-text">
-        <span class="mf-not-started-title">Generating your remediation plan…</span>
-        <span class="mf-not-started-sub">{{ cardGenRemainingText ? `About ${cardGenRemainingText} left.` : 'This can take a minute for large reports — checking again shortly.' }}</span>
+        <span class="mf-not-started-title">Generating manual fix steps…</span>
+        <span class="mf-not-started-sub">{{ cardGenRemainingText ? `About ${cardGenRemainingText} left.` : 'This runs independently of Automated Fix and can take a minute for large reports — checking again shortly.' }}</span>
       </div>
     </div>
 
@@ -751,11 +751,25 @@ export default {
         const reportId = await this.authStore.resolveUserReportId();
         if (seq !== this._fixInitSeq) return;
         if (!reportId) return;
+
+        // The create endpoint's `id` field (the vulnerability's own
+        // register-row id) is required server-side — without it every call
+        // just 400s ("This field is required."), no matter how many times
+        // it's retried. Force-refresh the register and skip straight to
+        // polling until vulnId actually resolves (the parent recomputes it
+        // reactively off the register once the row appears).
+        if (!this.vulnId) {
+          await this.authStore.fetchUserVulnerabilityRegister(true, this.authStore.userSelectedTeam);
+          if (seq !== this._fixInitSeq) return;
+          this.cardGenPending = this.scheduleUserFixPoll(seq);
+          return;
+        }
+
         const payload = {
           plugin_name: this.vulnName,
           risk_factor: this.severity || 'Medium',
+          id: this.vulnId,
         };
-        if (this.vulnId) payload.id = this.vulnId;
         const createRes = await this.authStore.createUserFixVulnerability(reportId, this.assetIp, payload);
         if (seq !== this._fixInitSeq) return;
 
@@ -915,12 +929,17 @@ export default {
         // row and return an id WITHOUT ever calling create, which is what
         // let admin skip the step-generation trigger the user flow always
         // fires on every open.
-        if (!preloadedId && reportId && this.assetIp && this.vulnName) {
+        // BUT: the endpoint's `id` field (the vulnerability's own register-row
+        // id) is required server-side — without it every call just 400s
+        // ("This field is required."), no matter how many times it's retried.
+        // Only fire it once vulnId is actually resolvable; otherwise fall
+        // straight through to the register-refresh-and-poll path below.
+        if (!preloadedId && this.vulnId && reportId && this.assetIp && this.vulnName) {
           const payload = {
             plugin_name: this.vulnName,
             risk_factor: this.severity || 'Medium',
+            id: this.vulnId,
           };
-          if (this.vulnId) payload.id = this.vulnId;
           const createRes = await this.authStore.createFixVulnerability(reportId, this.assetIp, payload);
           if (seq !== this._fixInitSeq) return;
           if (createRes.status && createRes.data) {

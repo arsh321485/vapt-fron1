@@ -1,1 +1,1 @@
-All vul tab me ye vul ke according assest web app server and firewall me qki nhi aa rha count check krna agr frontedn se krne ki need ho to krdo 
+refresh krke check kiya ab in progress badge nhi a rha hai uper but agr esa bar bar hua to uske liye kuch krn a hot o krdo frontedn se also backedn se kuch ho to promtp de do mujhe
