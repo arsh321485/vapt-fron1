@@ -1111,16 +1111,22 @@ export default {
       return this.reportIds.every((id) => {
         const s = this.statusByReportId[id];
         if (!s) return false;
-        // Backend's own explicit flag is authoritative when present — trust
-        // it over re-deriving from counts. A report that legitimately
-        // generates zero cards (e.g. a clean scan) would otherwise leave
-        // cards_total at 0 forever and the total > 0 check below would
-        // never pass, polling endlessly and never redirecting.
+        const total = Number(s.cards_total) || 0;
+        const generated = Number(s.cards_generated) || 0;
+        // A false/missing flag (or counts that plainly haven't caught up —
+        // seen live: complete:true while still 4/16) both mean "not ready".
+        // Never trust an affirmative complete:true on its own: agent
+        // creation moving on to payment/plan-selection before the report's
+        // cards are actually finished, only to get bounced back here once a
+        // later page re-checks real progress, is worse than the zero-cards
+        // edge case this flag was added to fix — that case still resolves
+        // correctly below since total > 0 is false when total is genuinely 0.
+        if (s.cards_generation_complete === true && total > 0 && generated < total) {
+          return false;
+        }
         if (typeof s.cards_generation_complete === 'boolean') {
           return s.cards_generation_complete;
         }
-        const total = Number(s.cards_total) || 0;
-        const generated = Number(s.cards_generated) || 0;
         return total > 0 && generated >= total;
       });
     },

@@ -634,7 +634,22 @@ export default {
         ? 'Automation Script Available — full details are still syncing for this vulnerability.'
         : 'Automation Script: In Progress — still being generated for this vulnerability.';
     },
+    // automation_status (this.automationStatus, resolved from the register
+    // row) is THE single source of truth for the verdict, per backend's own
+    // mapping: full/partial -> show the card content, not_possible -> show
+    // the reason, missing/null -> In Progress (handled separately above).
+    // The fetched aiCard is only ever a content source (script name,
+    // description, commands) — never re-derive the verdict from its own
+    // automation_status/automation_possible fields, which can disagree with
+    // the register row (e.g. a stale or duplicate card record in the bulk
+    // list) and previously produced exactly that contradiction: a row badge
+    // correctly saying "Automatable" while this panel said "Not Possible"
+    // for the same vulnerability.
     aiStatusTier() {
+      const propStatus = String(this.automationStatus || '').trim().toLowerCase();
+      if (propStatus === 'full' || propStatus === 'partial' || propStatus === 'not_possible') {
+        return propStatus;
+      }
       const status = String(this.aiCard?.automation_status || '').trim().toLowerCase();
       if (status === 'full') return 'full';
       if (status === 'partial') return 'partial';
