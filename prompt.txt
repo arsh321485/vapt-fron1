@@ -1,1 +1,8 @@
-please check this ki user ya admin koi bhi vul hold unhold ya delete krta hai to admin side safe reflect turant dikhna chahiye time nhi lgna chahie niche hold hokr turant aa jana chahiye
+From the **Common Vulnerability** modal, clicking **“View Now”**
+should redirect to the same vulnerability and open directly on the
+ **Fix** tab.
+
+
+ on admin side user side bhi rechek kar lena 
+
+ admin side common vul ke modal se jo vul hai usko fix tab par open krakr dikhao view now krke jaye to abhi first vale vo hi view kar deta hai user side already hai but frbhi dono side properly fix krao

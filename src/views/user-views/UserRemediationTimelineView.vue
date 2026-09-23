@@ -174,7 +174,6 @@
                                 v-for="opt in extDeadlineDayOptions"
                                 :key="opt"
                                 :value="opt"
-                                :disabled="isExtDeadlineDisabled(opt)"
                               >{{ opt }}</option>
                             </optgroup>
                             <optgroup label="Weeks">
@@ -182,7 +181,6 @@
                                 v-for="opt in extDeadlineWeekOptions"
                                 :key="opt"
                                 :value="opt"
-                                :disabled="isExtDeadlineDisabled(opt)"
                               >{{ opt }}</option>
                             </optgroup>
                           </select>
@@ -199,7 +197,7 @@
                   </div>
                   <div class="ext-popup-footer">
                     <button type="button" class="mte-btn-secondary" @click="closeExtPopup">Cancel</button>
-                    <button type="button" class="mte-btn-primary ext-submit-btn" @click="submitExtPopup" :disabled="!extPopupAsset || !extPopupVulName || !extPopupExtension || !extPopupReason.trim() || isExtDeadlineDisabled(extPopupExtension)">
+                    <button type="button" class="mte-btn-primary ext-submit-btn" @click="submitExtPopup" :disabled="!extPopupAsset || !extPopupVulName || !extPopupExtension || !extPopupReason.trim()">
                       <i class="bi bi-send-fill"></i> <span style="color:#fff;">Submit Request</span>
                     </button>
                   </div>
@@ -976,17 +974,6 @@ export default {
       const n = Number(m[1]);
       return m[2].startsWith("week") ? n * 7 : n;
     },
-    isExtDeadlineDisabled(label) {
-      const original = Number(this.extPopupOriginalDeadlineDays);
-      if (!Number.isFinite(original) || original <= 0) return false;
-      const days = this.parseExtensionDays(label);
-      return Number.isFinite(days) && days <= original;
-    },
-    clearInvalidExtDeadline() {
-      if (this.extPopupExtension && this.isExtDeadlineDisabled(this.extPopupExtension)) {
-        this.extPopupExtension = "";
-      }
-    },
     async fetchExtPopupOptions(severity, asset) {
       this.extPopupOptionsLoading = true;
       const res = await this.authStore.fetchUserMitigationTimelineExtensionOptions(
@@ -1001,7 +988,6 @@ export default {
         this.extPopupAssetListApi = res.data.assets || [];
         this.extPopupVulListApi = res.data.vulnerabilities || [];
         this.extPopupOriginalDeadlineDays = res.data.original_deadline_days ?? null;
-        this.clearInvalidExtDeadline();
       } else {
         this.extPopupAssetListApi = [];
         this.extPopupVulListApi = [];
@@ -1050,7 +1036,6 @@ export default {
       if (!this.extPopupAsset || !this.extPopupVulName || !this.extPopupExtension || !this.extPopupReason.trim()) return;
       const requestedDays = this.parseExtensionDays(this.extPopupExtension);
       if (!Number.isFinite(requestedDays) || requestedDays <= 0) return;
-      if (this.isExtDeadlineDisabled(this.extPopupExtension)) return;
       const payload = {
         severity: this.extPopupSeverity,
         asset: this.extPopupAsset,

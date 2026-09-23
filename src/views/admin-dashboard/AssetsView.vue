@@ -658,7 +658,7 @@
                                 class="sr-message-row"
                                 :class="{ 'sr-message-row-admin': supportMessageIsAdmin(m) }"
                               >
-                                <span class="sr-message-sender">{{ supportMessageIsAdmin(m) ? 'Admin' : 'User' }}</span>
+                                <span class="sr-message-sender">{{ supportMessageIsAdmin(m) ? 'Admin Reply' : 'User Reply' }}</span>
                                 <p class="sr-message-text mb-0">{{ supportMessageText(m) }}</p>
                               </div>
                             </div>

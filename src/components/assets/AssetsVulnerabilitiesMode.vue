@@ -718,7 +718,7 @@
                 class="sr-message-row"
                 :class="{ 'sr-message-row-admin': supportMessageIsAdmin(m) }"
               >
-                <span class="sr-message-sender">{{ supportMessageIsAdmin(m) ? 'Admin' : 'User' }}</span>
+                <span class="sr-message-sender">{{ supportMessageIsAdmin(m) ? 'Admin Reply' : 'User Reply' }}</span>
                 <p class="sr-message-text mb-0">{{ supportMessageText(m) }}</p>
               </div>
             </div>
@@ -795,7 +795,7 @@
                 class="sr-message-row"
                 :class="{ 'sr-message-row-admin': supportMessageIsAdmin(m) }"
               >
-                <span class="sr-message-sender">{{ supportMessageIsAdmin(m) ? 'Admin' : 'You' }}</span>
+                <span class="sr-message-sender">{{ supportMessageIsAdmin(m) ? 'Admin Reply' : 'User Reply' }}</span>
                 <p class="sr-message-text mb-0">{{ supportMessageText(m) }}</p>
               </div>
             </div>
@@ -1099,6 +1099,7 @@ export default {
       selectedAssetIpsByVulnKey: {},
       activeAction: '',
       heldAssets: [],
+      pendingDeletedAssets: [],
       showHeld: false,
       hostAssetTypeMap: loadHeldItemTypeMap(),
       didAutoSelectType: false,
@@ -1281,6 +1282,8 @@ export default {
       (rows || []).forEach((row) => {
         add(row.plugin_name || row.vul_name, row.host_name || row.asset || row.ip);
       });
+      // Deletes still in flight — hidden immediately, rolled back on failure.
+      (this.pendingDeletedAssets || []).forEach((row) => add(row.plugin_name, row.host_name));
       return set;
     },
     closedVulnHostSet() {
@@ -1995,27 +1998,41 @@ export default {
         this.cancelDelete();
         return;
       }
+      const jobs = selected
+        .map((vuln) => ({
+          pluginName: String(vuln.vul_name || vuln.plugin_name || '').trim(),
+          hosts: this.getSelectedHostsForVuln(vuln),
+        }))
+        .filter((job) => job.pluginName && job.hosts.length);
+      // Optimistic: hide the rows right away instead of after the DELETE +
+      // reload round-trip; rolled back below for any request that fails.
+      const pending = jobs.flatMap(({ pluginName, hosts }) =>
+        hosts.map((host) => ({ plugin_name: pluginName, host_name: host })),
+      );
+      this.pendingDeletedAssets = [...this.pendingDeletedAssets, ...pending];
+      this.showCheckboxes = false;
+      this.resetActions();
       const affectedHosts = [];
       await suppressLiveSync(async () => {
-        for (const vuln of selected) {
-          const pluginName = String(vuln.vul_name || vuln.plugin_name || '').trim();
-          const hosts = this.getSelectedHostsForVuln(vuln);
-          if (!pluginName || !hosts.length) continue;
-          if (this.isUser) {
-            await this.authStore.deleteUserVulnerabilityAssets(pluginName, hosts);
-          } else {
-            await this.authStore.deleteVulnerabilityAssets(pluginName, hosts);
-          }
-          affectedHosts.push(...hosts);
+        for (const { pluginName, hosts } of jobs) {
+          const res = this.isUser
+            ? await this.authStore.deleteUserVulnerabilityAssets(pluginName, hosts)
+            : await this.authStore.deleteVulnerabilityAssets(pluginName, hosts);
+          if (res?.status) affectedHosts.push(...hosts);
         }
       });
-      await this.reloadAfterAssetActions();
+      // Successful deletes are now in the store's deleted list; clearing the
+      // pending entries only brings back the ones whose request failed.
+      const pendingKeys = new Set(pending.map((row) => heldVulnTypeKey(row.plugin_name, row.host_name)));
+      this.pendingDeletedAssets = this.pendingDeletedAssets.filter(
+        (row) => !pendingKeys.has(heldVulnTypeKey(row.plugin_name, row.host_name)),
+      );
+      // Tell other tabs/pages before our own reload so they refresh in parallel.
       notifyLiveData('delete');
       this.$emit('vuln-assets-deleted', {
         hostNames: affectedHosts,
       });
-      this.showCheckboxes = false;
-      this.resetActions();
+      await this.reloadAfterAssetActions();
     },
     toggleHoldMode() {
       if (this.activeAction === 'delete') return;
@@ -2046,49 +2063,69 @@ export default {
         return;
       }
       const wanted = assetTypeFromFilterKey(this.assetTypeFilter);
+      const jobs = [];
       const optimistic = [];
-      await suppressLiveSync(async () => {
-        for (const vuln of selected) {
-          const pluginName = String(vuln.vul_name || vuln.plugin_name || '').trim();
-          const hosts = this.getSelectedHostsForVuln(vuln);
-          if (!pluginName || !hosts.length) continue;
-          const res = this.isUser
-            ? await this.authStore.holdUserVulnerabilityAssets(pluginName, hosts)
-            : await this.authStore.holdVulnerabilityAssets(pluginName, hosts);
-          if (!res?.status) continue;
-          hosts.forEach((host) => {
-            this.hostAssetTypeMap = stampHeldItemAssetType(
-              this.hostAssetTypeMap,
-              pluginName,
-              host,
-              wanted,
-            );
-            optimistic.push({
-              plugin_name: pluginName,
-              vul_name: pluginName,
-              host_name: host,
-              asset: host,
-              ip: host,
-              member_type: '',
-              asset_type: wanted,
-              severity: vuln.severity || '',
-              selected: false,
-            });
+      selected.forEach((vuln) => {
+        const pluginName = String(vuln.vul_name || vuln.plugin_name || '').trim();
+        const hosts = this.getSelectedHostsForVuln(vuln);
+        if (!pluginName || !hosts.length) return;
+        jobs.push({ pluginName, hosts });
+        hosts.forEach((host) => {
+          this.hostAssetTypeMap = stampHeldItemAssetType(
+            this.hostAssetTypeMap,
+            pluginName,
+            host,
+            wanted,
+          );
+          optimistic.push({
+            plugin_name: pluginName,
+            vul_name: pluginName,
+            host_name: host,
+            asset: host,
+            ip: host,
+            member_type: '',
+            asset_type: wanted,
+            severity: vuln.severity || '',
+            selected: false,
           });
-        }
+        });
       });
-      if (optimistic.length) {
-        const keys = new Set(optimistic.map((row) => heldVulnTypeKey(row.plugin_name, row.host_name)));
+      // Optimistic: move the rows into "Mitigation on hold" right away instead
+      // of after the hold POST + reload round-trip.
+      const mergeHeld = (rows) => {
+        if (!rows.length) return;
+        const keys = new Set(rows.map((row) => heldVulnTypeKey(row.plugin_name, row.host_name)));
         this.heldAssets = [
-          ...optimistic,
+          ...rows,
           ...this.heldAssets.filter((row) => !keys.has(heldVulnTypeKey(row.plugin_name, row.host_name))),
         ];
         this.showHeld = true;
-      }
-      await this.reloadAfterAssetActions();
-      notifyLiveData('hold');
+      };
+      mergeHeld(optimistic);
       this.showHoldCheckboxes = false;
       this.resetActions();
+      const failed = new Set();
+      await suppressLiveSync(async () => {
+        for (const { pluginName, hosts } of jobs) {
+          const res = this.isUser
+            ? await this.authStore.holdUserVulnerabilityAssets(pluginName, hosts)
+            : await this.authStore.holdVulnerabilityAssets(pluginName, hosts);
+          if (!res?.status) hosts.forEach((host) => failed.add(heldVulnTypeKey(pluginName, host)));
+        }
+      });
+      const held = optimistic.filter((row) => !failed.has(heldVulnTypeKey(row.plugin_name, row.host_name)));
+      if (failed.size) {
+        this.heldAssets = this.heldAssets.filter(
+          (row) => !failed.has(heldVulnTypeKey(row.plugin_name, row.host_name)),
+        );
+        this.showHeld = this.heldAssets.length > 0;
+      }
+      // Tell other tabs/pages before our own reload so they refresh in parallel.
+      notifyLiveData('hold');
+      await this.reloadAfterAssetActions();
+      // The forced held-list refetch can briefly miss what we just held
+      // (read-after-write lag) — keep the confirmed holds in place.
+      mergeHeld(held);
     },
     async toggleUnholdMode() {
       if (this.activeAction === 'hold' || this.activeAction === 'delete') return;
@@ -2116,19 +2153,45 @@ export default {
       // Optimistic: drop from the held panel immediately instead of waiting on
       // the unhold POST + reload round-trip — matches the instant feel of the
       // All Assets tab's unhold.
+      // The store's held list also feeds heldVulnHostSet, so clear it here too —
+      // otherwise the vuln stays hidden from Active Threats until the POST returns.
+      const removeFromStoreHeld = () => byPlugin.forEach((hosts, pluginName) => {
+        if (this.isUser) {
+          this.authStore.removeUserHeldVulnerabilityAssets(pluginName, hosts);
+        } else {
+          this.authStore.removeHeldVulnerabilityAssets(pluginName, hosts);
+        }
+      });
+      const previousHeld = this.heldAssets;
       this.heldAssets = this.heldAssets.filter(
         (row) => !selectedKeys.has(heldVulnTypeKey(row.plugin_name, row.host_name)),
       );
       this.showHeld = this.heldAssets.length > 0;
+      removeFromStoreHeld();
+      this.resetActions();
+      const failed = new Set();
       await suppressLiveSync(async () => {
         for (const [pluginName, hosts] of byPlugin.entries()) {
-          if (this.isUser) {
-            await this.authStore.unholdUserVulnerabilityAssets(pluginName, hosts);
-          } else {
-            await this.authStore.unholdVulnerabilityAssets(pluginName, hosts);
-          }
+          const res = this.isUser
+            ? await this.authStore.unholdUserVulnerabilityAssets(pluginName, hosts)
+            : await this.authStore.unholdVulnerabilityAssets(pluginName, hosts);
+          if (!res?.status) hosts.forEach((host) => failed.add(heldVulnTypeKey(pluginName, host)));
         }
       });
+      failed.forEach((key) => selectedKeys.delete(key));
+      if (failed.size) {
+        // Put back the rows whose unhold failed; loadHeldAssets() below
+        // resyncs the store's held list from the backend.
+        const restored = previousHeld.filter((row) => failed.has(heldVulnTypeKey(row.plugin_name, row.host_name)));
+        this.heldAssets = [...restored, ...this.heldAssets];
+        this.showHeld = true;
+        byPlugin.forEach((hosts, pluginName) => {
+          const ok = hosts.filter((host) => !failed.has(heldVulnTypeKey(pluginName, host)));
+          if (ok.length) byPlugin.set(pluginName, ok);
+          else byPlugin.delete(pluginName);
+        });
+      }
+      notifyLiveData('unhold');
       await this.reloadAfterAssetActions();
       // reloadAfterAssetActions() force-refetches the held-list from the
       // backend, which can still include the item(s) we just unheld if the
@@ -2138,19 +2201,11 @@ export default {
       // reload, by which point the backend had settled. Re-apply the
       // removal we already know is correct regardless of what that refetch
       // returned.
-      byPlugin.forEach((hosts, pluginName) => {
-        if (this.isUser) {
-          this.authStore.removeUserHeldVulnerabilityAssets(pluginName, hosts);
-        } else {
-          this.authStore.removeHeldVulnerabilityAssets(pluginName, hosts);
-        }
-      });
+      removeFromStoreHeld();
       this.heldAssets = this.heldAssets.filter(
         (row) => !selectedKeys.has(heldVulnTypeKey(row.plugin_name, row.host_name)),
       );
       this.showHeld = this.heldAssets.length > 0;
-      notifyLiveData('unhold');
-      this.resetActions();
     },
     resetActions() {
       this.showCheckboxes = false;

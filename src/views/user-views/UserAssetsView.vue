@@ -689,7 +689,7 @@
                                 class="sr-message-row"
                                 :class="{ 'sr-message-row-admin': supportMessageIsAdmin(m) }"
                               >
-                                <span class="sr-message-sender">{{ supportMessageIsAdmin(m) ? 'Admin' : 'You' }}</span>
+                                <span class="sr-message-sender">{{ supportMessageIsAdmin(m) ? 'Admin Reply' : 'User Reply' }}</span>
                                 <p class="sr-message-text mb-0">{{ supportMessageText(m) }}</p>
                               </div>
                             </div>
@@ -797,7 +797,6 @@
                                   v-for="opt in extDeadlineDayOptions"
                                   :key="opt"
                                   :value="opt"
-                                  :disabled="isExtDeadlineDisabled(opt)"
                                 >{{ opt }}</option>
                               </optgroup>
                               <optgroup label="Weeks">
@@ -805,7 +804,6 @@
                                   v-for="opt in extDeadlineWeekOptions"
                                   :key="opt"
                                   :value="opt"
-                                  :disabled="isExtDeadlineDisabled(opt)"
                                 >{{ opt }}</option>
                               </optgroup>
                             </select>
@@ -822,7 +820,7 @@
                     </div>
                     <div class="ext-popup-footer">
                       <button type="button" class="mte-btn-secondary" @click="closeExtPopup">Cancel</button>
-                      <button type="button" class="mte-btn-primary ext-submit-btn" @click="submitExtPopup" :disabled="!extPopupAsset || !extPopupVulName || !extPopupExtension || !extPopupReason.trim() || isExtDeadlineDisabled(extPopupExtension)">
+                      <button type="button" class="mte-btn-primary ext-submit-btn" @click="submitExtPopup" :disabled="!extPopupAsset || !extPopupVulName || !extPopupExtension || !extPopupReason.trim()">
                         <i class="bi bi-send-fill"></i> <span style="color:#fff;">Submit Request</span>
                       </button>
                     </div>
@@ -2341,17 +2339,6 @@ class TLSConfigurator:
       const unit = m[2];
       return unit.startsWith("week") ? n * 7 : n;
     },
-    isExtDeadlineDisabled(label) {
-      const original = Number(this.extPopupOriginalDeadlineDays);
-      if (!Number.isFinite(original) || original <= 0) return false;
-      const days = this.parseExtensionDays(label);
-      return Number.isFinite(days) && days <= original;
-    },
-    clearInvalidExtDeadline() {
-      if (this.extPopupExtension && this.isExtDeadlineDisabled(this.extPopupExtension)) {
-        this.extPopupExtension = "";
-      }
-    },
     async fetchExtPopupOptions(severity, asset) {
       this.extPopupOptionsLoading = true;
       const team = (this.selectedAsset?.assigned_teams && this.selectedAsset.assigned_teams[0]) || undefined;
@@ -2361,7 +2348,6 @@ class TLSConfigurator:
         this.extPopupAssetListApi = res.data.assets || [];
         this.extPopupVulListApi = res.data.vulnerabilities || [];
         this.extPopupOriginalDeadlineDays = res.data.original_deadline_days ?? null;
-        this.clearInvalidExtDeadline();
       } else {
         this.extPopupAssetListApi = [];
         this.extPopupVulListApi = [];
@@ -2378,7 +2364,6 @@ class TLSConfigurator:
       this.extPopupSeverity = severity;
       if (Object.prototype.hasOwnProperty.call(this.extPopupDeadlineBySeverity, severity)) {
         this.extPopupOriginalDeadlineDays = this.extPopupDeadlineBySeverity[severity];
-        this.clearInvalidExtDeadline();
         return;
       }
       this.extPopupOptionsLoading = true;
@@ -2389,7 +2374,6 @@ class TLSConfigurator:
       this.extPopupDeadlineBySeverity = { ...this.extPopupDeadlineBySeverity, [severity]: days };
       if (this.extPopupSeverity === severity) {
         this.extPopupOriginalDeadlineDays = days;
-        this.clearInvalidExtDeadline();
       }
     },
     async openExtPopup() {
@@ -2497,13 +2481,15 @@ class TLSConfigurator:
         if (pluginName || vulnId) {
           this.expandVulnFromQuery(pluginName, vulnId);
         }
+        if (q.fix_tab === 'manual' || q.fix_tab === 'auto') {
+          this.setVulnDetailTab(q.fix_tab);
+        }
       }
     },
     async submitExtPopup() {
       if (!this.extPopupAsset || !this.extPopupVulName || !this.extPopupExtension || !this.extPopupReason.trim()) return;
       const requestedDays = this.parseExtensionDays(this.extPopupExtension);
       if (!Number.isFinite(requestedDays) || requestedDays <= 0) return;
-      if (this.isExtDeadlineDisabled(this.extPopupExtension)) return;
 
       const payload = {
         severity: this.extPopupSeverity,

@@ -2361,11 +2361,15 @@ export default {
       this.showCommonVulnModal = false;
     },
     getCvAssetsRoute(vuln) {
-      const query = {
-        mode: 'vulnerabilities',
-        plugin_name: vuln?.plugin_name,
-      };
-      if (vuln?.host_name) query.asset = vuln.host_name;
+      // With a host, deep-link to that asset's vuln (opened on its fix tab);
+      // the vulnerabilities-mode deep link can't focus a specific vuln.
+      const query = { plugin_name: vuln?.plugin_name };
+      if (vuln?.host_name) {
+        query.asset = vuln.host_name;
+        query.fix_tab = 'auto';
+      } else {
+        query.mode = 'vulnerabilities';
+      }
       return { name: 'assets', query };
     },
     toggleCvModalGroup(sev) {
