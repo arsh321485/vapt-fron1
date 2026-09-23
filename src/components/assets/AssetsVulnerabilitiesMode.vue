@@ -1302,16 +1302,23 @@ export default {
             if (rowsForHost.some((r) => !isActiveVulnStatus(rowStatusValue(r) || 'open'))) return false;
             return true;
           });
-          const reportOpen = v.open_count != null ? Number(v.open_count) : null;
-          const assets = reportOpen === 0 ? [] : openAssets;
+          // groupedVulns already resolved open/closed from the backend's own
+          // open_count whenever this vuln matched a report row (the normal
+          // case for every vuln once the report list is populated) — trust
+          // that instead of re-deriving status from this local host list.
+          // The local list can be genuinely incomplete (register still
+          // syncing per-host rows in over several fetches/renders, or the
+          // aggregate report never carrying hostnames for a vuln at all),
+          // and re-deriving from it caused the visible list to flap between
+          // different counts render to render as that local data settled.
+          const isOpen = isActiveVulnStatus(v.status);
           return {
             ...v,
-            assets,
-            open_count: assets.length,
-            status: assets.length > 0 ? 'open' : 'closed',
+            assets: isOpen ? openAssets : [],
+            status: isOpen ? 'open' : 'closed',
           };
         })
-        .filter((v) => (v.assets || []).length > 0 && isActiveVulnStatus(v.status));
+        .filter((v) => isActiveVulnStatus(v.status));
     },
     closedRecentlyItems() {
       // One row per vulnerability NAME (matches how the open/active list is
@@ -1604,12 +1611,13 @@ export default {
     },
     vulnsGroupedByType(filterKey) {
       const wanted = assetTypeFromFilterKey(filterKey);
+      // vulnBelongsToType already prefers the backend's own asset_type_counts
+      // when present — trust it alone for membership instead of also
+      // requiring a non-empty locally-resolved host list, which may be
+      // incomplete/absent even for a vuln the backend confirms belongs here.
       return this.activeGroupedVulns
-        .map((v) => {
-          const assets = this.assetsForVulnType(v, wanted);
-          return { ...v, assets };
-        })
-        .filter((v) => v.assets.length > 0 && this.vulnBelongsToType(v, wanted, filterKey));
+        .map((v) => ({ ...v, assets: this.assetsForVulnType(v, wanted) }))
+        .filter((v) => this.vulnBelongsToType(v, wanted, filterKey));
     },
     hostAssetType(ip, vuln) {
       const target = String(ip || '').trim().toLowerCase();
@@ -1625,11 +1633,19 @@ export default {
       return resolveHostAssetType(ip, this.assetCatalogHostIndex, row);
     },
     assetTypeTabCount(type) {
-      // Vulnerability count for this asset type (distinct vulnerabilities
-      // affecting assets of this type) — not an asset count. Sourced from
-      // the register/grouped-vulns chain, which is already correctly
-      // team-scoped (fetchUserVulnerabilityRegister(true, team) via the
-      // proven reloadAssetsAndHeld() reload path).
+      // Prefer the backend's own asset_type_totals (from the report's
+      // /vulnerabilities/ response, cached on fetch) — it's the source of
+      // truth and avoids drift from this page's own grouping/classification
+      // logic. Fall back to the local grouped-vulns count only when the
+      // backend hasn't returned totals yet (e.g. before the first fetch).
+      const totals = this.isUser
+        ? this.authStore.userAllReportVulnerabilitiesAssetTypeTotals
+        : this.authStore.allReportVulnerabilitiesAssetTypeTotals;
+      if (totals && typeof totals === 'object') {
+        const wanted = assetTypeFromFilterKey(type);
+        const value = Number(totals[wanted]);
+        if (Number.isFinite(value)) return value;
+      }
       return this.vulnsGroupedByType(type).length;
     },
     assetsForVulnType(vuln, wanted) {

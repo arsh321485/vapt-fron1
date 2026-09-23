@@ -6242,7 +6242,10 @@ export const useAuthStore = defineStore("auth", {
         const res = await endpoint.get(`/api/admin/adminasset/report/${reportId}/vulnerabilities/`);
 
         const vulns = res.data?.vulnerabilities ?? [];
-        this.allReportVulnerabilities = filterPlatformLabelVulnRows(Array.isArray(vulns) ? vulns : []);
+        // See the matching comment in fetchUserAllReportVulnerabilities —
+        // this is the same pre-aggregated, grouped-by-plugin-name shape with
+        // no per-host fields, so filterPlatformLabelVulnRows dropped every row.
+        this.allReportVulnerabilities = Array.isArray(vulns) ? vulns : [];
         this.allReportVulnerabilitiesTotal = this.allReportVulnerabilities.length;
         this.allReportVulnerabilitiesFetched = true;
         this.allReportVulnerabilitiesAssetTypeTotals =
@@ -7152,7 +7155,15 @@ export const useAuthStore = defineStore("auth", {
         }
 
         const vulns = res.data?.vulnerabilities ?? [];
-        this.userAllReportVulnerabilities = filterPlatformLabelVulnRows(Array.isArray(vulns) ? vulns : []);
+        // NOTE: this is the backend's pre-aggregated, grouped-by-plugin-name
+        // response (one row per distinct vulnerability, no per-host asset/
+        // host_name fields at all) — filterPlatformLabelVulnRows expects
+        // per-host register rows and drops anything with no resolvable host
+        // field, which is every row here. Applying it emptied this list
+        // entirely on every fetch, which in turn broke groupedVulns' merge
+        // with the register (asset_type_counts never attached to any vuln,
+        // silently falling back to unreliable local host-type guessing).
+        this.userAllReportVulnerabilities = Array.isArray(vulns) ? vulns : [];
         this.userAllReportVulnerabilitiesTotal = this.userAllReportVulnerabilities.length;
         this.userAllReportVulnerabilitiesFetched = true;
         this.cachedUserAllReportVulnerabilitiesTeam = teamParam;

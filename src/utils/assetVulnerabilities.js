@@ -270,6 +270,12 @@ export function enrichVulnsFromRegister(vulns, registerRows, assetIp) {
     return {
       ...v,
       fix_vulnerability_id: fixId || null,
+      // The per-asset /vulnerabilities/ endpoint often returns no plugin_id
+      // (e.g. manually-authored findings like IDOR that never went through
+      // Nessus), leaving nothing for the fix-vulnerability create call's
+      // required `id` field. The register row always carries its own id —
+      // fall back to that so create() isn't permanently blocked.
+      id: v.id || row.id || v.vulnerability_id || row.vulnerability_id || '',
       operating_system: row.operating_system || row.os || v.operating_system || '',
       // Enrich assigned_team from register (most reliable source)
       assigned_team: v.assigned_team || row.assigned_team || '',

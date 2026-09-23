@@ -1,7 +1,18 @@
-ye dekho ye agr automatable hai to fr message esa q aa rha hai 
+Session restored? true
+AssetsVulnerabilitiesMode.vue:1621 [vulnsGroupedByType DEBUG server] activeGroupedVulns before filtering: (10) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+AssetsVulnerabilitiesMode.vue:1621 [vulnsGroupedByType DEBUG server] activeGroupedVulns before filtering: (10) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+AssetsVulnerabilitiesMode.vue:1621 [vulnsGroupedByType DEBUG server] activeGroupedVulns before filtering: (10) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+AssetsVulnerabilitiesMode.vue:1621 [vulnsGroupedByType DEBUG server] activeGroupedVulns before filtering: (10) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+AssetsVulnerabilitiesMode.vue:1621 [vulnsGroupedByType DEBUG server] activeGroupedVulns before filtering: (10) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+AssetsVulnerabilitiesMode.vue:1621 [vulnsGroupedByType DEBUG server] activeGroupedVulns before filtering: (10) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+AssetsVulnerabilitiesMode.vue:1621 [vulnsGroupedByType DEBUG server] activeGroupedVulns before filtering: (10) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+AssetsVulnerabilitiesMode.vue:1621 [vulnsGroupedByType DEBUG server] activeGroupedVulns before filtering: (10) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+AssetsVulnerabilitiesMode.vue:1621 [vulnsGroupedByType DEBUG server] activeGroupedVulns before filtering: (10) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+AssetsVulnerabilitiesMode.vue:1621 [vulnsGroupedByType DEBUG server] activeGroupedVulns before filtering: (10) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+AssetsVulnerabilitiesMode.vue:1621 [vulnsGroupedByType DEBUG server] activeGroupedVulns before filtering: (10) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+AssetsVulnerabilitiesMode.vue:1621 [vulnsGroupedByType DEBUG server] activeGroupedVulns before filtering: (10) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+AssetsVulnerabilitiesMode.vue:1621 [vulnsGroupedByType DEBUG server] activeGroupedVulns before filtering: (10) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+AssetsVulnerabilitiesMode.vue:1621 [vulnsGroupedByType DEBUG server] activeGroupedVulns before filtering: (10) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
 
-Automation Not Possible
-Automation is not possible for this vulnerability.
 
-
-ye frontedn bug hai to btao code krne se phle
+isme phlw count me uper 7 hua fr in a second 5 hua and than 2 ho gya 

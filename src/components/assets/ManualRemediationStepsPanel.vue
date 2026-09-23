@@ -407,7 +407,12 @@ export default {
       }
     },
     fixId() {
-      if (!this.isUser) {
+      if (this.isUser) {
+        // Parent (register lookup) resolved an existing fix session id after
+        // this panel already mounted with none — pick it up immediately
+        // instead of waiting on the next poll tick.
+        this.initFixVuln();
+      } else {
         this.initAdminFixVuln();
       }
     },
@@ -745,12 +750,70 @@ export default {
       }, 8000);
       return true;
     },
+    // Fetch steps for a known fix session id, trying both OS keys. Shared by
+    // the known-fixId fast path and the post-create path below. Returns
+    // whether steps were actually found and applied.
+    async fetchUserStepsForFixId(fixId, seq) {
+      const primaryOs = this.resolveOsKey(this.assetOs);
+      const fallbackOs = primaryOs === 'linux' ? 'windows' : 'linux';
+      this.selectedOs = primaryOs;
+
+      let stepsRes = await this.authStore.getUserFixVulnerabilitySteps(fixId, primaryOs);
+      if (seq !== this._fixInitSeq) return false;
+      if (!stepsRes.status || !stepsRes.data?.steps?.length) {
+        const fallbackRes = await this.authStore.getUserFixVulnerabilitySteps(fixId, fallbackOs);
+        if (seq !== this._fixInitSeq) return false;
+        if (fallbackRes.status && fallbackRes.data?.steps?.length) {
+          stepsRes = fallbackRes;
+          this.selectedOs = fallbackOs;
+        }
+      }
+
+      if (stepsRes.status) this.emitDescriptionIfPresent(stepsRes.data);
+      if (stepsRes.status && Array.isArray(stepsRes.data?.steps) && stepsRes.data.steps.length) {
+        this.cardGenPending = false;
+        this.fixVulnData = {
+          ...this.fixVulnData,
+          assigned_team: stepsRes.data.assigned_team || this.fixVulnData?.assigned_team || '',
+          assigned_team_members:
+            stepsRes.data.steps[0]?.assigned_team_members
+            || this.fixVulnData?.assigned_team_members
+            || [],
+          solution: this.fixVulnData?.solution || '',
+        };
+        this.applyStepsFromApi(stepsRes.data);
+        return true;
+      }
+      return false;
+    },
     async loadUserFixData(seq, { silent }) {
       if (!silent) this.loadingFixVuln = true;
       try {
         const reportId = await this.authStore.resolveUserReportId();
         if (seq !== this._fixInitSeq) return;
         if (!reportId) return;
+
+        // The parent already resolves an existing fix_vulnerability_id from
+        // the register (same lookup the admin side relies on) and passes it
+        // down as the `fixId` prop. When it's there, a fix session already
+        // exists server-side — go straight to fetching its steps instead of
+        // gating on vulnId/create, which previously meant this panel never
+        // issued *any* request for vulns whose id fields hadn't resolved yet
+        // (it only polls fetchUserVulnerabilityRegister in a loop below).
+        const knownFixId = this.fixId || this.fixVulnerabilityId || '';
+        if (knownFixId) {
+          this.fixVulnerabilityId = knownFixId;
+          const resolved = await this.fetchUserStepsForFixId(knownFixId, seq);
+          if (seq !== this._fixInitSeq) return;
+          if (resolved) {
+            this.clearFixPoll();
+            return;
+          }
+          // Session exists but its steps aren't generated yet — keep polling
+          // this known id rather than falling through to the create path.
+          this.cardGenPending = this.scheduleUserFixPoll(seq);
+          return;
+        }
 
         // The create endpoint's `id` field (the vulnerability's own
         // register-row id) is required server-side — without it every call
@@ -799,36 +862,9 @@ export default {
         }
         this.fixVulnerabilityId = fixId;
 
-        // Try both OS keys — use whichever returns steps
-        const primaryOs = this.resolveOsKey(this.assetOs);
-        const fallbackOs = primaryOs === 'linux' ? 'windows' : 'linux';
-        this.selectedOs = primaryOs;
-
-        let stepsRes = await this.authStore.getUserFixVulnerabilitySteps(fixId, primaryOs);
+        const resolved = await this.fetchUserStepsForFixId(fixId, seq);
         if (seq !== this._fixInitSeq) return;
-        if (!stepsRes.status || !stepsRes.data?.steps?.length) {
-          // Try fallback OS
-          const fallbackRes = await this.authStore.getUserFixVulnerabilitySteps(fixId, fallbackOs);
-          if (seq !== this._fixInitSeq) return;
-          if (fallbackRes.status && fallbackRes.data?.steps?.length) {
-            stepsRes = fallbackRes;
-            this.selectedOs = fallbackOs;
-          }
-        }
-
-        if (stepsRes.status) this.emitDescriptionIfPresent(stepsRes.data);
-        if (stepsRes.status && Array.isArray(stepsRes.data?.steps) && stepsRes.data.steps.length) {
-          this.cardGenPending = false;
-          this.fixVulnData = {
-            ...this.fixVulnData,
-            assigned_team: stepsRes.data.assigned_team || this.fixVulnData?.assigned_team || '',
-            assigned_team_members:
-              stepsRes.data.steps[0]?.assigned_team_members
-              || this.fixVulnData?.assigned_team_members
-              || [],
-            solution: this.fixVulnData?.solution || '',
-          };
-          this.applyStepsFromApi(stepsRes.data);
+        if (resolved) {
           this.clearFixPoll();
         } else {
           // Record exists but the report's card-generation job hasn't

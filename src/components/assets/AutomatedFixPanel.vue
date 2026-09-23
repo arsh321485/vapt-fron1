@@ -907,12 +907,27 @@ export default {
       }
       this.aiLoading = true;
       const wantHost = String(this.assetIp || '').trim().toLowerCase();
-      const findMatch = (cards) => (cards || []).find((c) => {
-        const name = String(c?.vulnerability_name || '').trim().toLowerCase();
-        if (name !== wantName) return false;
-        if (!wantHost) return true;
-        return String(c?.host_name || '').trim().toLowerCase() === wantHost;
-      });
+      // The bulk list can carry more than one record for the same
+      // vuln+host — e.g. a bare stub created early in generation (a
+      // matching entry whose automation_card has automation_status:"full"
+      // but every content field still empty) sitting alongside the
+      // completed record once generation finishes. A plain "first match"
+      // easily lands on the empty stub even though the real one is right
+      // there, so prefer whichever candidate actually has content.
+      const cardHasContent = (c) => {
+        const d = c?.automation_card;
+        return !!(d && (d.script_name || d.script_description || d.fix_script || d.verify_script || d.command_run_script));
+      };
+      const findMatch = (cards) => {
+        const candidates = (cards || []).filter((c) => {
+          const name = String(c?.vulnerability_name || '').trim().toLowerCase();
+          if (name !== wantName) return false;
+          if (!wantHost) return true;
+          return String(c?.host_name || '').trim().toLowerCase() === wantHost;
+        });
+        if (!candidates.length) return null;
+        return candidates.find(cardHasContent) || candidates[0];
+      };
       const fetchCards = (force) => this.isUser
         ? this.authStore.fetchVulnerabilityCardsByReportUser(reportId, undefined, force)
         : this.authStore.fetchVulnerabilityCardsByReport(reportId, force);
@@ -921,16 +936,17 @@ export default {
       let match = findMatch(res.cards);
       // The bulk list is cached per-report and normally only fetched once —
       // a card generated/regenerated AFTER that first fetch (e.g.
-      // automation_status flipping null → "full") never shows up until
-      // something forces a refetch. automation_status already confirms a
-      // card exists for "full"/"partial", so when the cached list doesn't
-      // have it, retry once with a forced refetch before giving up — rather
-      // than sitting on stale data and showing "still syncing" forever even
-      // once generation is actually complete.
+      // automation_status flipping null → "full", or a stub record filling
+      // in with real content) never shows up until something forces a
+      // refetch. automation_status already confirms a card should exist
+      // (with content) for "full"/"partial", so when the cached list has no
+      // match at all — or only a contentless stub — retry once with a
+      // forced refetch before giving up, rather than sitting on stale data
+      // and showing "still syncing" forever even once generation is done.
       const statusConfirmsReady = ['full', 'partial'].includes(
         String(this.automationStatus || '').trim().toLowerCase(),
       );
-      if (!match?.automation_card && statusConfirmsReady) {
+      if ((!match?.automation_card || !cardHasContent(match)) && statusConfirmsReady) {
         res = await fetchCards(true);
         match = findMatch(res.cards);
       }
