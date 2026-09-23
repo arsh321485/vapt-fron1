@@ -112,6 +112,7 @@
                   </button>
                   <span class="loc-assignment-counts">{{ assignmentSummaryText }}</span>
                 </div>
+                <VulnFreeAssetsDropdown v-if="selectedRoles.length" :assets="vulnFreeAssets" :loading="catalogLoading" />
               </div>
 
               <div class="loc-field-group">
@@ -256,6 +257,7 @@
 <script>
 import DashboardHeader from "@/components/admin-component/DashboardHeader.vue";
 import RoleAssignmentDrawer from "@/components/admin-component/RoleAssignmentDrawer.vue";
+import VulnFreeAssetsDropdown from "@/components/admin-component/VulnFreeAssetsDropdown.vue";
 import { useAuthStore } from "@/stores/authStore";
 import { isRealScanHost } from "@/utils/assetDummyData";
 import { isClaimInviteFlow } from "@/utils/claimInvite";
@@ -277,6 +279,7 @@ export default {
   components: {
     DashboardHeader,
     RoleAssignmentDrawer,
+    VulnFreeAssetsDropdown,
   },
   data() {
     return {
@@ -306,6 +309,7 @@ export default {
       roleAssignmentCatalog: { PM: { assets: [], vulnerabilities: [] }, CM: { assets: [], vulnerabilities: [] }, NS: { assets: [], vulnerabilities: [] }, AF: { assets: [], vulnerabilities: [] } },
       vulnIdToData: {},
       catalogLoading: false,
+      catalogRequests: {},
       showFreemiumBanner: false,
       gateChecking: true,
       redirecting: false,
@@ -327,6 +331,13 @@ export default {
       return this.selectedRoles
         .map((r) => this.roleOptions.find((o) => o.short === r)?.full || r)
         .join(", ");
+    },
+    vulnFreeAssets() {
+      // One combined list across all selected team roles, each host once.
+      const seen = new Set();
+      return this.selectedRoles
+        .flatMap((short) => this.roleAssignmentCatalog[short]?.vulnFreeAssets || [])
+        .filter((a) => !seen.has(a.host_name) && seen.add(a.host_name));
     },
     assignmentSummaryText() {
       return getAssignmentSummaryText(this.selectedRoles, this.roleAssignments, this.roleAssignmentCatalog);
@@ -369,6 +380,13 @@ export default {
     //   return !!this.externalLocation || this.selectedSecondaryRoles.length > 0;
     // }
   },
+  watch: {
+    // Load each selected role's catalog as soon as it's picked, independent
+    // of the assignment drawer, so the vulnerability-free list always fills.
+    selectedRoles(roles) {
+      roles.forEach((role) => this.loadRoleCatalog(role));
+    },
+  },
   methods: {
     initChipSelection() {
       // Active state is handled by Vue :class binding â€” no manual DOM manipulation needed
@@ -407,12 +425,22 @@ export default {
       if (!roleShort || !this.selectedRoles.includes(roleShort)) return;
       this.activeAssignmentRole = roleShort;
       this.showAssignmentModal = true;
-
-      // Already loaded → skip
-      if (
-        this.roleAssignmentCatalog[roleShort]?.assets?.length ||
-        this.roleAssignmentCatalog[roleShort]?.vulnerabilities?.length
-      ) return;
+      await this.loadRoleCatalog(roleShort);
+    },
+    async loadRoleCatalog(roleShort) {
+      // Loaded (even if empty) or already in flight → skip. Checking assets
+      // length alone refetched empty roles and never refreshed cached ones.
+      if (!roleShort || this.roleAssignmentCatalog[roleShort]?.loaded) return;
+      if (this.catalogRequests[roleShort]) return this.catalogRequests[roleShort];
+      const request = this.fetchRoleCatalog(roleShort);
+      this.catalogRequests[roleShort] = request;
+      try {
+        await request;
+      } finally {
+        delete this.catalogRequests[roleShort];
+      }
+    },
+    async fetchRoleCatalog(roleShort) {
 
       const roleFullMap = {
         PM: 'Patch Management',
@@ -423,10 +451,14 @@ export default {
 
       this.catalogLoading = true;
       try {
-        const status = await this.authStore.getReportStatus();
-        if (status?.reportId) {
-          localStorage.setItem('reportId', status.reportId);
-        }
+        // Best-effort report-id refresh — a failure here must not block the
+        // role catalog request below (it would never be sent).
+        try {
+          const status = await this.authStore.getReportStatus();
+          if (status?.reportId) {
+            localStorage.setItem('reportId', status.reportId);
+          }
+        } catch (_) { /* fall back to the cached report id */ }
         const res = await this.authStore.fetchReportAssetVulnsByRole(roleFullMap[roleShort]);
         if (!res.status || !res.data) {
           this.roleAssignmentCatalog = {
@@ -476,7 +508,14 @@ export default {
 
         this.roleAssignmentCatalog = {
           ...this.roleAssignmentCatalog,
-          [roleShort]: { assets: catalogAssets, vulnerabilities: catalogVulns },
+          [roleShort]: {
+            loaded: true,
+            assets: catalogAssets,
+            vulnerabilities: catalogVulns,
+            vulnFreeAssets: Array.isArray(res.data.vulnerability_free_assets)
+              ? res.data.vulnerability_free_assets.filter((a) => a?.host_name)
+              : undefined,
+          },
         };
       } finally {
         this.catalogLoading = false;

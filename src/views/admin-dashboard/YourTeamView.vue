@@ -121,6 +121,7 @@
                           </button>
                           <span class="yt-assignment-counts">{{ assignmentSummaryText }}</span>
                         </div>
+                        <VulnFreeAssetsDropdown v-if="selectedRoles2.length" :assets="vulnFreeAssets" :loading="catalogLoading" />
                       </div>
                     </div>
                   </div>
@@ -364,6 +365,7 @@
 import DashboardMenu from '@/components/admin-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/admin-component/DashboardHeader.vue';
 import RoleAssignmentDrawer from '@/components/admin-component/RoleAssignmentDrawer.vue';
+import VulnFreeAssetsDropdown from '@/components/admin-component/VulnFreeAssetsDropdown.vue';
 import { useAuthStore } from "@/stores/authStore";
 import { isRealScanHost } from "@/utils/assetDummyData";
 import endpoint from "@/services/apiServices";
@@ -389,6 +391,7 @@ export default {
     DashboardMenu,
     DashboardHeader,
     RoleAssignmentDrawer,
+    VulnFreeAssetsDropdown,
   },
   data() {
     return {
@@ -488,6 +491,13 @@ export default {
     },
     tabWidth() {
       return 100 / this.tabs.length;
+    },
+    vulnFreeAssets() {
+      // One combined list across all selected team roles, each host once.
+      const seen = new Set();
+      return this.selectedRoles2
+        .flatMap((short) => this.roleAssignmentCatalog[short]?.vulnFreeAssets || [])
+        .filter((a) => !seen.has(a.host_name) && seen.add(a.host_name));
     },
     assignmentSummaryText() {
       return getAssignmentSummaryText(this.selectedRoles2, this.roleAssignments, this.roleAssignmentCatalog);
@@ -597,6 +607,9 @@ export default {
         [roleShort]: {
           assets: catalogAssets,
           vulnerabilities: catalogVulns,
+          vulnFreeAssets: Array.isArray(res.data.vulnerability_free_assets)
+              ? res.data.vulnerability_free_assets.filter((a) => a?.host_name)
+              : undefined,
         },
       };
     } finally {
