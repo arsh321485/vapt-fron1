@@ -1209,7 +1209,21 @@ export default {
         const report = reportByKey.get(g._key);
         const description = this.resolveGroupedDescription(g._key, g, report, ...(g.rows || []));
         if (!report) return { ...g, description };
-        const openCount = report.open_count != null ? Number(report.open_count) : (g.assets || []).length;
+        const reportOpenCount = report.open_count != null ? Number(report.open_count) : null;
+        // g.assets/g.rows above already reflect each individual register
+        // row's own current status — including a status flip made moments
+        // ago by completing/holding/deleting this vuln in this session,
+        // which mutates the row directly. That's more current than the
+        // backend's aggregate open_count, which only updates on its own
+        // next fetch (several seconds behind). When the register locally
+        // has real rows for this vuln and every one of them is now closed,
+        // trust that over a stale report count that hasn't caught up yet —
+        // otherwise a just-closed vuln kept reappearing as "open" in Active
+        // Threats above its own correctly-closed "Fixed Recently" entry.
+        const locallyAllClosed = (g.rows || []).length > 0 && (g.assets || []).length === 0;
+        const openCount = locallyAllClosed
+          ? 0
+          : (reportOpenCount != null ? reportOpenCount : (g.assets || []).length);
         return {
           ...g,
           description,
@@ -1303,15 +1317,36 @@ export default {
             return true;
           });
           // groupedVulns already resolved open/closed from the backend's own
-          // open_count whenever this vuln matched a report row (the normal
-          // case for every vuln once the report list is populated) — trust
-          // that instead of re-deriving status from this local host list.
-          // The local list can be genuinely incomplete (register still
-          // syncing per-host rows in over several fetches/renders, or the
-          // aggregate report never carrying hostnames for a vuln at all),
-          // and re-deriving from it caused the visible list to flap between
-          // different counts render to render as that local data settled.
-          const isOpen = isActiveVulnStatus(v.status);
+          // open_count whenever this vuln matched a report row (and itself
+          // now prefers a locally-confirmed-closed register over a stale
+          // report count — see the merge step above) — trust that as the
+          // baseline instead of re-deriving status from this local host
+          // list, which can be genuinely incomplete (register still syncing
+          // per-host rows, or the aggregate report never carrying hostnames
+          // for a vuln at all) and previously caused the visible list to
+          // flap between different counts as that local data settled.
+          //
+          // One case the merge step can't see: this vuln closed in a
+          // *different* session (another admin/user), so this session's own
+          // register rows were never mutated — only closedFixRecords (and
+          // therefore closedSet) picked it up, moments ago, via its own
+          // poll/refetch. Check the known rows directly against closedSet
+          // here (not v.assets, which the merge step may have already
+          // zeroed for unrelated reasons) so that signal still overrides a
+          // stale report status.
+          const hasLocalHostRows = (v.rows || []).length > 0;
+          const allKnownHostsClosedInClosedSet =
+            hasLocalHostRows &&
+            v.rows.every((r) => {
+              const host = String(r.asset || r.host_name || '').trim();
+              if (!host) return false;
+              return (
+                closedSet.has(closedVulnHostKey(name, host)) ||
+                closedSet.has(closedVulnHostKey(key, host)) ||
+                this.isHostClosedInFixRecords(name, host)
+              );
+            });
+          const isOpen = allKnownHostsClosedInClosedSet ? false : isActiveVulnStatus(v.status);
           return {
             ...v,
             assets: isOpen ? openAssets : [],
@@ -1375,18 +1410,48 @@ export default {
       // panelVulns), so Fixed Recently showing every OTHER closed vuln in the
       // whole tab underneath it was inconsistent. Same idea as the All Assets
       // tab, where selecting an asset scopes both sections to just that asset.
+      //
+      // BUT only when the selection actually has a closed entry of its own
+      // (the "partially closed" case — some hosts open, some closed, vuln
+      // still selectable from Active Threats). Once every host for a vuln
+      // is closed, it drops out of the open-only left list entirely, so it
+      // can never be the current selection again — scoping to selectedName
+      // in that case would permanently hide its own Fixed Recently entry
+      // behind whatever unrelated vuln happens to be selected instead. Fall
+      // back to showing every closed vuln for this type tab whenever the
+      // current selection isn't one of them.
       const selectedName = this.selectedVuln?.vul_name
         ? String(this.selectedVuln.vul_name).trim().toLowerCase()
         : '';
-      const filteredOrder = selectedName
+      const filteredOrder = (selectedName && order.includes(selectedName))
         ? order.filter((nameKey) => nameKey === selectedName)
         : order;
       return filteredOrder
         .map((nameKey) => {
           const group = groups.get(nameKey);
-          const hosts = group.hosts.filter(
-            (host) => resolveHostAssetType(host, this.assetCatalogHostIndex) === wanted,
-          );
+          // Prefer the backend's own asset_type_counts for this vuln (same
+          // source already trusted for the open list) over per-host
+          // inference: resolveHostAssetType has no vuln context to go on
+          // here, only a bare hostname, so for any host missing from the
+          // asset catalog it falls straight to the keyword heuristic with
+          // nothing to match on — always landing on "other" and silently
+          // hiding every such closed vuln from Web App/Server/Firewall tabs.
+          const vuln = this.groupedVulns.find((v) => (v._key || vulnNameKey(v)) === nameKey);
+          let hosts = group.hosts;
+          const counts = hasAssetTypeCounts(vuln?.asset_type_counts)
+            ? normalizeAssetTypeCounts(vuln.asset_type_counts)
+            : null;
+          if (counts) {
+            if ((counts[wanted] || 0) <= 0) return null;
+            const onlyThisType = ['server', 'web_app', 'firewall', 'other'].every(
+              (type) => type === wanted || (counts[type] || 0) <= 0,
+            );
+            if (!onlyThisType) {
+              hosts = hosts.filter((host) => resolveHostAssetType(host, this.assetCatalogHostIndex) === wanted);
+            }
+          } else {
+            hosts = hosts.filter((host) => resolveHostAssetType(host, this.assetCatalogHostIndex) === wanted);
+          }
           if (!hosts.length) return null;
           const rec = group.rec;
           const pluginId = rec?.plugin_id || rec?.nessus_plugin_id || null;
