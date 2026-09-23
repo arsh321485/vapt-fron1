@@ -1,18 +1,2 @@
-Session restored? true
-AssetsVulnerabilitiesMode.vue:1621 [vulnsGroupedByType DEBUG server] activeGroupedVulns before filtering: (10) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
-AssetsVulnerabilitiesMode.vue:1621 [vulnsGroupedByType DEBUG server] activeGroupedVulns before filtering: (10) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
-AssetsVulnerabilitiesMode.vue:1621 [vulnsGroupedByType DEBUG server] activeGroupedVulns before filtering: (10) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
-AssetsVulnerabilitiesMode.vue:1621 [vulnsGroupedByType DEBUG server] activeGroupedVulns before filtering: (10) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
-AssetsVulnerabilitiesMode.vue:1621 [vulnsGroupedByType DEBUG server] activeGroupedVulns before filtering: (10) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
-AssetsVulnerabilitiesMode.vue:1621 [vulnsGroupedByType DEBUG server] activeGroupedVulns before filtering: (10) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
-AssetsVulnerabilitiesMode.vue:1621 [vulnsGroupedByType DEBUG server] activeGroupedVulns before filtering: (10) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
-AssetsVulnerabilitiesMode.vue:1621 [vulnsGroupedByType DEBUG server] activeGroupedVulns before filtering: (10) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
-AssetsVulnerabilitiesMode.vue:1621 [vulnsGroupedByType DEBUG server] activeGroupedVulns before filtering: (10) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
-AssetsVulnerabilitiesMode.vue:1621 [vulnsGroupedByType DEBUG server] activeGroupedVulns before filtering: (10) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
-AssetsVulnerabilitiesMode.vue:1621 [vulnsGroupedByType DEBUG server] activeGroupedVulns before filtering: (10) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
-AssetsVulnerabilitiesMode.vue:1621 [vulnsGroupedByType DEBUG server] activeGroupedVulns before filtering: (10) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
-AssetsVulnerabilitiesMode.vue:1621 [vulnsGroupedByType DEBUG server] activeGroupedVulns before filtering: (10) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
-AssetsVulnerabilitiesMode.vue:1621 [vulnsGroupedByType DEBUG server] activeGroupedVulns before filtering: (10) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
-
-
-isme phlw count me uper 7 hua fr in a second 5 hua and than 2 ho gya 
+see kahi kahi user side ye admin me bhi check kr lena in progress uoper dikha rha hai automation scriot dikh rhei leki manula fix tab me kuch bhi nhi aa rha iusko fix krao proper data aye and in prigress nhi dikhe vha 
+admin user both side check krna

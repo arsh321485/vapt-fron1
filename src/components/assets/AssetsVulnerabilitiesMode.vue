@@ -1662,13 +1662,17 @@ export default {
         if (this.closedVulnHostSet.has(closedVulnHostKey(name, host))) return false;
         return true;
       };
-      const fetched = this.vulnAssetRowsByKey[vuln?._key];
-      if (Array.isArray(fetched) && fetched.length) {
-        return fetched
-          .filter((row) => resolveAssetType(row) === wanted)
-          .map((row) => row.host_name || row.asset || row.host)
-          .filter((ip) => keepOpen(ip));
-      }
+      // Prefer the backend's own asset_type_counts whenever it unambiguously
+      // confirms this vuln belongs to exactly one type — trust it ahead of
+      // any per-host classification below, both of which fall back to the
+      // same unreliable keyword-guessing heuristic when a host row has no
+      // asset_type field. Checking this first (rather than only as a
+      // fallback after the fetched-rows branch) matters because a non-empty
+      // `fetched` list whose rows all misclassify away from `wanted` used to
+      // return an empty array and stop right there — silently emptying
+      // v.assets for a vuln the backend already confirmed belongs here,
+      // which cascaded into a blank Manual Fix panel and a wrong
+      // automation-status badge (no asset to resolve either against).
       if (hasAssetTypeCounts(vuln?.asset_type_counts)) {
         const counts = normalizeAssetTypeCounts(vuln.asset_type_counts);
         if ((counts[wanted] || 0) <= 0) return [];
@@ -1676,6 +1680,13 @@ export default {
           (type) => type === wanted || (counts[type] || 0) <= 0,
         );
         if (onlyThisType) return (vuln?.assets || []).filter((ip) => keepOpen(ip));
+      }
+      const fetched = this.vulnAssetRowsByKey[vuln?._key];
+      if (Array.isArray(fetched) && fetched.length) {
+        return fetched
+          .filter((row) => resolveAssetType(row) === wanted)
+          .map((row) => row.host_name || row.asset || row.host)
+          .filter((ip) => keepOpen(ip));
       }
       return (vuln?.assets || []).filter(
         (ip) => keepOpen(ip) && this.hostAssetType(ip, vuln) === wanted,
