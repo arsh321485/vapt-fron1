@@ -88,4 +88,5 @@ export function heldItemAssetType(
   held: unknown,
   hostTypeMap?: unknown,
   _catalog?: unknown,
+  apiRow?: unknown,
 ): string;

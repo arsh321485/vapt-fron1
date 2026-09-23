@@ -1,8 +1,28 @@
-From the **Common Vulnerability** modal, clicking **“View Now”**
-should redirect to the same vulnerability and open directly on the
- **Fix** tab.
+{
+    "report_id": "6ab35fbc1ebe4e86b0a1dc75",
+    "count": 1,
+    "assets": [
+        {
+            "asset": "dev-ofw.digitalinno.com",
+            "member_type": "external",
+            "total_vulnerabilities": 2,
+            "severity_counts": {
+                "critical": 0,
+                "high": 1,
+                "medium": 1,
+                "low": 0
+            },
+            "host_information": {},
+            "held_at": "2026-09-23T08:42:31.691000",
+            "held_by": "ritikabhikonde.sitl@gmail.com"
+        }
+    ]
+}
 
 
- on admin side user side bhi rechek kar lena 
 
- admin side common vul ke modal se jo vul hai usko fix tab par open krakr dikhao view now krke jaye to abhi first vale vo hi view kar deta hai user side already hai but frbhi dono side properly fix krao
+https://vaptbackend.secureitlab.com/api/admin/adminasset/report/6ab35fbc1ebe4e86b0a1dc75/assets/hold-list/?_ts=1790152751087
+
+ye res ponse hai abhi mene admin side se hi hold kiya hai tio srver me aa gya 
+
+jab user se kar rhi hu and admin me check kr rhi to assest me dikhta hai hold hokr o check kro

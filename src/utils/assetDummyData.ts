@@ -596,7 +596,7 @@ export function mergeHostAssetTypeMap(map, rows) {
   return next;
 }
 
-export function heldItemAssetType(held, hostTypeMap = {}, catalog = []) {
+export function heldItemAssetType(held, hostTypeMap = {}, catalog = [], apiRow = null) {
   const host = String(held?.host_name || held?.asset || held?.ip || "").trim().toLowerCase();
   const plugin = String(held?.plugin_name || held?.vul_name || "").trim();
   const holdStamp = lookupHoldStamp(hostTypeMap, plugin, host);
@@ -607,8 +607,12 @@ export function heldItemAssetType(held, hostTypeMap = {}, catalog = []) {
   // asset catalog this session already fetched from the API, instead of
   // defaulting to "other"/Assets and silently misfiling — or hiding — the
   // held item under the wrong type tab.
-  if (host && catalog && (Array.isArray(catalog) ? catalog.length : catalog.size)) {
-    const resolved = resolveHostAssetType(host, catalog);
+  // apiRow is the hold-list API's own row for this host (asset_type /
+  // host_information) — the held host is already gone from the asset catalog,
+  // so without it a hold made from another session always landed in "other".
+  const hasCatalog = catalog && (Array.isArray(catalog) ? catalog.length : catalog.size);
+  if (host && (hasCatalog || apiRow)) {
+    const resolved = resolveHostAssetType(host, catalog || [], apiRow);
     if (resolved && resolved !== "other") return resolved;
   }
   return "other";

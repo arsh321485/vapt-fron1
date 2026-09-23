@@ -2002,6 +2002,7 @@ class TLSConfigurator:
             },
             this.hostAssetTypeMap,
             this.assets,
+            a,
           );
         return {
           asset: host,

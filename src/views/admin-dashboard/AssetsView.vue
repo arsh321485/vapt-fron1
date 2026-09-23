@@ -1931,6 +1931,8 @@ class TLSConfigurator:
               plugin_name: "",
             },
             this.hostAssetTypeMap,
+            this.authStore.assetRows || [],
+            a,
           );
         return {
           asset: host,

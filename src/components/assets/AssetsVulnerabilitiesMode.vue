@@ -2236,6 +2236,7 @@ export default {
             { plugin_name: pluginName, host_name: hostName, asset: hostName },
             this.hostAssetTypeMap,
             this.assetCatalogHostIndex,
+            a,
           );
         return {
           plugin_name: pluginName,
