@@ -1895,12 +1895,25 @@ class TLSConfigurator:
       const already = this.supportRequestMessages(target).some((m) => this.supportMessageText(m) === text);
       if (!already) target.messages = [...this.supportRequestMessages(target), optimisticMsg];
       this.selectedSupportRequest = target;
+      // Same pattern as hold/unhold/delete elsewhere in this file — push
+      // same-browser tabs to pick this up instantly via BroadcastChannel,
+      // and count toward the cross-device poll cycle other open sessions
+      // are already watching.
+      notifyLiveData('support-reply');
     },
     formatRequestDate(dateStr) {
       if (!dateStr) return '';
       return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' });
     },
     async liveRefreshPage() {
+      // Independent of the guards below (which only make sense for the
+      // asset/vuln list refresh) — if a support-request reply thread modal
+      // is currently open, pull its latest messages too. Otherwise a reply
+      // from the admin never appeared while both had the same thread open
+      // at once; it only showed up after closing and reopening the modal.
+      if (this.selectedSupportRequest) {
+        this.refreshSupportRequestThread(this.selectedSupportRequest);
+      }
       if (this.activeAction) return;
       const inFixUi = this.currentVulnTab === 'auto' || this.currentVulnTab === 'manual';
       const team = this.authStore.userSelectedTeam;

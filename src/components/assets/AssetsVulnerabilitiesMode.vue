@@ -2214,6 +2214,15 @@ export default {
       this.$emit('held-changed');
     },
     async liveRefreshPage() {
+      // Independent of the vuln-list refresh below (and its early-return
+      // guards, which only make sense for that list) — if a support-request
+      // reply thread modal is currently open, pull its latest messages too.
+      // Otherwise a reply from the other party (admin/user) never appeared
+      // while both had the same thread open at once; it only showed up
+      // after closing and reopening the modal, which re-fetches fresh.
+      if (this.selectedSupportRequest) {
+        this.refreshSupportRequestThread(this.selectedSupportRequest);
+      }
       if (this.activeAction) return;
       if (this.currentVulnTab === 'manual' || this.currentVulnTab === 'auto') return;
       if (this.isUser) {
@@ -2598,6 +2607,10 @@ export default {
       const already = this.supportRequestMessages(target).some((m) => this.supportMessageText(m) === text);
       if (!already) target.messages = [...this.supportRequestMessages(target), optimisticMsg];
       this.selectedSupportRequest = target;
+      // Same pattern as hold/unhold/delete below — push same-browser tabs to
+      // pick this up instantly via BroadcastChannel, and count toward the
+      // cross-device poll cycle other open sessions are already watching.
+      notifyLiveData('support-reply');
     },
     async refreshSupportRequestsForVuln() {
       const vuln = this.selectedVuln;
