@@ -2929,7 +2929,6 @@ export default {
       }
     },
     liveRefreshPage(opts = {}) {
-      const source = opts?.source || "mutation";
       // Mitigation Timeline Extension modal has its own data (report rows
       // with reason/admin comment) that loadDashboardData()/loadAdminMteData()
       // don't touch — refresh it directly so an open modal stays live
@@ -2937,12 +2936,10 @@ export default {
       if (this.showMitigationExtensionModal) {
         this.loadAdminMteReportData();
       }
-      if (source === "poll") {
-        return Promise.all([
-          this.refreshInProcessCount(),
-          this.loadAdminMteData(),
-        ]);
-      }
+      // Poll does the full (silent) refresh too — the light version only
+      // updated in-process/MTE, so a vuln closed or support request answered
+      // from a user's session never reached the Vulnerabilities / Fixed /
+      // Support cards until the admin switched tabs and back (focus refresh).
       return this.loadDashboardData();
     },
     goFreemiumUpgrade() {

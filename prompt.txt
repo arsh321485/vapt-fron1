@@ -1,1 +1,1 @@
-ye dekho yha ui nhi diya tumne configure assets and vulnerabities ke niche 
+See image admindashbaordonboarding me user agr vul closed bhi kar dera hai tp upadte hokr jldi nhi aa rhi me dusre koi tab parse ati hu to thodi der bad update hokr dikhti hai ye frontedn se kuch issue hai kya admin isde check kro
