@@ -483,16 +483,6 @@ export default {
   },
 
   mounted() {
-    if (sessionStorage.getItem('vaptfix_account_deleted') === '1') {
-      sessionStorage.removeItem('vaptfix_account_deleted')
-      Swal.fire({
-        icon: 'info',
-        title: 'Account deleted',
-        text: 'Your account has been permanently deleted.',
-        confirmButtonColor: '#241447',
-      })
-    }
-
     const fromQuery = extractClaimInviteToken(this.$route?.query || {})
     if (fromQuery) storeClaimInviteToken(fromQuery)
 

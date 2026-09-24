@@ -781,7 +781,7 @@ export default {
           });
           return;
         }
-        await router.replace('/signin');
+        await router.replace('/home');
       } finally {
         this.uninstalling = false;
       }

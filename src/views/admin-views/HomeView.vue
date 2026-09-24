@@ -369,6 +369,7 @@ import {
 import { writeLockedRoute } from '@/utils/routeLock';
 import { hasAuthSession } from '@/utils/authenticatedHome';
 import { useAuthStore } from '@/stores/authStore';
+import Swal from 'sweetalert2';
 
 export default {
   name: 'HomeView',
@@ -518,6 +519,15 @@ export default {
     },
   },
   mounted() {
+    if (sessionStorage.getItem('vaptfix_account_deleted') === '1') {
+      sessionStorage.removeItem('vaptfix_account_deleted');
+      Swal.fire({
+        icon: 'info',
+        title: 'Account deleted',
+        text: 'Your account has been permanently deleted.',
+        confirmButtonColor: '#241447',
+      });
+    }
     if (!hasAuthSession()) {
       writeLockedRoute(this.$route.fullPath || '/home');
     }
