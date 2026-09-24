@@ -3,7 +3,7 @@
     <nav class="navbar navbar-expand-lg fixed-top">
       <div class="container-fluid">
 
-        <router-link :to="appHomePath"><img src="@/assets/images/vaptfix_white.png" alt="logo" class="me-5"></router-link>
+        <router-link :to="appHomePath"><img src="@/assets/images/vaptfix_white.png" alt="logo" class="me-5" width="90" height="30"></router-link>
         <!-- <div class="browser-bar" style="height: 40px;">
         <img src="@/assets/images/logo-capital.png" alt="">
       </div>  -->
@@ -491,6 +491,10 @@ export default {
       const storedUser = authStore.user || readStoredUser();
       if (storedUser) this.setUserData(storedUser);
 
+      // Marketing home hides the profile chip — skip profile/billing APIs so a
+      // leftover/invalid token does not 401 the public /home Lighthouse run.
+      if (this.isPublicHomePage) return;
+
       const isMember = !!(storedUser && Array.isArray(storedUser.Member_role));
       if (isMember) {
         const response = await authStore.getMemberProfile();
@@ -501,6 +505,10 @@ export default {
       }
 
       const response = await authStore.getUserProfile();
+      if (response.httpStatus === 401 || response.httpStatus === 403) {
+        this.hasSession = false;
+        return;
+      }
       if (response.status && response.data?.user) {
         this.setUserData(response.data.user);
       }

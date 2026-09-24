@@ -1,0 +1,9 @@
+# VaptFix
+
+VaptFix is a Vulnerability Management Program as a service. Discover, prioritize, and fix security flaws with guided remediation.
+
+- [Home](https://vaptfix.ai/home)
+- [Pricing](https://vaptfix.ai/pricingplan)
+- [How VaptFix Works](https://vaptfix.ai/how-vaptfix-works)
+- [Knowledge Base](https://vaptfix.ai/knowledge-base)
+- [Support](https://vaptfix.ai/support)

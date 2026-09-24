@@ -1197,9 +1197,12 @@ export const useAuthStore = defineStore("auth", {
         const response = await endpoint.get("/api/admin/users_details/member-profile/");
         const data = response.data;
         return { status: true, data };
-      } catch (error) {
-        console.error("Member profile fetch error:", error);
-        return { status: false, message: "Unable to fetch profile" };
+      } catch (error: any) {
+        const httpStatus = error?.response?.status;
+        if (httpStatus !== 401 && httpStatus !== 403) {
+          console.error("Member profile fetch error:", error);
+        }
+        return { status: false, message: "Unable to fetch profile", httpStatus };
       }
     },
 
@@ -1225,9 +1228,12 @@ export const useAuthStore = defineStore("auth", {
         }
 
         return { status: false, message: data?.message || "Unable to fetch profile" };
-      } catch (error) {
-        console.error("Profile fetch error:", error);
-        return { status: false, message: "Unable to fetch profile" };
+      } catch (error: any) {
+        const httpStatus = error?.response?.status;
+        if (httpStatus !== 401 && httpStatus !== 403) {
+          console.error("Profile fetch error:", error);
+        }
+        return { status: false, message: "Unable to fetch profile", httpStatus };
       }
     },
 

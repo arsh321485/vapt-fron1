@@ -6,15 +6,15 @@
             <div class="row">
                 <div class="col-lg-5 col-md-6 text-white">
                      <router-link :to="appHomePath">
-                       <img src="@/assets/images/vaptfix_white.png" alt="logo" style="cursor: pointer; height: 38px;">
+                       <img src="@/assets/images/vaptfix_white.png" alt="logo" width="90" height="30" style="cursor: pointer; height: 38px;">
                      </router-link>
                     <p class="mt-4">Eliminate Vulnerabilities Before They<br> Become Threats.</p>
                     <div class="footer-iso-badges">
-                        <img src="@/assets/images/iso-standards/iso1.png" alt="AICPA SOC" class="iso-logo">
-                        <img src="@/assets/images/iso-standards/iso27001.png" alt="ISO 27001 certified" class="iso-logo">
-                        <img src="@/assets/images/iso-standards/iso22301.png" alt="ISO 22301 certified" class="iso-logo">
-                        <img src="@/assets/images/iso-standards/iso27017.png" alt="ISO 27017 certified" class="iso-logo">
-                        <img src="@/assets/images/iso-standards/iso27701.png" alt="ISO 27701 certified" class="iso-logo">
+                        <img src="@/assets/images/iso-standards/iso1.png" alt="AICPA SOC" class="iso-logo" width="72" height="72">
+                        <img src="@/assets/images/iso-standards/iso27001.png" alt="ISO 27001 certified" class="iso-logo" width="72" height="72">
+                        <img src="@/assets/images/iso-standards/iso22301.png" alt="ISO 22301 certified" class="iso-logo" width="72" height="72">
+                        <img src="@/assets/images/iso-standards/iso27017.png" alt="ISO 27017 certified" class="iso-logo" width="72" height="72">
+                        <img src="@/assets/images/iso-standards/iso27701.png" alt="ISO 27701 certified" class="iso-logo" width="72" height="72">
                     </div>
                 </div>
                 <div class="col-lg-7 col-md-6 text-white d-flex flex-column justify-content-end">

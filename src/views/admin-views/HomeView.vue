@@ -153,28 +153,28 @@
         <div class="hv-cards-2">
           <div class="hv-feature-item">
             <div class="hv-feature-img">
-              <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDv1vGU6p6m3ubNSsB0MhxiQE6oLJ57oTKIBnHbjHACMlZSZ5G2QgMrsT_QMixfZ8CMuStCrBLhJtHLXs6OOfjYwc5QXCVu8JHLW8H6WsEfwkte1PycfCIIG2NI_Uh7S61xFVGFxcNPQTNEZCz5nZ2Ff-KrJEmLQNOd6zBFJZ_5Dc69czlitiQ2n0ICgZdzRihgwhiRb6rCtiAByiM-aS5MilVRx_hyHAKoBUb-MIW2v8qcld-BC8Kyj03x5XB9_sjlUCsZO0T3bpEe" alt="Continuous Discovery" />
+              <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDv1vGU6p6m3ubNSsB0MhxiQE6oLJ57oTKIBnHbjHACMlZSZ5G2QgMrsT_QMixfZ8CMuStCrBLhJtHLXs6OOfjYwc5QXCVu8JHLW8H6WsEfwkte1PycfCIIG2NI_Uh7S61xFVGFxcNPQTNEZCz5nZ2Ff-KrJEmLQNOd6zBFJZ_5Dc69czlitiQ2n0ICgZdzRihgwhiRb6rCtiAByiM-aS5MilVRx_hyHAKoBUb-MIW2v8qcld-BC8Kyj03x5XB9_sjlUCsZO0T3bpEe" alt="Continuous Discovery" width="640" height="360" />
             </div>
             <h3 class="hv-feature-title">Continuous Multi-Modal Discovery</h3>
             <p class="hv-feature-desc">See everything, everywhere. Continuously discover vulnerabilities across hybrid cloud, on-premises infrastructure, and remote endpoints.</p>
           </div>
           <div class="hv-feature-item">
             <div class="hv-feature-img">
-              <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCcEeoO6pRHzSYFGnwYnQJfgyMySwa-3jOCAu1oaMfKsD6bTfWtBTlBbMHPQM0i6GlHdUeyNxhkeG7MoUvl_oS9Z_pYvbelI4ZU4mV2va6PX37yt1CoKWniposFMFPy7PY6OJktVCx0W7DUArSpcYqD79l7YgBLnz9qsSHQFHB7_maPpBt1pL1Md3yyVXE6CnkygUOs-lY0haM1UdbFPH2fdcu_dYOuLjOJdJ6c5TpSeTTlJD8CJoye9JpwA-xACCrbgxeGaNdwNNKo" alt="Intelligent Mitigation" />
+              <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCcEeoO6pRHzSYFGnwYnQJfgyMySwa-3jOCAu1oaMfKsD6bTfWtBTlBbMHPQM0i6GlHdUeyNxhkeG7MoUvl_oS9Z_pYvbelI4ZU4mV2va6PX37yt1CoKWniposFMFPy7PY6OJktVCx0W7DUArSpcYqD79l7YgBLnz9qsSHQFHB7_maPpBt1pL1Md3yyVXE6CnkygUOs-lY0haM1UdbFPH2fdcu_dYOuLjOJdJ6c5TpSeTTlJD8CJoye9JpwA-xACCrbgxeGaNdwNNKo" alt="Intelligent Mitigation" width="640" height="360" />
             </div>
             <h3 class="hv-feature-title">Intelligent Mitigation Guidance</h3>
             <p class="hv-feature-desc">Stop searching for the fix. Get the blueprints. Every vulnerability is paired with clear, actionable, human-readable steps tailored to your specific technology stack.</p>
           </div>
           <div class="hv-feature-item">
             <div class="hv-feature-img">
-              <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDK_5GWvAxxcenhtZdQUsRo0mE__eUmmSOJT2UHjiypTbjowZje2q8R15r0-Qb96T6F0YrOD4-iN5qeW2-1Nax5AdlZtoEHfMfweJUSiEqVk-zatSL1oRlP-FhFZ4bKecy-5Np7TxLY9Jv2JzQ8F1i67RcCGcFtsYlRw06J0DqKD61vN0URbN3T6RwqFEmrEX90MY9uIVaIWbSu2AtETjMC3c0TxfJQY5CZ9WEsxohF6Sx6zDrijMUeNisJM1NZhCWxi6NfFUMB9kMp" alt="Task Orchestration" />
+              <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDK_5GWvAxxcenhtZdQUsRo0mE__eUmmSOJT2UHjiypTbjowZje2q8R15r0-Qb96T6F0YrOD4-iN5qeW2-1Nax5AdlZtoEHfMfweJUSiEqVk-zatSL1oRlP-FhFZ4bKecy-5Np7TxLY9Jv2JzQ8F1i67RcCGcFtsYlRw06J0DqKD61vN0URbN3T6RwqFEmrEX90MY9uIVaIWbSu2AtETjMC3c0TxfJQY5CZ9WEsxohF6Sx6zDrijMUeNisJM1NZhCWxi6NfFUMB9kMp" alt="Task Orchestration" width="640" height="360" />
             </div>
             <h3 class="hv-feature-title">Internal &amp; 3rd Party Task Orchestration</h3>
             <p class="hv-feature-desc">Hold every stakeholder accountable. Track and manage mitigation tasks across your internal teams and external vendors through a single pane of glass.</p>
           </div>
           <div class="hv-feature-item">
             <div class="hv-feature-img">
-              <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBH8ZByJl6DUfKSUM86A225OGFcxErEu3Oy9uXkN5OfUurrwxwnGGMLYKUsUkSBWrYr8lIRSOKqiexduoNIiasiMtFX1LPN6hXvBLowhJ9Pr6hropCeX5rqxPGrV_P1LEv91813cFw3YppqNxXrJhdjBEyXRq-80PmUkpkm5gaRr-H7g5i3tul6nw4ybqTsDVe6NMkb9G53RYBFRrWAubWViUAx4WC97P25Cdvw7VPkxL-DQc03y5gUn_IjBjfXYAaaWBlqPFXbehNu" alt="Operational Reality" />
+              <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBH8ZByJl6DUfKSUM86A225OGFcxErEu3Oy9uXkN5OfUurrwxwnGGMLYKUsUkSBWrYr8lIRSOKqiexduoNIiasiMtFX1LPN6hXvBLowhJ9Pr6hropCeX5rqxPGrV_P1LEv91813cFw3YppqNxXrJhdjBEyXRq-80PmUkpkm5gaRr-H7g5i3tul6nw4ybqTsDVe6NMkb9G53RYBFRrWAubWViUAx4WC97P25Cdvw7VPkxL-DQc03y5gUn_IjBjfXYAaaWBlqPFXbehNu" alt="Operational Reality" width="640" height="360" />
             </div>
             <h3 class="hv-feature-title">Operational Reality Mapping</h3>
             <p class="hv-feature-desc">Ascertain exactly how your operational timeline stacks up against the risk criteria set in your management policy. We surface real-world exposure windows that static SLAs hide.</p>
@@ -221,7 +221,7 @@
           </div>
           <div class="hv-human-right">
             <div class="hv-human-img-card">
-              <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuAqeBOHtVSe-cDxfn1UBwXzaLG0fX9oF5DQDuzr7znxuhH6IbEcWeHO6Hrh09PpYkH3jtAxAOxn_l3k17u2tvcYAiZtlJ_0sDnxhXcTVCcCqnYoj2NIDb_GzbWSmsokOwoFDuLI2xt4PnyTeSqCBxEIRdndZkgExosPM0Ixb80TYBJyzaCfo0V3PRkxeQxNILmNQO9yEEHGmbP9ipLYhdRUupal0QOJV8McRFKJ12MR1gAawqtco3k_QmoZhMf7r3caMhX-j-LeSmqY" alt="Human Intelligence" />
+              <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuAqeBOHtVSe-cDxfn1UBwXzaLG0fX9oF5DQDuzr7znxuhH6IbEcWeHO6Hrh09PpYkH3jtAxAOxn_l3k17u2tvcYAiZtlJ_0sDnxhXcTVCcCqnYoj2NIDb_GzbWSmsokOwoFDuLI2xt4PnyTeSqCBxEIRdndZkgExosPM0Ixb80TYBJyzaCfo0V3PRkxeQxNILmNQO9yEEHGmbP9ipLYhdRUupal0QOJV8McRFKJ12MR1gAawqtco3k_QmoZhMf7r3caMhX-j-LeSmqY" alt="Human Intelligence" width="640" height="480" />
             </div>
           </div>
         </div>
@@ -277,7 +277,7 @@
             ›
           </button>
         </div>
-        <div class="hv-reviews-dots" role="tablist" aria-label="Review slides">
+        <div class="hv-reviews-dots" role="group" aria-label="Review slides">
           <button
             v-for="page in reviewPageCount"
             :key="'rdot-' + page"
@@ -285,7 +285,7 @@
             class="hv-reviews-dot"
             :class="{ 'hv-reviews-dot--active': page - 1 === reviewSlideIndex }"
             :aria-label="'Slide ' + page"
-            :aria-selected="page - 1 === reviewSlideIndex"
+            :aria-current="page - 1 === reviewSlideIndex ? 'true' : undefined"
             @click="goToReviewSlide(page - 1)"
           />
         </div>
@@ -330,7 +330,7 @@
     <!-- CTA BOTTOM SECTION -->
     <section class="hv-cta">
       <div class="hv-cta-bg">
-        <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuAPsio8sVUVAZWGvAUcbhCEHyROriMT588zuPx09opPjVzYo8GAU3ZqWaoc-G4z9K5xYVa9JIeU9adcM5jGM6OK6nUeSSQRnvL6feuIx4gr64IO3Sk0tGAbzVfK7U-dRC2SZsd3oWy2X70sL2yTewg0eaD2jf5y5cdvdYGPQOaZHEaDL609b9tV4RVfj_P6jDdT-SvfZ_1yhavk2UbnwTUUG-ocmL9E9fS8uJKBbSSnQf01WscymBnfQRkGalu3Ul38g9K5qFHxhe1O" alt="" />
+        <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuAPsio8sVUVAZWGvAUcbhCEHyROriMT588zuPx09opPjVzYo8GAU3ZqWaoc-G4z9K5xYVa9JIeU9adcM5jGM6OK6nUeSSQRnvL6feuIx4gr64IO3Sk0tGAbzVfK7U-dRC2SZsd3oWy2X70sL2yTewg0eaD2jf5y5cdvdYGPQOaZHEaDL609b9tV4RVfj_P6jDdT-SvfZ_1yhavk2UbnwTUUG-ocmL9E9fS8uJKBbSSnQf01WscymBnfQRkGalu3Ul38g9K5qFHxhe1O" alt="" width="1600" height="900" />
       </div>
       <div class="hv-container hv-cta-inner">
         <h2 class="hv-cta-title">Fix Bugs Instantly.</h2>
@@ -1152,6 +1152,7 @@ export default {
 
 .hv-human-img-card img {
   width: 100%;
+  height: auto;
   border-radius: 16px;
   display: block;
 }
@@ -1246,21 +1247,34 @@ export default {
 }
 
 .hv-reviews-dot {
-  width: 8px;
-  height: 8px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.35);
+  background: transparent;
   cursor: pointer;
+  position: relative;
+}
+
+.hv-reviews-dot::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
   transition: transform 0.2s, background 0.2s;
 }
 
-.hv-reviews-dot:hover {
+.hv-reviews-dot:hover::after {
   background: rgba(255, 255, 255, 0.55);
 }
 
-.hv-reviews-dot--active {
+.hv-reviews-dot--active::after {
   background: #fff;
   transform: scale(1.12);
 }

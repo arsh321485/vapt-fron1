@@ -4,7 +4,7 @@
       <!-- Sidebar — product nav: Home … Support Requests + VAPTFIX logo mark -->
       <aside class="dashboard-sidebar" aria-label="Demo navigation">
         <div class="sidebar-logo" aria-label="VAPTFIX">
-          <img src="@/assets/images/vaptfix_white.png" alt="VAPTFIX" class="sidebar-logo-img" />
+          <img src="@/assets/images/vaptfix_white.png" alt="VAPTFIX" class="sidebar-logo-img" width="90" height="30" />
         </div>
         <button
           type="button"
@@ -1541,7 +1541,7 @@ export default {
   font-size: 10px;
   font-weight: 700;
   color: #fff;
-  background: #e53e3e;
+  background: #b91c1c;
   border-radius: 999px;
   display: flex;
   align-items: center;
@@ -3358,7 +3358,7 @@ export default {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #94a3b8;
+  color: #475569;
 }
 
 .perf-stats-row {
@@ -3381,7 +3381,7 @@ export default {
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: #94a3b8;
+  color: #475569;
   margin-bottom: 4px;
 }
 
@@ -3417,7 +3417,7 @@ export default {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #94a3b8;
+  color: #475569;
 }
 
 .perf-sev-bar {
