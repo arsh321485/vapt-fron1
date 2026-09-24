@@ -1696,7 +1696,7 @@ class TLSConfigurator:
       if (selectedAssets.length > 0) {
         const modalEl = document.getElementById("deleteModal");
         if (modalEl) {
-          const modal = new bootstrap.Modal(modalEl);
+          const modal = new window.bootstrap.Modal(modalEl);
           modal.show();
         } else {
           console.warn("Delete modal element not found (#deleteModal).");
@@ -1791,7 +1791,7 @@ class TLSConfigurator:
         if (selectedAssets.length > 0) {
           const modalEl = document.getElementById("holdConfirmModal");
           if (modalEl) {
-            const modal = new bootstrap.Modal(modalEl);
+            const modal = new window.bootstrap.Modal(modalEl);
             modal.show();
           } else {
             console.warn("[Hold] holdConfirmModal element not found");
@@ -2313,7 +2313,10 @@ class TLSConfigurator:
     this.openFixPanelAlerts();
 
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-    [...tooltipTriggerList].map(el => new bootstrap.Tooltip(el));
+    const Tooltip = window.bootstrap?.Tooltip;
+    if (Tooltip) {
+      [...tooltipTriggerList].forEach((el) => new Tooltip(el));
+    }
 
     const dropdown = document.querySelector('.dropdown');
     if (dropdown) {

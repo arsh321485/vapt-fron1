@@ -509,12 +509,16 @@ export default {
     getTeamTabNavStyle,
     getTeamTabUnderlineStyle,
     openModal() {
-    const modal = new bootstrap.Modal(this.$refs.addUserModal);
+    const Modal = window.bootstrap?.Modal;
+    const el = this.$refs.addUserModal;
+    if (!Modal || !el) return;
+    const modal = Modal.getOrCreateInstance(el);
     modal.show();
   },
 
   closeModal() {
-    const modal = bootstrap.Modal.getInstance(this.$refs.addUserModal);
+    const el = this.$refs.addUserModal;
+    const modal = el ? window.bootstrap?.Modal?.getInstance(el) : null;
     modal?.hide();
     this.resetRoleAssignments();
   },

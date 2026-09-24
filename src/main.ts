@@ -3,7 +3,14 @@ import "./assets/responsive.css";
 import "./utils/suppressUploadReportModal";
 
 // Bootstrap dropdowns/collapse require the JS bundle (includes Popper).
-import "bootstrap/dist/js/bootstrap.bundle.min.js";
+// Vite loads this UMD file as a module, so it never assigns `window.bootstrap`.
+// Pages call `bootstrap.Tooltip` / `bootstrap.Modal` as a global — publish it here.
+import * as bootstrapBundle from "bootstrap/dist/js/bootstrap.bundle.min.js";
+
+const bootstrapApi =
+  (bootstrapBundle as { default?: typeof bootstrapBundle }).default ?? bootstrapBundle;
+
+(window as Window & { bootstrap: typeof bootstrapApi }).bootstrap = bootstrapApi;
 
 import { createApp } from "vue";
 import { createPinia } from "pinia";

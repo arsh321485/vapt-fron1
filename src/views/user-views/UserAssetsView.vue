@@ -1472,7 +1472,7 @@ class TLSConfigurator:
       this.assetSrCompletedSteps = [];
       this.assetSrRequestsByStep = {};
       this.assetSrFixVulnId = null;
-      const modal = new bootstrap.Modal(document.getElementById('assetSrModal'));
+      const modal = new window.bootstrap.Modal(document.getElementById('assetSrModal'));
       modal.show();
       this.loadAssetSrRequestsForVuln();
     },
@@ -1563,7 +1563,7 @@ class TLSConfigurator:
       }
       const el = document.getElementById('assetSrModal');
       if (el) {
-        const modal = bootstrap.Modal.getOrCreateInstance(el);
+        const modal = window.bootstrap.Modal.getOrCreateInstance(el);
         modal.show();
       }
       await this.loadAssetSrRequestsForVuln();
@@ -2245,7 +2245,7 @@ class TLSConfigurator:
       }
       const selectedAssets = (this.filteredAssets || []).filter((a) => a.selected);
       if (selectedAssets.length > 0) {
-        const modal = new bootstrap.Modal(document.getElementById("deleteModal"));
+        const modal = new window.bootstrap.Modal(document.getElementById("deleteModal"));
         modal.show();
       }
     },
@@ -2278,7 +2278,7 @@ class TLSConfigurator:
       if (this.showHoldCheckboxes) {
         const selectedAssets = (this.filteredAssets || []).filter(a => a.selected);
         if (selectedAssets.length > 0) {
-          let modal = new bootstrap.Modal(document.getElementById("holdConfirmModal"));
+          let modal = new window.bootstrap.Modal(document.getElementById("holdConfirmModal"));
           modal.show();
         }
         return;
@@ -2622,7 +2622,10 @@ class TLSConfigurator:
     this.openFixPanelAlerts();
 
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-    [...tooltipTriggerList].map(el => new bootstrap.Tooltip(el));
+    const Tooltip = window.bootstrap?.Tooltip;
+    if (Tooltip) {
+      [...tooltipTriggerList].forEach((el) => new Tooltip(el));
+    }
     // Reuse the store's cache when it's already fresh instead of always
     // re-hitting the network on entry. The premium lock check has no
     // dependency on the asset/held data, so it runs alongside instead of after.

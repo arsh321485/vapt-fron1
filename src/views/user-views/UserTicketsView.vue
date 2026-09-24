@@ -195,7 +195,8 @@ export default {
         await this.loadTickets();
         this.$nextTick(() => {
             const tooltipEls = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-            [...tooltipEls].map(el => new bootstrap.Tooltip(el));
+            const Tooltip = window.bootstrap?.Tooltip;
+            if (Tooltip) [...tooltipEls].forEach((el) => new Tooltip(el));
         });
     },
     methods: {

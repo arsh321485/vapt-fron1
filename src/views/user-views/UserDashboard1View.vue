@@ -1790,13 +1790,13 @@ export default {
       if (!this.inProcessCount) return;
       await this.$nextTick();
       const modalEl = document.getElementById('userInProcessModal');
-      const existingModal = bootstrap.Modal.getInstance(modalEl);
-      const modal = existingModal || new bootstrap.Modal(modalEl);
+      const existingModal = window.bootstrap.Modal.getInstance(modalEl);
+      const modal = existingModal || new window.bootstrap.Modal(modalEl);
       modal.show();
     },
     goToUserInProcessTimeline(item) {
       if (!item?.asset) return;
-      const modal = bootstrap.Modal.getInstance(document.getElementById('userInProcessModal'));
+      const modal = window.bootstrap.Modal.getInstance(document.getElementById('userInProcessModal'));
       if (modal) modal.hide();
       this.$router.push({
         name: 'userassets',

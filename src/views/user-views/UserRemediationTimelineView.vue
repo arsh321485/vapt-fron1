@@ -919,7 +919,7 @@ export default {
         this.supportDetail = existingRequest || null;
       }
       await this.$nextTick();
-      const modal = new bootstrap.Modal(document.getElementById('rtUserSupportModal'));
+      const modal = new window.bootstrap.Modal(document.getElementById('rtUserSupportModal'));
       modal.show();
     },
     async submitSupport() {
