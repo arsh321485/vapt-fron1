@@ -2836,6 +2836,71 @@ export const useAuthStore = defineStore("auth", {
       }
       return { status: false };
     },
+
+    async getSlackConnectionStatus() {
+      try {
+        const res = await endpoint.get("/api/admin/users/slack/status/");
+        const data = res.data || {};
+        const workspaceName =
+          typeof data.workspace_name === "string" ? data.workspace_name.trim() : "";
+        return {
+          status: true,
+          connected: !!data.connected,
+          slackTeamId: data.slack_team_id || null,
+          workspaceName: workspaceName || null,
+        };
+      } catch (error: unknown) {
+        return {
+          status: false,
+          connected: false,
+          slackTeamId: null,
+          workspaceName: null,
+          message: extractApiErrorMessage(error, "Unable to load Slack status."),
+        };
+      }
+    },
+
+    /** Account is already deleted — clear this browser only. Do not call /logout/. */
+    discardDeletedAccountSession() {
+      clearAllAuthTokens();
+      clearClaimInvite();
+      clearMagicLinkUnlimited();
+      sessionStorage.removeItem("google_id_token");
+      sessionStorage.removeItem("isNewUser");
+      sessionStorage.removeItem("admin_slack_connected");
+      sessionStorage.removeItem("admin_teams_connected");
+      sessionStorage.removeItem("authenticatedTabId");
+      localStorage.removeItem("slack_bot_token");
+      localStorage.removeItem("slack_user_token");
+      localStorage.removeItem("slack_team");
+      localStorage.removeItem("slack_channels");
+      localStorage.removeItem("slack_users");
+      localStorage.removeItem("slack_user_login_data");
+      localStorage.removeItem("admin_slack_connected");
+      clearLockedRoute();
+      this.user = null;
+      this.accessToken = null;
+      this.refreshToken = null;
+      this.clearCache();
+      sessionStorage.setItem("vaptfix_account_deleted", "1");
+    },
+
+    async uninstallSlackAccount() {
+      try {
+        const res = await endpoint.post("/api/admin/users/slack/uninstall/", { confirm: true });
+        this.discardDeletedAccountSession();
+        return {
+          status: true,
+          data: res.data,
+          message: res.data?.message || "Your account has been permanently deleted.",
+        };
+      } catch (error: unknown) {
+        return {
+          status: false,
+          message: extractApiErrorMessage(error, "Unable to uninstall Slack."),
+        };
+      }
+    },
     async loginWithSlack(botToken: string, userToken: string) {
       console.log("=== loginWithSlack called ===");
       console.log("Bot Token:", botToken);

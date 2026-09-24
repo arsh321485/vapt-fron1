@@ -74,12 +74,32 @@
           </div>
 
           <div v-if="mode === 'admin'" class="ma-connect-block">
-            <h4 class="ma-connect-title">Connect Slack / Teams</h4>
-            <p class="ma-section-desc mb-3">Email-signup admins can only connect with Slack or Teams.</p>
+            <h4 class="ma-connect-title">Slack / Teams</h4>
+            <p class="ma-section-desc mb-3">
+              <template v-if="slackStatusLoading">Checking Slack connection…</template>
+              <template v-else-if="slackConnected">Connected — {{ slackWorkspaceLabel }}</template>
+              <template v-else>Not Connected</template>
+            </p>
             <div class="ma-connect-actions">
-              <button type="button" class="btn ma-btn-outline" :disabled="oauthLoading === 'slack'" @click="connectSlack">
+              <button
+                v-if="!slackStatusLoading && !slackConnected"
+                type="button"
+                class="btn ma-btn-outline"
+                :disabled="oauthLoading === 'slack'"
+                @click="connectSlack"
+              >
                 <span v-if="oauthLoading === 'slack'" class="spinner-border spinner-border-sm me-1"></span>
-                {{ slackConnected ? 'Slack connected' : 'Connect Slack' }}
+                Connect Slack
+              </button>
+              <button
+                v-else-if="!slackStatusLoading && slackConnected"
+                type="button"
+                class="btn ma-btn-danger"
+                :disabled="uninstalling"
+                @click="uninstallSlack"
+              >
+                <span v-if="uninstalling" class="spinner-border spinner-border-sm me-1"></span>
+                Uninstall
               </button>
               <button type="button" class="btn ma-btn-outline" :disabled="oauthLoading === 'teams'" @click="connectTeams">
                 <span v-if="oauthLoading === 'teams'" class="spinner-border spinner-border-sm me-1"></span>
@@ -342,6 +362,9 @@ export default {
       adminHasPassword: false,
       oauthLoading: false,
       slackConnected: false,
+      slackStatusLoading: false,
+      slackWorkspaceName: '',
+      uninstalling: false,
       teamsConnected: false,
       activeProjectName: localStorage.getItem('activeProjectName') || '',
       preferredTeam: localStorage.getItem(USER_TEAM_KEY) || 'both',
@@ -407,6 +430,9 @@ export default {
     needsSetPassword() {
       return this.isSlackOrTeamsAdmin && this.adminHasPassword !== true;
     },
+    slackWorkspaceLabel() {
+      return this.slackWorkspaceName || 'Slack';
+    },
   },
   watch: {
     visibleNavItems: {
@@ -432,6 +458,7 @@ export default {
         await this.loadBilling();
       }
       this.syncConnectionState();
+      await this.loadSlackStatus();
       window.addEventListener('message', this.onOAuthMessage);
     }
   },
@@ -682,10 +709,6 @@ export default {
       this.passwordRules.special = /[!@#$%^&*(),.?":{}|<>]/.test(pwd);
     },
     syncConnectionState() {
-      this.slackConnected = !!(
-        localStorage.getItem('slack_bot_token') ||
-        sessionStorage.getItem('admin_slack_connected') === 'true'
-      );
       this.teamsConnected = !!(
         localStorage.getItem('teams_connected') === 'true' ||
         localStorage.getItem('microsoft_graph_token') ||
@@ -718,6 +741,49 @@ export default {
         Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to send set-password link.', confirmButtonColor: '#241447' });
       } finally {
         this.setPasswordSending = false;
+      }
+    },
+    async loadSlackStatus() {
+      this.slackStatusLoading = true;
+      try {
+        const res = await this.authStore.getSlackConnectionStatus();
+        this.slackConnected = !!res.connected;
+        this.slackWorkspaceName = res.workspaceName || '';
+      } catch {
+        this.slackConnected = false;
+        this.slackWorkspaceName = '';
+      } finally {
+        this.slackStatusLoading = false;
+      }
+    },
+    async uninstallSlack() {
+      const result = await Swal.fire({
+        title: 'Uninstall Slack?',
+        text: 'Are you sure? This will permanently delete your VaptFix account and ALL data — reports, team members, vulnerabilities, everything. This cannot be undone.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, permanently delete',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#64748b',
+      });
+      if (!result.isConfirmed) return;
+
+      this.uninstalling = true;
+      try {
+        const res = await this.authStore.uninstallSlackAccount();
+        if (!res.status) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Uninstall failed',
+            text: res.message || 'Unable to uninstall Slack.',
+            confirmButtonColor: '#241447',
+          });
+          return;
+        }
+        await router.replace('/signin');
+      } finally {
+        this.uninstalling = false;
       }
     },
     async connectSlack() {
@@ -778,8 +844,8 @@ export default {
       }
       if (event.data?.success === false) return;
       if (event.data?.type === 'SLACK_CONNECTED' || event.data?.slack_bot_token || event.data?.bot_access_token) {
-        this.slackConnected = true;
         sessionStorage.setItem('admin_slack_connected', 'true');
+        this.loadSlackStatus();
       }
       if (event.data?.type === 'TEAMS_CONNECTED' || event.data?.vaptfix_team || event.data?.django_access_token) {
         this.teamsConnected = true;
@@ -1162,6 +1228,24 @@ export default {
   font-size: 13px;
   font-weight: 600;
   padding: 8px 14px;
+}
+
+.ma-btn-danger {
+  border: none;
+  background: #dc2626;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+}
+
+.ma-btn-danger:hover {
+  background: #b91c1c;
+  color: #fff;
+}
+
+.ma-btn-danger:disabled {
+  opacity: 0.65;
 }
 
 .ma-set-password-card {

@@ -180,6 +180,7 @@ const AUTH_ENDPOINTS = [
   "/api/admin/users/reset-password/",
   "/api/admin/users/token/refresh/", // refresh endpoint itself — infinite loop rokne ke liye
   "/api/admin/users/slack/pricing-handoff/",
+  "/api/admin/users/slack/uninstall/",
   "/api/admin/upload_report/claim-invite/validate/",
   "/api/admin/report-invite/validate/",
 ];
