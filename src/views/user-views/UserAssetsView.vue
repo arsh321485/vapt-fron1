@@ -993,6 +993,7 @@ import {
 } from "@/utils/assetDummyData";
 import { filterSupportRequestsByVuln, mapSupportRequestsByStep } from "@/utils/supportRequests";
 import { suppressLiveSync, notifyLiveData } from "@/utils/livePageSync";
+import Swal from "sweetalert2";
 import {
   resolveVulnPluginId as lookupVulnPluginId,
   resolveVulnCardId as lookupVulnCardId,
