@@ -256,8 +256,15 @@ endpoint.interceptors.response.use(
       "/webinarform",
       "/webinarform-thankyou",
     ]);
+    // Public pages (privacy, terms, support, dpa, knowledge base, ...) must stay
+    // open: Header's profile call with a leftover/expired token 401s there and
+    // used to bounce the visitor back to /home a second after the page opened.
+    const isPublicRoute = !router.currentRoute.value?.meta?.requiresAuth;
     const skip401Redirect =
-      isAuthScreen || noRedirect401Paths.has(currentPath) || isUserAppRoute(currentPath);
+      isAuthScreen ||
+      isPublicRoute ||
+      noRedirect401Paths.has(currentPath) ||
+      isUserAppRoute(currentPath);
 
     // Token refresh is always attempted on a 401, even on skip401Redirect pages
     // (e.g. /billing/success, which can sit through a long Stripe checkout
