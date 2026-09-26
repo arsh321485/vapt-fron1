@@ -172,6 +172,39 @@
         <h2 class="hvw-section-title">Slack Onboarding Flow</h2>
         <p class="hvw-section-sub">The Slack journey follows the same onboarding logic, delivered through interactive Slack cards within the workspace.</p>
 
+        <!-- Part 1 — Connect Slack workspace -->
+        <div class="hvw-part-head">
+          <span class="hvw-part-num">Part 1</span>
+          <h3 class="hvw-part-title">Connect your Slack workspace</h3>
+        </div>
+        <p class="hvw-conn-note">Already have a Slack workspace? Skip steps 5 and 6.</p>
+
+        <div class="hvw-conn-steps">
+          <div v-for="(step, i) in slackConnectSteps" :key="step.title" class="hvw-conn-step">
+            <div class="hvw-conn-top">
+              <span class="hvw-conn-num">{{ i + 1 }}</span>
+              <span class="hvw-conn-where" :class="'is-' + step.where.toLowerCase()">{{ step.where }}</span>
+              <span class="hvw-conn-icon">{{ step.icon }}</span>
+            </div>
+            <div class="hvw-conn-title">{{ step.title }}</div>
+            <span v-if="step.badge" class="hvw-conn-badge">{{ step.badge }}</span>
+            <div class="hvw-conn-desc">{{ step.desc }}</div>
+          </div>
+        </div>
+
+        <div class="hvw-conn-channels">
+          <span class="hvw-conn-channels-label">Channels created for you</span>
+          <span v-for="ch in slackChannels" :key="ch.name" class="hvw-channel-chip" :class="{ 'is-private': ch.private }">
+            {{ ch.private ? '🔒' : '#' }} {{ ch.name }}
+          </span>
+        </div>
+
+        <!-- Part 2 — Onboarding inside Slack -->
+        <div class="hvw-part-head">
+          <span class="hvw-part-num">Part 2</span>
+          <h3 class="hvw-part-title">Onboard inside Slack</h3>
+        </div>
+
         <div class="hvw-timeline">
           <!-- Step 1 -->
           <div class="hvw-tl-item">
@@ -325,7 +358,30 @@
           </div>
         </div>
 
+        <!-- Part 3 — Offboarding from Slack -->
+        <div class="hvw-part-head hvw-part-head-spaced">
+          <span class="hvw-part-num hvw-part-num-off">Part 3</span>
+          <h3 class="hvw-part-title">Offboard: remove VaptFix from Slack</h3>
+        </div>
+        <p class="hvw-conn-note">Uninstalling only disconnects Slack. Your VaptFix data stays safe unless you confirm deletion from the email.</p>
 
+        <div class="hvw-conn-steps hvw-conn-steps-3">
+          <div
+            v-for="(step, i) in slackOffboardSteps"
+            :key="step.title"
+            class="hvw-conn-step"
+            :class="{ 'is-danger': step.danger }"
+          >
+            <div class="hvw-conn-top">
+              <span class="hvw-conn-num">{{ i + 1 }}</span>
+              <span class="hvw-conn-where" :class="'is-' + step.where.toLowerCase()">{{ step.where }}</span>
+              <span class="hvw-conn-icon">{{ step.icon }}</span>
+            </div>
+            <div class="hvw-conn-title">{{ step.title }}</div>
+            <span v-if="step.badge" class="hvw-conn-badge">{{ step.badge }}</span>
+            <div class="hvw-conn-desc">{{ step.desc }}</div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -506,6 +562,36 @@ export default {
       oauthLoading: '',
       backendBase: 'https://vaptbackend.secureitlab.com',
       authStore: null,
+
+      slackConnectSteps: [
+        { icon: '🚀', where: 'VaptFix', title: 'Sign up with Slack',   desc: 'On vaptfix.ai, open Get Started and click Sign up with Slack.' },
+        { icon: '🔎', where: 'Slack',   title: 'Choose Workspace',     desc: 'Pick a workspace you are signed in to, or create a new one.' },
+        { icon: '✉️', where: 'Slack',   title: 'Enter Email',          desc: 'Enter your work email, or continue with Google, Microsoft or Apple.' },
+        { icon: '🔢', where: 'Slack',   title: 'Verify Code',          desc: 'Enter the 6-digit code Slack sends to your email.' },
+        { icon: '🏢', where: 'Slack',   title: 'Name Workspace',       badge: 'New users only', desc: 'Name your new workspace and finish the quick setup.' },
+        { icon: '❌', where: 'Slack',   title: 'Close Slack Window',   badge: 'New users only', desc: 'Your workspace is ready. Close the Slack window and return to VaptFix.' },
+        { icon: '🔁', where: 'VaptFix', title: 'Sign up with Slack Again', desc: 'In the Get Started modal, click Sign up with Slack once more.' },
+        { icon: '✅', where: 'Slack',   title: 'Select & Allow',       desc: 'Select your workspace and click Allow to install the VaptFix app.' },
+        { icon: '📩', where: 'Slack',   title: 'Verify Code Again',    desc: 'Enter the new 6-digit code Slack emails you to confirm the install.' },
+        { icon: '🎯', where: 'Slack',   title: 'Land in Slack',        desc: 'VaptFix creates your channels and opens the admin dashboard.' },
+      ],
+
+      slackOffboardSteps: [
+        { icon: '⚙️', where: 'Slack',   title: 'Open Admin Tools',      desc: 'In Slack, click Admin in the sidebar and open Apps & workflows.' },
+        { icon: '🧩', where: 'Slack',   title: 'Find VaptFix',          desc: 'Under Installed apps, click ••• next to vaptfix and choose Uninstall.' },
+        { icon: '🗑️', where: 'Slack',   title: 'Confirm Uninstall',     desc: 'Tick "I want to uninstall vaptfix from my team" and click Uninstall.' },
+        { icon: '📧', where: 'Email',   title: 'Removal Email',         desc: 'VaptFix emails you that Slack is disconnected. Your data is still safe.' },
+        { icon: '⚠️', where: 'Email',   title: 'Delete Account',        badge: 'Optional', desc: 'Click the delete button within 48 hours to erase your account. This cannot be undone.' },
+        { icon: '🔒', where: 'VaptFix', title: 'Deletion Confirmed',    danger: true, desc: 'A page confirms your VaptFix account and all its data are permanently deleted.' },
+      ],
+
+      slackChannels: [
+        { name: 'vaptfix-admin-dashboard', private: true },
+        { name: 'vaptfix-network-security-team' },
+        { name: 'vaptfix-configuration-management-team' },
+        { name: 'vaptfix-architectural-flaws-team' },
+        { name: 'vaptfix-patch-management-team' },
+      ],
 
       plans: ['Freemium', 'Premium', 'Enterprise'],
 
@@ -803,6 +889,120 @@ export default {
 .hvw-tl-icon  { font-size: 28px; flex-shrink: 0; margin-top: 2px; }
 .hvw-tl-title { font-size: 17px; font-weight: 700; color: #241447; margin-bottom: 8px; }
 .hvw-tl-desc  { font-size: 14px; color: #475569; line-height: 1.65; }
+
+/* ── SLACK CONNECT (Part 1) ── */
+.hvw-part-head { display: flex; align-items: center; gap: 12px; margin: 0 0 20px; }
+.hvw-part-num {
+  background: #4A154B;
+  color: #fff;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.hvw-part-title { font-size: 20px; font-weight: 800; color: #241447; margin: 0; }
+.hvw-conn-steps {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+}
+.hvw-conn-step {
+  position: relative;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-top: 3px solid #4A154B;
+  border-radius: 14px;
+  padding: 18px 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.hvw-conn-step:hover { box-shadow: 0 6px 20px rgba(36,20,71,0.10); transform: translateY(-2px); }
+.hvw-conn-step:not(:last-child)::after {
+  content: '→';
+  position: absolute;
+  right: -13px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 800;
+  color: #94a3b8;
+}
+.hvw-conn-step:nth-child(5n)::after { display: none; }
+.hvw-conn-step:last-child { border-top-color: #0f696e; background: #f0fdfa; }
+.hvw-conn-steps-3 { grid-template-columns: repeat(3, 1fr); }
+.hvw-conn-steps-3 .hvw-conn-step:nth-child(5n)::after { display: block; }
+.hvw-conn-steps-3 .hvw-conn-step:nth-child(3n)::after { display: none; }
+.hvw-conn-steps-3 .hvw-conn-step { border-top-color: #b91c1c; }
+.hvw-conn-step.is-danger { border-top-color: #b91c1c; background: #fef2f2; }
+.hvw-part-head-spaced { margin-top: 56px; }
+.hvw-part-num-off { background: #b91c1c; }
+.hvw-conn-top { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.hvw-conn-where {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-radius: 8px;
+  padding: 2px 7px;
+}
+.hvw-conn-where.is-vaptfix { background: #ccfbf1; color: #0f696e; }
+.hvw-conn-where.is-slack   { background: #f5eef6; color: #4A154B; }
+.hvw-conn-where.is-email   { background: #fef3c7; color: #92400e; }
+.hvw-conn-note { font-size: 13px; color: #64748b; margin: -8px 0 16px; }
+.hvw-conn-num {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: #241447;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+}
+.hvw-conn-icon  { font-size: 22px; margin-left: auto; }
+.hvw-conn-title { font-size: 15px; font-weight: 700; color: #241447; margin-bottom: 6px; }
+.hvw-conn-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  background: #fef3c7;
+  color: #92400e;
+  border-radius: 10px;
+  padding: 2px 8px;
+  margin-bottom: 6px;
+}
+.hvw-conn-desc  { font-size: 13px; color: #475569; line-height: 1.55; }
+.hvw-conn-channels {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0 48px;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+}
+.hvw-conn-channels-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #64748b;
+  margin-right: 4px;
+}
+.hvw-channel-chip {
+  background: #f5eef6;
+  color: #4A154B;
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  word-break: break-word;
+}
+.hvw-channel-chip.is-private { background: #4A154B; color: #fff; }
 
 /* Paths A/B */
 .hvw-tl-paths { display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; margin-top: 18px; align-items: stretch; }
@@ -1677,9 +1877,12 @@ export default {
 /* ── Responsive ── */
 @media (max-width: 900px) {
   .slack-cards-list { grid-template-columns: repeat(2, 1fr); }
+  .hvw-conn-steps { grid-template-columns: repeat(2, 1fr); }
+  .hvw-conn-steps .hvw-conn-step:nth-child(n)::after { display: none; }
 }
 @media (max-width: 600px) {
   .slack-cards-list { grid-template-columns: 1fr; }
+  .hvw-conn-steps { grid-template-columns: 1fr; }
   .hvw-tl-paths { grid-template-columns: 1fr; }
   .hvw-path-divider { padding-top: 0; }
   .hvw-gate-grid { flex-direction: column; }
