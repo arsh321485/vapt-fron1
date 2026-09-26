@@ -391,6 +391,39 @@
         <h2 class="hvw-section-title">Microsoft Teams Onboarding Flow</h2>
         <p class="hvw-section-sub">The MS Teams journey mirrors the Slack journey exactly. The VaptFix bot posts Adaptive Cards inside a Teams chat or channel. Richer views like Add Users can use a Teams Tab.</p>
 
+        <!-- Part 1 — Connect Microsoft Teams -->
+        <div class="hvw-part-head">
+          <span class="hvw-part-num hvw-part-num-teams">Part 1</span>
+          <h3 class="hvw-part-title">Connect Microsoft Teams</h3>
+        </div>
+        <p class="hvw-conn-note">One pass only: no need to close the window and sign up again like Slack.</p>
+
+        <div class="hvw-conn-steps hvw-conn-steps-teams">
+          <div v-for="(step, i) in teamsConnectSteps" :key="step.title" class="hvw-conn-step">
+            <div class="hvw-conn-top">
+              <span class="hvw-conn-num">{{ i + 1 }}</span>
+              <span class="hvw-conn-where" :class="'is-' + step.where.toLowerCase()">{{ step.where }}</span>
+              <span class="hvw-conn-icon">{{ step.icon }}</span>
+            </div>
+            <div class="hvw-conn-title">{{ step.title }}</div>
+            <span v-if="step.badge" class="hvw-conn-badge">{{ step.badge }}</span>
+            <div class="hvw-conn-desc">{{ step.desc }}</div>
+          </div>
+        </div>
+
+        <div class="hvw-conn-channels">
+          <span class="hvw-conn-channels-label">Channels created in the Vaptfix team</span>
+          <span v-for="ch in teamsChannels" :key="ch" class="hvw-channel-chip hvw-channel-chip-teams">
+            # {{ ch }}
+          </span>
+        </div>
+
+        <!-- Part 2 — Onboarding inside Teams -->
+        <div class="hvw-part-head">
+          <span class="hvw-part-num hvw-part-num-teams">Part 2</span>
+          <h3 class="hvw-part-title">Onboard inside Microsoft Teams</h3>
+        </div>
+
         <div class="hvw-timeline">
 
           <!-- Step 1 -->
@@ -583,6 +616,23 @@ export default {
         { icon: '📧', where: 'Email',   title: 'Removal Email',         desc: 'VaptFix emails you that Slack is disconnected. Your data is still safe.' },
         { icon: '⚠️', where: 'Email',   title: 'Delete Account',        badge: 'Optional', desc: 'Click the delete button within 48 hours to erase your account. This cannot be undone.' },
         { icon: '🔒', where: 'VaptFix', title: 'Deletion Confirmed',    danger: true, desc: 'A page confirms your VaptFix account and all its data are permanently deleted.' },
+      ],
+
+      teamsConnectSteps: [
+        { icon: '🚀', where: 'VaptFix',   title: 'Sign up with Microsoft Teams', desc: 'On vaptfix.ai, open Get Started and click Sign up with Microsoft Teams.' },
+        { icon: '👤', where: 'Microsoft', title: 'Pick an Account',     desc: 'Choose your signed-in work account, or click Use another account.' },
+        { icon: '🔐', where: 'Microsoft', title: 'Approve Sign-in',     desc: 'Open Microsoft Authenticator and enter the number shown to approve the request.' },
+        { icon: '💬', where: 'Teams',     title: 'Open Microsoft Teams', desc: 'Click Open Microsoft Teams for the desktop app, or Cancel to stay in the browser.' },
+        { icon: '🌐', where: 'Teams',     title: 'Choose App or Web',   desc: 'Click Launch it now for the desktop app, or Use the web app instead.' },
+        { icon: '🎯', where: 'Teams',     title: 'Land in Teams',       desc: 'VaptFix creates your channels and opens the vaptfix admin dashboard channel.' },
+      ],
+
+      teamsChannels: [
+        'vaptfix admin dashboard',
+        'vaptfix Network Security team',
+        'vaptfix Configuration Management team',
+        'vaptfix Architectural Flaws team',
+        'vaptfix patch management team',
       ],
 
       slackChannels: [
@@ -937,6 +987,15 @@ export default {
 .hvw-conn-steps-3 .hvw-conn-step:nth-child(3n)::after { display: none; }
 .hvw-conn-steps-3 .hvw-conn-step { border-top-color: #b91c1c; }
 .hvw-conn-step.is-danger { border-top-color: #b91c1c; background: #fef2f2; }
+.hvw-conn-steps-teams { grid-template-columns: repeat(3, 1fr); }
+.hvw-conn-steps-teams .hvw-conn-step { border-top-color: #5059C9; }
+.hvw-conn-steps-teams .hvw-conn-step:nth-child(5n)::after { display: block; }
+.hvw-conn-steps-teams .hvw-conn-step:nth-child(3n)::after { display: none; }
+.hvw-conn-steps-teams .hvw-conn-step:last-child { border-top-color: #0f696e; }
+.hvw-part-num-teams { background: #5059C9; }
+.hvw-conn-where.is-microsoft { background: #e0f2fe; color: #0369a1; }
+.hvw-conn-where.is-teams     { background: #e0e7ff; color: #3730a3; }
+.hvw-channel-chip-teams { background: #e0e7ff; color: #3730a3; }
 .hvw-part-head-spaced { margin-top: 56px; }
 .hvw-part-num-off { background: #b91c1c; }
 .hvw-conn-top { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
