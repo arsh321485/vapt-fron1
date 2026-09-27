@@ -1759,6 +1759,20 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    /**
+     * True when this admin already saved risk criteria on the server. Uses
+     * /by-admin/ — the same source RiskCriteriaView trusts — because
+     * report-status.has_risk_criteria and /risks/ can miss it for magic-link
+     * admins, and completedSteps is only browser-local.
+     */
+    async hasSavedRiskCriteria(): Promise<boolean> {
+      const byAdmin = await this.getRiskCriteriaByAdmin();
+      const data = byAdmin.status ? byAdmin.data : null;
+      if (data && data.critical && data.high && data.medium && data.low) return true;
+      const listed = await this.fetchAdminRiskCriteria();
+      return !!(listed.status && listed.data);
+    },
+
     // ✅ LIST Risk Criteria (Admin side) — GET /api/admin/risk_criteria/risks/
     async fetchAdminRiskCriteria() {
       try {
@@ -8643,16 +8657,19 @@ export const useAuthStore = defineStore("auth", {
 
       // Super-admin magic link (file already attached) skips payment + upload.
       if (claimed) {
-        // Magic-link signup always starts at Add Users (Slack/Teams must not skip it).
-        if (this.needsCommunicationStep()) return "/communication";
+        // Server state first — completedSteps is browser-local and is empty on
+        // a fresh sign-in (incognito / new device) even when onboarding is done.
         if (
           this._isOnboardingComplete(res) ||
           res.hasRiskCriteria ||
-          this.completedSteps.includes(2)
+          this.completedSteps.includes(2) ||
+          (await this.hasSavedRiskCriteria())
         ) {
           this._markOnboardingComplete();
           return "/admindashboardonboarding";
         }
+        // Magic-link signup always starts at Add Users (Slack/Teams must not skip it).
+        if (this.needsCommunicationStep()) return "/communication";
         return "/riskcriteria";
       }
 
@@ -8717,8 +8734,7 @@ export const useAuthStore = defineStore("auth", {
       // Users. Reaching Risk Criteria at all already implies Add Users was
       // completed (that page redirects back here otherwise), so finding a
       // real record here means both steps are done.
-      const riskCriteria = await this.fetchAdminRiskCriteria();
-      if (riskCriteria.status && riskCriteria.data) {
+      if (await this.hasSavedRiskCriteria()) {
         this._markOnboardingComplete();
         return "/admindashboardonboarding";
       }
