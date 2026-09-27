@@ -444,6 +444,9 @@
                   </div>
 
                   <div v-show="currentVulnTab === 'manual'" class="av-manual-tab">
+                    <p v-if="!selectedPanelAsset && !v.assets?.length" class="av-empty-threats">
+                      No affected asset found for this vulnerability, so remediation steps can't be loaded.
+                    </p>
                     <div v-for="asset in (selectedPanelAsset ? [selectedPanelAsset] : v.assets)" :key="asset" class="av-asset-section">
                       <div class="av-asset-label">
                         <span class="av-asset-os-lbl">{{ assetMetaFor(v, asset).os }}</span>
@@ -1350,9 +1353,26 @@ export default {
               );
             });
           const isOpen = allKnownHostsClosedInClosedSet ? false : isActiveVulnStatus(v.status);
+          // Still open per the backend, but the hold/delete/fix-record filters
+          // above stripped every host (stale or mismatched hold/delete lists) —
+          // an empty list hides the asset row, blanks Manual Fix and makes the
+          // automation badge fall back to "In Progress". Fall back to the
+          // register's own open, not-closed hosts.
+          let visibleAssets = openAssets;
+          if (isOpen && !visibleAssets.length) {
+            visibleAssets = (v.rows || [])
+              .filter((r) => isActiveVulnStatus(rowStatusValue(r) || 'open'))
+              .map((r) => String(r.asset || r.host_name || '').trim())
+              .filter((ip, idx, arr) => ip && isRealScanHost(ip) && arr.indexOf(ip) === idx)
+              .filter((ip) =>
+                !closedSet.has(closedVulnHostKey(name, ip)) &&
+                !closedSet.has(closedVulnHostKey(key, ip)) &&
+                !this.isHostClosedInFixRecords(name, ip),
+              );
+          }
           return {
             ...v,
-            assets: isOpen ? openAssets : [],
+            assets: isOpen ? visibleAssets : [],
             status: isOpen ? 'open' : 'closed',
           };
         })
@@ -1748,17 +1768,37 @@ export default {
           (type) => type === wanted || (counts[type] || 0) <= 0,
         );
         if (onlyThisType) return (vuln?.assets || []).filter((ip) => keepOpen(ip));
+        // Mixed types: if per-host classification finds nothing for `wanted`
+        // although the backend counts some here, show only hosts that didn't
+        // resolve to one of this vuln's OTHER counted types — never a host
+        // that clearly belongs to another tab.
+        const byHost = this.assetsForVulnTypeByHost(vuln, wanted, keepOpen);
+        if (byHost.length) return byHost;
+        return (vuln?.assets || []).filter((ip) => {
+          if (!keepOpen(ip)) return false;
+          const type = this.hostAssetType(ip, vuln);
+          return type === wanted || (counts[type] || 0) <= 0;
+        });
       }
+      return this.assetsForVulnTypeByHost(vuln, wanted, keepOpen);
+    },
+    assetsForVulnTypeByHost(vuln, wanted, keepOpen) {
+      // Classify every open host individually with hostAssetType() — the same
+      // resolver the nested WA/SRV badge uses (fetched row → register row →
+      // catalog). Trusting the fetched per-vuln rows as the whole host list
+      // dropped any host missing from it, emptying the tab.
       const fetched = this.vulnAssetRowsByKey[vuln?._key];
-      if (Array.isArray(fetched) && fetched.length) {
-        return fetched
-          .filter((row) => resolveAssetType(row) === wanted)
-          .map((row) => row.host_name || row.asset || row.host)
-          .filter((ip) => keepOpen(ip));
-      }
-      return (vuln?.assets || []).filter(
-        (ip) => keepOpen(ip) && this.hostAssetType(ip, vuln) === wanted,
-      );
+      const hosts = [
+        ...(vuln?.assets || []),
+        ...(Array.isArray(fetched) ? fetched.map((row) => row.host_name || row.asset || row.host) : []),
+      ];
+      const seen = new Set();
+      return hosts.filter((ip) => {
+        const lower = String(ip || '').trim().toLowerCase();
+        if (!lower || seen.has(lower)) return false;
+        seen.add(lower);
+        return keepOpen(ip) && this.hostAssetType(ip, vuln) === wanted;
+      });
     },
     vulnBelongsToType(vuln, wanted, filterKey) {
       if (hasAssetTypeCounts(vuln?.asset_type_counts)) {
@@ -3110,8 +3150,12 @@ export default {
     // newer field yet, would incorrectly flip back to "In Progress".
     resolveAutomationStatusForAsset(vuln, asset) {
       const row = lookupRegisterRow(this.rawRows, vuln, asset);
+      // No host to match on — use the vuln's own register rows rather than
+      // defaulting straight to "in_progress".
+      const groupRow = (vuln?.rows || []).find((r) => r && r.automation_status);
       const raw = (row && 'automation_status' in row ? row.automation_status : undefined)
-        ?? (vuln && vuln.automation_status);
+        ?? (vuln && vuln.automation_status)
+        ?? groupRow?.automation_status;
       const status = String(raw || '').trim().toLowerCase();
       return status || 'in_progress';
     },
