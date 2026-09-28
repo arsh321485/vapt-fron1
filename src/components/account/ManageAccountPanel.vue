@@ -94,6 +94,14 @@
               <button
                 v-else-if="!slackStatusLoading && slackConnected"
                 type="button"
+                class="btn ma-btn-connected"
+                disabled
+              >
+                Slack connected
+              </button>
+              <button
+                v-if="!slackStatusLoading && slackConnected"
+                type="button"
                 class="btn ma-btn-danger"
                 :disabled="uninstalling"
                 @click="uninstallSlack"
@@ -101,7 +109,13 @@
                 <span v-if="uninstalling" class="spinner-border spinner-border-sm me-1"></span>
                 Uninstall
               </button>
-              <button type="button" class="btn ma-btn-outline" :disabled="oauthLoading === 'teams'" @click="connectTeams">
+              <button
+                type="button"
+                class="btn"
+                :class="teamsConnected ? 'ma-btn-connected' : 'ma-btn-outline'"
+                :disabled="oauthLoading === 'teams'"
+                @click="connectTeams"
+              >
                 <span v-if="oauthLoading === 'teams'" class="spinner-border spinner-border-sm me-1"></span>
                 {{ teamsConnected ? 'Teams connected' : 'Connect Teams' }}
               </button>
@@ -1228,6 +1242,24 @@ export default {
   font-size: 13px;
   font-weight: 600;
   padding: 8px 14px;
+}
+
+.ma-btn-connected {
+  border: none;
+  background: #0f696e;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 14px;
+  box-shadow: 0 0 0 3px rgba(15, 105, 110, 0.2);
+}
+
+.btn.ma-btn-connected:hover,
+.btn.ma-btn-connected:focus,
+.btn.ma-btn-connected:disabled {
+  background: #0f696e;
+  color: #fff;
+  opacity: 1;
 }
 
 .ma-btn-danger {
