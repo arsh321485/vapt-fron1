@@ -75,7 +75,10 @@
 
           <div v-if="mode === 'admin'" class="ma-connect-block">
             <h4 class="ma-connect-title">Slack / Teams</h4>
-            <p class="ma-section-desc mb-3">
+            <p
+              v-if="slackStatusLoading || slackConnected || (!slackConnected && !teamsConnected)"
+              class="ma-section-desc mb-3"
+            >
               <template v-if="slackStatusLoading">Checking Slack connection…</template>
               <template v-else-if="slackConnected">Connected — {{ slackWorkspaceLabel }}</template>
               <template v-else>Not Connected</template>
