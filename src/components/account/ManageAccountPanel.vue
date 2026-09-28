@@ -85,7 +85,7 @@
                 v-if="!slackStatusLoading && !slackConnected"
                 type="button"
                 class="btn ma-btn-outline"
-                :disabled="oauthLoading === 'slack'"
+                :disabled="oauthLoading === 'slack' || teamsConnected"
                 @click="connectSlack"
               >
                 <span v-if="oauthLoading === 'slack'" class="spinner-border spinner-border-sm me-1"></span>
@@ -113,7 +113,7 @@
                 type="button"
                 class="btn"
                 :class="teamsConnected ? 'ma-btn-connected' : 'ma-btn-outline'"
-                :disabled="oauthLoading === 'teams'"
+                :disabled="oauthLoading === 'teams' || (!teamsConnected && slackConnected)"
                 @click="connectTeams"
               >
                 <span v-if="oauthLoading === 'teams'" class="spinner-border spinner-border-sm me-1"></span>
@@ -801,6 +801,7 @@ export default {
       }
     },
     async connectSlack() {
+      if (this.teamsConnected) return;
       this.oauthLoading = 'slack';
       try {
         const adminId = this.authStore.user?._id || this.authStore.user?.id || null;
@@ -824,6 +825,7 @@ export default {
       }
     },
     async connectTeams() {
+      if (this.slackConnected) return;
       this.oauthLoading = 'teams';
       try {
         const adminId = this.authStore.user?._id || this.authStore.user?.id || null;
@@ -1242,6 +1244,15 @@ export default {
   font-size: 13px;
   font-weight: 600;
   padding: 8px 14px;
+}
+
+.btn.ma-btn-outline:disabled {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #94a3b8;
+  opacity: 1;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 .ma-btn-connected {
