@@ -270,6 +270,7 @@ import {
   landOnTeamsAdminDashboardChannel,
   openTeamsAdminDashboard,
   openTeamsOAuthPopup,
+  openTeamsAppInstall,
 } from '@/utils/teamsDeepLink';
 import { consumeAdminPlatformOAuthError } from '@/utils/platformOAuthMessage';
 import { extractDjangoOAuthTokens, persistDjangoOAuthTokens } from '@/utils/djangoOAuthTokens';
@@ -780,13 +781,25 @@ export default {
         showConfirmButton: false,
       });
       const statusRes = await this.authStore.fetchMicrosoftTeamsLoginStatus();
+      let lastStatus = String(extractTeamsDeepLink(statusRes.data || {}).status || '').toLowerCase();
       const url = await resolveTeamsAdminDashboardUrl(statusRes.data || {}, async () => {
         const next = await this.authStore.fetchMicrosoftTeamsLoginStatus();
+        lastStatus = String(extractTeamsDeepLink(next.data || {}).status || '').toLowerCase();
         return next.data || {};
       });
-      if (url) {
+      if (url && lastStatus !== 'provisioning') {
         openTeamsAdminDashboard(url, { newTab: true });
+        return;
       }
+      // Still provisioning → VaptFix app not installed in any team yet (RSC onboarding).
+      const choice = await Swal.fire({
+        icon: 'info',
+        title: 'Install VaptFix in Microsoft Teams to finish setup',
+        confirmButtonText: 'Install in Teams',
+        confirmButtonColor: '#241447',
+        showCancelButton: true,
+      });
+      if (choice.isConfirmed) openTeamsAppInstall();
     },
     async startMicrosoftLogin() {
       if (this.teamsConnected) {
@@ -867,7 +880,7 @@ export default {
           ? 'Setting up your workspace'
           : 'Microsoft Teams connected successfully',
         text: event.data?.status === 'provisioning'
-          ? 'Your dashboard channel is being created. This can take a few seconds.'
+          ? 'If VaptFix is not yet installed in Microsoft Teams, finish setup from the Teams tab.'
           : '',
         timer: event.data?.status === 'provisioning' ? 2400 : 2000,
         showConfirmButton: false

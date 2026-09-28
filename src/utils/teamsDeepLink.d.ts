@@ -8,6 +8,9 @@ export interface TeamsDeepLinkLinks {
 }
 
 export const TEAMS_WINDOW_NAME: string;
+export const TEAMS_APP_INSTALL_URL: string;
+export function openTeamsAppInstall(): void;
+export function readyTeamsTabUrlFromStatus(payload?: unknown): string;
 
 export function extractTeamsDeepLink(payload?: unknown): TeamsDeepLinkLinks;
 export function persistTeamsDeepLink(links: unknown): void;

@@ -2,12 +2,20 @@
   <div class="callback-loading">
     <p>{{ statusMessage }}</p>
     <button
+      v-if="needsTeamsAppInstall && !teamsOpenUrl"
+      type="button"
+      class="open-teams-btn"
+      @click="installInTeams"
+    >
+      Install in Teams
+    </button>
+    <button
       v-if="teamsOpenUrl"
       type="button"
       class="open-teams-btn"
       @click="openTeamsNow"
     >
-      Open VAPTFIX in Teams
+      Open your VaptFix Teams workspace
     </button>
   </div>
 </template>
@@ -38,16 +46,64 @@ import {
   pickTeamsTabUrl,
   isUsableBackendTeamsTabUrl,
   readStoredTeamsDeepLink,
+  openTeamsAppInstall,
+  readyTeamsTabUrlFromStatus,
 } from "@/utils/teamsDeepLink";
+
+// After the initial ~45s poll window, keep checking quietly while the admin installs the app.
+const INSTALL_POLL_INTERVAL_MS = 12000;
 
 export default {
   data() {
     return {
       statusMessage: "Connecting Microsoft Teams...",
       teamsOpenUrl: "",
+      lastTeamsStatus: "",
+      needsTeamsAppInstall: false,
+      installPollTimer: null,
     };
   },
+  beforeUnmount() {
+    this.stopInstallPolling();
+  },
   methods: {
+    installInTeams() {
+      openTeamsAppInstall();
+    },
+    stopInstallPolling() {
+      if (this.installPollTimer) {
+        clearTimeout(this.installPollTimer);
+        this.installPollTimer = null;
+      }
+    },
+    /**
+     * Brand-new admin: login alone never creates the team (RSC onboarding).
+     * Show the install CTA and poll login-status/ until the app is installed.
+     */
+    showTeamsAppInstallCta() {
+      this.needsTeamsAppInstall = true;
+      this.teamsOpenUrl = "";
+      this.statusMessage = "Install VaptFix in Microsoft Teams to finish setup";
+      this.stopInstallPolling();
+      const authStore = useAuthStore();
+      const poll = async () => {
+        try {
+          const res = await authStore.fetchMicrosoftTeamsLoginStatus();
+          const url = readyTeamsTabUrlFromStatus(res?.data);
+          if (url) {
+            this.installPollTimer = null;
+            this.needsTeamsAppInstall = false;
+            this.teamsOpenUrl = url;
+            this.statusMessage = "Your VaptFix Teams workspace is ready.";
+            return;
+          }
+        } catch (err) {
+          console.warn("[Teams] login-status poll failed:", err);
+        }
+        this.installPollTimer = setTimeout(poll, INSTALL_POLL_INTERVAL_MS);
+      };
+      this.installPollTimer = setTimeout(poll, INSTALL_POLL_INTERVAL_MS);
+    },
     isMemberFlow() {
       const params = new URLSearchParams(window.location.search);
       if (params.get("flow") === "member") return true;
@@ -113,6 +169,7 @@ export default {
       const links = extractTeamsDeepLink(payload || {});
       const isProvisioning = String(links.status || "").toLowerCase() === "provisioning";
       const hasUrl = isUsableBackendTeamsTabUrl(String(links.teams_tab_url || "").trim());
+      this.lastTeamsStatus = String(links.status || "").toLowerCase();
 
       // Ready URL from backend → open as-is (no rebuild).
       if (hasUrl && !isProvisioning) {
@@ -124,8 +181,12 @@ export default {
       // New admin / missing URL: poll login-status/ until teams_tab_url is ready.
       const url = await resolveTeamsAdminDashboardUrl(payload, async () => {
         const statusRes = await authStore.fetchMicrosoftTeamsLoginStatus();
-        return statusRes.data || {};
+        const data = statusRes.data || {};
+        this.lastTeamsStatus = String(extractTeamsDeepLink(data).status || "").toLowerCase();
+        return data;
       });
+      // Poll window ended but still provisioning → app not installed yet; caller shows install CTA.
+      if (this.lastTeamsStatus === "provisioning") return false;
       if (url && openTeamsAdminDashboard(url, { newTab: false })) {
         return true;
       }
@@ -218,6 +279,11 @@ export default {
             : "Opening the VAPTFIX admin dashboard channel...";
 
         if (await this.landThisTabOnTeams(res.data)) {
+          return;
+        }
+
+        if (this.lastTeamsStatus === "provisioning") {
+          this.showTeamsAppInstallCta();
           return;
         }
 

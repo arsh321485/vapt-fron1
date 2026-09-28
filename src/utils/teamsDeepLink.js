@@ -627,6 +627,28 @@ export async function resolveTeamsAdminDashboardUrl(payload, fetchStatus) {
 
 export const TEAMS_WINDOW_NAME = "VaptFixTeams";
 
+/**
+ * RSC onboarding: a brand-new admin must install the VaptFix app into a team they own.
+ * Backend creates the channels + welcome message on install; login-status/ then flips to "ready".
+ */
+export const TEAMS_APP_INSTALL_URL =
+  "https://teams.microsoft.com/l/app/cd35fdf0-6f75-41e9-8b58-a713dd7b9aeb";
+
+export function openTeamsAppInstall() {
+  const opened = window.open(TEAMS_APP_INSTALL_URL, "_blank");
+  if (!opened) window.location.assign(TEAMS_APP_INSTALL_URL);
+}
+
+/** Ready channel URL from a login-status/ payload, or "" while still provisioning. */
+export function readyTeamsTabUrlFromStatus(payload) {
+  const links = extractTeamsDeepLink(payload || {});
+  const status = String(links.status || "").toLowerCase();
+  const raw = String(links.teams_tab_url || "").trim();
+  if (status === "provisioning" || !isUsableBackendTeamsTabUrl(raw)) return "";
+  persistTeamsDeepLink(links);
+  return raw;
+}
+
 function isAdminDashboardChannelHref(url) {
   const value = decodedUrl(unwrapTeamsLauncherUrl(url) || url);
   if (!value || isTeamsChatOrTeamHomeUrl(value) || isBareTeamsHome(value)) return false;
