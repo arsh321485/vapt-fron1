@@ -180,7 +180,6 @@ import { isClaimInviteFlow, hasClaimInviteReport } from "@/utils/claimInvite";
 import { isScopeAwaitingScan } from "@/utils/scopeScanGate";
 import { dismissUploadReportModal } from "@/utils/suppressUploadReportModal";
 import Swal from "sweetalert2";
-import { Tooltip } from 'bootstrap'
 
 export default {
   name: "RiskCriteriaView",
@@ -483,7 +482,7 @@ export default {
   async mounted() {
     dismissUploadReportModal();
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
-    tooltipTriggerList.forEach(el => new Tooltip(el))
+    tooltipTriggerList.forEach(el => new window.bootstrap.Tooltip(el))
 
     try {
       this.redirecting = false;
