@@ -47,8 +47,9 @@
                             © 2026 VaptFix.ai. All rights reserved.
                         </p>
                         <ul class="list-unstyled mb-0 footer-legal-links">
-                            <li>
+                            <li class="footer-privacy-group">
                                 <router-link to="/privacy" class="footer-legal-link text-decoration-none">Privacy</router-link>
+                                <router-link to="/sub-processors" class="footer-legal-link text-decoration-none">Sub-processors</router-link>
                             </li>
                             <li>
                                 <router-link to="/terms" class="footer-legal-link text-decoration-none">Terms</router-link>
@@ -130,10 +131,17 @@ export default {
 .footer-legal-links {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   justify-content: flex-start;
   gap: 0.75rem 1.5rem;
   padding-right: 90px;
+}
+
+.footer-privacy-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
 }
 
 @media (min-width: 768px) {

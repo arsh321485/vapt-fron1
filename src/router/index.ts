@@ -36,6 +36,7 @@ import TermsOfServiceView from "../views/admin-views/TermsOfServiceView.vue";
 import KnowledgeBaseView from "../views/admin-views/KnowledgeBaseView.vue";
 import HowVaptfixWorksView from "../views/admin-views/HowVaptfixWorksView.vue";
 import DataProcessingAgreementView from "../views/admin-views/DataProcessingAgreementView.vue";
+import SubProcessorsView from "../views/admin-views/SubProcessorsView.vue";
 import SupportCenterView from "../views/admin-views/SupportCenterView.vue";
 import RiskCriteriaView from "../views/admin-views/RiskCriteriaView.vue";
 import HowitWork from "../components/admin-component/HowitWork.vue";
@@ -157,6 +158,11 @@ const router = createRouter({
       path: "/dpa",
       name: "dpa",
       component: DataProcessingAgreementView,
+    },
+    {
+      path: "/sub-processors",
+      name: "sub-processors",
+      component: SubProcessorsView,
     },
     {
       path: "/choose-account",

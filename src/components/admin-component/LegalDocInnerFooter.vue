@@ -8,6 +8,8 @@
       <span class="legal-doc-inner-sep">·</span>
       <router-link to="/dpa">DPA</router-link>
       <span class="legal-doc-inner-sep">·</span>
+      <router-link to="/sub-processors">Sub-processors</router-link>
+      <span class="legal-doc-inner-sep">·</span>
       <router-link to="/support">Support</router-link>
     </p>
   </div>
