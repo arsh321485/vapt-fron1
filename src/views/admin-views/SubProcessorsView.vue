@@ -99,35 +99,24 @@ export default {
 .legal-page-root {
   min-height: 100vh;
   padding-top: 72px;
-  padding-bottom: 24px;
-  padding-left: clamp(10px, 3vw, 24px);
-  padding-right: clamp(10px, 3vw, 24px);
-  background: #e8ecf1;
+  background-color: #ffffff;
+  background-image: radial-gradient(#ebe6f3 1px, #ffffff 1px);
+  background-size: 20px 20px;
   box-sizing: border-box;
 }
 
 .legal-page-frame {
   width: 100%;
-  max-width: 1080px;
-  margin-left: auto;
-  margin-right: auto;
-  padding-left: clamp(20px, 4vw, 40px);
-  padding-right: clamp(20px, 4vw, 40px);
-  padding-bottom: 2rem;
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 0 clamp(16px, 3vw, 24px);
   box-sizing: border-box;
-  background-color: #ffffff;
-  background-image: radial-gradient(#ebe6f3 1px, #ffffff 1px);
-  background-size: 20px 20px;
-  border-radius: 12px;
-  border: 1px solid rgba(36, 20, 71, 0.06);
-  box-shadow: 0 4px 24px rgba(36, 20, 71, 0.06);
-  min-height: calc(100vh - 72px - 24px);
 }
 
 .ld-simple-inner {
-  max-width: 820px;
-  margin: 0 auto;
-  padding: 1.5rem 0 0;
+  width: 100%;
+  margin: 0;
+  padding: 1.25rem 0 0;
   font-family: 'Inter', sans-serif;
   color: #1f2a37;
   font-size: 16px;
@@ -312,6 +301,13 @@ export default {
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
+    scrollbar-width: none;
+  }
+
+  .ld-scroll::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
   }
 }
 </style>
