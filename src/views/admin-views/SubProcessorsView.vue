@@ -54,9 +54,6 @@
             </tbody>
           </table>
         </div>
-        <p class="sp-note">
-          Keep the MongoDB Atlas row only if assessment data is hosted by MongoDB Inc. If MongoDB runs on the Contabo server, that row should be removed before this list is treated as final.
-        </p>
 
         <h2>Changes to sub-processors</h2>
         <p>
@@ -264,12 +261,6 @@ export default {
   border-radius: 4px;
   padding: 1px 6px;
   font-weight: 600;
-}
-
-.sp-note {
-  margin-top: 0.85rem !important;
-  font-size: 14px;
-  color: #64748b !important;
 }
 
 @media (min-width: 769px) {
