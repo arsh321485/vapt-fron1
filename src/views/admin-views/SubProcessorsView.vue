@@ -48,7 +48,7 @@
               </tr>
               <tr>
                 <td>OpenAI, L.L.C.</td>
-                <td><span class="sp-verify">Exact data sent, such as vulnerability findings, to confirm</span></td>
+                <td>Vulnerability findings from uploaded assessment reports</td>
                 <td><span class="sp-verify">Region to confirm</span></td>
               </tr>
             </tbody>
