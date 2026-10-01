@@ -3549,7 +3549,7 @@ export default {
   background: #fff;
   cursor: default;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 16 16'%3E%3Cpath fill='%2364748b' d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 16 16'%3E%3Cpath fill='%23475569' d='M8 11L3 6h10z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 8px center;
 }
@@ -3563,7 +3563,7 @@ export default {
   border: 1px solid #d1d5db;
   border-radius: 8px;
   background: #fff;
-  color: #64748b;
+  color: #475569;
   cursor: default;
   font-size: 14px;
 }
@@ -3579,7 +3579,7 @@ export default {
   background: none;
   font-size: 12px;
   font-weight: 600;
-  color: #64748b;
+  color: #475569;
   padding: 6px 10px 8px;
   cursor: pointer;
   position: relative;
@@ -3645,7 +3645,7 @@ export default {
   margin-top: 2px;
   font-size: 11px;
   font-weight: 500;
-  color: #94a3b8;
+  color: #475569;
 }
 
 .cal-pro-grid-wrap {
@@ -3663,7 +3663,7 @@ export default {
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.06em;
-  color: #94a3b8;
+  color: #475569;
   background: #fafbfc;
   border-bottom: 1px solid #e5e7eb;
 }

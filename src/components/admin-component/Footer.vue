@@ -6,7 +6,7 @@
             <div class="row">
                 <div class="col-lg-5 col-md-6 text-white">
                      <router-link :to="appHomePath">
-                       <img src="@/assets/images/vaptfix_white.png" alt="logo" width="90" height="30" style="cursor: pointer; height: 38px;">
+                       <img src="@/assets/images/vaptfix_white.png" alt="logo" width="90" height="30" style="cursor: pointer; height: auto;">
                      </router-link>
                     <p class="mt-4">Eliminate Vulnerabilities Before They<br> Become Threats.</p>
                     <div class="footer-iso-badges">

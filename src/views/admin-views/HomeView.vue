@@ -153,28 +153,28 @@
         <div class="hv-cards-2">
           <div class="hv-feature-item">
             <div class="hv-feature-img">
-              <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDv1vGU6p6m3ubNSsB0MhxiQE6oLJ57oTKIBnHbjHACMlZSZ5G2QgMrsT_QMixfZ8CMuStCrBLhJtHLXs6OOfjYwc5QXCVu8JHLW8H6WsEfwkte1PycfCIIG2NI_Uh7S61xFVGFxcNPQTNEZCz5nZ2Ff-KrJEmLQNOd6zBFJZ_5Dc69czlitiQ2n0ICgZdzRihgwhiRb6rCtiAByiM-aS5MilVRx_hyHAKoBUb-MIW2v8qcld-BC8Kyj03x5XB9_sjlUCsZO0T3bpEe" alt="Continuous Discovery" width="640" height="360" />
+              <img src="@/assets/images/home/discovery.webp" srcset="@/assets/images/home/discovery-480.webp 480w, @/assets/images/home/discovery.webp 512w" sizes="(max-width: 768px) 92vw, 50vw" alt="Continuous Discovery" width="640" height="360" loading="lazy" decoding="async" />
             </div>
             <h3 class="hv-feature-title">Continuous Multi-Modal Discovery</h3>
             <p class="hv-feature-desc">See everything, everywhere. Continuously discover vulnerabilities across hybrid cloud, on-premises infrastructure, and remote endpoints.</p>
           </div>
           <div class="hv-feature-item">
             <div class="hv-feature-img">
-              <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCcEeoO6pRHzSYFGnwYnQJfgyMySwa-3jOCAu1oaMfKsD6bTfWtBTlBbMHPQM0i6GlHdUeyNxhkeG7MoUvl_oS9Z_pYvbelI4ZU4mV2va6PX37yt1CoKWniposFMFPy7PY6OJktVCx0W7DUArSpcYqD79l7YgBLnz9qsSHQFHB7_maPpBt1pL1Md3yyVXE6CnkygUOs-lY0haM1UdbFPH2fdcu_dYOuLjOJdJ6c5TpSeTTlJD8CJoye9JpwA-xACCrbgxeGaNdwNNKo" alt="Intelligent Mitigation" width="640" height="360" />
+              <img src="@/assets/images/home/mitigation.webp" srcset="@/assets/images/home/mitigation-480.webp 480w, @/assets/images/home/mitigation.webp 512w" sizes="(max-width: 768px) 92vw, 50vw" alt="Intelligent Mitigation" width="640" height="360" loading="lazy" decoding="async" />
             </div>
             <h3 class="hv-feature-title">Intelligent Mitigation Guidance</h3>
             <p class="hv-feature-desc">Stop searching for the fix. Get the blueprints. Every vulnerability is paired with clear, actionable, human-readable steps tailored to your specific technology stack.</p>
           </div>
           <div class="hv-feature-item">
             <div class="hv-feature-img">
-              <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDK_5GWvAxxcenhtZdQUsRo0mE__eUmmSOJT2UHjiypTbjowZje2q8R15r0-Qb96T6F0YrOD4-iN5qeW2-1Nax5AdlZtoEHfMfweJUSiEqVk-zatSL1oRlP-FhFZ4bKecy-5Np7TxLY9Jv2JzQ8F1i67RcCGcFtsYlRw06J0DqKD61vN0URbN3T6RwqFEmrEX90MY9uIVaIWbSu2AtETjMC3c0TxfJQY5CZ9WEsxohF6Sx6zDrijMUeNisJM1NZhCWxi6NfFUMB9kMp" alt="Task Orchestration" width="640" height="360" />
+              <img src="@/assets/images/home/orchestration.webp" srcset="@/assets/images/home/orchestration-480.webp 480w, @/assets/images/home/orchestration.webp 512w" sizes="(max-width: 768px) 92vw, 50vw" alt="Task Orchestration" width="640" height="360" loading="lazy" decoding="async" />
             </div>
             <h3 class="hv-feature-title">Internal &amp; 3rd Party Task Orchestration</h3>
             <p class="hv-feature-desc">Hold every stakeholder accountable. Track and manage mitigation tasks across your internal teams and external vendors through a single pane of glass.</p>
           </div>
           <div class="hv-feature-item">
             <div class="hv-feature-img">
-              <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBH8ZByJl6DUfKSUM86A225OGFcxErEu3Oy9uXkN5OfUurrwxwnGGMLYKUsUkSBWrYr8lIRSOKqiexduoNIiasiMtFX1LPN6hXvBLowhJ9Pr6hropCeX5rqxPGrV_P1LEv91813cFw3YppqNxXrJhdjBEyXRq-80PmUkpkm5gaRr-H7g5i3tul6nw4ybqTsDVe6NMkb9G53RYBFRrWAubWViUAx4WC97P25Cdvw7VPkxL-DQc03y5gUn_IjBjfXYAaaWBlqPFXbehNu" alt="Operational Reality" width="640" height="360" />
+              <img src="@/assets/images/home/operational.webp" srcset="@/assets/images/home/operational-480.webp 480w, @/assets/images/home/operational.webp 512w" sizes="(max-width: 768px) 92vw, 50vw" alt="Operational Reality" width="640" height="360" loading="lazy" decoding="async" />
             </div>
             <h3 class="hv-feature-title">Operational Reality Mapping</h3>
             <p class="hv-feature-desc">Ascertain exactly how your operational timeline stacks up against the risk criteria set in your management policy. We surface real-world exposure windows that static SLAs hide.</p>
@@ -221,7 +221,7 @@
           </div>
           <div class="hv-human-right">
             <div class="hv-human-img-card">
-              <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuAqeBOHtVSe-cDxfn1UBwXzaLG0fX9oF5DQDuzr7znxuhH6IbEcWeHO6Hrh09PpYkH3jtAxAOxn_l3k17u2tvcYAiZtlJ_0sDnxhXcTVCcCqnYoj2NIDb_GzbWSmsokOwoFDuLI2xt4PnyTeSqCBxEIRdndZkgExosPM0Ixb80TYBJyzaCfo0V3PRkxeQxNILmNQO9yEEHGmbP9ipLYhdRUupal0QOJV8McRFKJ12MR1gAawqtco3k_QmoZhMf7r3caMhX-j-LeSmqY" alt="Human Intelligence" width="640" height="480" />
+              <img src="@/assets/images/home/human.webp" srcset="@/assets/images/home/human-480.webp 480w, @/assets/images/home/human.webp 512w" sizes="(max-width: 992px) 92vw, 46vw" alt="Human Intelligence" width="640" height="480" loading="lazy" decoding="async" />
             </div>
           </div>
         </div>
@@ -330,7 +330,7 @@
     <!-- CTA BOTTOM SECTION -->
     <section class="hv-cta">
       <div class="hv-cta-bg">
-        <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuAPsio8sVUVAZWGvAUcbhCEHyROriMT588zuPx09opPjVzYo8GAU3ZqWaoc-G4z9K5xYVa9JIeU9adcM5jGM6OK6nUeSSQRnvL6feuIx4gr64IO3Sk0tGAbzVfK7U-dRC2SZsd3oWy2X70sL2yTewg0eaD2jf5y5cdvdYGPQOaZHEaDL609b9tV4RVfj_P6jDdT-SvfZ_1yhavk2UbnwTUUG-ocmL9E9fS8uJKBbSSnQf01WscymBnfQRkGalu3Ul38g9K5qFHxhe1O" alt="" width="1600" height="900" />
+        <img src="@/assets/images/home/cta.webp" srcset="@/assets/images/home/cta-480.webp 480w, @/assets/images/home/cta.webp 512w" sizes="100vw" alt="" width="1600" height="900" loading="lazy" decoding="async" />
       </div>
       <div class="hv-container hv-cta-inner">
         <h2 class="hv-cta-title">Fix Bugs Instantly.</h2>
@@ -347,6 +347,7 @@
 
     <!-- Admin Sign Up Modal -->
     <AdminSignUpModal
+      v-if="showAdminSignUpModal"
       :show="showAdminSignUpModal"
       @close="closeAdminSignUpModal"
       @open-signin="handleOpenSignInFromAdminSignUp"
@@ -356,10 +357,9 @@
 </template>
 
 <script>
+import { defineAsyncComponent } from 'vue';
 import Header from '@/components/admin-component/Header.vue';
 import Footer from '@/components/admin-component/Footer.vue';
-import AdminSignUpModal from '@/components/admin-component/AdminSignUpModal.vue';
-import AnimatedDashboard from '@/components/home-components/AnimatedDashboard.vue';
 import { extractClaimInviteToken, storeClaimInviteToken } from '@/utils/claimInvite';
 import {
   isAdminSetPasswordDeepLink,
@@ -376,8 +376,8 @@ export default {
   components: {
     Header,
     Footer,
-    AdminSignUpModal,
-    AnimatedDashboard,
+    AdminSignUpModal: defineAsyncComponent(() => import('@/components/admin-component/AdminSignUpModal.vue')),
+    AnimatedDashboard: defineAsyncComponent(() => import('@/components/home-components/AnimatedDashboard.vue')),
   },
   data() {
     return {
@@ -911,6 +911,7 @@ export default {
   overflow: visible;
   min-width: 0;
   width: 100%;
+  min-height: 540px;
 }
 
 .hv-hero-img-card {
@@ -1501,7 +1502,7 @@ export default {
   .hv-human-grid { grid-template-columns: 1fr; gap: 32px; }
   .hv-hero { padding: 28px 0 48px; }
   .hv-pillars-grid { grid-template-columns: repeat(2, 1fr); }
-  .hv-hero-img-wrap { min-height: unset; }
+  .hv-hero-img-wrap { min-height: 560px; }
   .hv-cards-2 { gap: 32px 40px; }
 }
 
@@ -1523,6 +1524,10 @@ export default {
   .hv-result-box { padding: 28px 24px; gap: 24px; }
   .hv-human-grid { gap: 32px; }
   .hv-cta { padding: 56px 0; }
+}
+
+@media (max-width: 480px) {
+  .hv-hero-img-wrap { min-height: 484px; }
 }
 
 </style>

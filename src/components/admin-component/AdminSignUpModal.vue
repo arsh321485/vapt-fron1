@@ -495,32 +495,52 @@ export default {
     },
     validatePassword() {},
     loadRecaptchaScript() {
-      if (window.grecaptcha) return;
-      const script = document.createElement('script');
-      script.src = 'https://www.google.com/recaptcha/api.js?render=explicit';
-      script.async = true;
-      script.defer = true;
-      document.head.appendChild(script);
-    },
-    renderRecaptcha() {
-      if (!window.grecaptcha) {
-        setTimeout(() => this.renderRecaptcha(), 500);
+      const render = () => {
+        if (this._recaptchaUnmounted) return;
+        this.$nextTick(() => this.renderRecaptcha());
+      };
+      if (window.grecaptcha && typeof window.grecaptcha.render === 'function') {
+        window.grecaptcha.ready(render);
         return;
       }
-      window.grecaptcha.ready(() => {
-        const container = document.getElementById(this.recaptchaContainerId);
-        if (!container) return;
-        container.innerHTML = '';
-        try {
-          this.recaptchaWidgetId = window.grecaptcha.render(container, {
-            sitekey: this.recaptchaSiteKey,
-            callback: (token) => { this.recaptchaToken = token; },
-            'expired-callback': () => { this.recaptchaToken = ''; }
-          });
-        } catch (e) {
-          console.error('reCAPTCHA render error:', e);
-        }
-      });
+      const startPoll = () => {
+        clearInterval(this._recaptchaPoll);
+        this._recaptchaPoll = setInterval(() => {
+          if (window.grecaptcha?.render) {
+            clearInterval(this._recaptchaPoll);
+            window.grecaptcha.ready(render);
+          }
+        }, 100);
+      };
+      if (document.getElementById('admin-signup-recaptcha-script')) {
+        startPoll();
+        return;
+      }
+      window.__adminSignupRecaptchaOnload = () => {
+        window.grecaptcha?.ready(render);
+      };
+      const script = document.createElement('script');
+      script.id = 'admin-signup-recaptcha-script';
+      script.src = 'https://www.google.com/recaptcha/api.js?onload=__adminSignupRecaptchaOnload&render=explicit';
+      script.async = true;
+      document.head.appendChild(script);
+      startPoll();
+    },
+    renderRecaptcha() {
+      if (this._recaptchaUnmounted) return;
+      if (!window.grecaptcha?.render) return;
+      const container = document.getElementById(this.recaptchaContainerId);
+      if (!container) return;
+      if (container.childElementCount > 0) return;
+      try {
+        this.recaptchaWidgetId = window.grecaptcha.render(container, {
+          sitekey: this.recaptchaSiteKey,
+          callback: (token) => { this.recaptchaToken = token; },
+          'expired-callback': () => { this.recaptchaToken = ''; }
+        });
+      } catch (e) {
+        console.error('reCAPTCHA render error:', e);
+      }
     },
     async handleSignup() {
       if (!this.allPwdRulesPass) {
@@ -1083,6 +1103,8 @@ export default {
     }
   },
   beforeUnmount() {
+    this._recaptchaUnmounted = true;
+    clearInterval(this._recaptchaPoll);
     this.clearOtpTimer();
     window.removeEventListener('message', this.onTeamsConnected);
     window.removeEventListener('message', this.handleSlackMessage);

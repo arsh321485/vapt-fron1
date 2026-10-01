@@ -191,6 +191,7 @@
 
     <!-- Sign In Modal -->
     <SignUpModal
+      v-if="showSignUpModal"
       :show="showSignUpModal"
       :preSelectedType="signUpPreSelectedType"
       :userInitialTab="signUpUserInitialTab"
@@ -206,6 +207,7 @@
 
     <!-- Admin Sign Up Modal -->
     <AdminSignUpModal
+      v-if="showAdminSignUpModal"
       :show="showAdminSignUpModal"
       @close="closeAdminSignUpModal"
       @open-signin="handleOpenSignInFromAdminSignUp"
@@ -215,8 +217,7 @@
 </template>
 
 <script>
-import SignUpModal from './SignUpModal.vue';
-import AdminSignUpModal from './AdminSignUpModal.vue';
+import { defineAsyncComponent } from 'vue';
 import NotificationPanel from '@/components/admin-component/NotificationPanel.vue';
 import { useAuthStore } from '@/stores/authStore';
 import Swal from 'sweetalert2';
@@ -253,8 +254,8 @@ function hasAuthToken() {
 export default {
   name: 'Header',
   components: {
-    SignUpModal,
-    AdminSignUpModal,
+    SignUpModal: defineAsyncComponent(() => import('./SignUpModal.vue')),
+    AdminSignUpModal: defineAsyncComponent(() => import('./AdminSignUpModal.vue')),
     NotificationPanel,
   },
   data() {

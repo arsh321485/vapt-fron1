@@ -512,7 +512,7 @@
 
     <Footer />
 
-    <AdminSignUpModal :show="showAdminSignUpModal" @close="closeAdminSignUpModal" />
+    <AdminSignUpModal v-if="showAdminSignUpModal" :show="showAdminSignUpModal" @close="closeAdminSignUpModal" />
   </main>
 </template>
 

@@ -8,6 +8,22 @@ const devApiTarget = process.env.VITE_DEV_API_PROXY || "https://vaptbackend.secu
 
 // https://vite.dev/config/
 export default defineConfig({
+  build: {
+    sourcemap: 'hidden',
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return
+          if (id.includes('chart.js')) return 'chart'
+          if (id.includes('jspdf') || id.includes('html2canvas')) return 'pdf'
+          if (id.includes('xlsx') || id.includes('@e965/xlsx')) return 'xlsx'
+          if (id.includes('sweetalert2')) return 'sweetalert'
+          if (id.includes('flatpickr')) return 'flatpickr'
+        },
+      },
+    },
+  },
   plugins: [
     vue(),
     vueDevTools(),

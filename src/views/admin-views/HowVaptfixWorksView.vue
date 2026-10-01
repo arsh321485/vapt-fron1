@@ -570,8 +570,8 @@
 
 
     <!-- Modals -->
-    <SignUpModal :show="showSignInModal" @close="closeModal" />
-    <AdminSignUpModal :show="showAdminSignUpModal" @close="closeAdminSignUpModal" @open-signin="handleOpenSignIn" />
+    <SignUpModal v-if="showSignInModal" :show="showSignInModal" @close="closeModal" />
+    <AdminSignUpModal v-if="showAdminSignUpModal" :show="showAdminSignUpModal" @close="closeAdminSignUpModal" @open-signin="handleOpenSignIn" />
   </div>
 </template>
 

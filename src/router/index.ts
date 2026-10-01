@@ -1,83 +1,9 @@
 import { createRouter, createWebHistory } from "vue-router";
 // admin import
-import Login from "../components/admin-component/Login.vue";
-import HomeView from "../views/admin-views/HomeView.vue";
-import LocationView from "../views/admin-views/LocationView.vue";
-import Dashboard1View from "../views/admin-dashboard/Dashboard1View.vue";
-import SignupView from "../views/admin-views/SignupView.vue";
-import SignInView from "../views/admin-views/SignInView.vue";
-import ForgotPasswordView from "../views/admin-views/ForgotPasswordView.vue";
-import CreateNewTicketView from "../views/admin-dashboard/CreateNewTicketView.vue";
-import SupportTicketView from "../views/admin-dashboard/SupportTicketView.vue";
-import PendingView from "../views/admin-dashboard/PendingView.vue";
-import FixesView from "../views/admin-dashboard/FixesView.vue";
-import ExceptionsView from "../views/admin-dashboard/ExceptionsView.vue";
-import VulnerabilityRegisterView from "../views/admin-dashboard/VulnerabilityRegisterView.vue";
-import Onboarding1View from "../views/admin-dashboard/Onboarding1View.vue";
-import AdminDashboardOnboardingView from "../views/admin-dashboard/AdminDashboardOnboardingView.vue";
-import MitigationStrategyView from "../views/admin-dashboard/MitigationStrategyView.vue";
-import AssetsView from "../views/admin-dashboard/AssetsView.vue";
-import VulnerabilityExplorerView from "../views/admin-views/VulnerabilityExplorerView.vue";
-import MissingSecurityUpdatesView from "../views/admin-dashboard/MissingSecurityUpdatesView.vue";
-import UserMissingSecurityUpdatesView from "../views/user-views/UserMissingSecurityUpdatesView.vue";
-import VulnerabilityCardView from "../views/admin-dashboard/VulnerabilityCardView.vue";
-import YourTeamView from "../views/admin-dashboard/YourTeamView.vue";
-import PricingplansView from "../views/admin-views/PricingplansView.vue";
-import BillingSuccessView from "../views/admin-views/BillingSuccessView.vue";
-import BillingCancelView from "../views/admin-views/BillingCancelView.vue";
-import PartnerView from "../views/admin-views/PartnerView.vue";
-import PartnerLeadPortalView from "../views/admin-views/PartnerLeadPortalView.vue";
-import PartnerLeadThankYouView from "../views/admin-views/PartnerLeadThankYouView.vue";
-import PartnerThankYouView from "../views/admin-views/PartnerThankYouView.vue";
-import WebinarFormView from "../views/admin-views/WebinarFormView.vue";
-import WebinarThankYouView from "../views/admin-views/WebinarThankYouView.vue";
-import PrivacyPolicyView from "../views/admin-views/PrivacyPolicyView.vue";
-import TermsOfServiceView from "../views/admin-views/TermsOfServiceView.vue";
-import KnowledgeBaseView from "../views/admin-views/KnowledgeBaseView.vue";
-import HowVaptfixWorksView from "../views/admin-views/HowVaptfixWorksView.vue";
-import DataProcessingAgreementView from "../views/admin-views/DataProcessingAgreementView.vue";
-import SubProcessorsView from "../views/admin-views/SubProcessorsView.vue";
-import SupportCenterView from "../views/admin-views/SupportCenterView.vue";
-import RiskCriteriaView from "../views/admin-views/RiskCriteriaView.vue";
-import HowitWork from "../components/admin-component/HowitWork.vue";
-import Profile from "../components/admin-component/Profile.vue";
-import AdminManageAccountView from "../views/admin-dashboard/AdminManageAccountView.vue";
-import AdminSettingsView from "../views/admin-dashboard/AdminSettingsView.vue";
-import UserManageAccountView from "../views/user-views/UserManageAccountView.vue";
-import UserSettingsView from "../views/user-views/UserSettingsView.vue";
-import NotificationPanel from "../components/admin-component/NotificationPanel.vue";
 
 // user import
-import UserAssetsView from "../views/user-views/UserAssetsView.vue";
 // import UserToolboxView from "../views/user-views/UserToolboxView.vue"; // Toolbox commented out
-import DelayedvulnerabilitiesView from "../views/user-views/DelayedvulnerabilitiesView.vue";
-import DelayedvulnerabilitycardView from "../views/user-views/DelayedvulnerabilitycardView.vue";
-import UserExceptionsView from "../views/user-views/UserExceptionsView.vue";
-import FixedvulnerabilitiesView from "../views/user-views/FixedvulnerabilitiesView.vue";
-import PendingvulnerabilitiesView from "../views/user-views/PendingvulnerabilitiesView.vue";
-import PendingvulnerabilitycardView from "../views/user-views/PendingvulnerabilitycardView.vue";
-import UserVulnerabilityregisterView from "../views/user-views/UserVulnerabilityregisterView.vue";
-import UserVulnerabilityCardView from "../views/user-views/UserVulnerabilityCardView.vue";
-import UserCreateTicketView from "../views/user-views/UserCreateTicketView.vue";
-import UserTicketsView from "../views/user-views/UserTicketsView.vue";
-import UserDashboard1View from "../views/user-views/UserDashboard1View.vue";
-import UserSignupView from "../views/user-views/UserSignupView.vue";
-import ChooseAccountView from "../views/admin-views/ChooseAccountView.vue";
-import AuthView from "../views/admin-views/AuthView.vue";
-import JiraCallbackView from "../views/admin-views/JiraCallbackView.vue";
-import SlackCallbackView from "../views/admin-views/SlackCallbackView.vue";
-import ReportView from "../views/admin-dashboard/ReportView.vue";
-import ScopeView from "../views/admin-dashboard/ScopeView.vue";
-import MicrosoftCallbackView from "../views/admin-views/MicrosoftCallbackView.vue";
-import PerformanceMonitoringView from "../views/admin-dashboard/PerformanceMonitoringView.vue";
-import ViewReportPage from "../views/admin-dashboard/ViewReportPage.vue";
 // import ToolboxView from "../views/admin-dashboard/ToolboxView.vue"; // Toolbox commented out
-import WaitingForReportView from "../views/admin-dashboard/WaitingForReportView.vue";
-import AdminUploadReportView from "../views/admin-dashboard/AdminUploadReportView.vue";
-import RemediationTimelineView from "../views/admin-dashboard/RemediationTimelineView.vue";
-import UserRemediationTimelineView from "../views/user-views/UserRemediationTimelineView.vue";
-import CalendarView from "../views/admin-dashboard/CalendarView.vue";
-import UserCalendarView from "../views/user-views/UserCalendarView.vue";
 import { tryShowPostLoginSuccessAlert } from "../utils/postLoginSuccess";
 import {
   buildAdminSetPasswordHomeQuery,
@@ -122,47 +48,47 @@ const router = createRouter({
     {
       path: "/login",
       name: "login",
-      component: Login,
+      component: () => import("../components/admin-component/Login.vue"),
     },
     {
       path: "/home",
       name: "home",
-      component: HomeView,
+      component: () => import("../views/admin-views/HomeView.vue"),
     },
     {
       path: "/privacy",
       name: "privacy",
-      component: PrivacyPolicyView,
+      component: () => import("../views/admin-views/PrivacyPolicyView.vue"),
     },
     {
       path: "/terms",
       name: "terms",
-      component: TermsOfServiceView,
+      component: () => import("../views/admin-views/TermsOfServiceView.vue"),
     },
     {
       path: "/knowledge-base",
       name: "knowledge-base",
-      component: KnowledgeBaseView,
+      component: () => import("../views/admin-views/KnowledgeBaseView.vue"),
     },
     {
       path: "/how-vaptfix-works",
       name: "how-vaptfix-works",
-      component: HowVaptfixWorksView,
+      component: () => import("../views/admin-views/HowVaptfixWorksView.vue"),
     },
     {
       path: "/support",
       name: "public-support",
-      component: SupportCenterView,
+      component: () => import("../views/admin-views/SupportCenterView.vue"),
     },
     {
       path: "/dpa",
       name: "dpa",
-      component: DataProcessingAgreementView,
+      component: () => import("../views/admin-views/DataProcessingAgreementView.vue"),
     },
     {
       path: "/sub-processors",
       name: "sub-processors",
-      component: SubProcessorsView,
+      component: () => import("../views/admin-views/SubProcessorsView.vue"),
     },
     {
       path: "/choose-account",
@@ -171,73 +97,73 @@ const router = createRouter({
     {
       path: "/auth",
       name: "auth",
-      component: AuthView,
+      component: () => import("../views/admin-views/AuthView.vue"),
     },
     {
       path: "/pricingplan",
       name: "pricingplan",
-      component: PricingplansView,
+      component: () => import("../views/admin-views/PricingplansView.vue"),
     },
     {
       path: "/billing/success",
       name: "billing-success",
-      component: BillingSuccessView,
+      component: () => import("../views/admin-views/BillingSuccessView.vue"),
     },
     {
       path: "/billing/cancel",
       name: "billing-cancel",
-      component: BillingCancelView,
+      component: () => import("../views/admin-views/BillingCancelView.vue"),
     },
     {
       path: "/partner",
       name: "partner",
-      component: PartnerView,
+      component: () => import("../views/admin-views/PartnerView.vue"),
     },
     {
       path: "/partner-lead-portal",
       name: "partner-lead-portal",
-      component: PartnerLeadPortalView,
+      component: () => import("../views/admin-views/PartnerLeadPortalView.vue"),
     },
     {
       path: "/partner-lead-thankyou",
       name: "partner-lead-thankyou",
-      component: PartnerLeadThankYouView,
+      component: () => import("../views/admin-views/PartnerLeadThankYouView.vue"),
     },
     {
       path: "/partner-thankyou",
       name: "partner-thankyou",
-      component: PartnerThankYouView,
+      component: () => import("../views/admin-views/PartnerThankYouView.vue"),
     },
     {
       path: "/webinarform",
       name: "webinarform",
-      component: WebinarFormView,
+      component: () => import("../views/admin-views/WebinarFormView.vue"),
     },
     {
       path: "/webinarform-thankyou",
       name: "webinarform-thankyou",
-      component: WebinarThankYouView,
+      component: () => import("../views/admin-views/WebinarThankYouView.vue"),
     },
     {
       path: "/vulnerabilityexplorer",
       name: "vulnerabilityexplorer",
-      component: VulnerabilityExplorerView,
+      component: () => import("../views/admin-views/VulnerabilityExplorerView.vue"),
     },
     {
       path: "/communication",
       name: "communication",
-      component: LocationView,
+      component: () => import("../views/admin-views/LocationView.vue"),
       meta: { requiresAuth: true, requiresAdmin: true, requiresPaidPlan: true },
     },
     {
       path: "/microsoft/callback",
       name: "MicrosoftCallback",
-      component: MicrosoftCallbackView,
+      component: () => import("../views/admin-views/MicrosoftCallbackView.vue"),
     },
     {
       path: "/riskcriteria",
       name: "riskcriteria",
-      component: RiskCriteriaView,
+      component: () => import("../views/admin-views/RiskCriteriaView.vue"),
       meta: { requiresAuth: true, requiresAdmin: true, requiresPaidPlan: true },
     },
     // {
@@ -248,144 +174,144 @@ const router = createRouter({
     {
       path: "/onboarding1",
       name: "onboarding1",
-      component: Onboarding1View,
+      component: () => import("../views/admin-dashboard/Onboarding1View.vue"),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/admindashboardonboarding",
       name: "admindashboardonboarding",
-      component: AdminDashboardOnboardingView,
+      component: () => import("../views/admin-dashboard/AdminDashboardOnboardingView.vue"),
       meta: { requiresAuth: true, requiresAdmin: true, requiresPaidPlan: true },
     },
     {
       path: "/scope",
       name: "scope",
-      component: ScopeView,
+      component: () => import("../views/admin-dashboard/ScopeView.vue"),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/mitigationstrategy",
       name: "mitigationstrategy",
-      component: MitigationStrategyView,
+      component: () => import("../views/admin-dashboard/MitigationStrategyView.vue"),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/remediation-timeline/:reportId/:asset",
       name: "remediation-timeline",
-      component: RemediationTimelineView,
+      component: () => import("../views/admin-dashboard/RemediationTimelineView.vue"),
       props: true,
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/calendar",
       name: "calendar",
-      component: CalendarView,
+      component: () => import("../views/admin-dashboard/CalendarView.vue"),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/missingsecurityupdates",
       name: "missingsecurityupdates",
-      component: MissingSecurityUpdatesView,
+      component: () => import("../views/admin-dashboard/MissingSecurityUpdatesView.vue"),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/usermissingsecurityupdates",
       name: "usermissingsecurityupdates",
-      component: UserMissingSecurityUpdatesView,
+      component: () => import("../views/user-views/UserMissingSecurityUpdatesView.vue"),
       meta: { requiresAuth: true },
     },
     // {
     //   path: '/vulnerabilitycard',
     //   name: 'vulnerabilitycard',
-    //   component: VulnerabilityCardView,
+    //   component: () => import("../views/admin-dashboard/VulnerabilityCardView.vue"),
     // },
     {
       path: "/vulnerabilitycard/:reportId/:asset",
       name: "VulFix",
-      component: VulnerabilityCardView,
+      component: () => import("../views/admin-dashboard/VulnerabilityCardView.vue"),
       props: true,
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/signup",
       name: "signup",
-      component: SignupView,
+      component: () => import("../views/admin-views/SignupView.vue"),
     },
     {
       path: "/signin",
       name: "signin",
-      component: SignInView,
+      component: () => import("../views/admin-views/SignInView.vue"),
     },
     {
       path: "/forgotpassword",
       name: "forgotpassword",
-      component: ForgotPasswordView,
+      component: () => import("../views/admin-views/ForgotPasswordView.vue"),
     },
     {
       path: "/dashboard1",
       name: "dashboard1",
-      component: Dashboard1View,
+      component: () => import("../views/admin-dashboard/Dashboard1View.vue"),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
 
     // {
     //   path: '/createnewticket',
     //   name: 'createnewticket',
-    //   component: CreateNewTicketView,
+    //   component: () => import("../views/admin-dashboard/CreateNewTicketView.vue"),
     // },
     {
       path: "/ticket/:reportId/:fixVulId/:asset?/:ticketId?",
       name: "CreateTicket",
-      component: CreateNewTicketView,
+      component: () => import("../views/admin-dashboard/CreateNewTicketView.vue"),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     // {
     //   path: '/supportticket',
     //   name: 'supportticket',
-    //   component: SupportTicketView,
+    //   component: () => import("../views/admin-dashboard/SupportTicketView.vue"),
     // },
     {
       // path: '/supportticket/:reportId',
       path: "/supportticket/:reportId?",
       name: "supportticket",
-      component: SupportTicketView,
+      component: () => import("../views/admin-dashboard/SupportTicketView.vue"),
       props: true,
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/pending",
       name: "pending",
-      component: PendingView,
+      component: () => import("../views/admin-dashboard/PendingView.vue"),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/fixes",
       name: "fixes",
-      component: FixesView,
+      component: () => import("../views/admin-dashboard/FixesView.vue"),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/supportrequests",
       name: "exceptions",
-      component: ExceptionsView,
+      component: () => import("../views/admin-dashboard/ExceptionsView.vue"),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/vulnerabilityregister",
       name: "vulnerabilityregister",
-      component: VulnerabilityRegisterView,
+      component: () => import("../views/admin-dashboard/VulnerabilityRegisterView.vue"),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/report",
       name: "report",
-      component: ReportView,
+      component: () => import("../views/admin-dashboard/ReportView.vue"),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/assets",
       name: "assets",
-      component: AssetsView,
+      component: () => import("../views/admin-dashboard/AssetsView.vue"),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     // Toolbox route commented out
@@ -398,25 +324,25 @@ const router = createRouter({
     {
       path: "/performance-monitoring",
       name: "performance-monitoring",
-      component: PerformanceMonitoringView,
+      component: () => import("../views/admin-dashboard/PerformanceMonitoringView.vue"),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/viewreport",
       name: "viewreport",
-      component: ViewReportPage,
+      component: () => import("../views/admin-dashboard/ViewReportPage.vue"),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/waiting-for-report",
       name: "waiting-for-report",
-      component: WaitingForReportView,
+      component: () => import("../views/admin-dashboard/WaitingForReportView.vue"),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/admin-upload-report",
       name: "admin-upload-report",
-      component: AdminUploadReportView,
+      component: () => import("../views/admin-dashboard/AdminUploadReportView.vue"),
       meta: { requiresAuth: true, requiresAdmin: true, allowDeepLink: true },
     },
     {
@@ -432,31 +358,31 @@ const router = createRouter({
     {
       path: "/yourteam",
       name: "yourteam",
-      component: YourTeamView,
+      component: () => import("../views/admin-dashboard/YourTeamView.vue"),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/howitwork",
       name: "howitwork",
-      component: HowitWork,
+      component: () => import("../components/admin-component/HowitWork.vue"),
     },
     {
       path: "/profile",
       name: "profile",
-      component: Profile,
+      component: () => import("../components/admin-component/Profile.vue"),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/manage-account",
       name: "manage-account",
-      component: AdminManageAccountView,
+      component: () => import("../views/admin-dashboard/AdminManageAccountView.vue"),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     // Settings route — hidden (commented out)
     // {
     //   path: "/settings",
     //   name: "settings",
-    //   component: AdminSettingsView,
+    //   component: () => import("../views/admin-dashboard/AdminSettingsView.vue"),
     //   meta: { requiresAuth: true, requiresAdmin: true },
     // },
     {
@@ -485,23 +411,23 @@ const router = createRouter({
     {
       path: "/reset-password/:uidb64/:token",
       name: "reset-password",
-      component: HomeView,
+      component: () => import("../views/admin-views/HomeView.vue"),
     },
     {
       path: "/notification",
       name: "notification",
-      component: NotificationPanel,
+      component: () => import("../components/admin-component/NotificationPanel.vue"),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/jira/callback",
       name: "jira-callback",
-      component: JiraCallbackView,
+      component: () => import("../views/admin-views/JiraCallbackView.vue"),
     },
     {
       path: "/slack/callback",
       name: "slack-callback",
-      component: SlackCallbackView,
+      component: () => import("../views/admin-views/SlackCallbackView.vue"),
     },
 
     // user path
@@ -512,26 +438,26 @@ const router = createRouter({
     {
       path: "/userdashboard",
       name: "userdashboard1",
-      component: UserDashboard1View,
+      component: () => import("../views/user-views/UserDashboard1View.vue"),
       meta: { requiresAuth: true },
     },
     {
       path: "/user-manage-account",
       name: "user-manage-account",
-      component: UserManageAccountView,
+      component: () => import("../views/user-views/UserManageAccountView.vue"),
       meta: { requiresAuth: true },
     },
     // User settings route — hidden (commented out)
     // {
     //   path: "/user-settings",
     //   name: "user-settings",
-    //   component: UserSettingsView,
+    //   component: () => import("../views/user-views/UserSettingsView.vue"),
     //   meta: { requiresAuth: true },
     // },
     {
       path: "/userassets",
       name: "userassets",
-      component: UserAssetsView,
+      component: () => import("../views/user-views/UserAssetsView.vue"),
       meta: { requiresAuth: true },
     },
     // User Toolbox route commented out
@@ -544,75 +470,75 @@ const router = createRouter({
     {
       path: "/delayedvulnerabilities",
       name: "delayedvulnerabilities",
-      component: DelayedvulnerabilitiesView,
+      component: () => import("../views/user-views/DelayedvulnerabilitiesView.vue"),
       meta: { requiresAuth: true },
     },
     {
       path: "/delayedvulnerabilitycard",
       name: "delayedvulnerabilitycard",
-      component: DelayedvulnerabilitycardView,
+      component: () => import("../views/user-views/DelayedvulnerabilitycardView.vue"),
       meta: { requiresAuth: true },
     },
     {
       path: "/userexception",
       name: "userexception",
-      component: UserExceptionsView,
+      component: () => import("../views/user-views/UserExceptionsView.vue"),
       meta: { requiresAuth: true },
     },
     {
       path: "/fixedvulnerabilities",
       name: "fixedvulnerabilities",
-      component: FixedvulnerabilitiesView,
+      component: () => import("../views/user-views/FixedvulnerabilitiesView.vue"),
       meta: { requiresAuth: true },
     },
     {
       path: "/pendingvulnerabilities",
       name: "pendingvulnerabilities",
-      component: PendingvulnerabilitiesView,
+      component: () => import("../views/user-views/PendingvulnerabilitiesView.vue"),
       meta: { requiresAuth: true },
     },
     {
       path: "/pendingvulnerabilitycard",
       name: "pendingvulnerabilitycard",
-      component: PendingvulnerabilitycardView,
+      component: () => import("../views/user-views/PendingvulnerabilitycardView.vue"),
       meta: { requiresAuth: true },
     },
     {
       path: "/userVulnerabilityregister",
       name: "userVulnerabilityregister",
-      component: UserVulnerabilityregisterView,
+      component: () => import("../views/user-views/UserVulnerabilityregisterView.vue"),
       meta: { requiresAuth: true },
     },
     {
       path: "/user-vulnerabilitycard/:reportId/:asset",
       name: "UserVulFix",
-      component: UserVulnerabilityCardView,
+      component: () => import("../views/user-views/UserVulnerabilityCardView.vue"),
       props: true,
       meta: { requiresAuth: true },
     },
     {
       path: "/user-ticket/:reportId/:fixVulId/:asset?/:ticketId?",
       name: "UserCreateTicket",
-      component: UserCreateTicketView,
+      component: () => import("../views/user-views/UserCreateTicketView.vue"),
       meta: { requiresAuth: true },
     },
     {
       path: "/user-tickets",
       name: "UserTickets",
-      component: UserTicketsView,
+      component: () => import("../views/user-views/UserTicketsView.vue"),
       meta: { requiresAuth: true },
     },
     {
       path: "/user-remediation-timeline/:reportId/:asset",
       name: "user-remediation-timeline",
-      component: UserRemediationTimelineView,
+      component: () => import("../views/user-views/UserRemediationTimelineView.vue"),
       props: true,
       meta: { requiresAuth: true },
     },
     {
       path: "/user-calendar",
       name: "user-calendar",
-      component: UserCalendarView,
+      component: () => import("../views/user-views/UserCalendarView.vue"),
       meta: { requiresAuth: true },
     },
 

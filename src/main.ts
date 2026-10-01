@@ -1,4 +1,5 @@
 import "./assets/main.css";
+import "./assets/vendor/bootstrap-icons/bootstrap-icons.css";
 import "./assets/responsive.css";
 import "./utils/suppressUploadReportModal";
 
