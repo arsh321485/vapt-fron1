@@ -29,27 +29,27 @@
               <tr>
                 <td>Contabo GmbH</td>
                 <td>All data stored on the VAPTFIX platform, including account data, assessment data, and logs</td>
-                <td><span class="sp-verify">Server region to confirm</span></td>
+                <td><span class="sp-verify">France</span></td>
               </tr>
               <tr>
                 <td>MongoDB Inc. (MongoDB Atlas)</td>
                 <td>Account data, operational metadata, and assessment data</td>
-                <td><span class="sp-verify">Cluster region to confirm</span></td>
+                <td><span class="sp-verify">Frankfurt (eu-central-1)</span></td>
               </tr>
               <tr>
                 <td>Twilio Inc. (SendGrid)</td>
                 <td>Name, email address, and the content of emails sent by VAPTFIX, such as notifications and password resets</td>
-                <td><span class="sp-verify">Region to confirm</span></td>
+                <td><span class="sp-verify">EU</span></td>
               </tr>
               <tr>
                 <td>Stripe, Inc.</td>
                 <td>Billing name, email address, and payment details. VAPTFIX does not store full card numbers.</td>
-                <td><span class="sp-verify">Region to confirm</span></td>
+                <td><span class="sp-verify">Global (including the United States and other applicable jurisdictions)</span></td>
               </tr>
               <tr>
                 <td>OpenAI, L.L.C.</td>
                 <td>Vulnerability findings from uploaded assessment reports</td>
-                <td><span class="sp-verify">Region to confirm</span></td>
+                <td><span class="sp-verify">Global</span></td>
               </tr>
             </tbody>
           </table>
@@ -256,11 +256,14 @@ export default {
 
 .sp-verify {
   display: inline;
-  background: #fff6d8;
+  background: #fff3bf;
   color: #7a5a00;
   border-radius: 4px;
-  padding: 1px 6px;
+  padding: 2px 6px;
   font-weight: 600;
+  line-height: 1.7;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }
 
 @media (min-width: 769px) {
