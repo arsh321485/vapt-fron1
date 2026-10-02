@@ -28,7 +28,7 @@
             </div>
 
             <div class="st-filter-bar">
-              <div class="d-flex gap-2 flex-wrap">
+              <div class="d-flex gap-3 flex-wrap align-items-center">
                 <button
                   class="st-tab-btn"
                   :class="{ 'st-tab-active': activeTab === 'all' }"
@@ -53,18 +53,18 @@
                   Closed
                   <span class="st-tab-count">{{ sortedRequests.filter((r) => r.status?.toLowerCase() === 'closed').length }}</span>
                 </button>
-                <button class="st-sort-btn" @click="toggleSort">
-                  <i class="bi bi-arrow-down-up me-1"></i>
-                  Sort by date
-                  <span v-if="sortOrder === 'asc'">↑</span>
-                  <span v-else>↓</span>
+                <button
+                  v-for="team in teamOptions"
+                  :key="team.value"
+                  type="button"
+                  class="st-team-pill"
+                  :class="{ 'st-team-pill-active': selectedTeam === team.value }"
+                  :style="pillStyle(team)"
+                  @click="setTeam(team.value)"
+                >
+                  {{ team.label }}
                 </button>
-                <select v-model="selectedTeam" class="st-select">
-                  <option value="all">All Teams</option>
-                  <option v-for="team in assignedTeams" :key="`team-${team}`" :value="team">{{ team }}</option>
-                </select>
               </div>
-              <span class="st-count-badge">{{ filteredRequests.length }} requests</span>
             </div>
 
             <div class="st-table-card">
@@ -160,6 +160,7 @@ import DashboardHeader from '@/components/user-component/DashboardHeader.vue';
 import { useAuthStore } from '@/stores/authStore';
 import userTeamFilterWatch from '@/utils/userTeamFilterWatch';
 import { formatStatusLabel } from '@/utils/statusLabel';
+import { SUPPORT_TEAM_OPTIONS, teamPillStyle } from '@/utils/teamColors';
 
 export default {
   mixins: [userTeamFilterWatch],
@@ -173,10 +174,9 @@ export default {
             authStore: useAuthStore(),
             supportRequests: [],
             loading: false,
-            sortOrder: 'desc',
             activeTab: 'all',
             selectedTeam: 'all',
-            assignedTeams: [],
+            teamOptions: [...SUPPORT_TEAM_OPTIONS],
             currentPage: 1,
             itemsPerPage: 6,
         };
@@ -186,25 +186,14 @@ export default {
             return [...this.supportRequests].sort((a, b) => {
                 const da = new Date(a.requested_at);
                 const db = new Date(b.requested_at);
-                return this.sortOrder === 'asc' ? da - db : db - da;
+                return db - da;
             });
         },
         filteredRequests() {
             let rows = this.sortedRequests;
             if (this.selectedTeam !== 'all') {
                 const sel = this.selectedTeam.toLowerCase().trim();
-                rows = rows.filter(req => {
-                    // Check all possible team field names from API
-                    const teamVal = (
-                        req.assigned_team ||
-                        req.team_name ||
-                        req.team ||
-                        req.assigned_to_team ||
-                        ''
-                    ).toLowerCase().trim();
-                    // Flexible match: exact or partial
-                    return teamVal === sel || teamVal.includes(sel) || sel.includes(teamVal);
-                });
+                rows = rows.filter((req) => this.requestMatchesTeam(req, sel));
             }
             if (this.activeTab === 'all') return rows;
             return rows.filter((req) => req.status?.toLowerCase() === this.activeTab);
@@ -232,9 +221,6 @@ export default {
         activeTab() {
             this.currentPage = 1;
         },
-        sortOrder() {
-            this.currentPage = 1;
-        },
         selectedTeam() {
             this.currentPage = 1;
         },
@@ -250,12 +236,6 @@ export default {
         },
     },
     async mounted() {
-        try {
-            const user = JSON.parse(localStorage.getItem('user') || '{}');
-            this.assignedTeams = Array.isArray(user.Member_role) ? user.Member_role : [];
-        } catch {
-            this.assignedTeams = [];
-        }
         await this.loadSupportRequests();
         this.initTooltips();
     },
@@ -282,6 +262,27 @@ export default {
             if (sev === 'low') return 'st-crit-low';
             return 'st-crit-critical';
         },
+        setTeam(value) {
+            this.selectedTeam = value;
+        },
+        pillStyle(team) {
+            return teamPillStyle(team, this.selectedTeam);
+        },
+        requestMatchesTeam(req, sel) {
+            const values = [
+                req?.assigned_team,
+                req?.team_name,
+                req?.team,
+                req?.assigned_to_team,
+            ];
+            if (Array.isArray(req?.assigned_teams)) values.push(...req.assigned_teams);
+            if (Array.isArray(req?.Member_role)) values.push(...req.Member_role);
+            return values.some((value) => {
+                const teamVal = String(value || '').toLowerCase().trim();
+                if (!teamVal) return false;
+                return teamVal === sel || teamVal.includes(sel) || sel.includes(teamVal);
+            });
+        },
         initTooltips() {
             this.$nextTick(() => {
                 const tooltipEls = document.querySelectorAll('[data-bs-toggle="tooltip"]');
@@ -306,9 +307,6 @@ export default {
                 this.supportRequests = res.data;
             }
             this.initTooltips();
-        },
-        toggleSort() {
-            this.sortOrder = this.sortOrder === 'desc' ? 'asc' : 'desc';
         },
         goToPage(page) {
             this.currentPage = page;
@@ -428,36 +426,28 @@ export default {
   background: #edeef1;
 }
 
-.st-sort-btn {
+.st-team-pill {
   border-radius: 50px;
-  padding: 6px 14px;
+  padding: 7px 16px;
   font-size: 0.8rem;
   font-weight: 600;
-  border: 1px solid rgba(203, 196, 208, 0.4);
-  background: #ffffff;
-  color: #49454f;
+  background: #f8fafc;
+  border-style: solid;
+  color: #1e293b;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
 }
 
-.st-btn-filter {
-  border-radius: 8px;
-  padding: 6px 12px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  border: none;
-  background: #f2e8ff;
-  color: #241447;
+.st-team-pill:hover {
+  background: #f1f5f9;
 }
 
-.st-select {
-  border-radius: 8px;
-  border: 1px solid rgba(203, 196, 208, 0.4);
-  background: #f8f9fc;
-  color: #49454f;
-  font-size: 0.8rem;
-  font-weight: 600;
-  min-width: 190px;
-  height: 34px;
-  padding: 0 10px;
+.st-team-pill-active {
+  background: #f8fafc;
+  font-weight: 700;
 }
 
 .st-tab-count {
@@ -500,15 +490,6 @@ export default {
 .st-tab-active-closed .st-tab-count {
   background: #16a34a;
   color: #ffffff;
-}
-
-.st-count-badge {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #49454f;
-  background: #edeef1;
-  padding: 3px 10px;
-  border-radius: 50px;
 }
 
 .st-table-card {
