@@ -21,6 +21,7 @@ import {
   filterPlatformLabelVulnRows,
   sanitizeTeamHostPayload,
   isRealScanHost,
+  normalizeAssetType,
 } from "@/utils/assetDummyData";
 import { isClaimInviteFlow, clearClaimInvite, markClaimInviteSignup, readLiveMagicInvite, isReturningClaimedAdmin, rememberClaimedAdminEmail, currentClaimInviteToken, storeClaimInviteToken, ensureClaimInviteCaptured } from "@/utils/claimInvite";
 import { fetchClaimInviteValidate } from "@/services/claimInviteApi";
@@ -93,6 +94,35 @@ export function toTeamQueryParam(team?: string | null): string | undefined {
   return t;
 }
 
+async function postVulnerabilityHold(url: string, hostNames: string[], assetType?: string) {
+  const typedBody = holdTargetsBody(hostNames, assetType);
+  try {
+    return await endpoint.post(url, typedBody);
+  } catch (error: any) {
+    const status = error?.response?.status;
+    const detail = JSON.stringify(error?.response?.data || "").toLowerCase();
+    const rejectedExtra =
+      status === 400 &&
+      !!typedBody.asset_type &&
+      (detail.includes("held_from_asset_type") ||
+        detail.includes("asset_type") ||
+        detail.includes("unexpected") ||
+        detail.includes("unknown"));
+    if (!rejectedExtra) throw error;
+    return endpoint.post(url, { host_names: hostNames });
+  }
+}
+
+function holdTargetsBody(hostNames: string[], assetType?: string) {
+  const body: Record<string, unknown> = { host_names: hostNames };
+  const typed = normalizeAssetType(assetType);
+  if (typed) {
+    body.asset_type = typed;
+    body.held_from_asset_type = typed;
+  }
+  return body;
+}
+
 /** Flatten GET vulnerability/hold-list payload from backend only. */
 function normalizeHeldVulnerabilityList(payload: any, extra: Record<string, any> = {}) {
   const root =
@@ -138,6 +168,13 @@ function normalizeHeldVulnerabilityList(payload: any, extra: Record<string, any>
         assigned_team: vuln?.assigned_team || extra.assigned_team || "",
         member_type: host?.member_type || vuln?.member_type || "",
         asset_type: host?.asset_type || host?.assetType || vuln?.asset_type || vuln?.assetType || "",
+        held_from_asset_type:
+          host?.held_from_asset_type ||
+          host?.hold_asset_type ||
+          vuln?.held_from_asset_type ||
+          vuln?.hold_asset_type ||
+          "",
+        asset_type_counts: host?.asset_type_counts || vuln?.asset_type_counts || null,
         held_at: host?.held_at || vuln?.held_at || "",
         held_by: host?.held_by || vuln?.held_by || "",
         status: "held",
@@ -6409,7 +6446,7 @@ export const useAuthStore = defineStore("auth", {
     },
 
     // HOLD assets for a specific vulnerability (All Vulnerabilities tab)
-    async holdVulnerabilityAssets(pluginName: string, hostNames: string[]) {
+    async holdVulnerabilityAssets(pluginName: string, hostNames: string[], assetType?: string) {
       try {
         const reportId = await this.resolveReportId();
         if (!reportId) {
@@ -6417,9 +6454,10 @@ export const useAuthStore = defineStore("auth", {
         }
 
         const encodedPlugin = encodeURIComponent(String(pluginName || "").trim());
-        const res = await endpoint.post(
+        const res = await postVulnerabilityHold(
           `/api/admin/adminasset/report/${reportId}/vulnerability/${encodedPlugin}/hold/`,
-          { host_names: hostNames },
+          hostNames,
+          assetType,
         );
 
         const processed: string[] = res.data?.processed ?? [];
@@ -7328,7 +7366,7 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-    async holdUserVulnerabilityAssets(pluginName: string, hostNames: string[]) {
+    async holdUserVulnerabilityAssets(pluginName: string, hostNames: string[], assetType?: string) {
       try {
         const reportId = await this.resolveUserReportId();
         if (!reportId) {
@@ -7336,9 +7374,10 @@ export const useAuthStore = defineStore("auth", {
         }
 
         const encodedPlugin = encodeURIComponent(String(pluginName || "").trim());
-        const res = await endpoint.post(
+        const res = await postVulnerabilityHold(
           `/api/user/asset/report/${reportId}/vulnerability/${encodedPlugin}/hold/`,
-          { host_names: hostNames },
+          hostNames,
+          assetType,
         );
 
         const processed: string[] = res.data?.processed ?? [];

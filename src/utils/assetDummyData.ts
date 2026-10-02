@@ -462,13 +462,37 @@ function normalizePluginKey(name) {
 
 const HELD_TYPE_STORAGE_KEY = "vaptfix:held-item-asset-types";
 
-export function loadHeldItemTypeMap() {
+function readHeldTypeStorage(storage) {
+  if (!storage) return {};
   try {
-    const parsed = JSON.parse(sessionStorage.getItem(HELD_TYPE_STORAGE_KEY) || "{}");
+    const parsed = JSON.parse(storage.getItem(HELD_TYPE_STORAGE_KEY) || "{}");
     return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
   } catch {
     return {};
   }
+}
+
+export function loadHeldItemTypeMap() {
+  const local = readHeldTypeStorage(typeof localStorage !== "undefined" ? localStorage : null);
+  const session = readHeldTypeStorage(typeof sessionStorage !== "undefined" ? sessionStorage : null);
+  // localStorage wins on key clashes; sessionStorage is only the old per-tab copy.
+  const merged = { ...session, ...local };
+  if (Object.keys(merged).length) {
+    try {
+      localStorage.setItem(HELD_TYPE_STORAGE_KEY, JSON.stringify(merged));
+    } catch {
+      /* ignore quota / private mode */
+    }
+  }
+  return merged;
+}
+
+/** The finding's own tab when the report counts it under exactly one type. */
+export function soleCountedAssetType(counts) {
+  if (!hasAssetTypeCounts(counts)) return "";
+  const normalized = normalizeAssetTypeCounts(counts);
+  const types = ["firewall", "web_app", "server", "other"].filter((type) => normalized[type] > 0);
+  return types.length === 1 ? types[0] : "";
 }
 
 function isHoldStampKey(key) {
@@ -485,9 +509,14 @@ export function persistHeldItemTypeMap(map) {
     if (isHoldStampKey(key) && value) holdOnly[key] = value;
   });
   try {
-    sessionStorage.setItem(HELD_TYPE_STORAGE_KEY, JSON.stringify(holdOnly));
+    localStorage.setItem(HELD_TYPE_STORAGE_KEY, JSON.stringify(holdOnly));
   } catch {
     /* ignore quota / private mode */
+  }
+  try {
+    sessionStorage.removeItem(HELD_TYPE_STORAGE_KEY);
+  } catch {
+    /* ignore */
   }
 }
 
@@ -601,15 +630,20 @@ export function heldItemAssetType(held, hostTypeMap = {}, catalog = [], apiRow =
   const plugin = String(held?.plugin_name || held?.vul_name || "").trim();
   const holdStamp = lookupHoldStamp(hostTypeMap, plugin, host);
   if (holdStamp) return holdStamp;
-  // No local stamp — this session never saw the hold action itself (e.g. an
-  // admin held it and this is the user's own session, which never wrote a
-  // sessionStorage stamp). Fall back to the host's real asset_type from the
-  // asset catalog this session already fetched from the API, instead of
-  // defaulting to "other"/Assets and silently misfiling — or hiding — the
-  // held item under the wrong type tab.
-  // apiRow is the hold-list API's own row for this host (asset_type /
-  // host_information) — the held host is already gone from the asset catalog,
-  // so without it a hold made from another session always landed in "other".
+  // Tab saved with the hold itself (admin and user both read the hold-list).
+  // This is not the host's catalog type — a web-app host can still have a
+  // finding that was held from the Server tab.
+  const savedTab = normalizeAssetType(
+    apiRow?.held_from_asset_type ??
+      apiRow?.hold_asset_type ??
+      held?.held_from_asset_type ??
+      held?.hold_asset_type,
+  );
+  if (savedTab) return savedTab;
+  // Same report count both roles already fetch. A host can stay Web App
+  // because of other findings; this finding still belongs on its own tab.
+  const fromCounts = soleCountedAssetType(held?.asset_type_counts || apiRow?.asset_type_counts);
+  if (fromCounts) return fromCounts;
   const hasCatalog = catalog && (Array.isArray(catalog) ? catalog.length : catalog.size);
   if (host && (hasCatalog || apiRow)) {
     const resolved = resolveHostAssetType(host, catalog || [], apiRow);

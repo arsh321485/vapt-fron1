@@ -67,6 +67,7 @@ export function resolveHostAssetType(
 export function buildAssetCatalogHostIndex(catalog?: unknown[]): Map<string, unknown>;
 export function heldVulnTypeKey(pluginName: unknown, hostName: unknown): string;
 export function loadHeldItemTypeMap(): Record<string, string>;
+export function soleCountedAssetType(counts: unknown): string;
 export function persistHeldItemTypeMap(map: unknown): void;
 export function stampHeldItemAssetType(
   map: unknown,

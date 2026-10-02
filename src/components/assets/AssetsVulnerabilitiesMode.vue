@@ -1638,6 +1638,7 @@ export default {
     await this.loadVulnerabilities(false);
     this.loading = false;
     await heldPromise;
+    this.reclassifyHeldAssets();
     await this.authStore.refreshAutomationPremiumLock(this.isUser);
   },
   methods: {
@@ -1655,6 +1656,7 @@ export default {
       await this.loadVulnerabilities();
       this.loading = false;
       await heldPromise;
+      this.reclassifyHeldAssets();
     },
     isVulnHostDeleted(vuln, ip) {
       const plugin = String(vuln?._key || vuln?.vul_name || vuln?.plugin_name || '')
@@ -2148,8 +2150,8 @@ export default {
       await suppressLiveSync(async () => {
         for (const { pluginName, hosts } of jobs) {
           const res = this.isUser
-            ? await this.authStore.holdUserVulnerabilityAssets(pluginName, hosts)
-            : await this.authStore.holdVulnerabilityAssets(pluginName, hosts);
+            ? await this.authStore.holdUserVulnerabilityAssets(pluginName, hosts, wanted)
+            : await this.authStore.holdVulnerabilityAssets(pluginName, hosts, wanted);
           if (!res?.status) hosts.forEach((host) => failed.add(heldVulnTypeKey(pluginName, host)));
         }
       });
@@ -2255,29 +2257,57 @@ export default {
       this.clearVulnSelections();
       this.heldAssets.forEach(a => { a.selected = false; });
     },
+    assetTypeCountsForPlugin(pluginName) {
+      const key = String(pluginName || '').trim().toLowerCase();
+      if (!key) return null;
+      const reportRows = this.isUser
+        ? this.authStore.userAllReportVulnerabilities
+        : this.authStore.allReportVulnerabilities;
+      const report = (reportRows || []).find((row) =>
+        String(row.plugin_name || row.vul_name || row.name || '').trim().toLowerCase() === key,
+      );
+      if (hasAssetTypeCounts(report?.asset_type_counts)) return report.asset_type_counts;
+      const grouped = (this.groupedVulns || []).find((row) =>
+        String(row._key || row.plugin_name || row.vul_name || '').trim().toLowerCase() === key,
+      );
+      return hasAssetTypeCounts(grouped?.asset_type_counts) ? grouped.asset_type_counts : null;
+    },
+    heldTypeForRow(row) {
+      const hostName = String(row.host_name || row.asset || row.ip || '').trim();
+      const pluginName = String(row.plugin_name || row.vul_name || '').trim();
+      const counts = row.asset_type_counts || this.assetTypeCountsForPlugin(pluginName);
+      return heldItemAssetType(
+        {
+          plugin_name: pluginName,
+          host_name: hostName,
+          asset: hostName,
+          asset_type_counts: counts,
+          held_from_asset_type: row.held_from_asset_type || '',
+        },
+        this.hostAssetTypeMap,
+        this.assetCatalogHostIndex,
+        { ...row, asset_type_counts: counts },
+      );
+    },
+    reclassifyHeldAssets() {
+      if (!Array.isArray(this.heldAssets) || !this.heldAssets.length) return;
+      this.hostAssetTypeMap = { ...loadHeldItemTypeMap(), ...this.hostAssetTypeMap };
+      this.heldAssets = this.heldAssets.map((row) => ({
+        ...row,
+        asset_type: this.heldTypeForRow(row),
+      }));
+    },
     async loadHeldAssets() {
       const res = this.isUser
         ? await this.authStore.fetchUserHeldVulnerabilityAssets(true, this.authStore.userSelectedTeam)
         : await this.authStore.fetchHeldVulnerabilityAssets(true);
       const rows = res?.data || [];
       this.hostAssetTypeMap = { ...loadHeldItemTypeMap(), ...this.hostAssetTypeMap };
-      const prevTypes = {};
-      (this.heldAssets || []).forEach((held) => {
-        const key = heldVulnTypeKey(held.plugin_name || held.vul_name, held.host_name || held.asset);
-        if (key && held.asset_type) prevTypes[key] = held.asset_type;
-      });
       this.heldAssets = rows.map((a) => {
         const hostName = String(a.host_name || a.asset || a.ip || '').trim();
         const pluginName = String(a.plugin_name || a.vul_name || '').trim();
-        const key = heldVulnTypeKey(pluginName, hostName);
-        const assetType =
-          prevTypes[key] ||
-          heldItemAssetType(
-            { plugin_name: pluginName, host_name: hostName, asset: hostName },
-            this.hostAssetTypeMap,
-            this.assetCatalogHostIndex,
-            a,
-          );
+        const counts = a.asset_type_counts || this.assetTypeCountsForPlugin(pluginName);
+        const source = { ...a, asset_type_counts: counts };
         return {
           plugin_name: pluginName,
           vul_name: pluginName,
@@ -2285,7 +2315,9 @@ export default {
           asset: hostName,
           ip: hostName,
           member_type: a.member_type || '',
-          asset_type: assetType,
+          asset_type: this.heldTypeForRow(source),
+          asset_type_counts: counts,
+          held_from_asset_type: a.held_from_asset_type || '',
           severity: a.severity || '',
           selected: false,
         };
