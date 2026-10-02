@@ -546,12 +546,25 @@ export default {
 .exc-date { font-size: 0.875rem; color: #49454f; font-weight: 500; }
 .exc-ticket { font-size: 0.875rem; font-weight: 700; color: #0f696e; font-family: monospace; }
 
-.exc-status { display: inline-flex; align-items: center; gap: 5px; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; }
-.exc-status-dot { width: 6px; height: 6px; border-radius: 50%; }
-.exc-status-open { color: #b42318; } .exc-status-open .exc-status-dot { background: #b42318; }
-.exc-status-closed { color: #16a34a; } .exc-status-closed .exc-status-dot { background: #16a34a; }
-.exc-status-progress { color: #f2994a; } .exc-status-progress .exc-status-dot { background: #f2994a; }
-.exc-status-resolved { color: #0f696e; } .exc-status-resolved .exc-status-dot { background: #0f696e; }
+.exc-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 50px;
+  text-transform: capitalize;
+}
+.exc-status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.exc-status-open { background: #fdeaea; color: #ba1a1a; }
+.exc-status-open .exc-status-dot { background: #ba1a1a; }
+.exc-status-closed { background: #dcfce7; color: #166534; }
+.exc-status-closed .exc-status-dot { background: #16a34a; }
+.exc-status-progress { background: #ffedd5; color: #c2410c; }
+.exc-status-progress .exc-status-dot { background: #f2994a; }
+.exc-status-resolved { background: #ccfbf1; color: #0f696e; }
+.exc-status-resolved .exc-status-dot { background: #0f696e; }
 
 .exc-pagination {
   display: flex; justify-content: center; align-items: center; gap: 6px;
