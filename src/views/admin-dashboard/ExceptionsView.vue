@@ -85,7 +85,7 @@
                     <tr>
                       <th>Asset</th>
                       <th>Vulnerability Name</th>
-                      <th class="text-center">Criticality</th>
+                      <th class="text-center">Severity</th>
                       <th>Requested By</th>
                       <th>Support Raised</th>
                       <th>Status</th>

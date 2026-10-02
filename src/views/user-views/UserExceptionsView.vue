@@ -94,7 +94,7 @@
                       <td class="st-td">
                         <span class="st-vuln-name text-truncate d-block" :title="req.vul_name">{{ req.vul_name || '-' }}</span>
                       </td>
-                      <td class="st-td">
+                      <td class="st-td st-td-severity">
                         <span class="st-crit-badge" :class="getSeverityBadgeClass(req)">
                           {{ getSeverityLabel(req) }}
                         </span>
@@ -524,6 +524,7 @@ export default {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
+  table-layout: fixed;
 }
 
 .st-th {
@@ -538,6 +539,19 @@ export default {
   white-space: nowrap;
 }
 
+.st-table th:nth-child(1),
+.st-table td:nth-child(1) { width: 16%; }
+.st-table th:nth-child(2),
+.st-table td:nth-child(2) { width: 28%; }
+.st-table th:nth-child(3),
+.st-table td:nth-child(3) { width: 12%; }
+.st-table th:nth-child(4),
+.st-table td:nth-child(4) { width: 18%; }
+.st-table th:nth-child(5),
+.st-table td:nth-child(5) { width: 14%; }
+.st-table th:nth-child(6),
+.st-table td:nth-child(6) { width: 12%; }
+
 .st-tr {
   border-bottom: 1px solid rgba(203, 196, 208, 0.15);
   transition: background 0.12s;
@@ -551,6 +565,13 @@ export default {
   padding: 14px 16px;
   color: #191c1e;
   vertical-align: middle;
+  overflow: hidden;
+}
+
+.st-td-severity {
+  text-align: center;
+  overflow: visible;
+  white-space: nowrap;
 }
 
 .st-td-num {
@@ -671,13 +692,14 @@ export default {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 84px;
   padding: 4px 10px;
   border-radius: 999px;
-  font-size: 0.65rem;
+  font-size: 0.68rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+  white-space: nowrap;
+  line-height: 1.2;
 }
 .st-crit-critical { background: #f8dede; color: #b42318; }
 .st-crit-high { background: #fee2e2; color: #dc2626; }
