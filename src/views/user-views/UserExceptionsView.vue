@@ -586,16 +586,17 @@ export default {
 }
 
 .st-avatar {
-  width: 22px;
-  height: 22px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background: #241447;
-  color: #ffffff;
+  background: #a1ecf2;
+  color: #002022;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 700;
+  flex-shrink: 0;
 }
 
 .st-person-name {
@@ -674,17 +675,16 @@ export default {
   align-items: center;
   justify-content: center;
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: 4px;
   font-size: 0.68rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
   text-transform: uppercase;
   white-space: nowrap;
   line-height: 1.2;
 }
 .st-crit-critical { background: #f8dede; color: #b42318; }
 .st-crit-high { background: #fee2e2; color: #dc2626; }
-.st-crit-medium { background: #fef3c7; color: #f59e0b; }
+.st-crit-medium { background: #fff4cc; color: #f2c94c; }
 .st-crit-low { background: #d1fae5; color: #10b981; }
 
 .st-empty-row {
