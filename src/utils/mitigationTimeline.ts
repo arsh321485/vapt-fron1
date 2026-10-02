@@ -90,11 +90,14 @@ export function resolveMitigationDays(sevData, criteriaValue) {
     if (n != null) return n;
   }
   if (sevData && typeof sevData === "object") {
+    // Criteria length (days / label), not the countdown in remaining_*.
     const n = parseDurationToDays(
-      sevData.remaining_days ??
-        sevData.days ??
+      sevData.days ??
         sevData.sla_days ??
+        sevData.label ??
+        sevData.raw ??
         sevData.value ??
+        sevData.remaining_days ??
         sevData.remaining_label,
     );
     if (n != null) return n;
@@ -104,13 +107,18 @@ export function resolveMitigationDays(sevData, criteriaValue) {
 
 export function resolveMitigationLabel(sevData, days, formatTimeline) {
   if (sevData && typeof sevData === "object") {
-    const label = String(sevData.remaining_label || "").trim();
+    const label = String(sevData.label || sevData.raw || "").trim();
     if (label && label !== "--") return label;
-    if (String(sevData.status || "").toLowerCase() === "overdue") return "Overdue";
   }
   if (typeof sevData === "string") {
     const trimmed = sevData.trim();
     if (trimmed && trimmed !== "--" && Number.isNaN(Number(trimmed))) return trimmed;
+  }
+  if (days != null && !Number.isNaN(Number(days))) return formatTimeline({ days });
+  if (sevData && typeof sevData === "object") {
+    const remaining = String(sevData.remaining_label || "").trim();
+    if (remaining && remaining !== "--") return remaining;
+    if (String(sevData.status || "").toLowerCase() === "overdue") return "Overdue";
   }
   return formatTimeline({ days });
 }

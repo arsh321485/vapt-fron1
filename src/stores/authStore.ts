@@ -1896,13 +1896,15 @@ export const useAuthStore = defineStore("auth", {
         if (prev && typeof prev === "object" && !Array.isArray(prev)) {
           next[sev] = {
             ...prev,
-            remaining_label: label,
+            label,
+            raw: label,
             sla_days: days ?? prev.sla_days,
             days: days ?? prev.days,
           };
         } else {
           next[sev] = {
-            remaining_label: label,
+            label,
+            raw: label,
             sla_days: days,
             days,
           };
