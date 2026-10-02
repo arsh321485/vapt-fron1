@@ -1102,6 +1102,9 @@ export default {
       selectedAssetIpsByVulnKey: {},
       activeAction: '',
       heldAssets: [],
+      // Hold/unhold the user just confirmed. A stale hold-list refetch must
+      // not put the card back (or drop it) before the server catches up.
+      holdMutations: [],
       pendingDeletedAssets: [],
       showHeld: false,
       hostAssetTypeMap: loadHeldItemTypeMap(),
@@ -1269,6 +1272,14 @@ export default {
         : this.authStore.heldVulnerabilityAssets;
       (storeHeld || []).forEach((held) => {
         add(held.plugin_name || held.vul_name, held.host_name || held.asset || held.ip);
+      });
+      const now = Date.now();
+      (this.holdMutations || []).forEach((mutation) => {
+        if (!mutation || now - mutation.at > 20000) return;
+        const key = `${String(mutation.pluginName || '').trim().toLowerCase()}::${String(mutation.host || '').trim().toLowerCase()}`;
+        if (!key || key === '::') return;
+        if (mutation.action === 'unhold') set.delete(key);
+        if (mutation.action === 'hold') set.add(key);
       });
       return set;
     },
@@ -1639,7 +1650,17 @@ export default {
     this.loading = false;
     await heldPromise;
     this.reclassifyHeldAssets();
+    this.startHoldSync();
     await this.authStore.refreshAutomationPremiumLock(this.isUser);
+  },
+  activated() {
+    this.startHoldSync();
+  },
+  deactivated() {
+    this.stopHoldSync();
+  },
+  beforeUnmount() {
+    this.stopHoldSync();
   },
   methods: {
     // Team dropdown changed (header). This component has no other reactive
@@ -2130,6 +2151,7 @@ export default {
             severity: vuln.severity || '',
             selected: false,
           });
+          this.noteHoldMutation('hold', pluginName, host, optimistic[optimistic.length - 1]);
         });
       });
       // Optimistic: move the rows into "Mitigation on hold" right away instead
@@ -2161,6 +2183,10 @@ export default {
           (row) => !failed.has(heldVulnTypeKey(row.plugin_name, row.host_name)),
         );
         this.showHeld = this.heldAssets.length > 0;
+        failed.forEach((key) => {
+          const row = optimistic.find((item) => heldVulnTypeKey(item.plugin_name, item.host_name) === key);
+          if (row) this.forgetHoldMutation(row.plugin_name, row.host_name);
+        });
       }
       // Tell other tabs/pages before our own reload so they refresh in parallel.
       notifyLiveData('hold');
@@ -2188,6 +2214,7 @@ export default {
         const host = String(item.host_name || item.asset || item.ip || '').trim();
         if (!pluginName || !host) return;
         this.hostAssetTypeMap = clearHeldItemAssetType(this.hostAssetTypeMap, pluginName, host);
+        this.noteHoldMutation('unhold', pluginName, host);
         if (!byPlugin.has(pluginName)) byPlugin.set(pluginName, []);
         byPlugin.get(pluginName).push(host);
         selectedKeys.add(heldVulnTypeKey(pluginName, host));
@@ -2222,6 +2249,10 @@ export default {
       });
       failed.forEach((key) => selectedKeys.delete(key));
       if (failed.size) {
+        failed.forEach((key) => {
+          const row = previousHeld.find((item) => heldVulnTypeKey(item.plugin_name || item.vul_name, item.host_name || item.asset) === key);
+          if (row) this.forgetHoldMutation(row.plugin_name || row.vul_name, row.host_name || row.asset);
+        });
         // Put back the rows whose unhold failed; loadHeldAssets() below
         // resyncs the store's held list from the backend.
         const restored = previousHeld.filter((row) => failed.has(heldVulnTypeKey(row.plugin_name, row.host_name)));
@@ -2256,6 +2287,96 @@ export default {
       this.activeAction = '';
       this.clearVulnSelections();
       this.heldAssets.forEach(a => { a.selected = false; });
+    },
+    noteHoldMutation(action, pluginName, host, row) {
+      const key = heldVulnTypeKey(pluginName, host);
+      if (!key) return;
+      const now = Date.now();
+      this.holdMutations = (this.holdMutations || []).filter(
+        (mutation) => mutation.key !== key && now - mutation.at < 20000,
+      );
+      this.holdMutations.push({
+        key,
+        action,
+        at: now,
+        pluginName: String(pluginName || '').trim(),
+        host: String(host || '').trim(),
+        row: row || null,
+      });
+    },
+    forgetHoldMutation(pluginName, host) {
+      const key = heldVulnTypeKey(pluginName, host);
+      this.holdMutations = (this.holdMutations || []).filter((mutation) => mutation.key !== key);
+    },
+    applyHoldMutations(rows) {
+      const now = Date.now();
+      const list = Array.isArray(rows) ? rows : [];
+      const serverKeys = new Set(
+        list.map((row) => heldVulnTypeKey(row.plugin_name || row.vul_name, row.host_name || row.asset)),
+      );
+      const pending = (this.holdMutations || []).filter((mutation) => now - mutation.at < 20000);
+      this.holdMutations = pending.filter((mutation) => {
+        const present = serverKeys.has(mutation.key);
+        if (mutation.action === 'unhold') return present;
+        if (mutation.action === 'hold') return !present;
+        return false;
+      });
+      const unheld = new Set(
+        this.holdMutations.filter((mutation) => mutation.action === 'unhold').map((mutation) => mutation.key),
+      );
+      let next = list.filter(
+        (row) => !unheld.has(heldVulnTypeKey(row.plugin_name || row.vul_name, row.host_name || row.asset)),
+      );
+      this.holdMutations
+        .filter((mutation) => mutation.action === 'hold' && mutation.row)
+        .forEach((mutation) => {
+          if (next.some((row) => heldVulnTypeKey(row.plugin_name, row.host_name) === mutation.key)) return;
+          next = [mutation.row, ...next];
+        });
+      this.holdMutations
+        .filter((mutation) => mutation.action === 'unhold')
+        .forEach((mutation) => {
+          if (this.isUser) this.authStore.removeUserHeldVulnerabilityAssets(mutation.pluginName, [mutation.host]);
+          else this.authStore.removeHeldVulnerabilityAssets(mutation.pluginName, [mutation.host]);
+        });
+      return next;
+    },
+    startHoldSync() {
+      this.stopHoldSync();
+      this._holdSyncTimer = setInterval(() => {
+        this.syncHoldAcrossSessions();
+      }, 2000);
+    },
+    stopHoldSync() {
+      if (this._holdSyncTimer) {
+        clearInterval(this._holdSyncTimer);
+        this._holdSyncTimer = null;
+      }
+    },
+    async syncHoldAcrossSessions() {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      if (this.activeAction || this._holdSyncBusy) return;
+      this._holdSyncBusy = true;
+      try {
+        if (this.isUser) {
+          const team = this.authStore.userSelectedTeam;
+          await Promise.all([
+            this.authStore.fetchUserVulnerabilityRegister(true, team),
+            this.authStore.fetchUserAllReportVulnerabilities(true, team),
+            this.loadHeldAssets(),
+          ]);
+        } else {
+          await Promise.all([
+            this.authStore.fetchVulnerabilityRegister(true),
+            this.authStore.fetchAllReportVulnerabilities(true),
+            this.loadHeldAssets(),
+          ]);
+        }
+      } catch {
+        /* the next tick retries */
+      } finally {
+        this._holdSyncBusy = false;
+      }
     },
     assetTypeCountsForPlugin(pluginName) {
       const key = String(pluginName || '').trim().toLowerCase();
@@ -2322,6 +2443,7 @@ export default {
           selected: false,
         };
       }).filter((row) => row.plugin_name && row.host_name);
+      this.heldAssets = this.applyHoldMutations(this.heldAssets);
       this.showHeld = this.heldAssets.length > 0;
     },
     async reloadAfterAssetActions() {
