@@ -1766,9 +1766,16 @@ export const useAuthStore = defineStore("auth", {
      * admins, and completedSteps is only browser-local.
      */
     async hasSavedRiskCriteria(): Promise<boolean> {
+      const isSaved = (raw: any) => {
+        const record = extractRiskCriteriaRecord(raw);
+        if (!record || typeof record !== "object" || Array.isArray(record)) return false;
+        return ["critical", "high", "medium", "low"].some((key) => {
+          const value = record[key];
+          return value !== undefined && value !== null && String(value).trim() !== "";
+        });
+      };
       const byAdmin = await this.getRiskCriteriaByAdmin();
-      const data = byAdmin.status ? byAdmin.data : null;
-      if (data && data.critical && data.high && data.medium && data.low) return true;
+      if (byAdmin.status && isSaved(byAdmin.data)) return true;
       const listed = await this.fetchAdminRiskCriteria();
       return !!(listed.status && listed.data);
     },
@@ -8683,7 +8690,7 @@ export const useAuthStore = defineStore("auth", {
           return "/admin-upload-report";
         }
 
-        if (this._isOnboardingComplete(res)) {
+        if (this._isOnboardingComplete(res) || (await this.hasSavedRiskCriteria())) {
           this._markOnboardingComplete();
           return "/admindashboardonboarding";
         }

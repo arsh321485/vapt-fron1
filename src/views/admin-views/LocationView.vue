@@ -928,6 +928,12 @@ export default {
           return;
         }
       }
+      if (await this.authStore.hasSavedRiskCriteria()) {
+        this.authStore._markOnboardingComplete();
+        this.redirecting = true;
+        await this.$router.replace("/admindashboardonboarding");
+        return;
+      }
     } catch {
       if (!isClaimInviteFlow()) {
         this.redirecting = true;
