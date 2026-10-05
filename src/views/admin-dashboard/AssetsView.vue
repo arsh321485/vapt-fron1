@@ -850,6 +850,7 @@ export default {
       activeTab: "vulnerabilities",
       showCheckboxes: false,
       heldAssets: [],
+      pendingAssetUnholds: {},
       showHoldCheckboxes: false,
       activeAction: "",
       showHeld: false,
@@ -1172,6 +1173,9 @@ class TLSConfigurator:
         }
       },
       immediate: true
+    },
+    leftPanelTab(tab) {
+      if (tab === 'assets') this.refreshAssetsQuietly();
     },
     '$route.query': {
       deep: true,
@@ -1863,6 +1867,76 @@ class TLSConfigurator:
       (this.authStore.assetRows || []).forEach(a => (a.selected = false));
       (this.heldAssets || []).forEach(a => (a.selected = false));
     },
+    assetHostKey(row) {
+      return String(row?.asset || row?.ip || row?.host_name || '').trim().toLowerCase();
+    },
+    noteAssetUnhold(row) {
+      const host = this.assetHostKey(row);
+      if (!host) return;
+      const now = Date.now();
+      const pending = { ...(this.pendingAssetUnholds || {}) };
+      Object.keys(pending).forEach((key) => {
+        if (now - (pending[key]?.at || 0) > 60000) delete pending[key];
+      });
+      pending[host] = { at: now, row: { ...row, held: false, selected: false } };
+      this.pendingAssetUnholds = pending;
+    },
+    forgetAssetUnhold(host) {
+      const key = String(host || '').trim().toLowerCase();
+      if (!this.pendingAssetUnholds?.[key]) return;
+      const pending = { ...this.pendingAssetUnholds };
+      delete pending[key];
+      this.pendingAssetUnholds = pending;
+    },
+    applyPendingAssetUnholds(serverHeldHosts) {
+      const now = Date.now();
+      const pending = { ...(this.pendingAssetUnholds || {}) };
+      const main = this.authStore.assetRows || [];
+      const mainKeys = new Set(main.map((row) => this.assetHostKey(row)));
+      Object.keys(pending).forEach((key) => {
+        const expired = now - (pending[key]?.at || 0) > 60000;
+        const released = !serverHeldHosts.has(key) && mainKeys.has(key);
+        if (expired || released) delete pending[key];
+      });
+      this.pendingAssetUnholds = pending;
+      const keys = new Set(Object.keys(pending));
+      this.heldAssets = (this.heldAssets || []).filter((row) => !keys.has(this.assetHostKey(row)));
+      const missing = [];
+      keys.forEach((key) => {
+        if (mainKeys.has(key)) return;
+        const row = pending[key]?.row;
+        if (row) missing.push({ ...row, held: false, selected: false });
+      });
+      if (missing.length) this.authStore.assetRows = [...missing, ...main];
+    },
+    async refreshAssetsQuietly() {
+      if (this._assetHoldSyncBusy) return;
+      this._assetHoldSyncBusy = true;
+      try {
+        await this.authStore.fetchAssets(true);
+        this.rememberHostAssetTypes(this.authStore.assetRows);
+        await this.loadHeldAssets();
+      } catch {
+        /* the next tick retries */
+      } finally {
+        this._assetHoldSyncBusy = false;
+      }
+    },
+    startAssetHoldSync() {
+      this.stopAssetHoldSync();
+      this._assetHoldSyncTimer = setInterval(() => {
+        if (typeof document !== 'undefined' && document.hidden) return;
+        if (this.leftPanelTab === 'vulnerabilities') return;
+        if (this.activeAction) return;
+        this.refreshAssetsQuietly();
+      }, 2000);
+    },
+    stopAssetHoldSync() {
+      if (this._assetHoldSyncTimer) {
+        clearInterval(this._assetHoldSyncTimer);
+        this._assetHoldSyncTimer = null;
+      }
+    },
     async toggleUnholdMode() {
       if (this.activeAction === "hold" || this.activeAction === "delete") return;
 
@@ -1879,37 +1953,55 @@ class TLSConfigurator:
         return;
       }
 
-      await suppressLiveSync(async () => {
-        for (const item of selected) {
-          this.hostAssetTypeMap = clearHeldItemAssetType(
-            this.hostAssetTypeMap,
-            item.plugin_name || item.vul_name || '',
-            item.ip || item.asset,
-          );
-          const res = await this.authStore.unholdAsset(item.ip);
-
-          if (res.status && res.restoredAsset) {
-            const a = res.restoredAsset;
-
-            this.authStore.assetRows.unshift({
-              asset: a.asset,
-              name: a.host_information?.["DNS Name"] || "",
-              severity_counts: a.severity_counts,
-              host_information: a.host_information,
-              isInternal: true,
-              held: false,
-              selected: false,
-            });
-
-            this.heldAssets = this.heldAssets.filter(
-              h => h.ip !== item.ip
-            );
-          }
+      const selectedKeys = new Set(selected.map((item) => this.assetHostKey(item)));
+      selected.forEach((item) => {
+        this.hostAssetTypeMap = clearHeldItemAssetType(
+          this.hostAssetTypeMap,
+          item.plugin_name || item.vul_name || '',
+          item.ip || item.asset,
+        );
+        const restored = {
+          asset: item.asset || item.ip,
+          ip: item.ip || item.asset,
+          name: item.name || item.host_information?.["DNS Name"] || "",
+          severity_counts: item.severity_counts,
+          host_information: item.host_information,
+          member_type: item.member_type,
+          asset_type: item.asset_type,
+          isInternal: item.isInternal ?? item.member_type === "internal",
+          held: false,
+          selected: false,
+        };
+        this.noteAssetUnhold(restored);
+        if (!(this.authStore.assetRows || []).some((row) => this.assetHostKey(row) === this.assetHostKey(restored))) {
+          this.authStore.assetRows = [restored, ...(this.authStore.assetRows || [])];
         }
       });
-      await this.reloadAssetsAndHeld();
-      notifyLiveData("unhold");
+      this.heldAssets = this.heldAssets.filter((row) => !selectedKeys.has(this.assetHostKey(row)));
+      this.showHeld = this.heldAssets.length > 0;
       this.resetActions();
+
+      const failed = [];
+      await suppressLiveSync(async () => {
+        for (const item of selected) {
+          const res = await this.authStore.unholdAsset(item.ip || item.asset);
+          if (!res.status) failed.push(item);
+        }
+      });
+      if (failed.length) {
+        const failedKeys = new Set(failed.map((item) => this.assetHostKey(item)));
+        failed.forEach((item) => this.forgetAssetUnhold(item.ip || item.asset));
+        this.authStore.assetRows = (this.authStore.assetRows || []).filter(
+          (row) => !failedKeys.has(this.assetHostKey(row)),
+        );
+        this.heldAssets = [
+          ...failed.map((item) => ({ ...item, selected: false, held: true })),
+          ...this.heldAssets,
+        ];
+        this.showHeld = true;
+      }
+      await this.refreshAssetsQuietly();
+      notifyLiveData("unhold");
     },
     async loadHeldAssets() {
       const res = await this.authStore.fetchHeldAssets();
@@ -1946,10 +2038,15 @@ class TLSConfigurator:
           selected: false,
         };
       });
+      const serverHeldHosts = new Set(
+        this.heldAssets.map((row) => this.assetHostKey(row)).filter(Boolean),
+      );
+      this.applyPendingAssetUnholds(serverHeldHosts);
       this.showHeld = this.heldAssets.length > 0;
       if (this.heldAssets.length && Array.isArray(this.authStore.assetRows)) {
+        const heldHosts = new Set(this.heldAssets.map((row) => this.assetHostKey(row)));
         this.authStore.assetRows = this.authStore.assetRows.filter(
-          (a) => !this.heldAssets.some((h) => h.asset === a.asset),
+          (a) => !heldHosts.has(this.assetHostKey(a)),
         );
       }
       this.selectFirstNonEmptyAssetTab();
@@ -2361,12 +2458,20 @@ class TLSConfigurator:
     ]);
 
     await this.applyRouteQueryContext();
+    this.startAssetHoldSync();
   },
   async activated() {
     this.openFixPanelAlerts();
     await this.authStore.fetchVulnerabilityRegister(false);
     await this.reloadAssetsAndHeld(false);
     await this.applyRouteQueryContext();
+    this.startAssetHoldSync();
+  },
+  deactivated() {
+    this.stopAssetHoldSync();
+  },
+  beforeUnmount() {
+    this.stopAssetHoldSync();
   },
 };
 </script>

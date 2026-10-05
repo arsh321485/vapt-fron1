@@ -4720,7 +4720,8 @@ export const useAuthStore = defineStore("auth", {
           `/api/user/asset/report/${reportId}/assets/${encodeURIComponent(assetIp)}/unhold/`,
         );
         if (typeof res.data?.total_assets === "number") this.assetCount = res.data.total_assets;
-        this.invalidateUserRealtimeCaches(reportId);
+        // Do not wipe cached assets / vulnerability lists here. That empty
+        // gap is what blanked the page until the follow-up fetch returned.
         return { status: true, restoredAsset: res.data.asset, data: res.data };
       } catch (error: any) {
         return { status: false, message: error.response?.data?.detail || "Failed to unhold asset" };
@@ -6555,8 +6556,8 @@ export const useAuthStore = defineStore("auth", {
 
         const processed: string[] = res.data?.processed ?? [];
         this.removeHeldVulnerabilityAssets(pluginName, processed.length ? processed : hostNames);
-        this.allReportVulnerabilitiesFetched = false;
-        this.allReportVulnerabilities = [];
+        // Keep the report list. Clearing it emptied Active Threats until the
+        // next refetch, which is the blank flash after unhold.
 
         return {
           status: true,
@@ -7431,8 +7432,8 @@ export const useAuthStore = defineStore("auth", {
           pluginName,
           processed.length ? processed : hostNames,
         );
-        this.userAllReportVulnerabilitiesFetched = false;
-        this.userAllReportVulnerabilities = [];
+        // Keep the report list. Clearing it emptied Active Threats until the
+        // next refetch, which is the blank flash after unhold.
 
         return {
           status: true,
@@ -7915,7 +7916,8 @@ export const useAuthStore = defineStore("auth", {
         if (typeof res.data?.total_assets === "number") {
           this.assetCount = res.data.total_assets;
         }
-        this.invalidateAdminRealtimeCaches(reportId);
+        // Do not wipe assetRows / vulnerability lists here. That empty gap
+        // is what blanked the page until the follow-up fetch returned.
 
         return {
           status: true,

@@ -1049,6 +1049,7 @@ export default {
       loading: false,
       activeIndex: null,
       heldAssets: [],
+      pendingAssetUnholds: {},
       showHoldCheckboxes: false,
       activeAction: "",
       showHeld: true,
@@ -2018,8 +2019,14 @@ class TLSConfigurator:
         };
       });
       this.showHeld = this.heldAssets.length > 0;
+      const serverHeldHosts = new Set(
+        this.heldAssets.map((row) => this.assetHostKey(row)).filter(Boolean),
+      );
+      this.applyPendingAssetUnholds(serverHeldHosts);
+      this.showHeld = this.heldAssets.length > 0;
       if (this.heldAssets.length) {
-        this.assets = this.assets.filter(a => !this.heldAssets.some(h => h.asset === a.asset));
+        const heldHosts = new Set(this.heldAssets.map((row) => this.assetHostKey(row)));
+        this.assets = this.assets.filter((a) => !heldHosts.has(this.assetHostKey(a)));
       }
       this.selectFirstNonEmptyAssetTab();
       this.syncTotalAssets();
@@ -2287,6 +2294,86 @@ class TLSConfigurator:
       this.showHoldCheckboxes = true;
       this.clearAssetSelections();
     },
+    assetHostKey(row) {
+      return String(row?.asset || row?.ip || row?.host_name || '').trim().toLowerCase();
+    },
+    noteAssetUnhold(row) {
+      const host = this.assetHostKey(row);
+      if (!host) return;
+      const now = Date.now();
+      const pending = { ...(this.pendingAssetUnholds || {}) };
+      Object.keys(pending).forEach((key) => {
+        if (now - (pending[key]?.at || 0) > 60000) delete pending[key];
+      });
+      pending[host] = { at: now, row: { ...row, held: false, selected: false } };
+      this.pendingAssetUnholds = pending;
+    },
+    forgetAssetUnhold(host) {
+      const key = String(host || '').trim().toLowerCase();
+      if (!this.pendingAssetUnholds?.[key]) return;
+      const pending = { ...this.pendingAssetUnholds };
+      delete pending[key];
+      this.pendingAssetUnholds = pending;
+    },
+    applyPendingAssetUnholds(serverHeldHosts) {
+      const now = Date.now();
+      const pending = { ...(this.pendingAssetUnholds || {}) };
+      const main = this.assets || [];
+      const mainKeys = new Set(main.map((row) => this.assetHostKey(row)));
+      Object.keys(pending).forEach((key) => {
+        const expired = now - (pending[key]?.at || 0) > 60000;
+        const released = !serverHeldHosts.has(key) && mainKeys.has(key);
+        if (expired || released) delete pending[key];
+      });
+      this.pendingAssetUnholds = pending;
+      const keys = new Set(Object.keys(pending));
+      this.heldAssets = (this.heldAssets || []).filter((row) => !keys.has(this.assetHostKey(row)));
+      const missing = [];
+      keys.forEach((key) => {
+        if (mainKeys.has(key)) return;
+        const row = pending[key]?.row;
+        if (row) missing.push({ ...row, held: false, selected: false });
+      });
+      if (missing.length) this.assets = [...missing, ...main];
+    },
+    async refreshAssetsQuietly() {
+      if (this._assetHoldSyncBusy) return;
+      this._assetHoldSyncBusy = true;
+      try {
+        const team = this.authStore.userSelectedTeam;
+        const result = await this.authStore.fetchUserAssets(true, team);
+        if (result?.status) {
+          const incoming = this.authStore.cachedUserAssets || [];
+          const pending = this.pendingAssetUnholds || {};
+          const have = new Set(incoming.map((row) => this.assetHostKey(row)));
+          const extras = Object.entries(pending)
+            .filter(([key, item]) => Date.now() - (item?.at || 0) < 60000 && !have.has(key))
+            .map(([, item]) => ({ ...item.row, held: false, selected: false }));
+          this.assets = [...extras, ...incoming];
+          this.rememberHostAssetTypes(this.assets);
+        }
+        await this.loadHeldAssets();
+      } catch {
+        /* the next tick retries */
+      } finally {
+        this._assetHoldSyncBusy = false;
+      }
+    },
+    startAssetHoldSync() {
+      this.stopAssetHoldSync();
+      this._assetHoldSyncTimer = setInterval(() => {
+        if (typeof document !== 'undefined' && document.hidden) return;
+        if (this.leftPanelTab === 'vulnerabilities') return;
+        if (this.activeAction) return;
+        this.refreshAssetsQuietly();
+      }, 2000);
+    },
+    stopAssetHoldSync() {
+      if (this._assetHoldSyncTimer) {
+        clearInterval(this._assetHoldSyncTimer);
+        this._assetHoldSyncTimer = null;
+      }
+    },
     async toggleUnholdMode() {
       if (this.activeAction === "hold" || this.activeAction === "delete") return;
       this.activeAction = "unhold";
@@ -2299,20 +2386,41 @@ class TLSConfigurator:
         this.resetActions();
         return;
       }
-      await suppressLiveSync(async () => {
-        for (const item of selected) {
-          this.hostAssetTypeMap = clearHeldItemAssetType(
-            this.hostAssetTypeMap,
-            item.plugin_name || item.vul_name || '',
-            item.asset || item.ip,
-          );
-          const res = await this.authStore.unholdUserAsset(item.asset);
-          if (!res.status) continue;
+      const selectedKeys = new Set(selected.map((item) => this.assetHostKey(item)));
+      selected.forEach((item) => {
+        this.hostAssetTypeMap = clearHeldItemAssetType(
+          this.hostAssetTypeMap,
+          item.plugin_name || item.vul_name || '',
+          item.asset || item.ip,
+        );
+        const restored = { ...item, held: false, selected: false };
+        this.noteAssetUnhold(restored);
+        if (!(this.assets || []).some((row) => this.assetHostKey(row) === this.assetHostKey(restored))) {
+          this.assets = [restored, ...this.assets];
         }
       });
-      await this.reloadAssetsAndHeld();
-      notifyLiveData("unhold");
+      this.heldAssets = this.heldAssets.filter((row) => !selectedKeys.has(this.assetHostKey(row)));
+      this.showHeld = this.heldAssets.length > 0;
       this.resetActions();
+      const failed = [];
+      await suppressLiveSync(async () => {
+        for (const item of selected) {
+          const res = await this.authStore.unholdUserAsset(item.asset);
+          if (!res.status) failed.push(item);
+        }
+      });
+      if (failed.length) {
+        const failedKeys = new Set(failed.map((item) => this.assetHostKey(item)));
+        failed.forEach((item) => this.forgetAssetUnhold(item.asset || item.ip));
+        this.assets = (this.assets || []).filter((row) => !failedKeys.has(this.assetHostKey(row)));
+        this.heldAssets = [
+          ...failed.map((item) => ({ ...item, selected: false, held: true })),
+          ...this.heldAssets,
+        ];
+        this.showHeld = true;
+      }
+      await this.refreshAssetsQuietly();
+      notifyLiveData("unhold");
     },
     resetActions() {
       this.showCheckboxes = false;
@@ -2602,6 +2710,9 @@ class TLSConfigurator:
       },
       immediate: true,
     },
+    leftPanelTab(tab) {
+      if (tab === 'assets') this.refreshAssetsQuietly();
+    },
     '$route.query': {
       deep: true,
       handler(newQuery, oldQuery) {
@@ -2634,13 +2745,19 @@ class TLSConfigurator:
       this.loadAssets(false).then(() => this.loadHeldAssets()).then(() => this.syncTotalAssets()),
       this.authStore.refreshAutomationPremiumLock(true),
     ]);
+    this.startAssetHoldSync();
   },
   async activated() {
     this.openFixPanelAlerts();
     await this.reloadAssetsAndHeld(false);
     await this.applyRouteQueryContext();
+    this.startAssetHoldSync();
+  },
+  deactivated() {
+    this.stopAssetHoldSync();
   },
   beforeUnmount() {
+    this.stopAssetHoldSync();
   },
 };
 </script>

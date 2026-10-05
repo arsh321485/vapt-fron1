@@ -1275,7 +1275,7 @@ export default {
       });
       const now = Date.now();
       (this.holdMutations || []).forEach((mutation) => {
-        if (!mutation || now - mutation.at > 20000) return;
+        if (!mutation || now - mutation.at > 60000) return;
         const key = `${String(mutation.pluginName || '').trim().toLowerCase()}::${String(mutation.host || '').trim().toLowerCase()}`;
         if (!key || key === '::') return;
         if (mutation.action === 'unhold') set.delete(key);
@@ -1654,6 +1654,7 @@ export default {
     await this.authStore.refreshAutomationPremiumLock(this.isUser);
   },
   activated() {
+    this.syncHoldAcrossSessions();
     this.startHoldSync();
   },
   deactivated() {
@@ -2293,7 +2294,7 @@ export default {
       if (!key) return;
       const now = Date.now();
       this.holdMutations = (this.holdMutations || []).filter(
-        (mutation) => mutation.key !== key && now - mutation.at < 20000,
+        (mutation) => mutation.key !== key && now - mutation.at < 60000,
       );
       this.holdMutations.push({
         key,
@@ -2314,7 +2315,7 @@ export default {
       const serverKeys = new Set(
         list.map((row) => heldVulnTypeKey(row.plugin_name || row.vul_name, row.host_name || row.asset)),
       );
-      const pending = (this.holdMutations || []).filter((mutation) => now - mutation.at < 20000);
+      const pending = (this.holdMutations || []).filter((mutation) => now - mutation.at < 60000);
       this.holdMutations = pending.filter((mutation) => {
         const present = serverKeys.has(mutation.key);
         if (mutation.action === 'unhold') return present;
@@ -2355,6 +2356,20 @@ export default {
     },
     async syncHoldAcrossSessions() {
       if (typeof document !== 'undefined' && document.hidden) return;
+      if (this.activeAction) return;
+      // Hold-list is what moves a card between Active Threats and Mitigation
+      // on hold. Apply it on its own so a slow register/report refetch cannot
+      // delay an unhold the other session already saved.
+      if (!this._holdListSyncBusy) {
+        this._holdListSyncBusy = true;
+        try {
+          await this.loadHeldAssets();
+        } catch {
+          /* the next tick retries */
+        } finally {
+          this._holdListSyncBusy = false;
+        }
+      }
       if (this.activeAction || this._holdSyncBusy) return;
       this._holdSyncBusy = true;
       try {
@@ -2363,13 +2378,11 @@ export default {
           await Promise.all([
             this.authStore.fetchUserVulnerabilityRegister(true, team),
             this.authStore.fetchUserAllReportVulnerabilities(true, team),
-            this.loadHeldAssets(),
           ]);
         } else {
           await Promise.all([
             this.authStore.fetchVulnerabilityRegister(true),
             this.authStore.fetchAllReportVulnerabilities(true),
-            this.loadHeldAssets(),
           ]);
         }
       } catch {
