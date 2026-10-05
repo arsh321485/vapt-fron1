@@ -533,7 +533,7 @@ export default {
 .exc-badge { display: inline-flex; padding: 4px 10px; border-radius: 4px; font-size: 0.68rem; font-weight: 700; }
 .exc-badge-critical { background: #f8dede; color: #b42318; }
 .exc-badge-high { background: #fee2e2; color: #dc2626; }
-.exc-badge-medium { background: #fff4cc; color: #f2c94c; }
+.exc-badge-medium { background: #fef3c7; color: #f59e0b; }
 .exc-badge-low { background: #d1fae5; color: #10b981; }
 
 .exc-avatar {

@@ -1669,7 +1669,8 @@ body {
 .ra-sev-medium,
 .notif-pill-medium,
 .rt-chip-risk-medium,
-.st-crit-medium {
+.st-crit-medium,
+.exc-badge-medium {
   color: var(--sev-medium-text) !important;
   background: var(--sev-medium-bg) !important;
   background-color: var(--sev-medium-bg) !important;
