@@ -128,19 +128,21 @@
                 </table>
               </div>
 
-              <!-- Pagination -->
-              <div v-if="totalPages > 0" class="exc-pagination">
-                <button class="exc-page-btn" :disabled="currentPage === 1" @click="goToPrevPage"><i class="bi bi-chevron-left"></i></button>
-                <button
-                  v-for="page in pageNumbers"
-                  :key="page"
-                  class="exc-page-btn"
-                  :class="{ 'exc-page-active': currentPage === page }"
-                  @click="goToPage(page)"
-                >
-                  {{ page }}
-                </button>
-                <button class="exc-page-btn" :disabled="currentPage === totalPages" @click="goToNextPage"><i class="bi bi-chevron-right"></i></button>
+              <div v-if="!loadingRequests" class="exc-pagination">
+                <p class="exc-pagination-info">{{ paginationLabel }}</p>
+                <div v-if="finalSupportRequests.length" class="exc-pagination-controls">
+                  <button class="exc-page-btn" :disabled="currentPage === 1" @click="goToPrevPage"><i class="bi bi-chevron-left"></i></button>
+                  <button
+                    v-for="page in pageNumbers"
+                    :key="page"
+                    class="exc-page-btn"
+                    :class="{ 'exc-page-active': currentPage === page }"
+                    @click="goToPage(page)"
+                  >
+                    {{ page }}
+                  </button>
+                  <button class="exc-page-btn" :disabled="currentPage === totalPages" @click="goToNextPage"><i class="bi bi-chevron-right"></i></button>
+                </div>
               </div>
             </div>
 
@@ -222,20 +224,35 @@ export default {
     if (this.activeTab === "all") return rows;
     return rows.filter((req) => (req.status || "").toLowerCase() === this.activeTab);
   },
+  pageSize() {
+    const size = Number(this.itemsPerPage);
+    return size > 0 ? size : 6;
+  },
   totalPages() {
-    return Math.ceil(this.finalSupportRequests.length / this.itemsPerPage);
+    return Math.max(1, Math.ceil(this.finalSupportRequests.length / this.pageSize));
   },
   paginatedSupportRequests() {
-    const start = (this.currentPage - 1) * this.itemsPerPage;
-    const end = start + this.itemsPerPage;
-    return this.finalSupportRequests.slice(start, end);
+    const start = (this.currentPage - 1) * this.pageSize;
+    return this.finalSupportRequests.slice(start, start + this.pageSize);
+  },
+  paginationLabel() {
+    const total = this.finalSupportRequests.length;
+    if (!total) return 'Showing 0 of 0 results';
+    const start = (this.currentPage - 1) * this.pageSize + 1;
+    const end = Math.min(this.currentPage * this.pageSize, total);
+    return `Showing ${start}-${end} of ${total} results`;
   },
   pageNumbers() {
     const total = this.totalPages;
-    if (total <= 3) return Array.from({ length: total }, (_, i) => i + 1);
-    if (this.currentPage <= 2) return [1, 2, 3];
-    if (this.currentPage >= total - 1) return [total - 2, total - 1, total];
-    return [this.currentPage - 1, this.currentPage, this.currentPage + 1];
+    const maxVisible = 5;
+    if (total <= maxVisible) return Array.from({ length: total }, (_, i) => i + 1);
+    let start = Math.max(1, this.currentPage - Math.floor(maxVisible / 2));
+    let end = start + maxVisible - 1;
+    if (end > total) {
+      end = total;
+      start = end - maxVisible + 1;
+    }
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
   }
 
   },
@@ -567,14 +584,28 @@ export default {
 .exc-status-resolved .exc-status-dot { background: #0f696e; }
 
 .exc-pagination {
-  display: flex; justify-content: center; align-items: center; gap: 6px;
-  padding: 20px; border-top: 1px solid rgba(203,196,208,0.1);
-  background: #f2f3f6;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(203,196,208,0.15);
+  background: #ffffff;
+}
+.exc-pagination-info {
+  margin: 0;
+  font-size: 12px;
+  color: #49454f;
+}
+.exc-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 .exc-page-btn {
-  width: 38px; height: 38px; border-radius: 50%; border: none;
-  background: transparent; font-size: 0.875rem; font-weight: 700;
-  color: #191c1e; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 50%; border: none;
+  background: transparent; font-size: 12px; font-weight: 700;
+  color: #241447; cursor: pointer; display: flex; align-items: center; justify-content: center;
   transition: background 0.15s;
 }
 .exc-page-btn:hover { background: #e7e8eb; }

@@ -86,8 +86,8 @@
                         <p class="mb-0">No fixed vulnerabilities found.</p>
                       </td>
                     </tr>
-                    <tr v-for="(item, index) in filteredRows" :key="item.fix_vulnerability_id" class="fv-tr">
-                      <td class="fv-td fv-td-num">{{ index + 1 }}</td>
+                    <tr v-for="(item, index) in paginatedRows" :key="item.fix_vulnerability_id" class="fv-tr">
+                      <td class="fv-td fv-td-num">{{ (currentPage - 1) * pageSize + index + 1 }}</td>
                       <td class="fv-td" :title="item.plugin_name">
                         <span class="fv-vuln-name text-truncate d-block">{{ item.plugin_name }}</span>
                       </td>
@@ -123,6 +123,26 @@
                   </tbody>
                 </table>
               </div>
+              <div v-if="!loading" class="fv-table-footer">
+                <p class="fv-pagination-info">{{ paginationLabel }}</p>
+                <div class="fv-pagination-controls" v-if="filteredRows.length">
+                  <button class="fv-page-btn" @click="goToPrevPage" :disabled="currentPage === 1">
+                    <i class="bi bi-chevron-left"></i>
+                  </button>
+                  <button
+                    v-for="page in visiblePageNumbers"
+                    :key="page"
+                    class="fv-page-btn"
+                    :class="{ 'fv-page-btn-active': currentPage === page }"
+                    @click="goToPage(page)"
+                  >
+                    {{ page }}
+                  </button>
+                  <button class="fv-page-btn" @click="goToNextPage" :disabled="currentPage === totalPages">
+                    <i class="bi bi-chevron-right"></i>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -151,6 +171,8 @@ export default {
       allRows: [],
       reportId: null,
       activeFilters: ['All'],
+      currentPage: 1,
+      itemsPerPage: 6,
     };
   },
   computed: {
@@ -166,10 +188,60 @@ export default {
       });
       return rows;
     },
+    pageSize() {
+      const size = Number(this.itemsPerPage);
+      return size > 0 ? size : 6;
+    },
+    totalPages() {
+      return Math.max(1, Math.ceil(this.filteredRows.length / this.pageSize));
+    },
+    paginatedRows() {
+      const start = (this.currentPage - 1) * this.pageSize;
+      return this.filteredRows.slice(start, start + this.pageSize);
+    },
+    paginationLabel() {
+      const total = this.filteredRows.length;
+      if (!total) return 'Showing 0 of 0 results';
+      const start = (this.currentPage - 1) * this.pageSize + 1;
+      const end = Math.min(this.currentPage * this.pageSize, total);
+      return `Showing ${start}-${end} of ${total} results`;
+    },
+    visiblePageNumbers() {
+      const total = this.totalPages;
+      const maxVisible = 5;
+      if (total <= maxVisible) return Array.from({ length: total }, (_, i) => i + 1);
+      let start = Math.max(1, this.currentPage - Math.floor(maxVisible / 2));
+      let end = start + maxVisible - 1;
+      if (end > total) {
+        end = total;
+        start = end - maxVisible + 1;
+      }
+      return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+    },
+  },
+  watch: {
+    activeFilters: {
+      deep: true,
+      handler() {
+        this.currentPage = 1;
+      },
+    },
+    filteredRows() {
+      if (this.currentPage > this.totalPages) this.currentPage = this.totalPages;
+    },
   },
   methods: {
     async onUserSelectedTeamChanged(team) {
       if (typeof this.loadData === "function") await this.loadData();
+    },
+    goToPage(page) {
+      this.currentPage = page;
+    },
+    goToPrevPage() {
+      if (this.currentPage > 1) this.currentPage -= 1;
+    },
+    goToNextPage() {
+      if (this.currentPage < this.totalPages) this.currentPage += 1;
     },
     setFilter(type) {
       if (type === 'All') {
@@ -286,48 +358,36 @@ export default {
   border-radius: 50px;
   padding: 6px 16px;
   font-size: 0.8rem;
-  font-weight: 700;
-  border: 1px solid rgba(203, 196, 208, 0.4);
-  background: #f8f9fc;
+  font-weight: 600;
+  border: none;
+  background: #f2f3f6;
   color: #49454f;
   cursor: pointer;
 }
 
 .fv-tab-active {
-  background: #e0f2f1;
-  color: #0f696e;
-  border-color: #0f696e;
-}
-
-.fv-tab-critical,
-.fv-tab-high,
-.fv-tab-medium,
-.fv-tab-low {
-  background: #ffffff;
+  background: #241447;
+  color: #fff;
 }
 
 .fv-tab-active-critical {
-  background: #fdeaea;
-  color: #ba1a1a;
-  border-color: #ba1a1a;
+  background: #f8dede;
+  color: #b42318;
 }
 
 .fv-tab-active-high {
-  background: #ffe8e8;
-  color: #a02020;
-  border-color: #a02020;
+  background: #fee2e2;
+  color: #dc2626;
 }
 
 .fv-tab-active-medium {
-  background: #fff5d8;
-  color: #825b00;
-  border-color: #825b00;
+  background: #fef3c7;
+  color: #f59e0b;
 }
 
 .fv-tab-active-low {
-  background: #dcfce7;
-  color: #166534;
-  border-color: #16a34a;
+  background: #d1fae5;
+  color: #10b981;
 }
 
 .fv-filter-tag {
@@ -360,6 +420,42 @@ export default {
   border: 1px solid rgba(203, 196, 208, 0.2);
   overflow: hidden;
 }
+.fv-table-footer {
+  padding: 16px 24px;
+  background: #ffffff;
+  border-top: 1px solid rgba(203, 196, 208, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.fv-pagination-info {
+  font-size: 12px;
+  color: #49454f;
+  margin: 0;
+}
+.fv-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.fv-page-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: #241447;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.fv-page-btn:hover:not(:disabled) { background: #e7e8eb; }
+.fv-page-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.fv-page-btn-active { background: #0f696e; color: #fff; }
 
 .fv-table {
   width: 100%;
@@ -418,35 +514,32 @@ export default {
 
 .fv-sev-badge {
   display: inline-block;
-  border-radius: 999px;
-  padding: 4px 10px;
-  font-size: 0.72rem;
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .fv-sev-critical {
   background: #f8dede;
   color: #b42318;
-  border: 1px solid #fca5a5;
 }
 
 .fv-sev-high {
   background: #fee2e2;
   color: #dc2626;
-  border: 1px solid #fca5a5;
 }
 
 .fv-sev-medium {
   background: #fef3c7;
   color: #f59e0b;
-  border: 1px solid #fcd34d;
 }
 
 .fv-sev-low {
   background: #d1fae5;
   color: #10b981;
-  border: 1px solid #6ee7b7;
 }
 
 .fv-sev-default {
