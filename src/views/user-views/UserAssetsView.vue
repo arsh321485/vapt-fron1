@@ -2746,6 +2746,11 @@ class TLSConfigurator:
       this.authStore.refreshAutomationPremiumLock(true),
     ]);
     this.startAssetHoldSync();
+    // Warm the All Vulnerabilities list while All Assets is on screen.
+    // Not awaited — must not delay the asset list.
+    const team = this.authStore.userSelectedTeam;
+    this.authStore.fetchUserAllReportVulnerabilities(false, team);
+    this.authStore.fetchUserClosedVulns(false, team);
   },
   async activated() {
     this.openFixPanelAlerts();

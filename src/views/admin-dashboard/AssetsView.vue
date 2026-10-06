@@ -2459,6 +2459,9 @@ class TLSConfigurator:
 
     await this.applyRouteQueryContext();
     this.startAssetHoldSync();
+    // Warm the All Vulnerabilities list while All Assets is on screen.
+    // Not awaited — must not delay the asset list.
+    this.authStore.fetchAllReportVulnerabilities(false);
   },
   async activated() {
     this.openFixPanelAlerts();

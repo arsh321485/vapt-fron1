@@ -2513,16 +2513,6 @@ export default {
       await this.loadHeldAssets();
     },
     async loadVulnerabilities(force = true) {
-      // loading stays true (owned by the caller, alongside loadHeldAssets())
-      // until closed-fix records are in too — those change which hosts count
-      // as open, so flipping loading off (or letting this run unawaited)
-      // before they land renders a too-high count that then visibly ticks
-      // down once closedFixRecords finishes. That flicker is worse than the
-      // extra wait, so this stays awaited on both sides — the real fix for
-      // admin's slower load is the bulk closed-vulns endpoint requested from
-      // backend (loadClosedFixRecords still has no such endpoint to call),
-      // not skipping the wait and showing a wrong number in the meantime.
-      //
       // force defaults to true because most callers (team-change, post-
       // mutation refreshes) need a real refetch; only the initial mount
       // passes false to reuse the parent page's already-fresh cache.
@@ -2537,12 +2527,15 @@ export default {
           this.authStore.fetchAllReportVulnerabilities(force),
         ]);
       }
-      await this.loadClosedFixRecords();
+      // The vulnerability list is ready. Closed-fix still loads and still
+      // removes closed hosts from Active Threats when it arrives — it just
+      // no longer keeps this panel on a spinner. Admin's per-host closed
+      // calls, and the user's closed-vulns refetch, are the slow part.
+      this.loading = false;
+      this.loadClosedFixRecords();
       // Not awaited — automation-script matching only feeds the AUTOMATABLE
       // badges (each AutomatedFixPanel also resolves its own loading state
-      // independently), it doesn't affect the vuln list or counts the
-      // loading spinner is actually gating. Awaiting it here just added a
-      // 3rd sequential network round trip before the spinner could clear.
+      // independently), it doesn't affect the vuln list.
       this.loadAutomationScripts();
       this.selectFirstNonEmptyType();
       if (this.filteredVulns.length) {
