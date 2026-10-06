@@ -448,11 +448,16 @@ export default {
 
     async checkAndRedirect() {
       const authStore = useAuthStore()
+      const accountRole = await authStore.resolveAccountRole()
+      if (accountRole === 'team_member') {
+        this.$router.replace('/userdashboard')
+        return
+      }
 
       // If logged-in user is a user (not admin) → redirect to user dashboard
       const loggedUser = authStore.user || JSON.parse(localStorage.getItem('user') || 'null') || {}
       const userType = String(loggedUser?.user_type || loggedUser?.type || loggedUser?.role || '').toLowerCase()
-      if (userType === 'user' || userType === 'member' || userType === 'internal' || userType === 'external') {
+      if (accountRole !== 'admin' && (userType === 'user' || userType === 'member' || userType === 'internal' || userType === 'external')) {
         this.$router.replace('/userdashboard')
         return
       }

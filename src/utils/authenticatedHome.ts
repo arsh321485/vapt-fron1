@@ -1,6 +1,48 @@
 /** In-app home for a logged-in session. Public /home is only for logged-out / unpaid users. */
 
 const PAID_PLAN_CACHE_KEY = "vaptfix_has_paid_plan";
+const ACCOUNT_ROLE_KEY = "vaptfix_account_role";
+
+export type AccountRole = "admin" | "team_member";
+
+export function readAccountRole(): AccountRole | "" {
+  try {
+    const value =
+      sessionStorage.getItem(ACCOUNT_ROLE_KEY) ||
+      localStorage.getItem(ACCOUNT_ROLE_KEY) ||
+      "";
+    if (value === "admin" || value === "team_member") return value;
+  } catch {
+    /* ignore */
+  }
+  return "";
+}
+
+export function writeAccountRole(role: AccountRole) {
+  try {
+    sessionStorage.setItem(ACCOUNT_ROLE_KEY, role);
+  } catch {
+    /* ignore */
+  }
+  try {
+    localStorage.setItem(ACCOUNT_ROLE_KEY, role);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function clearAccountRole() {
+  try {
+    sessionStorage.removeItem(ACCOUNT_ROLE_KEY);
+  } catch {
+    /* ignore */
+  }
+  try {
+    localStorage.removeItem(ACCOUNT_ROLE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
 
 function readToken(): string {
   return (
@@ -79,6 +121,9 @@ export function hasAuthSession(): boolean {
 }
 
 export function isStoredTeamMember(): boolean {
+  const role = readAccountRole();
+  if (role === "team_member") return true;
+  if (role === "admin") return false;
   const user = readStoredUser();
   if (!user) return false;
   if (Array.isArray(user.Member_role)) return true;

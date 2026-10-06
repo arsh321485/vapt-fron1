@@ -1748,11 +1748,12 @@ export default {
       this.$emit('open-admin-signup');
     },
     async checkAndRedirectAdmin() {
-      if (isStoredTeamMember()) {
+      const authStore = useAuthStore();
+      const accountRole = await authStore.resolveAccountRole();
+      if (accountRole === 'team_member' || isStoredTeamMember()) {
         this.$router.replace('/userdashboard');
         return;
       }
-      const authStore = useAuthStore();
       let loggedUser = authStore.user || {};
       try {
         const raw = localStorage.getItem('user') || sessionStorage.getItem('user');
@@ -1763,7 +1764,7 @@ export default {
         loggedUser = authStore.user || {};
       }
       const userType = String(loggedUser && (loggedUser.user_type || loggedUser.type || loggedUser.role) || '').toLowerCase();
-      if (userType === 'user' || userType === 'member' || userType === 'internal' || userType === 'external') {
+      if (accountRole !== 'admin' && (userType === 'user' || userType === 'member' || userType === 'internal' || userType === 'external')) {
         this.$router.replace('/userdashboard');
         return;
       }

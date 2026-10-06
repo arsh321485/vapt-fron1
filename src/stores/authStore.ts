@@ -26,7 +26,7 @@ import {
 import { isClaimInviteFlow, clearClaimInvite, markClaimInviteSignup, readLiveMagicInvite, isReturningClaimedAdmin, rememberClaimedAdminEmail, currentClaimInviteToken, storeClaimInviteToken, ensureClaimInviteCaptured } from "@/utils/claimInvite";
 import { fetchClaimInviteValidate } from "@/services/claimInviteApi";
 import { clearLockedRoute } from "@/utils/routeLock";
-import { clearCachedPaidPlan, hasCachedPaidPlan, setCachedPaidPlan } from "@/utils/authenticatedHome";
+import { clearAccountRole, clearCachedPaidPlan, hasCachedPaidPlan, isStoredTeamMember, readAccountRole, setCachedPaidPlan, writeAccountRole } from "@/utils/authenticatedHome";
 import { getMySubscription } from "@/services/billingApi";
 import { fetchScopeAnalysisStatus, isPendingSuperadminReview, isScopeAnalysisReady } from "@/services/scopeFileApi";
 import { isActiveSubscription, isFreemiumPlan, isMagicLinkUnlimited, parseFreemiumUpgrade, retestErrorMessage, clearMagicLinkUnlimited } from "@/utils/planLimits";
@@ -370,6 +370,39 @@ interface WebinarRegisterPayload {
 }
 
 // Helper function to clear all auth tokens
+let accountRoleRequest: Promise<"admin" | "team_member"> | null = null;
+
+function memberProfilePresent(data: unknown, depth = 0): boolean {
+  if (depth > 4 || data == null) return false;
+  if (typeof data === "string") {
+    const text = data.trim();
+    return text.length > 0 && !/not found/i.test(text);
+  }
+  if (Array.isArray(data)) {
+    return data.length > 0 && data.some((item) => memberProfilePresent(item, depth + 1));
+  }
+  if (typeof data !== "object") return false;
+  const record = data as Record<string, any>;
+  const list = record.results ?? record.members ?? record.member_profile;
+  if (Array.isArray(list)) {
+    return list.length > 0 && list.some((item) => memberProfilePresent(item, depth + 1));
+  }
+  const nested = record.user ?? record.member ?? record.profile ?? record.data;
+  if (nested && typeof nested === "object") return memberProfilePresent(nested, depth + 1);
+  const detail = String(record.detail || record.message || "").toLowerCase();
+  if (detail.includes("not found") || detail.includes("no member")) return false;
+  return Boolean(
+    record.id ||
+      record._id ||
+      record.email ||
+      record.user_id ||
+      record.member_id ||
+      record.Member_role ||
+      record.first_name ||
+      record.firstname,
+  );
+}
+
 function clearAllAuthTokens() {
   stopNotificationPolling();
   stopLivePageSync();
@@ -387,6 +420,7 @@ function clearAllAuthTokens() {
   localStorage.removeItem("user");
   localStorage.removeItem("authenticated");
   localStorage.removeItem("adminLoginMethod");
+  clearAccountRole();
 }
 
 function flattenFieldErrors(value: unknown): string[] {
@@ -1228,6 +1262,31 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    // One member-profile read per login. A profile means team_member.
+    // 404 or an empty body means admin. is_staff is not used.
+    async resolveAccountRole(): Promise<"admin" | "team_member"> {
+      const cached = readAccountRole();
+      if (cached) return cached;
+      if (!accountRoleRequest) {
+        accountRoleRequest = (async () => {
+          const res = await this.getMemberProfile();
+          const empty = res.httpStatus === 404 || (res.status && !memberProfilePresent(res.data));
+          if (empty) {
+            writeAccountRole("admin");
+            return "admin" as const;
+          }
+          if (res.status && memberProfilePresent(res.data)) {
+            writeAccountRole("team_member");
+            return "team_member" as const;
+          }
+          return (isStoredTeamMember() ? "team_member" : "admin") as "admin" | "team_member";
+        })().finally(() => {
+          accountRoleRequest = null;
+        });
+      }
+      return accountRoleRequest;
+    },
+
     // ✅ Get Member Profile
     async getMemberProfile() {
       try {
@@ -1236,7 +1295,7 @@ export const useAuthStore = defineStore("auth", {
         return { status: true, data };
       } catch (error: any) {
         const httpStatus = error?.response?.status;
-        if (httpStatus !== 401 && httpStatus !== 403) {
+        if (httpStatus !== 401 && httpStatus !== 403 && httpStatus !== 404) {
           console.error("Member profile fetch error:", error);
         }
         return { status: false, message: "Unable to fetch profile", httpStatus };
@@ -8235,6 +8294,7 @@ export const useAuthStore = defineStore("auth", {
       clearAllAuthTokens();
       clearClaimInvite();
       clearMagicLinkUnlimited();
+      clearAccountRole();
       sessionStorage.removeItem("google_id_token");
       sessionStorage.removeItem("isNewUser");
       sessionStorage.removeItem("admin_slack_connected");
@@ -8264,6 +8324,7 @@ export const useAuthStore = defineStore("auth", {
     // ✅ Set Auth
     setAuth(token: string, user: any, refreshToken?: string | null) {
       const safeUser = user && typeof user === "object" ? user : {};
+      clearAccountRole();
       // All the cachedUser*/cachedAdmin* state below is keyed by reportId/team,
       // never by who's logged in. If a different account authenticates in this
       // same tab without an explicit logout first (e.g. QA testing several
@@ -8276,6 +8337,7 @@ export const useAuthStore = defineStore("auth", {
       const nextId = String(safeUser?.id || safeUser?._id || safeUser?.email || "").trim().toLowerCase();
       if (previousId && nextId && previousId !== nextId) {
         this.clearCache();
+        clearAccountRole();
       }
       this.token = token;
       this.user = safeUser;
