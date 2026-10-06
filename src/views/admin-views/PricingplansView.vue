@@ -40,18 +40,19 @@
                     'pricing-card--locked': isScopeFreemiumLocked(plan),
                   }"
                 >
-                  <div v-if="isCurrentPlan(plan.id)" class="pricing-popular-badge">YOUR PLAN</div>
-                  <div v-else-if="autoSelectedPlan === plan.id" class="pricing-popular-badge">RECOMMENDED</div>
-                  <div v-else-if="plan.featured && !currentPlanId && !autoSelectedPlan" class="pricing-popular-badge">MOST POPULAR</div>
+                  <div class="pricing-badge-slot">
+                    <div v-if="isCurrentPlan(plan.id)" class="pricing-popular-badge">YOUR PLAN</div>
+                    <div v-else-if="autoSelectedPlan === plan.id" class="pricing-popular-badge">RECOMMENDED</div>
+                    <div v-else-if="plan.featured && !currentPlanId && !autoSelectedPlan" class="pricing-popular-badge">MOST POPULAR</div>
+                  </div>
                   <div class="card-body d-flex flex-column">
                     <h2 class="card-title pricing-tier-title">{{ plan.name }}</h2>
-                    <p
-                      class="pricing-price mb-1"
-                      :class="{ 'pricing-price--contact': plan.id === 'custom' }"
-                    >
-                      {{ plan.priceLabel }}
-                    </p>
-                    <p class="pricing-price-note mb-3">{{ planPriceNote(plan) }}</p>
+                    <div class="pricing-price-slot" :aria-hidden="plan.id === 'freemium' ? undefined : 'true'">
+                      <template v-if="plan.id === 'freemium'">
+                        <p class="pricing-price mb-1">{{ plan.priceLabel }}</p>
+                        <p class="pricing-price-note">{{ planPriceNote(plan) }}</p>
+                      </template>
+                    </div>
                     <button
                       type="button"
                       class="btn text-light rounded-pill w-100 pricing-cta"
@@ -113,12 +114,6 @@
                   <div class="pricing-detail-hero-text">
                     <span class="pricing-detail-eyebrow">Selected plan</span>
                     <h2 class="pricing-detail-name">{{ activePlan.name }}</h2>
-                    <p class="pricing-detail-note">{{ detailPriceNote }}</p>
-                  </div>
-                  <div class="pricing-detail-price-box">
-                    <span v-if="estimateLoading" class="spinner-border spinner-border-sm" role="status"></span>
-                    <span class="pricing-detail-price">{{ detailPriceLabel }}</span>
-                    <small v-if="estimateAssetLabel" class="pricing-detail-assets">{{ estimateAssetLabel }}</small>
                   </div>
                 </div>
 
@@ -143,30 +138,6 @@
                 </div>
 
                 <div class="pricing-detail-body">
-                  <div class="pricing-features-panel">
-                    <p class="pricing-features-heading">{{ activePlan.featuresHeading }}</p>
-                    <ul class="pricing-features-grid list-unstyled mb-0">
-                      <li
-                        v-for="(feature, idx) in activePlan.features"
-                        :key="idx"
-                        class="pricing-feature-chip"
-                        :class="{
-                          'is-excluded': !feature.included,
-                          'is-muted':
-                            (testingModeLocked && isTestingFeature(feature.text)) ||
-                            (managementModeLocked && isManagementFeature(feature.text)),
-                        }"
-                      >
-                        <i
-                          class="bi"
-                          :class="feature.included ? 'bi-check-circle-fill' : 'bi-x-circle-fill'"
-                          aria-hidden="true"
-                        ></i>
-                        <span>{{ feature.text }}</span>
-                      </li>
-                    </ul>
-                  </div>
-
                   <!-- Premium: Management vs Management + Testing -->
                   <div v-if="activePlan.id === 'premium'" class="pricing-mode-block">
                     <p class="pricing-cycle-label">How will you use Premium?</p>
@@ -177,11 +148,12 @@
                       <label
                         class="pricing-mode-option"
                         :class="{
-                          active: premiumMode === 'management',
+                          active: premiumDetailsOpen && premiumMode === 'management',
                           'is-disabled': managementModeLocked,
                         }"
                         :aria-disabled="managementModeLocked ? 'true' : 'false'"
                         :title="managementModeLocked ? 'Management is not available after you upload a scope file.' : ''"
+                        @click="openPremiumMode('management')"
                       >
                         <input
                           v-model="premiumMode"
@@ -190,14 +162,15 @@
                           value="management"
                           class="visually-hidden"
                           :disabled="managementModeLocked"
+                          @change="premiumDetailsOpen = true"
                         />
                         <div class="pricing-mode-option-top">
-                          <span class="pricing-mode-tag">a. Management</span>
+                          <span class="pricing-mode-tag">Management Only</span>
                           <span class="pricing-mode-price">From $1.25 / IP</span>
                         </div>
-                        <strong class="pricing-mode-title">I already have a report</strong>
+                        <strong class="pricing-mode-title">I Already Have an Assessment Report</strong>
                         <p class="pricing-mode-copy">
-                          Upload your report. VAPTFix does not run testing. Platform covers dashboard, tracking, and reporting. Billed per IP by billing cycle.
+                          Upload multiple existing assessment reports. VAPTFIX manages the rest, providing centralized dashboard visibility, vulnerability tracking, remediation management, and reporting.
                         </p>
                         <p v-if="managementModeLocked" class="pricing-mode-locked-note">
                           Not available — you uploaded a scope file for testing.
@@ -207,11 +180,12 @@
                       <label
                         class="pricing-mode-option"
                         :class="{
-                          active: premiumMode === 'testing',
+                          active: premiumDetailsOpen && premiumMode === 'testing',
                           'is-disabled': testingModeLocked,
                         }"
                         :aria-disabled="testingModeLocked ? 'true' : 'false'"
                         :title="testingModeLocked ? 'Testing is not available after you upload a report.' : ''"
+                        @click="openPremiumMode('testing')"
                       >
                         <input
                           v-model="premiumMode"
@@ -220,14 +194,15 @@
                           value="testing"
                           class="visually-hidden"
                           :disabled="testingModeLocked"
+                          @change="premiumDetailsOpen = true"
                         />
                         <div class="pricing-mode-option-top">
-                          <span class="pricing-mode-tag">b. Management + Testing</span>
+                          <span class="pricing-mode-tag">Testing &amp; Retesting</span>
                           <span class="pricing-mode-price">$20 / IP / year</span>
                         </div>
-                        <strong class="pricing-mode-title">I need VAPTFix to run testing</strong>
+                        <strong class="pricing-mode-title">VAPTFIX Testing &amp; Retesting</strong>
                         <p class="pricing-mode-copy">
-                          Provide scope instead of a report. VAPTFix carries out testing and retesting. Annual commitment only.
+                          Provide the required scope for VAPTFIX to conduct the security assessment. The plan includes two testing cycles per year, with one cycle consisting of testing and retesting.
                         </p>
                         <p v-if="testingModeLocked" class="pricing-mode-locked-note">
                           Not available — you already uploaded a report.
@@ -235,7 +210,14 @@
                       </label>
                     </div>
 
-                    <div v-if="premiumMode === 'management'" class="pricing-cycle-block">
+                    <div v-if="premiumDetailsOpen && premiumMode === 'management'" class="pricing-plan-overview">
+                      <p class="pricing-cycle-label">Plan overview</p>
+                      <p class="pricing-mode-copy mb-0">
+                        This plan is designed for organizations that already have one or more assessment reports and require VAPTFIX to manage, track, and monitor their vulnerabilities through the platform. Upload multiple reports as tested, and VAPTFIX manages the rest.
+                      </p>
+                    </div>
+
+                    <div v-if="premiumDetailsOpen && premiumMode === 'management'" class="pricing-cycle-block">
                       <p class="pricing-cycle-label">Billing cycle</p>
                       <div class="pricing-cycle-options">
                         <label
@@ -257,28 +239,28 @@
                         </label>
                       </div>
                       <p class="pricing-mode-example">
-                        Example: 80 IPs on Annual → 80 × $1.25 × 12 = <strong>$1,200 / year</strong>.
-                        Monthly → 80 × $2.00 = <strong>$160 / month</strong>.
+                        Monthly: 50 × $2.00 × 1 month = <strong>$100 per month</strong>.
+                        Semi-Annual: 50 × $1.50 × 6 months = <strong>$450 per six months</strong>.
+                        One-Year Commitment: 50 × $1.25 × 12 months = <strong>$750 per year</strong>.
                       </p>
                     </div>
 
-                    <div v-else class="pricing-testing-panel">
+                    <div v-else-if="premiumDetailsOpen && premiumMode === 'testing'" class="pricing-plan-overview">
                       <div class="pricing-testing-rate-row">
                         <span class="pricing-testing-amount">$20 / IP / year</span>
-                        <span class="pricing-testing-badge">Annual only</span>
+                        <span class="pricing-testing-badge">Annual</span>
                       </div>
-                      <p class="pricing-mode-copy mb-2">
-                        Flat rate covers platform access plus testing and retesting for the year. No Monthly or Semi-Annual option.
-                      </p>
-                      <p class="pricing-mode-example mb-0">
-                        Example: 80 IPs of scope → 80 × $20 = <strong>$1,600 / year</strong>
-                        (vs $1,200/year if you uploaded your own report under Management).
+                      <p class="pricing-cycle-label">Included Items</p>
+                      <ul class="pricing-testing-included">
+                        <li>Includes two security assessments per year.</li>
+                        <li>Includes both initial testing and retesting.</li>
+                        <li>Retesting included as part of each testing cycle.</li>
+                      </ul>
+                      <p class="pricing-mode-copy mb-0">
+                        Includes two testing cycles per year, with one cycle consisting of testing and retesting.
                       </p>
                     </div>
 
-                    <p class="pricing-mode-footnote">
-                      You cannot mix modes on the same subscription. The 250-asset ceiling applies to both — above 250 assets moves to Custom.
-                    </p>
                   </div>
 
                   <div v-if="activePlan.id === 'custom'" class="pricing-lead-form">
@@ -444,7 +426,7 @@
                     Billing cycle: <strong>{{ selectedCycleLabel }}</strong>
                   </div>
                   <div v-else-if="activePlan.id === 'premium'" class="pricing-summary-meta">
-                    Commitment: <strong>Annual only</strong>
+                    Commitment: <strong>Annual</strong>
                   </div>
                   <div class="pricing-summary-total-bar">
                     <span>Total due today</span>
@@ -588,12 +570,12 @@ const PLAN_CONFIG = {
     featured: false,
     featuresHeading: "What's included:",
     features: [
-      { text: '5 visible Internal IPs (extra assets lock until upgrade)', included: true },
-      { text: 'Report upload – extras unlock on Premium, no re-upload', included: true },
-      { text: 'Up to 3 team members', included: true },
-      { text: 'All 4 teams enabled', included: true },
-      { text: 'No testing/retesting', included: false },
-      { text: 'No automation scripts', included: false },
+      { text: 'Up to 5 visible internal IPs, with additional assets available upon upgrading to Premium or Custom.', included: true },
+      { text: 'Get your own assessment report.', included: true },
+      { text: 'Support for up to 3 team members.', included: true },
+      { text: 'Access to all 4 teams.', included: true },
+      { text: 'Testing and retesting are not included in the Freemium plan. Upgrade to Premium or Custom to access testing and retesting.', included: false },
+      { text: 'Automation scripts are not included in the Freemium plan. Upgrade to Premium or Custom to access automation scripts.', included: false },
     ],
   },
   premium: {
@@ -605,11 +587,10 @@ const PLAN_CONFIG = {
     featured: true,
     featuresHeading: 'Everything in Freemium, plus:',
     features: [
-      { text: 'Internal & External IPs, upto 250 assets', included: true },
-      { text: 'All vulnerabilities', included: true },
-      { text: 'Full automation scripts', included: true },
-      { text: 'Email support', included: true },
-      { text: 'Management: upload report (from $1.25/IP)', included: true },
+      { text: 'Support for internal and external IPs, with up to 250 assets.', included: true },
+      { text: 'Access to all vulnerabilities.', included: true },
+      { text: 'Full automation script support.', included: true },
+      { text: 'Email support.', included: true },
     ],
   },
   custom: {
@@ -621,9 +602,9 @@ const PLAN_CONFIG = {
     featured: false,
     featuresHeading: 'Everything in Premium, plus:',
     features: [
-      { text: 'Internal, External, Web & Mobile assets', included: true },
-      { text: 'AWS file support included', included: true },
-      { text: 'Support via multiple channels', included: true },
+      { text: 'Support for internal, external, web, and mobile assets.', included: true },
+      { text: 'AWS file support included.', included: true },
+      { text: 'Support through multiple communication channels.', included: true },
     ],
   },
 };
@@ -641,12 +622,13 @@ export default {
       selectedPlan: null,
       showAdminSignUpModal: false,
       premiumMode: 'management',
+      premiumDetailsOpen: false,
       billingCycle: 'annual',
       paymentMethod: 'card',
       billingCycles: [
-        { id: 'monthly', label: 'Monthly', rate: '$2.00 / IP', commitment: 'Billed every month' },
-        { id: 'semi', label: 'Semi-Annual', rate: '$1.50 / IP', commitment: 'Billed every 6 months' },
-        { id: 'annual', label: 'Annual', rate: '$1.25 / IP', commitment: 'Billed once a year' },
+        { id: 'monthly', label: 'Monthly', rate: '$2.00 / IP', commitment: 'Management services are provided for one month at the applicable monthly fee.' },
+        { id: 'semi', label: 'Semi-Annual', rate: '$1.50 / IP', commitment: 'Management services are provided for six months at the applicable fee.' },
+        { id: 'annual', label: 'One-Year Commitment', rate: '$1.25 / IP', commitment: 'Management services are provided for one year at the applicable annual fee.' },
       ],
       paymentMethods: [
         { id: 'card', label: 'Credit / Debit Card', shortLabel: 'Card', icon: 'bi bi-credit-card-2-front' },
@@ -855,7 +837,7 @@ export default {
       return this.selectedCycle?.label || 'Annual';
     },
     premiumModeLabel() {
-      return this.premiumMode === 'testing' ? 'Management + Testing' : 'Management';
+      return this.premiumMode === 'testing' ? 'Testing & Retesting' : 'Management Only';
     },
     // activePlan.features is a static marketing list (rates as of the
     // Annual cycle). The order summary reflects a specific billing cycle
@@ -1387,10 +1369,9 @@ export default {
       }
     },
     promptAuth() {
-      // No confirmation step — go straight to sign in (this is admin-only
-      // pricing/checkout, so there is nothing else to decide here).
+      // Logged-out checkout stays on this page and opens Get Started.
       // A paid plan (Premium/Custom) must not be forgotten here — remember it
-      // so sign-in/sign-up resumes checkout instead of dropping the admin
+      // so sign-up can resume checkout instead of dropping the admin
       // straight into onboarding with nothing selected and nothing paid.
       if (this.selectedPlan === 'premium' || this.selectedPlan === 'custom') {
         setPendingPlanResume({
@@ -1399,7 +1380,7 @@ export default {
           billingCycle: this.billingCycle,
         });
       }
-      this.$router.push('/signin');
+      this.openAdminSignUpModal();
       return Promise.resolve(false);
     },
     selectPaymentMethod(method) {
@@ -1527,6 +1508,12 @@ export default {
       });
       return false;
     },
+    openPremiumMode(mode) {
+      if (mode === 'management' && this.managementModeLocked) return;
+      if (mode === 'testing' && this.testingModeLocked) return;
+      this.premiumMode = mode;
+      this.premiumDetailsOpen = true;
+    },
     async selectPlan(planId, options = {}) {
       if ((this.managementModeLocked || (this.fromScopeFile && !this.fromScanReport)) && planId === 'freemium') {
         planId = 'premium';
@@ -1558,11 +1545,13 @@ export default {
       this.paymentMethod = 'card';
       if (planId === 'premium') {
         const mode = String(options.premiumMode || '').toLowerCase();
+        const modeRequested = mode === 'testing' || mode === 'management_testing';
         this.premiumMode = this.managementModeLocked
           ? 'testing'
-          : (!this.testingModeLocked && (mode === 'testing' || mode === 'management_testing'))
+          : (!this.testingModeLocked && modeRequested)
             ? 'testing'
             : 'management';
+        this.premiumDetailsOpen = this.managementModeLocked || this.testingModeLocked || modeRequested;
         this.billingCycle = 'annual';
       }
       this.step = 'details';
@@ -1626,6 +1615,10 @@ export default {
         this.selectPlan('premium', { premiumMode: 'testing' });
         return;
       }
+      if (!this.isAuthenticated) {
+        this.openAdminSignUpModal();
+        return;
+      }
       if (!options.skipFileGate && !(await this.guardFreemiumMultiFileOnPricing())) return;
       this.checkoutLoading = true;
       try {
@@ -1655,7 +1648,7 @@ export default {
       } catch (error) {
         const message = billingErrorMessage(error);
         if (isBillingAuthError(error)) {
-          await this.promptAuth();
+          this.openAdminSignUpModal();
           return;
         }
         if (isScopeBlocksFreemiumError(error, message)) {
@@ -1919,7 +1912,7 @@ export default {
 
 .pricing-card {
   border-radius: 12px;
-  border: 1px solid rgba(36, 20, 71, 0.08);
+  border: 2px solid rgba(36, 20, 71, 0.08);
   overflow: hidden;
   position: relative;
   min-height: 560px;
@@ -1947,6 +1940,10 @@ export default {
   background: #0f696e;
 }
 
+.pricing-badge-slot {
+  height: 2.05rem;
+}
+
 .pricing-popular-badge {
   background: #241447;
   color: #fff;
@@ -1954,7 +1951,11 @@ export default {
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.08em;
-  padding: 0.45rem 0.75rem;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.75rem;
 }
 
 .pricing-tier-title {
@@ -1963,6 +1964,11 @@ export default {
   font-weight: 800;
   font-size: clamp(1.25rem, 3vw, 1.5rem);
   margin-top: 0.25rem;
+  min-height: 1.9rem;
+}
+
+.pricing-price-slot {
+  height: calc(clamp(2rem, 6vw, 3rem) * 1.1 + 0.35rem + 0.92rem * 1.4);
 }
 
 .pricing-price {
@@ -2306,6 +2312,25 @@ export default {
   font-size: 0.86rem;
   color: #49454f;
   line-height: 1.5;
+}
+
+.pricing-plan-overview {
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  background: #f7f6fb;
+  border-radius: 12px;
+}
+
+.pricing-testing-included {
+  margin: 0 0 0.75rem;
+  padding-left: 1.15rem;
+  color: #49454f;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.pricing-testing-included li + li {
+  margin-top: 0.35rem;
 }
 
 .pricing-mode-example {

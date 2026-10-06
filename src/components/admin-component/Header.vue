@@ -98,7 +98,7 @@
 
                   <template v-if="isTeamMember">
                     <router-link
-                      :to="{ path: '/user-manage-account', query: { returnTo: $route.fullPath } }"
+                      :to="{ path: '/manage-account', query: { returnTo: $route.fullPath } }"
                       class="btn btn-sm btn-outline-secondary w-100 mb-2"
                       @click="showDropdown = false"
                     >
@@ -233,7 +233,7 @@ import {
   readStoredSetPasswordDeepLink,
   storeAdminSetPasswordDeepLink,
 } from '@/utils/userSetPasswordDeepLink';
-import { getAuthenticatedAppHome, readAccountRole } from '@/utils/authenticatedHome';
+import { getAuthenticatedAppHome } from '@/utils/authenticatedHome';
 import { getMySubscription } from '@/services/billingApi';
 import { freemiumLocksUploadScope, isMagicLinkUnlimited } from '@/utils/planLimits';
 
@@ -278,10 +278,7 @@ export default {
   },
   computed: {
     isTeamMember() {
-      const role = readAccountRole();
-      if (role === 'team_member') return true;
-      if (role === 'admin') return false;
-      return !!(this.user && Array.isArray(this.user.Member_role));
+      return !!(this.user && (Array.isArray(this.user.Member_role) || Array.isArray(this.user.Member_role)));
     },
     isPublicHomePage() {
       const path = this.$route?.path || '';
@@ -499,8 +496,7 @@ export default {
       // leftover/invalid token does not 401 the public /home Lighthouse run.
       if (this.isPublicHomePage) return;
 
-      const role = readAccountRole();
-      const isMember = role === 'team_member' || (role !== 'admin' && !!(storedUser && Array.isArray(storedUser.Member_role)));
+      const isMember = !!(storedUser && Array.isArray(storedUser.Member_role));
       if (isMember) {
         const response = await authStore.getMemberProfile();
         if (response.status && response.data?.user) {

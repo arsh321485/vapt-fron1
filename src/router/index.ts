@@ -628,19 +628,6 @@ router.beforeEach(async (to, from, next) => {
   // bounce /home → dashboard → /home and leave a white screen).
   const isPublicMarketing = to.path === "/" || to.path === "/home";
 
-  // Team members are whoever member-profile returns. Checked once per login.
-  // This runs before the address-bar lock so a typed admin URL is never shown.
-  const sessionToken =
-    sessionStorage.getItem("authorization") || localStorage.getItem("authorization");
-  const billingPath = to.path === "/pricingplan" || to.path === "/billing/success" || to.path === "/billing/cancel";
-  if (sessionToken && (to.meta.requiresAdmin || billingPath)) {
-    const authStore = useAuthStore();
-    await authStore.resolveAccountRole();
-    if (isStoredTeamMember()) {
-      return next({ path: "/userdashboard", replace: true });
-    }
-  }
-
   // Typed URL / refresh (no previous in-app route). Stay on the last real page.
   // Deep links (Teams / Slack / email) skip this lock and use token auth only.
   const isAddressBarEntry = !from.matched.length;
@@ -671,6 +658,19 @@ router.beforeEach(async (to, from, next) => {
 
   if (!token && !allowHandoffErrorPage) {
     return next("/home");
+  }
+
+  if (to.meta.requiresAdmin && token) {
+    try {
+      const raw = sessionStorage.getItem("user") || localStorage.getItem("user");
+      const user = raw ? JSON.parse(raw) : null;
+      // Team-member accounts carry a Member_role array; admin accounts do not.
+      if (user && Array.isArray(user.Member_role)) {
+        return next({ path: "/userdashboard", replace: true });
+      }
+    } catch {
+      // Unparseable user object — let the page's own API call surface the 401.
+    }
   }
 
   // Signup → upload → choose plan → pay. Magic-link signup (file already attached) skips this.

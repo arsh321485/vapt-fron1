@@ -23,7 +23,7 @@
             </div>
             <div class="option-content">
               <h4 class="option-title">User Sign In</h4>
-              <p class="option-desc">Sign in to access vulnerability reports and collaborate with your team</p>
+              <p class="option-desc">Sign in to access vulnerability reports, track remediation progress, and collaborate seamlessly with your team.</p>
             </div>
             <i class="bi bi-arrow-right-circle-fill option-arrow"></i>
           </button>
@@ -33,7 +33,7 @@
             </div>
             <div class="option-content">
               <h4 class="option-title">Admin Sign In</h4>
-              <p class="option-desc">Sign in to manage vulnerability assessments and oversee security operations</p>
+              <p class="option-desc">Sign in to manage vulnerability assessments, oversee security operations, and monitor remediation progress.</p>
             </div>
             <i class="bi bi-arrow-right-circle-fill option-arrow"></i>
           </button>
@@ -1748,12 +1748,11 @@ export default {
       this.$emit('open-admin-signup');
     },
     async checkAndRedirectAdmin() {
-      const authStore = useAuthStore();
-      const accountRole = await authStore.resolveAccountRole();
-      if (accountRole === 'team_member' || isStoredTeamMember()) {
+      if (isStoredTeamMember()) {
         this.$router.replace('/userdashboard');
         return;
       }
+      const authStore = useAuthStore();
       let loggedUser = authStore.user || {};
       try {
         const raw = localStorage.getItem('user') || sessionStorage.getItem('user');
@@ -1764,7 +1763,7 @@ export default {
         loggedUser = authStore.user || {};
       }
       const userType = String(loggedUser && (loggedUser.user_type || loggedUser.type || loggedUser.role) || '').toLowerCase();
-      if (accountRole !== 'admin' && (userType === 'user' || userType === 'member' || userType === 'internal' || userType === 'external')) {
+      if (userType === 'user' || userType === 'member' || userType === 'internal' || userType === 'external') {
         this.$router.replace('/userdashboard');
         return;
       }
