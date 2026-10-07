@@ -142,7 +142,7 @@
                   <div v-if="activePlan.id === 'premium'" class="pricing-mode-block">
                     <p class="pricing-cycle-label">How will you use Premium?</p>
                     <p class="pricing-mode-hint">
-                      Mode is based on whether you upload a report or provide scope for VAPTFix to test — not a free toggle you can mix later.
+                      Mode is based on whether you upload a report or provide scope for VAPTFIX to test — not a free toggle you can mix later.
                     </p>
                     <div class="pricing-mode-options">
                       <label

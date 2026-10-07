@@ -6,11 +6,11 @@
     <section class="hvw-hero">
       <div class="hvw-container">
         <div class="hvw-hero-tag">
-          <span class="hvw-tag-dot"></span> VaptFix Onboarding
+          <span class="hvw-tag-dot"></span> VAPTFIX Onboarding
         </div>
         <h1 class="hvw-hero-title">
           Three Ways to Access<br/>
-          <span class="hvw-accent">VaptFix</span>
+          <span class="hvw-accent">VAPTFIX</span>
         </h1>
         <p class="hvw-hero-sub">
           Choose your entry point — Email, Slack, or Microsoft Teams. All three follow the same onboarding journey
@@ -49,7 +49,7 @@
     <section class="hvw-section" id="journey1">
       <div class="hvw-container">
         <h2 class="hvw-section-title">From Sign-Up to Full Access</h2>
-        <p class="hvw-section-sub">Admin signs up directly on the VaptFix website using their company email address and a password. Five clear steps take the admin from registration to full dashboard access.</p>
+        <p class="hvw-section-sub">Admin signs up directly on the VAPTFIX website using their company email address and a password. Five clear steps take the admin from registration to full dashboard access.</p>
 
         <div class="hvw-timeline">
           <!-- Step 1 -->
@@ -179,16 +179,23 @@
         </div>
         <p class="hvw-conn-note">Already have a Slack workspace? Skip steps 5 and 6.</p>
 
-        <div class="hvw-conn-steps">
-          <div v-for="(step, i) in slackConnectSteps" :key="step.title" class="hvw-conn-step">
-            <div class="hvw-conn-top">
-              <span class="hvw-conn-num">{{ i + 1 }}</span>
-              <span class="hvw-conn-where" :class="'is-' + step.where.toLowerCase()">{{ step.where }}</span>
-              <span class="hvw-conn-icon">{{ step.icon }}</span>
+        <div class="hvw-timeline">
+          <div v-for="(step, i) in slackConnectSteps" :key="step.title" class="hvw-tl-item">
+            <div class="hvw-tl-left">
+              <div class="hvw-tl-num">{{ String(i + 1).padStart(2, '0') }}</div>
+              <div v-if="i < slackConnectSteps.length - 1" class="hvw-tl-line"></div>
             </div>
-            <div class="hvw-conn-title">{{ step.title }}</div>
-            <span v-if="step.badge" class="hvw-conn-badge">{{ step.badge }}</span>
-            <div class="hvw-conn-desc">{{ step.desc }}</div>
+            <div class="hvw-tl-card" :class="{ 'hvw-tl-card-final': i === slackConnectSteps.length - 1 }">
+              <div class="hvw-tl-icon">{{ step.icon }}</div>
+              <div class="hvw-tl-body">
+                <div class="hvw-tl-title">
+                  {{ step.title }}
+                  <span class="hvw-conn-where" :class="'is-' + step.where.toLowerCase()">{{ step.where }}</span>
+                  <span v-if="step.badge" class="hvw-tl-conditional">{{ step.badge }}</span>
+                </div>
+                <div class="hvw-tl-desc">{{ step.desc }}</div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -216,7 +223,7 @@
               <div class="hvw-tl-icon">👋</div>
               <div class="hvw-tl-body">
                 <div class="hvw-tl-title">Welcome Card</div>
-                <div class="hvw-tl-desc">VaptFix posts a Welcome Card in the Slack workspace confirming the Admin role. The admin is then prompted to begin onboarding by uploading a VA report or providing the required scope.</div>
+                <div class="hvw-tl-desc">VAPTFIX posts a Welcome Card in the Slack workspace confirming the Admin role. The admin is then prompted to begin onboarding by uploading a VA report or providing the required scope.</div>
               </div>
             </div>
           </div>
@@ -245,7 +252,7 @@
                   <div class="hvw-path-divider">OR</div>
                   <div class="hvw-path-block path-b">
                     <div class="hvw-path-label">Path B — Provide Scope Card</div>
-                    <div class="hvw-path-desc">Enter Internal assets, External assets, Web Apps, and Mobile Apps directly in the Slack card. VaptFix runs the scans and uploads the report to the backend.</div>
+                    <div class="hvw-path-desc">Enter Internal assets, External assets, Web Apps, and Mobile Apps directly in the Slack card. VAPTFIX runs the scans and uploads the report to the backend.</div>
                     <div class="hvw-tl-tags">
                       <span class="hvw-tag-pill">Internal IP</span>
                       <span class="hvw-tag-pill">External IP</span>
@@ -325,7 +332,7 @@
               <div class="hvw-tl-icon">✅</div>
               <div class="hvw-tl-body">
                 <div class="hvw-tl-title">Workspace Set Up</div>
-                <div class="hvw-tl-desc">Once the risk criteria are submitted, the workspace is fully set up. A final Slack card confirms onboarding is complete and provides a link to the live VaptFix dashboard.</div>
+                <div class="hvw-tl-desc">Once the risk criteria are submitted, the workspace is fully set up. A final Slack card confirms onboarding is complete and provides a link to the live VAPTFIX dashboard.</div>
               </div>
             </div>
           </div>
@@ -339,7 +346,7 @@
               <div class="hvw-tl-icon">🎉</div>
               <div class="hvw-tl-body">
                 <div class="hvw-tl-title">Onboarding Complete</div>
-                <div class="hvw-tl-desc">A final Slack card confirms your workspace is fully set up. A link to the live VaptFix dashboard is provided directly in the card.</div>
+                <div class="hvw-tl-desc">A final Slack card confirms your workspace is fully set up. A link to the live VAPTFIX dashboard is provided directly in the card.</div>
                 <button class="hvw-tl-action-btn slack-action-btn" :disabled="oauthLoading === 'slack'" @click="openSlackLogin">
                   <svg width="14" height="14" viewBox="0 0 124 124" fill="none" style="flex-shrink:0">
                     <path d="M26.3 78.8a13.15 13.15 0 0 1-13.15 13.15A13.15 13.15 0 0 1 0 78.8a13.15 13.15 0 0 1 13.15-13.15h13.15v13.15z" fill="#fff"/>
@@ -361,25 +368,27 @@
         <!-- Part 3 — Offboarding from Slack -->
         <div class="hvw-part-head hvw-part-head-spaced">
           <span class="hvw-part-num hvw-part-num-off">Part 3</span>
-          <h3 class="hvw-part-title">Offboard: remove VaptFix from Slack</h3>
+          <h3 class="hvw-part-title">Offboard: remove VAPTFIX from Slack</h3>
         </div>
-        <p class="hvw-conn-note">Uninstalling only disconnects Slack. Your VaptFix data stays safe unless you confirm deletion from the email.</p>
+        <p class="hvw-conn-note">Uninstalling only disconnects Slack. Your VAPTFIX data stays safe unless you confirm deletion from the email.</p>
 
-        <div class="hvw-conn-steps hvw-conn-steps-3">
-          <div
-            v-for="(step, i) in slackOffboardSteps"
-            :key="step.title"
-            class="hvw-conn-step"
-            :class="{ 'is-danger': step.danger }"
-          >
-            <div class="hvw-conn-top">
-              <span class="hvw-conn-num">{{ i + 1 }}</span>
-              <span class="hvw-conn-where" :class="'is-' + step.where.toLowerCase()">{{ step.where }}</span>
-              <span class="hvw-conn-icon">{{ step.icon }}</span>
+        <div class="hvw-timeline">
+          <div v-for="(step, i) in slackOffboardSteps" :key="step.title" class="hvw-tl-item">
+            <div class="hvw-tl-left">
+              <div class="hvw-tl-num" :class="{ 'is-off': true }">{{ String(i + 1).padStart(2, '0') }}</div>
+              <div v-if="i < slackOffboardSteps.length - 1" class="hvw-tl-line"></div>
             </div>
-            <div class="hvw-conn-title">{{ step.title }}</div>
-            <span v-if="step.badge" class="hvw-conn-badge">{{ step.badge }}</span>
-            <div class="hvw-conn-desc">{{ step.desc }}</div>
+            <div class="hvw-tl-card" :class="{ 'hvw-tl-card-danger': step.danger }">
+              <div class="hvw-tl-icon">{{ step.icon }}</div>
+              <div class="hvw-tl-body">
+                <div class="hvw-tl-title">
+                  {{ step.title }}
+                  <span class="hvw-conn-where" :class="'is-' + step.where.toLowerCase()">{{ step.where }}</span>
+                  <span v-if="step.badge" class="hvw-tl-conditional">{{ step.badge }}</span>
+                </div>
+                <div class="hvw-tl-desc">{{ step.desc }}</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -389,7 +398,7 @@
     <section class="hvw-section" id="journey3">
       <div class="hvw-container">
         <h2 class="hvw-section-title">Microsoft Teams Onboarding Flow</h2>
-        <p class="hvw-section-sub">The MS Teams journey mirrors the Slack journey exactly. The VaptFix bot posts Adaptive Cards inside a Teams chat or channel. Richer views like Add Users can use a Teams Tab.</p>
+        <p class="hvw-section-sub">The MS Teams journey mirrors the Slack journey exactly. The VAPTFIX bot posts Adaptive Cards inside a Teams chat or channel. Richer views like Add Users can use a Teams Tab.</p>
 
         <!-- Part 1 — Connect Microsoft Teams -->
         <div class="hvw-part-head">
@@ -398,21 +407,28 @@
         </div>
         <p class="hvw-conn-note">One pass only: no need to close the window and sign up again like Slack.</p>
 
-        <div class="hvw-conn-steps hvw-conn-steps-teams">
-          <div v-for="(step, i) in teamsConnectSteps" :key="step.title" class="hvw-conn-step">
-            <div class="hvw-conn-top">
-              <span class="hvw-conn-num">{{ i + 1 }}</span>
-              <span class="hvw-conn-where" :class="'is-' + step.where.toLowerCase()">{{ step.where }}</span>
-              <span class="hvw-conn-icon">{{ step.icon }}</span>
+        <div class="hvw-timeline">
+          <div v-for="(step, i) in teamsConnectSteps" :key="step.title" class="hvw-tl-item">
+            <div class="hvw-tl-left">
+              <div class="hvw-tl-num is-teams">{{ String(i + 1).padStart(2, '0') }}</div>
+              <div v-if="i < teamsConnectSteps.length - 1" class="hvw-tl-line"></div>
             </div>
-            <div class="hvw-conn-title">{{ step.title }}</div>
-            <span v-if="step.badge" class="hvw-conn-badge">{{ step.badge }}</span>
-            <div class="hvw-conn-desc">{{ step.desc }}</div>
+            <div class="hvw-tl-card" :class="{ 'hvw-tl-card-final': i === teamsConnectSteps.length - 1 }">
+              <div class="hvw-tl-icon">{{ step.icon }}</div>
+              <div class="hvw-tl-body">
+                <div class="hvw-tl-title">
+                  {{ step.title }}
+                  <span class="hvw-conn-where" :class="'is-' + step.where.toLowerCase()">{{ step.where }}</span>
+                  <span v-if="step.badge" class="hvw-tl-conditional">{{ step.badge }}</span>
+                </div>
+                <div class="hvw-tl-desc">{{ step.desc }}</div>
+              </div>
+            </div>
           </div>
         </div>
 
         <div class="hvw-conn-channels">
-          <span class="hvw-conn-channels-label">Channels created in the Vaptfix team</span>
+          <span class="hvw-conn-channels-label">Channels created in the VAPTFIX team</span>
           <span v-for="ch in teamsChannels" :key="ch" class="hvw-channel-chip hvw-channel-chip-teams">
             # {{ ch }}
           </span>
@@ -436,7 +452,7 @@
               <div class="hvw-tl-icon">👋</div>
               <div class="hvw-tl-body">
                 <div class="hvw-tl-title">Welcome Adaptive Card</div>
-                <div class="hvw-tl-desc">VaptFix bot posts a Welcome Adaptive Card on install inside your Teams chat or channel. Confirms Admin role and presents a CTA to begin onboarding.</div>
+                <div class="hvw-tl-desc">VAPTFIX bot posts a Welcome Adaptive Card on install inside your Teams chat or channel. Confirms Admin role and presents a CTA to begin onboarding.</div>
               </div>
             </div>
           </div>
@@ -465,7 +481,7 @@
                   <div class="hvw-path-divider">OR</div>
                   <div class="hvw-path-block path-b">
                     <div class="hvw-path-label">Path B — Provide Scope Card</div>
-                    <div class="hvw-path-desc">Enter asset scope in the Teams Adaptive Card — Internal IPs, External IPs, Web Apps, Mobile Apps. VaptFix runs the assessment and uploads the report.</div>
+                    <div class="hvw-path-desc">Enter asset scope in the Teams Adaptive Card — Internal IPs, External IPs, Web Apps, Mobile Apps. VAPTFIX runs the assessment and uploads the report.</div>
                     <div class="hvw-tl-tags">
                       <span class="hvw-tag-pill">Internal IP</span>
                       <span class="hvw-tag-pill">External IP</span>
@@ -597,50 +613,50 @@ export default {
       authStore: null,
 
       slackConnectSteps: [
-        { icon: '🚀', where: 'VaptFix', title: 'Sign up with Slack',   desc: 'On vaptfix.ai, open Get Started and click Sign up with Slack.' },
+        { icon: '🚀', where: 'VAPTFIX', title: 'Sign up with Slack',   desc: 'On VAPTFIX.ai, open Get Started and click Sign up with Slack.' },
         { icon: '🔎', where: 'Slack',   title: 'Choose Workspace',     desc: 'Pick a workspace you are signed in to, or create a new one.' },
         { icon: '✉️', where: 'Slack',   title: 'Enter Email',          desc: 'Enter your work email, or continue with Google, Microsoft or Apple.' },
         { icon: '🔢', where: 'Slack',   title: 'Verify Code',          desc: 'Enter the 6-digit code Slack sends to your email.' },
         { icon: '🏢', where: 'Slack',   title: 'Name Workspace',       badge: 'New users only', desc: 'Name your new workspace and finish the quick setup.' },
-        { icon: '❌', where: 'Slack',   title: 'Close Slack Window',   badge: 'New users only', desc: 'Your workspace is ready. Close the Slack window and return to VaptFix.' },
-        { icon: '🔁', where: 'VaptFix', title: 'Sign up with Slack Again', desc: 'In the Get Started modal, click Sign up with Slack once more.' },
-        { icon: '✅', where: 'Slack',   title: 'Select & Allow',       desc: 'Select your workspace and click Allow to install the VaptFix app.' },
+        { icon: '❌', where: 'Slack',   title: 'Close Slack Window',   badge: 'New users only', desc: 'Your workspace is ready. Close the Slack window and return to VAPTFIX.' },
+        { icon: '🔁', where: 'VAPTFIX', title: 'Sign up with Slack Again', desc: 'In the Get Started modal, click Sign up with Slack once more.' },
+        { icon: '✅', where: 'Slack',   title: 'Select & Allow',       desc: 'Select your workspace and click Allow to install the VAPTFIX app.' },
         { icon: '📩', where: 'Slack',   title: 'Verify Code Again',    desc: 'Enter the new 6-digit code Slack emails you to confirm the install.' },
-        { icon: '🎯', where: 'Slack',   title: 'Land in Slack',        desc: 'VaptFix creates your channels and opens the admin dashboard.' },
+        { icon: '🎯', where: 'Slack',   title: 'Land in Slack',        desc: 'VAPTFIX creates your channels and opens the admin dashboard.' },
       ],
 
       slackOffboardSteps: [
         { icon: '⚙️', where: 'Slack',   title: 'Open Admin Tools',      desc: 'In Slack, click Admin in the sidebar and open Apps & workflows.' },
-        { icon: '🧩', where: 'Slack',   title: 'Find VaptFix',          desc: 'Under Installed apps, click ••• next to vaptfix and choose Uninstall.' },
-        { icon: '🗑️', where: 'Slack',   title: 'Confirm Uninstall',     desc: 'Tick "I want to uninstall vaptfix from my team" and click Uninstall.' },
-        { icon: '📧', where: 'Email',   title: 'Removal Email',         desc: 'VaptFix emails you that Slack is disconnected. Your data is still safe.' },
+        { icon: '🧩', where: 'Slack',   title: 'Find VAPTFIX',          desc: 'Under Installed apps, click ••• next to VAPTFIX and choose Uninstall.' },
+        { icon: '🗑️', where: 'Slack',   title: 'Confirm Uninstall',     desc: 'Tick "I want to uninstall VAPTFIX from my team" and click Uninstall.' },
+        { icon: '📧', where: 'Email',   title: 'Removal Email',         desc: 'VAPTFIX emails you that Slack is disconnected. Your data is still safe.' },
         { icon: '⚠️', where: 'Email',   title: 'Delete Account',        badge: 'Optional', desc: 'Click the delete button within 48 hours to erase your account. This cannot be undone.' },
-        { icon: '🔒', where: 'VaptFix', title: 'Deletion Confirmed',    danger: true, desc: 'A page confirms your VaptFix account and all its data are permanently deleted.' },
+        { icon: '🔒', where: 'VAPTFIX', title: 'Deletion Confirmed',    danger: true, desc: 'A page confirms your VAPTFIX account and all its data are permanently deleted.' },
       ],
 
       teamsConnectSteps: [
-        { icon: '🚀', where: 'VaptFix',   title: 'Sign up with Microsoft Teams', desc: 'On vaptfix.ai, open Get Started and click Sign up with Microsoft Teams.' },
+        { icon: '🚀', where: 'VAPTFIX',   title: 'Sign up with Microsoft Teams', desc: 'On VAPTFIX.ai, open Get Started and click Sign up with Microsoft Teams.' },
         { icon: '👤', where: 'Microsoft', title: 'Pick an Account',     desc: 'Choose your signed-in work account, or click Use another account.' },
         { icon: '🔐', where: 'Microsoft', title: 'Approve Sign-in',     desc: 'Open Microsoft Authenticator and enter the number shown to approve the request.' },
         { icon: '💬', where: 'Teams',     title: 'Open Microsoft Teams', desc: 'Click Open Microsoft Teams for the desktop app, or Cancel to stay in the browser.' },
         { icon: '🌐', where: 'Teams',     title: 'Choose App or Web',   desc: 'Click Launch it now for the desktop app, or Use the web app instead.' },
-        { icon: '🎯', where: 'Teams',     title: 'Land in Teams',       desc: 'VaptFix creates your channels and opens the vaptfix admin dashboard channel.' },
+        { icon: '🎯', where: 'Teams',     title: 'Land in Teams',       desc: 'VAPTFIX creates your channels and opens the VAPTFIX admin dashboard channel.' },
       ],
 
       teamsChannels: [
-        'vaptfix admin dashboard',
-        'vaptfix Network Security team',
-        'vaptfix Configuration Management team',
-        'vaptfix Architectural Flaws team',
-        'vaptfix patch management team',
+        'VAPTFIX admin dashboard',
+        'VAPTFIX Network Security team',
+        'VAPTFIX Configuration Management team',
+        'VAPTFIX Architectural Flaws team',
+        'VAPTFIX patch management team',
       ],
 
       slackChannels: [
-        { name: 'vaptfix-admin-dashboard', private: true },
-        { name: 'vaptfix-network-security-team' },
-        { name: 'vaptfix-configuration-management-team' },
-        { name: 'vaptfix-architectural-flaws-team' },
-        { name: 'vaptfix-patch-management-team' },
+        { name: 'VAPTFIX-admin-dashboard', private: true },
+        { name: 'VAPTFIX-network-security-team' },
+        { name: 'VAPTFIX-configuration-management-team' },
+        { name: 'VAPTFIX-architectural-flaws-team' },
+        { name: 'VAPTFIX-patch-management-team' },
       ],
 
       plans: ['Freemium', 'Premium', 'Enterprise'],
@@ -925,6 +941,10 @@ export default {
   vertical-align: middle;
 }
 .hvw-tl-card-final { border: 2px solid #0f696e; background: #f0fdfa; }
+.hvw-tl-card-danger { border: 2px solid #b91c1c; background: #fef2f2; }
+.hvw-tl-num.is-off { background: #b91c1c; }
+.hvw-tl-num.is-teams { background: #5059C9; }
+.hvw-tl-title .hvw-conn-where { margin-left: 8px; vertical-align: middle; }
 .hvw-step-badge {
   display: inline-block;
   font-size: 11px;

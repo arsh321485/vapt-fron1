@@ -12,7 +12,7 @@
         <div v-if="!otpSent" class="form-container">
           <div class="signup-header">
             <h3 class="form-title">Get Started</h3>
-            <p class="form-subtitle">Create your VaptFix account to begin your security engagement</p>
+            <p class="form-subtitle">Create your VAPTFIX account to begin your security engagement</p>
           </div>
           <div v-if="inviteBannerText" class="invite-banner" :class="inviteBannerClass">
             <i class="bi" :class="inviteBannerIcon"></i>
@@ -811,10 +811,10 @@ export default {
         openTeamsAdminDashboard(url, { newTab: true });
         return;
       }
-      // Still provisioning → VaptFix app not installed in any team yet (RSC onboarding).
+      // Still provisioning → VAPTFIX app not installed in any team yet (RSC onboarding).
       const choice = await Swal.fire({
         icon: 'info',
-        title: 'Install VaptFix in Microsoft Teams to finish setup',
+        title: 'Install VAPTFIX in Microsoft Teams to finish setup',
         confirmButtonText: 'Install in Teams',
         confirmButtonColor: '#241447',
         showCancelButton: true,
@@ -891,7 +891,7 @@ export default {
       if (typeof this.authStore.ensureTeamsChannelsCached === 'function') {
         await this.authStore.ensureTeamsChannelsCached();
       }
-      // Callback tab already opens the Vaptfix channel. Opening this named window
+      // Callback tab already opens the VAPTFIX channel. Opening this named window
       // again races Teams web and restores the last Chat.
 
       Swal.fire({
@@ -900,7 +900,7 @@ export default {
           ? 'Setting up your workspace'
           : 'Microsoft Teams connected successfully',
         text: event.data?.status === 'provisioning'
-          ? 'If VaptFix is not yet installed in Microsoft Teams, finish setup from the Teams tab.'
+          ? 'If VAPTFIX is not yet installed in Microsoft Teams, finish setup from the Teams tab.'
           : '',
         timer: event.data?.status === 'provisioning' ? 2400 : 2000,
         showConfirmButton: false

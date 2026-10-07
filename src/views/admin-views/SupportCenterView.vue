@@ -71,7 +71,7 @@
           <h2 class="sup-section-title">Frequently Asked Questions</h2>
           <div class="sup-faq-grid">
             <!-- <div class="sup-faq-item">
-              <div class="sup-faq-q">Can I scan any system with VaptFix.ai?</div>
+              <div class="sup-faq-q">Can I scan any system with VAPTFIX.ai?</div>
               <div class="sup-faq-a">
                 No. You may only scan systems you own or have explicit written authorization to test. Unauthorized
                 scanning is a violation of our
@@ -80,7 +80,7 @@
               </div>
             </div> -->
             <div class="sup-faq-item">
-              <div class="sup-faq-q">What scan types does VaptFix.ai support?</div>
+              <div class="sup-faq-q">What scan types does VAPTFIX.ai support?</div>
               <div class="sup-faq-a">
                 We support web application scanning (DAST), network/port scanning, API security testing, SSL/TLS
                 analysis, and OWASP Top 10 assessments. Advanced modules include authenticated scanning and CI/CD
@@ -111,7 +111,7 @@
               </div>
             </div>
             <!-- <div class="sup-faq-item">
-              <div class="sup-faq-q">Does VaptFix.ai have a bug bounty program?</div>
+              <div class="sup-faq-q">Does VAPTFIX.ai have a bug bounty program?</div>
               <div class="sup-faq-a">
                 We operate a responsible disclosure program. Report security issues to
                 <a href="mailto:security@vaptfix.ai">security@vaptfix.ai</a>. We review all reports and respond within

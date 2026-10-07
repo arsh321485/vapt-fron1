@@ -1,6 +1,6 @@
 <template>
   <div class="legal-doc-inner-footer">
-    <p class="legal-doc-inner-copy">© 2026 VaptFix.ai. All rights reserved.</p>
+    <p class="legal-doc-inner-copy">© 2026 VAPTFIX.ai. All rights reserved.</p>
     <p class="legal-doc-inner-links mb-0">
       <router-link to="/privacy">Privacy</router-link>
       <span class="legal-doc-inner-sep">·</span>

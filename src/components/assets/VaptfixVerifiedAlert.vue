@@ -5,7 +5,7 @@
       class="panel-header-alert panel-header-alert--verified"
       role="status"
       aria-live="polite"
-      aria-label="VAPTfix verification notice"
+      aria-label="VAPTFIX verification notice"
     >
       <div class="panel-alert-card panel-alert-card--verified">
         <button

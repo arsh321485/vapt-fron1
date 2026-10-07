@@ -43,7 +43,7 @@
             <i class="bi bi-shield-shaded sf-logo-icon"></i>
           </div>
           <div>
-            <p class="sf-brand mb-0">VaptFix</p>
+            <p class="sf-brand mb-0">VAPTFIX</p>
             <p class="sf-nav-sub mb-0">Security Engagement Blueprint</p>
           </div>
         </div>

@@ -35,14 +35,14 @@
         <main ref="contentScroller" class="ld-content" @scroll.passive="onContentScroll">
 
         <div class="ld-callout">
-          <p>This Privacy Policy applies to all users of VaptFix.ai globally. We comply with applicable data protection and privacy laws in every jurisdiction where we operate. General provisions apply to all users; the jurisdiction-specific notices (Sections 5-A through 5-P) supplement the general provisions with rights and obligations specific to your location. Where local law provides greater protections, those protections apply.</p>
+          <p>This Privacy Policy applies to all users of VAPTFIX.ai globally. We comply with applicable data protection and privacy laws in every jurisdiction where we operate. General provisions apply to all users; the jurisdiction-specific notices (Sections 5-A through 5-P) supplement the general provisions with rights and obligations specific to your location. Where local law provides greater protections, those protections apply.</p>
         </div>
 
         <section id="overview">
           <div class="ld-section-number">01 / OVERVIEW</div>
           <h2>Who We Are</h2>
-          <p>VaptFix.ai is a cybersecurity platform providing automated vulnerability assessment and penetration testing (VAPT), security scanning, remediation guidance, and reporting to organizations worldwide.</p>
-          <p>This Policy covers all products and services available at vaptfix.ai and via our API. It applies regardless of how you access the Service — web, mobile, API, or integrations.</p>
+          <p>VAPTFIX.ai is a cybersecurity platform providing automated vulnerability assessment and penetration testing (VAPT), security scanning, remediation guidance, and reporting to organizations worldwide.</p>
+          <p>This Policy covers all products and services available at VAPTFIX.ai and via our API. It applies regardless of how you access the Service — web, mobile, API, or integrations.</p>
         </section>
 
         <section id="data-collected">
@@ -112,7 +112,7 @@
         <section id="legal-basis">
           <div class="ld-section-number">04 / LEGAL BASES — WORLDWIDE</div>
           <h2>Legal Bases for Processing — Global Overview</h2>
-          <p>VaptFix.ai identifies and documents a lawful basis for every processing activity. The applicable legal basis varies by jurisdiction. Jurisdiction-specific sections below provide detail. Our general lawful bases are:</p>
+          <p>VAPTFIX.ai identifies and documents a lawful basis for every processing activity. The applicable legal basis varies by jurisdiction. Jurisdiction-specific sections below provide detail. Our general lawful bases are:</p>
           <div class="ld-jurisdiction-grid">
             <div class="ld-jcard">
               <div class="ld-jcard-flag">📜</div>
@@ -200,7 +200,7 @@
           <h2>United States Jurisdiction Notice</h2>
 
           <h3>Federal Framework</h3>
-          <p>No single comprehensive U.S. federal privacy law applies to VaptFix.ai. We comply with applicable sector-specific federal laws including COPPA (children's privacy — under-13 rule), CAN-SPAM (email marketing), and CFAA (computer fraud). We monitor federal legislative developments.</p>
+          <p>No single comprehensive U.S. federal privacy law applies to VAPTFIX.ai. We comply with applicable sector-specific federal laws including COPPA (children's privacy — under-13 rule), CAN-SPAM (email marketing), and CFAA (computer fraud). We monitor federal legislative developments.</p>
 
           <h3>California — CCPA / CPRA</h3>
           <p>California residents have the following rights under the California Consumer Privacy Act (CCPA) as amended by the California Privacy Rights Act (CPRA):</p>
@@ -247,7 +247,7 @@
           </ul>
 
           <h3>PIPEDA — 10 Fair Information Principles</h3>
-          <p>VaptFix.ai complies with all 10 principles: accountability; identifying purposes; consent; limiting collection; limiting use/disclosure/retention; accuracy; safeguards; openness; individual access; challenging compliance.</p>
+          <p>VAPTFIX.ai complies with all 10 principles: accountability; identifying purposes; consent; limiting collection; limiting use/disclosure/retention; accuracy; safeguards; openness; individual access; challenging compliance.</p>
 
           <h3>Quebec Law 25 — Additional Requirements</h3>
           <ul>
@@ -455,7 +455,7 @@
 
           <h3>Eight Conditions for Lawful Processing</h3>
           <ul>
-            <li><strong>Accountability:</strong> VaptFix.ai is responsible for ensuring POPIA compliance</li>
+            <li><strong>Accountability:</strong> VAPTFIX.ai is responsible for ensuring POPIA compliance</li>
             <li><strong>Processing Limitation:</strong> Lawful, minimal, and with consent or grounds in Section 11</li>
             <li><strong>Purpose Specification:</strong> Collected for specific, explicitly defined, and lawful purposes (S.13–14)</li>
             <li><strong>Further Processing Limitation:</strong> Compatible with original purpose (S.15)</li>
@@ -466,7 +466,7 @@
           </ul>
 
           <h3>Transfers Outside South Africa</h3>
-          <p>Permitted where: recipient is subject to a law providing equivalent protection; data subject consents; or other S.72 exception applies. VaptFix.ai obtains appropriate transfer agreements for all cross-border data flows originating from South Africa.</p>
+          <p>Permitted where: recipient is subject to a law providing equivalent protection; data subject consents; or other S.72 exception applies. VAPTFIX.ai obtains appropriate transfer agreements for all cross-border data flows originating from South Africa.</p>
 
           <p>Contact: <a href="mailto:privacy@vaptfix.ai">privacy@vaptfix.ai</a>. Information Regulator — <a href="https://inforegulator.org.za" target="_blank" rel="noopener">inforegulator.org.za</a>.</p>
         </section>
@@ -538,7 +538,7 @@
           <p>We disclose data when required by court order, government request, or applicable law. Where legally permissible, we notify you before complying. We publish an annual transparency report on government data requests.</p>
 
           <h3>Safety &amp; Security</h3>
-          <p>We may disclose data to protect the safety, rights, or property of VaptFix.ai, our users, or the public, including cooperation with law enforcement in cybercrime investigations.</p>
+          <p>We may disclose data to protect the safety, rights, or property of VAPTFIX.ai, our users, or the public, including cooperation with law enforcement in cybercrime investigations.</p>
 
           <h3>With Your Explicit Consent</h3>
           <p>For any other sharing purpose, we obtain explicit, informed, and freely given consent before disclosure.</p>
@@ -623,7 +623,7 @@
         <section id="international">
           <div class="ld-section-number">10 / CROSS-BORDER TRANSFERS</div>
           <h2>International Data Transfers</h2>
-          <p>VaptFix.ai operates infrastructure across multiple regions. Personal data may be transferred internationally. We select safeguards based on the origin and destination of each data flow:</p>
+          <p>VAPTFIX.ai operates infrastructure across multiple regions. Personal data may be transferred internationally. We select safeguards based on the origin and destination of each data flow:</p>
           <table class="ld-data-table">
             <thead>
               <tr><th>Transfer Route</th><th>Safeguard Mechanism</th></tr>
@@ -654,7 +654,7 @@
           <p>We review this Policy at least annually and update it when laws change, we add new features, or our practices evolve. For material changes, we will:</p>
           <ul>
             <li>Provide at least 30 days' advance notice via email and a prominent in-platform notice</li>
-            <li>Maintain a version archive of prior policies at vaptfix.ai/privacy-archive</li>
+            <li>Maintain a version archive of prior policies at VAPTFIX.ai/privacy-archive</li>
           </ul>
           <p>Continued use after the effective date constitutes acceptance, except where applicable law requires explicit re-consent.</p>
         </section>
@@ -664,7 +664,7 @@
           <h2>Contact Us &amp; Supervisory Authorities</h2>
           <div class="ld-callout">
             <p>
-              <strong>VaptFix.ai — Global Privacy Team</strong><br />
+              <strong>VAPTFIX.ai — Global Privacy Team</strong><br />
               General Privacy: <a href="mailto:privacy@vaptfix.ai">privacy@vaptfix.ai</a><br />
               Data Protection Officer (DPO / Encarregado / PIPO): <a href="mailto:dpo@vaptfix.ai">dpo@vaptfix.ai</a><br />
               EU Representative (Art. 27 GDPR): <a href="mailto:eu-rep@vaptfix.ai">eu-rep@vaptfix.ai</a><br />

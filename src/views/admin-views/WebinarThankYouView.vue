@@ -17,7 +17,7 @@
         <span class="kicker" :class="{ show: playAnim }">Registration Confirmed</span>
         <h1 class="title" :class="{ show: playAnim }">Thank you for registering.</h1>
         <p class="desc" :class="{ show: playAnim }">
-          You’re all set for the VaptFix webinar. A confirmation email with the joining details
+          You’re all set for the VAPTFIX webinar. A confirmation email with the joining details
           will be sent to your work email shortly.
         </p>
       </div>

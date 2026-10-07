@@ -2,7 +2,7 @@
   <main class="wait-main">
     <div class="wait-topbar">
       <router-link :to="logoPath">
-        <img src="@/assets/images/vaptfix_white.png" alt="VaptFix" class="wait-logo" />
+        <img src="@/assets/images/vaptfix_white.png" alt="VAPTFIX" class="wait-logo" />
       </router-link>
     </div>
 

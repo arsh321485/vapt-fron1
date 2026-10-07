@@ -231,7 +231,7 @@
 
       <footer class="settings-footer">
         <div class="settings-footer-links">
-          <p>© 2024 VaptFix Pro v2.4.1</p>
+          <p>© 2024 VAPTFIX Pro v2.4.1</p>
           <a href="#">Privacy Policy</a>
           <a href="#">Terms of Service</a>
         </div>
@@ -287,7 +287,7 @@ export default {
         },
         notifications: {
           title: 'Notification Preferences',
-          desc: 'Choose how and when VaptFix Pro keeps you informed.',
+          desc: 'Choose how and when VAPTFIX Pro keeps you informed.',
         },
         billing: {
           title: 'Billing & Plan',

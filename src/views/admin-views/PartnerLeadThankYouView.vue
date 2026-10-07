@@ -94,14 +94,14 @@ html, body { overflow: hidden; }
 </div>
 </main>
 <footer class="bg-[#241447] w-full py-12 px-8 flex flex-col md:flex-row justify-between items-center gap-6">
-<div class="text-lg font-bold text-white font-['Inter']">VaptFix Pro</div>
+<div class="text-lg font-bold text-white font-['Inter']">VAPTFIX Pro</div>
 <div class="flex flex-wrap justify-center gap-6">
 <a class="font-['Inter'] text-xs font-medium text-slate-300 hover:text-[#a1ecf2] transition-colors" href="#">Privacy Policy</a>
 <a class="font-['Inter'] text-xs font-medium text-slate-300 hover:text-[#a1ecf2] transition-colors" href="#">Terms of Service</a>
 <a class="font-['Inter'] text-xs font-medium text-slate-300 hover:text-[#a1ecf2] transition-colors" href="#">Security Audit</a>
 <a class="font-['Inter'] text-xs font-medium text-slate-300 hover:text-[#a1ecf2] transition-colors" href="#">Contact Specialist</a>
 </div>
-<div class="font-['Inter'] text-xs font-medium text-[#f8f9fc] opacity-90">© 2024 VaptFix Pro. Editorial Intelligence Framework.</div>
+<div class="font-['Inter'] text-xs font-medium text-[#f8f9fc] opacity-90">© 2024 VAPTFIX Pro. Editorial Intelligence Framework.</div>
 </footer>
 </body></html>`,
     };

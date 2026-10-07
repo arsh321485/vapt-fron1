@@ -157,7 +157,7 @@
                 </label>
                 <label class="consent-row">
                   <input type="checkbox" v-model="consent2" />
-                  <span>I agree to the VaptFix Pro registration terms, including lead protection periods and revenue sharing agreements.</span>
+                  <span>I agree to the VAPTFIX Pro registration terms, including lead protection periods and revenue sharing agreements.</span>
                 </label>
               </div>
 

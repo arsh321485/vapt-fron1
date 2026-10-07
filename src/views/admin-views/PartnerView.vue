@@ -12,7 +12,7 @@
               <span>Next Frontier</span> of Vulnerability Management Program.
             </h1>
             <p>
-              Join the VaptFix.ai. We are building an editorial intelligence
+              Join the VAPTFIX.ai. We are building an editorial intelligence
               framework for cybersecurity professionals worldwide.
             </p>
           </div>
@@ -181,7 +181,7 @@
               </label>
               <label>
                 <span class="label-text">Why partner with us?<span class="req">*</span></span>
-                <textarea rows="5" placeholder="Tell us about your interest in VaptFix ..." v-model="form.why_partner"></textarea>
+                <textarea rows="5" placeholder="Tell us about your interest in VAPTFIX ..." v-model="form.why_partner"></textarea>
                 <span v-if="errors.why_partner" class="field-error">{{ errors.why_partner }}</span>
               </label>
               <div class="grid two-col">
@@ -236,7 +236,7 @@
               <input type="checkbox" v-model="form.agreed_privacy_policy" />
               <span class="consent-text">
                 I agree to the <a href="#" class="policy-link">Privacy Policy</a> and understand that
-                VaptFix will process my information for partner evaluation.
+                VAPTFIX will process my information for partner evaluation.
                 <span v-if="errors.privacy" class="field-error d-block">{{ errors.privacy }}</span>
               </span>
             </label>

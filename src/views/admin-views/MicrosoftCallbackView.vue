@@ -15,7 +15,7 @@
       class="open-teams-btn"
       @click="openTeamsNow"
     >
-      Open your VaptFix Teams workspace
+      Open your VAPTFIX Teams workspace
     </button>
   </div>
 </template>
@@ -83,7 +83,7 @@ export default {
     showTeamsAppInstallCta() {
       this.needsTeamsAppInstall = true;
       this.teamsOpenUrl = "";
-      this.statusMessage = "Install VaptFix in Microsoft Teams to finish setup";
+      this.statusMessage = "Install VAPTFIX in Microsoft Teams to finish setup";
       this.stopInstallPolling();
       const authStore = useAuthStore();
       const poll = async () => {
@@ -94,7 +94,7 @@ export default {
             this.installPollTimer = null;
             this.needsTeamsAppInstall = false;
             this.teamsOpenUrl = url;
-            this.statusMessage = "Your VaptFix Teams workspace is ready.";
+            this.statusMessage = "Your VAPTFIX Teams workspace is ready.";
             return;
           }
         } catch (err) {
@@ -295,7 +295,7 @@ export default {
           },
         );
 
-        // VaptFix tab (opener) continues Provide Scope. This tab must stay as Teams — never close it.
+        // VAPTFIX tab (opener) continues Provide Scope. This tab must stay as Teams — never close it.
         if (window.opener) {
           this.keepTeamsTabOpen(res.data);
           return;

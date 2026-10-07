@@ -221,7 +221,7 @@ import { SEV, SEV_CHART, getSeverityColor, getSeverityBg } from '@/utils/severit
 import { formatStatusLabel } from '@/utils/statusLabel';
 import { filterAssetsByType } from '@/utils/assetDummyData';
 
-const REPORT_WATERMARK_TEXT = 'vaptfix.ai';
+const REPORT_WATERMARK_TEXT = 'VAPTFIX.ai';
 /** Manual uploaded scan file name until API field is wired */
 const REPORT_UPLOAD_FILE_NAME = 'Ibdar_Int_July';
 const WATERMARK_TILE_W = 580;

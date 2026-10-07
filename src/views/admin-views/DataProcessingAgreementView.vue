@@ -35,7 +35,7 @@
           <main ref="contentScroller" class="ld-content" @scroll.passive="onContentScroll">
 
           <div class="ld-callout">
-            <p>This Data Processing Agreement ("DPA") is entered into between the Customer ("Controller") and VaptFix.ai ("Processor"), and forms part of the VaptFix.ai Terms of Service. This DPA governs VaptFix.ai's processing of personal data on behalf of the Customer under applicable data protection laws globally, including GDPR, UK GDPR, Swiss revFADP, CCPA/CPRA, LGPD, PIPL, PDPA (Singapore), PDPA (Thailand), PIPA (South Korea), APPI (Japan), POPIA (South Africa), UAE PDPL, Saudi Arabia PDPL, India DPDP Act, Australian Privacy Act, and other applicable frameworks.</p>
+            <p>This Data Processing Agreement ("DPA") is entered into between the Customer ("Controller") and VAPTFIX.ai ("Processor"), and forms part of the VAPTFIX.ai Terms of Service. This DPA governs VAPTFIX.ai's processing of personal data on behalf of the Customer under applicable data protection laws globally, including GDPR, UK GDPR, Swiss revFADP, CCPA/CPRA, LGPD, PIPL, PDPA (Singapore), PDPA (Thailand), PIPA (South Korea), APPI (Japan), POPIA (South Africa), UAE PDPL, Saudi Arabia PDPL, India DPDP Act, Australian Privacy Act, and other applicable frameworks.</p>
           </div>
 
           <!-- CORE PROVISIONS -->
@@ -43,11 +43,11 @@
           <section id="background">
             <div class="ld-section-number">01 / BACKGROUND &amp; PARTIES</div>
             <h2>Background &amp; Parties</h2>
-            <p>This DPA applies whenever VaptFix.ai processes personal data on behalf of the Customer as part of delivering the Service. The parties acknowledge that:</p>
+            <p>This DPA applies whenever VAPTFIX.ai processes personal data on behalf of the Customer as part of delivering the Service. The parties acknowledge that:</p>
             <ul>
               <li>The <strong>Customer</strong> is the Data Controller (or equivalent designee under applicable law), determining the purposes and means of processing</li>
-              <li><strong>VaptFix.ai</strong> is the Data Processor (or equivalent service provider/operator/data handler under applicable law), processing personal data solely on behalf of and under the instructions of the Customer</li>
-              <li>This DPA supplements and is incorporated into the VaptFix.ai <router-link to="/terms">Terms of Service</router-link>; in the event of conflict regarding data protection matters, this DPA prevails</li>
+              <li><strong>VAPTFIX.ai</strong> is the Data Processor (or equivalent service provider/operator/data handler under applicable law), processing personal data solely on behalf of and under the instructions of the Customer</li>
+              <li>This DPA supplements and is incorporated into the VAPTFIX.ai <router-link to="/terms">Terms of Service</router-link>; in the event of conflict regarding data protection matters, this DPA prevails</li>
               <li>Jurisdiction-specific addenda (Sections 11-A through 11-J) apply as supplemental terms wherever the Customer processes data of individuals in those jurisdictions</li>
             </ul>
           </section>
@@ -61,11 +61,11 @@
                 <tr><td>Personal Data</td><td>Any information relating to an identified or identifiable natural person; or equivalent concept under applicable law (e.g., "personal information" under CCPA, "dados pessoais" under LGPD, "个人信息" under PIPL)</td></tr>
                 <tr><td>Processing</td><td>Any operation performed on Personal Data, as defined in Art. 4(2) GDPR or equivalent under applicable law</td></tr>
                 <tr><td>Controller / Business</td><td>The entity determining the purposes and means of processing (GDPR: Controller; CCPA: Business; LGPD: Controlador; PIPL: Personal Information Handler)</td></tr>
-                <tr><td>Processor / Service Provider</td><td>VaptFix.ai processing Personal Data on behalf of the Controller (GDPR: Processor; CCPA: Service Provider; LGPD: Operador; PIPL: Entrusted Party)</td></tr>
-                <tr><td>Sub-processor</td><td>A third-party engaged by VaptFix.ai to process Personal Data on behalf of the Customer</td></tr>
+                <tr><td>Processor / Service Provider</td><td>VAPTFIX.ai processing Personal Data on behalf of the Controller (GDPR: Processor; CCPA: Service Provider; LGPD: Operador; PIPL: Entrusted Party)</td></tr>
+                <tr><td>Sub-processor</td><td>A third-party engaged by VAPTFIX.ai to process Personal Data on behalf of the Customer</td></tr>
                 <tr><td>Standard Contractual Clauses (SCCs)</td><td>EU Commission Decision 2021/914 clauses; UK IDTA; and equivalent approved clauses under other jurisdictions</td></tr>
                 <tr><td>Data Breach</td><td>A breach of security leading to accidental or unlawful destruction, loss, alteration, or unauthorized disclosure of or access to Personal Data</td></tr>
-                <tr><td>Supervisory Authority</td><td>A data protection authority competent for the Customer or VaptFix.ai in the relevant jurisdiction</td></tr>
+                <tr><td>Supervisory Authority</td><td>A data protection authority competent for the Customer or VAPTFIX.ai in the relevant jurisdiction</td></tr>
                 <tr><td>Sensitive Personal Data</td><td>Special categories of personal data including health, biometric, racial/ethnic origin, religious beliefs, political opinions, financial data, and data of minors, as defined by applicable law</td></tr>
               </tbody>
             </table>
@@ -74,20 +74,20 @@
           <section id="scope">
             <div class="ld-section-number">03 / SCOPE OF PROCESSING</div>
             <h2>Scope of Processing</h2>
-            <p>VaptFix.ai shall process Personal Data only:</p>
+            <p>VAPTFIX.ai shall process Personal Data only:</p>
             <ul>
               <li>To provide the Service as described in the Terms of Service and the Customer's account configuration</li>
               <li>In accordance with the Customer's documented lawful instructions, as supplemented by this DPA</li>
-              <li>As required by applicable Union, Member State, or national law (in which case VaptFix.ai will inform the Customer unless legally prohibited from doing so)</li>
-              <li>To the extent necessary to comply with VaptFix.ai's own legal obligations as a data processor/service provider</li>
+              <li>As required by applicable Union, Member State, or national law (in which case VAPTFIX.ai will inform the Customer unless legally prohibited from doing so)</li>
+              <li>To the extent necessary to comply with VAPTFIX.ai's own legal obligations as a data processor/service provider</li>
             </ul>
-            <p>The nature, purpose, types of Personal Data processed, and categories of Data Subjects are set out in <strong>Annex A</strong>. VaptFix.ai will not process Personal Data for its own commercial purposes, including selling or sharing personal data as defined under CCPA/CPRA, or equivalent prohibitions under other applicable laws.</p>
+            <p>The nature, purpose, types of Personal Data processed, and categories of Data Subjects are set out in <strong>Annex A</strong>. VAPTFIX.ai will not process Personal Data for its own commercial purposes, including selling or sharing personal data as defined under CCPA/CPRA, or equivalent prohibitions under other applicable laws.</p>
           </section>
 
           <section id="obligations">
             <div class="ld-section-number">04 / PROCESSOR OBLIGATIONS</div>
-            <h2>VaptFix.ai Obligations as Processor</h2>
-            <p>VaptFix.ai shall:</p>
+            <h2>VAPTFIX.ai Obligations as Processor</h2>
+            <p>VAPTFIX.ai shall:</p>
             <ul>
               <li>Process Personal Data only on documented instructions from the Customer or as required by applicable law</li>
               <li>Ensure all personnel authorized to process Personal Data are bound by written confidentiality obligations</li>
@@ -97,7 +97,7 @@
               <li>Not engage Sub-processors without prior written authorization from the Customer (general authorization granted via Annex B; specific authorization required for additions)</li>
               <li>Delete or return all Personal Data upon termination, within 30 days, at the Customer's election</li>
               <li>Make available all information necessary to demonstrate compliance with this DPA and applicable law</li>
-              <li>Notify the Customer without undue delay if, in VaptFix.ai's opinion, an instruction infringes applicable data protection law</li>
+              <li>Notify the Customer without undue delay if, in VAPTFIX.ai's opinion, an instruction infringes applicable data protection law</li>
               <li>Not sell Personal Data or share it for cross-context behavioral advertising, consistent with CCPA/CPRA and equivalent prohibitions</li>
               <li>Maintain records of processing activities (GDPR Art. 30(2)) and equivalent records under applicable law</li>
             </ul>
@@ -111,23 +111,23 @@
               <li>Ensure that its instructions for processing comply with applicable data protection laws in all relevant jurisdictions</li>
               <li>Provide and maintain the lawful basis for each processing activity and ensure Data Subjects have been appropriately informed</li>
               <li>Conduct DPIAs, PIAs, and equivalent risk assessments where required by applicable law before commencing new processing</li>
-              <li>Not instruct VaptFix.ai to process Personal Data in a manner that violates applicable law</li>
-              <li>Ensure that all cross-border data transfers it directs VaptFix.ai to make comply with applicable transfer restrictions</li>
-              <li>Promptly inform VaptFix.ai of any data subject requests received directly by the Customer that require VaptFix.ai's assistance</li>
-              <li>Notify VaptFix.ai if the Customer becomes aware of any actual or suspected data breach involving VaptFix.ai systems</li>
+              <li>Not instruct VAPTFIX.ai to process Personal Data in a manner that violates applicable law</li>
+              <li>Ensure that all cross-border data transfers it directs VAPTFIX.ai to make comply with applicable transfer restrictions</li>
+              <li>Promptly inform VAPTFIX.ai of any data subject requests received directly by the Customer that require VAPTFIX.ai's assistance</li>
+              <li>Notify VAPTFIX.ai if the Customer becomes aware of any actual or suspected data breach involving VAPTFIX.ai systems</li>
             </ul>
           </section>
 
           <section id="security-measures">
             <div class="ld-section-number">06 / SECURITY MEASURES</div>
             <h2>Technical &amp; Organizational Security Measures</h2>
-            <p>VaptFix.ai implements appropriate technical and organizational measures to ensure a level of security appropriate to the risk of processing, as required by Art. 32 GDPR and equivalent provisions in LGPD (Art. 46), PIPL (Art. 51), PIPA (Art. 29), PDPA Singapore (S.24), PDPA Thailand (S.37), POPIA (S.19), APPI (Art. 23), and other applicable laws. The specific measures are documented in <strong>Annex C</strong>.</p>
+            <p>VAPTFIX.ai implements appropriate technical and organizational measures to ensure a level of security appropriate to the risk of processing, as required by Art. 32 GDPR and equivalent provisions in LGPD (Art. 46), PIPL (Art. 51), PIPA (Art. 29), PDPA Singapore (S.24), PDPA Thailand (S.37), POPIA (S.19), APPI (Art. 23), and other applicable laws. The specific measures are documented in <strong>Annex C</strong>.</p>
           </section>
 
           <section id="subprocessors">
             <div class="ld-section-number">07 / SUB-PROCESSORS</div>
             <h2>Sub-processor Management</h2>
-            <p>The Customer grants VaptFix.ai general written authorization to engage the sub-processors listed in <strong>Annex B</strong>. VaptFix.ai shall:</p>
+            <p>The Customer grants VAPTFIX.ai general written authorization to engage the sub-processors listed in <strong>Annex B</strong>. VAPTFIX.ai shall:</p>
             <ul>
               <li>Notify the Customer at least 14 days in advance of any intended addition or replacement of sub-processors</li>
               <li>Allow the Customer to reasonably object to new sub-processors within 14 days of notification; if the parties cannot resolve an objection, either party may terminate the affected Service components</li>
@@ -135,13 +135,13 @@
               <li>Ensure sub-processors comply with the applicable jurisdiction-specific requirements for their processing activities</li>
               <li>Remain fully liable to the Customer for any failure by a sub-processor to fulfil its data protection obligations</li>
             </ul>
-            <p>The current sub-processor list and update notifications are published at <a href="https://vaptfix.ai/sub-processors" target="_blank" rel="noopener">vaptfix.ai/sub-processors</a>.</p>
+            <p>The current sub-processor list and update notifications are published at <a href="https://vaptfix.ai/sub-processors" target="_blank" rel="noopener">VAPTFIX.ai/sub-processors</a>.</p>
           </section>
 
           <section id="data-subject">
             <div class="ld-section-number">08 / DATA SUBJECT RIGHTS</div>
             <h2>Data Subject Rights Assistance</h2>
-            <p>VaptFix.ai will promptly notify the Customer (no later than 3 business days) of any Data Subject request received directly. VaptFix.ai will provide reasonable technical and organizational assistance to enable the Customer to respond to data subject rights requests within the timeframes required by applicable law, including:</p>
+            <p>VAPTFIX.ai will promptly notify the Customer (no later than 3 business days) of any Data Subject request received directly. VAPTFIX.ai will provide reasonable technical and organizational assistance to enable the Customer to respond to data subject rights requests within the timeframes required by applicable law, including:</p>
             <ul>
               <li>Access, rectification, erasure, restriction, portability, objection, and withdrawal of consent (GDPR; LGPD; PIPL; PDPA; PIPA; APPI; POPIA)</li>
               <li>Right to Know, Right to Delete, Right to Correct, and Opt-Out of Sale/Sharing (CCPA/CPRA)</li>
@@ -150,13 +150,13 @@
               <li>De-indexation and portability rights (Quebec Law 25)</li>
               <li>Nomination rights and grievance redressal (India DPDP Act)</li>
             </ul>
-            <p>VaptFix.ai will not respond directly to Data Subjects without Customer authorization, except as required by applicable law. All Data Subject requests should be routed via <a href="mailto:privacy@vaptfix.ai">privacy@vaptfix.ai</a>.</p>
+            <p>VAPTFIX.ai will not respond directly to Data Subjects without Customer authorization, except as required by applicable law. All Data Subject requests should be routed via <a href="mailto:privacy@vaptfix.ai">privacy@vaptfix.ai</a>.</p>
           </section>
 
           <section id="breach">
             <div class="ld-section-number">09 / BREACH NOTIFICATION — GLOBAL TIMELINES</div>
             <h2>Personal Data Breach Notification</h2>
-            <p>Upon becoming aware of a Personal Data Breach affecting Customer data, VaptFix.ai shall notify the Customer without undue delay. VaptFix.ai's internal SLA is notification to the Customer within <strong>24 hours</strong> of awareness. The Customer is then responsible for notifying Supervisory Authorities and affected individuals in accordance with applicable law. VaptFix.ai will provide all information necessary to support such notifications.</p>
+            <p>Upon becoming aware of a Personal Data Breach affecting Customer data, VAPTFIX.ai shall notify the Customer without undue delay. VAPTFIX.ai's internal SLA is notification to the Customer within <strong>24 hours</strong> of awareness. The Customer is then responsible for notifying Supervisory Authorities and affected individuals in accordance with applicable law. VAPTFIX.ai will provide all information necessary to support such notifications.</p>
             <table class="ld-data-table">
               <thead>
                 <tr><th>Jurisdiction / Law</th><th>Authority Notification</th><th>Individual Notification</th><th>Regulatory Body</th></tr>
@@ -204,39 +204,39 @@
           <section id="transfers-usa">
             <div class="ld-section-number">10-B / TRANSFERS — UNITED STATES</div>
             <h2>United States Cross-Border Transfers</h2>
-            <p>VaptFix.ai participates in the EU–U.S. Data Privacy Framework (DPF), UK Extension to the DPF, and Swiss–U.S. DPF as applicable, and is certified to receive personal data transferred under those frameworks. VaptFix.ai commits to apply DPF principles to personal data received from EU/UK/Swiss entities.</p>
-            <p>For CCPA/CPRA: VaptFix.ai acts as a "Service Provider" (and not a "Third Party" or "Data Broker") with respect to Customer personal information. VaptFix.ai is prohibited from: (i) selling or sharing the personal information; (ii) retaining, using, or disclosing the personal information for any purpose other than the business purpose specified in the Terms of Service; (iii) retaining, using, or disclosing personal information outside the direct business relationship. VaptFix.ai certifies understanding of and compliance with these limitations.</p>
+            <p>VAPTFIX.ai participates in the EU–U.S. Data Privacy Framework (DPF), UK Extension to the DPF, and Swiss–U.S. DPF as applicable, and is certified to receive personal data transferred under those frameworks. VAPTFIX.ai commits to apply DPF principles to personal data received from EU/UK/Swiss entities.</p>
+            <p>For CCPA/CPRA: VAPTFIX.ai acts as a "Service Provider" (and not a "Third Party" or "Data Broker") with respect to Customer personal information. VAPTFIX.ai is prohibited from: (i) selling or sharing the personal information; (ii) retaining, using, or disclosing the personal information for any purpose other than the business purpose specified in the Terms of Service; (iii) retaining, using, or disclosing personal information outside the direct business relationship. VAPTFIX.ai certifies understanding of and compliance with these limitations.</p>
           </section>
 
           <section id="transfers-brazil">
             <div class="ld-section-number">10-C / TRANSFERS — BRAZIL</div>
             <h2>Brazil (LGPD) Cross-Border Transfers</h2>
-            <p>Transfers of personal data of Brazilian data subjects outside Brazil are conducted only in accordance with LGPD Art. 33, relying on: (i) a country or international body providing an adequate level of protection as recognized by the ANPD; (ii) contractual clauses or specific clauses approved by the ANPD between the Controller and Processor; (iii) binding global corporate rules; or (iv) the data subject's specific consent. VaptFix.ai will execute ANPD-approved standard clauses upon availability, and currently relies on contractual protections equivalent to those required by the ANPD pending formal clause approval.</p>
+            <p>Transfers of personal data of Brazilian data subjects outside Brazil are conducted only in accordance with LGPD Art. 33, relying on: (i) a country or international body providing an adequate level of protection as recognized by the ANPD; (ii) contractual clauses or specific clauses approved by the ANPD between the Controller and Processor; (iii) binding global corporate rules; or (iv) the data subject's specific consent. VAPTFIX.ai will execute ANPD-approved standard clauses upon availability, and currently relies on contractual protections equivalent to those required by the ANPD pending formal clause approval.</p>
           </section>
 
           <section id="transfers-korea">
             <div class="ld-section-number">10-D / TRANSFERS — SOUTH KOREA</div>
             <h2>South Korea (PIPA) Cross-Border Transfers</h2>
-            <p>For cross-border transfers of personal information of Korean data subjects, VaptFix.ai complies with PIPA Art. 28-8 (as amended 2023). Transfers are made on the basis of: (i) individual consent following notification of transfer details; (ii) contractual necessity; (iii) PIPC standard clauses; or (iv) an international agreement or PIPC adequacy recognition. VaptFix.ai maintains records of all such transfers and provides Customer with transfer mechanism documentation upon request.</p>
+            <p>For cross-border transfers of personal information of Korean data subjects, VAPTFIX.ai complies with PIPA Art. 28-8 (as amended 2023). Transfers are made on the basis of: (i) individual consent following notification of transfer details; (ii) contractual necessity; (iii) PIPC standard clauses; or (iv) an international agreement or PIPC adequacy recognition. VAPTFIX.ai maintains records of all such transfers and provides Customer with transfer mechanism documentation upon request.</p>
           </section>
 
           <section id="transfers-china">
             <div class="ld-section-number">10-E / TRANSFERS — CHINA (PIPL)</div>
             <h2>China (PIPL) Cross-Border Transfers</h2>
-            <p>For personal information of individuals in the People's Republic of China, cross-border transfers are subject to strict requirements under PIPL Art. 38–40. VaptFix.ai employs the following mechanisms as applicable:</p>
+            <p>For personal information of individuals in the People's Republic of China, cross-border transfers are subject to strict requirements under PIPL Art. 38–40. VAPTFIX.ai employs the following mechanisms as applicable:</p>
             <ul>
               <li><strong>CAC Security Assessment:</strong> Where required (large-scale processors or sensitive data categories), passing a CAC security assessment before cross-border transfer</li>
               <li><strong>Personal Information Protection Certification:</strong> Certification issued by a CAC-recognized institution</li>
               <li><strong>CAC Standard Contract:</strong> Signing of the Measures for Standard Contract for Cross-border Transfer of Personal Information (effective June 2023); filing with competent CAC office</li>
               <li><strong>Individual Consent:</strong> Separate, explicit informed consent from each data subject for outbound transfer (PIPL Art. 39), in addition to any of the above mechanisms</li>
             </ul>
-            <p>VaptFix.ai maintains a register of all cross-border transfers of personal information originating from China and provides the Customer with documentation of the applicable transfer mechanism.</p>
+            <p>VAPTFIX.ai maintains a register of all cross-border transfers of personal information originating from China and provides the Customer with documentation of the applicable transfer mechanism.</p>
           </section>
 
           <section id="transfers-india">
             <div class="ld-section-number">10-F / TRANSFERS — INDIA</div>
             <h2>India (DPDP Act) Cross-Border Transfers</h2>
-            <p>Cross-border transfers of personal data of Indian Data Principals are permitted to countries notified by the Central Government as providing adequate protection. VaptFix.ai will monitor the Central Government's published list of permitted transfer destinations and will not route Indian personal data to restricted destinations. Pending the government's notification of the permitted country list, VaptFix.ai maintains contractual safeguards with all sub-processors receiving Indian personal data. VaptFix.ai will promptly notify the Customer of any restrictions that affect processing flows upon implementation of rules.</p>
+            <p>Cross-border transfers of personal data of Indian Data Principals are permitted to countries notified by the Central Government as providing adequate protection. VAPTFIX.ai will monitor the Central Government's published list of permitted transfer destinations and will not route Indian personal data to restricted destinations. Pending the government's notification of the permitted country list, VAPTFIX.ai maintains contractual safeguards with all sub-processors receiving Indian personal data. VAPTFIX.ai will promptly notify the Customer of any restrictions that affect processing flows upon implementation of rules.</p>
           </section>
 
           <section id="transfers-apac">
@@ -244,25 +244,25 @@
             <h2>Asia-Pacific Cross-Border Transfers</h2>
 
             <h3>Singapore (PDPA S.26)</h3>
-            <p>Before transferring personal data outside Singapore, VaptFix.ai ensures the recipient is bound by contractual obligations providing a standard of protection comparable to the PDPA, using PDPC-approved Data Transfer Agreements (DTAs) or equivalent contractual clauses. Transfer documentation maintained per PDPC Advisory Guidelines on Cross-Border Data Transfers.</p>
+            <p>Before transferring personal data outside Singapore, VAPTFIX.ai ensures the recipient is bound by contractual obligations providing a standard of protection comparable to the PDPA, using PDPC-approved Data Transfer Agreements (DTAs) or equivalent contractual clauses. Transfer documentation maintained per PDPC Advisory Guidelines on Cross-Border Data Transfers.</p>
 
             <h3>Thailand (PDPA S.28)</h3>
-            <p>Transfers of personal data of Thai data subjects to countries with inadequate protection are made only with the explicit consent of the data subject, or pursuant to PDPC-approved standard contractual clauses for international transfers, or other lawful basis under PDPA S.28. VaptFix.ai executes Thai PDPC standard clauses with sub-processors receiving Thai personal data where available.</p>
+            <p>Transfers of personal data of Thai data subjects to countries with inadequate protection are made only with the explicit consent of the data subject, or pursuant to PDPC-approved standard contractual clauses for international transfers, or other lawful basis under PDPA S.28. VAPTFIX.ai executes Thai PDPC standard clauses with sub-processors receiving Thai personal data where available.</p>
 
             <h3>Australia (APP 8)</h3>
-            <p>Before disclosing personal information to overseas recipients, VaptFix.ai takes reasonable steps to ensure the recipient does not breach the Australian Privacy Principles (APP 8.1), including through contractual obligations. The Customer may rely on APP 8.2(b) by notifying affected individuals that personal information may be disclosed to overseas recipients, resulting in Customer bearing liability under APP 8.2(b) for the recipient's acts.</p>
+            <p>Before disclosing personal information to overseas recipients, VAPTFIX.ai takes reasonable steps to ensure the recipient does not breach the Australian Privacy Principles (APP 8.1), including through contractual obligations. The Customer may rely on APP 8.2(b) by notifying affected individuals that personal information may be disclosed to overseas recipients, resulting in Customer bearing liability under APP 8.2(b) for the recipient's acts.</p>
 
             <h3>Japan (APPI Art. 28)</h3>
-            <p>Transfers of personal information to non-APPI-equivalent countries require: (i) individual consent; or (ii) the destination providing a level of protection comparable to APPI. VaptFix.ai ensures all overseas sub-processors receiving Japanese personal information are subject to binding data protection obligations equivalent to APPI requirements, and maintains records per Art. 29.</p>
+            <p>Transfers of personal information to non-APPI-equivalent countries require: (i) individual consent; or (ii) the destination providing a level of protection comparable to APPI. VAPTFIX.ai ensures all overseas sub-processors receiving Japanese personal information are subject to binding data protection obligations equivalent to APPI requirements, and maintains records per Art. 29.</p>
 
             <h3>New Zealand (IPP 12)</h3>
-            <p>VaptFix.ai ensures that transfers of personal information of New Zealand individuals outside New Zealand comply with IPP 12, including ensuring the recipient is either: (a) subject to the Privacy Act or substantially equivalent law; or (b) bound by binding contractual terms; or (c) subject to other circumstances listed in the Privacy Act's permitted cross-border disclosure provisions.</p>
+            <p>VAPTFIX.ai ensures that transfers of personal information of New Zealand individuals outside New Zealand comply with IPP 12, including ensuring the recipient is either: (a) subject to the Privacy Act or substantially equivalent law; or (b) bound by binding contractual terms; or (c) subject to other circumstances listed in the Privacy Act's permitted cross-border disclosure provisions.</p>
           </section>
 
           <section id="transfers-africa">
             <div class="ld-section-number">10-H / TRANSFERS — AFRICA (POPIA)</div>
             <h2>South Africa (POPIA) Cross-Border Transfers</h2>
-            <p>Transfers of personal information of South African data subjects outside South Africa comply with POPIA S.72. VaptFix.ai transfers such data only where: (i) the recipient is subject to a law, binding corporate rules, or binding agreement providing substantially similar protection as POPIA; (ii) the data subject consents; (iii) the transfer is necessary for contract performance; or (iv) another S.72(1) exception applies. VaptFix.ai maintains binding data transfer agreements with all sub-processors receiving South African personal information and makes copies available to the Customer on request.</p>
+            <p>Transfers of personal information of South African data subjects outside South Africa comply with POPIA S.72. VAPTFIX.ai transfers such data only where: (i) the recipient is subject to a law, binding corporate rules, or binding agreement providing substantially similar protection as POPIA; (ii) the data subject consents; (iii) the transfer is necessary for contract performance; or (iv) another S.72(1) exception applies. VAPTFIX.ai maintains binding data transfer agreements with all sub-processors receiving South African personal information and makes copies available to the Customer on request.</p>
           </section>
 
           <section id="transfers-me">
@@ -270,7 +270,7 @@
             <h2>Middle East Cross-Border Transfers</h2>
 
             <h3>UAE — PDPL Art. 22</h3>
-            <p>Transfers of personal data of UAE individuals outside the UAE are permitted only to countries with adequate protection (as determined by the UAE Data Office) or where the controller implements appropriate safeguards including contractual clauses. VaptFix.ai obtains UAE Data Office approval where required and maintains binding contractual obligations with receiving sub-processors. ADGM and DIFC transfers comply with respective free zone frameworks.</p>
+            <p>Transfers of personal data of UAE individuals outside the UAE are permitted only to countries with adequate protection (as determined by the UAE Data Office) or where the controller implements appropriate safeguards including contractual clauses. VAPTFIX.ai obtains UAE Data Office approval where required and maintains binding contractual obligations with receiving sub-processors. ADGM and DIFC transfers comply with respective free zone frameworks.</p>
 
             <h3>Saudi Arabia — PDPL Art. 29</h3>
             <p>Transfers of personal data of Saudi individuals outside KSA require: (i) SDAIA/NDMO approval or reliance on countries recognized as providing equivalent protection; (ii) the transfer does not prejudice national interests or security; (iii) contractual obligations ensure equivalent protection. Sensitive personal data localization requirements are observed — such data is stored within KSA infrastructure where mandated.</p>
@@ -281,13 +281,13 @@
             <h2>Latin America Cross-Border Transfers</h2>
 
             <h3>Mexico — LFPDPPP Art. 36</h3>
-            <p>International transfers of personal data of Mexican data subjects not excepted under Art. 37 (e.g., international conventions, transfer required for contract performance) require consent or are governed by the Agreement for the Transfer of Personal Data executed between VaptFix.ai and the Customer, ensuring adequate levels of protection per INAI standards.</p>
+            <p>International transfers of personal data of Mexican data subjects not excepted under Art. 37 (e.g., international conventions, transfer required for contract performance) require consent or are governed by the Agreement for the Transfer of Personal Data executed between VAPTFIX.ai and the Customer, ensuring adequate levels of protection per INAI standards.</p>
 
             <h3>Colombia — Ley 1581 Art. 26</h3>
             <p>Transfers to countries not recognized by the SIC as providing adequate protection require an agreement between the transmitter and receiver ensuring protection at least equivalent to Colombian law, or individual authorization.</p>
 
             <h3>Argentina, Chile, Peru</h3>
-            <p>VaptFix.ai complies with applicable transfer restrictions under Ley 25.326 (Argentina), Ley 19.628 (Chile), and Ley 29733 (Peru), maintaining contractual safeguards with sub-processors receiving personal data originating from these jurisdictions and updating documentation as new comprehensive laws are enacted.</p>
+            <p>VAPTFIX.ai complies with applicable transfer restrictions under Ley 25.326 (Argentina), Ley 19.628 (Chile), and Ley 29733 (Peru), maintaining contractual safeguards with sub-processors receiving personal data originating from these jurisdictions and updating documentation as new comprehensive laws are enacted.</p>
           </section>
 
           <!-- JURISDICTION-SPECIFIC ADDENDA -->
@@ -297,9 +297,9 @@
             <h2>GDPR / UK GDPR / Swiss revFADP Addendum</h2>
             <p>This Addendum applies to processing of personal data of individuals in the EEA, UK, and Switzerland. The parties agree that:</p>
             <ul>
-              <li>VaptFix.ai shall process personal data only on documented instructions of the Customer (Art. 28(3)(a) GDPR)</li>
-              <li>A Data Protection Impact Assessment (DPIA) shall be conducted where required under Art. 35 GDPR, with VaptFix.ai providing all necessary assistance</li>
-              <li>VaptFix.ai shall maintain records of processing activities carried out on behalf of the Customer (Art. 30(2) GDPR)</li>
+              <li>VAPTFIX.ai shall process personal data only on documented instructions of the Customer (Art. 28(3)(a) GDPR)</li>
+              <li>A Data Protection Impact Assessment (DPIA) shall be conducted where required under Art. 35 GDPR, with VAPTFIX.ai providing all necessary assistance</li>
+              <li>VAPTFIX.ai shall maintain records of processing activities carried out on behalf of the Customer (Art. 30(2) GDPR)</li>
               <li>The SCCs (Module 2) are incorporated as described in Section 10-A where applicable</li>
               <li>The Customer's lead supervisory authority contact details are to be completed at execution</li>
             </ul>
@@ -308,13 +308,13 @@
           <section id="addendum-ccpa">
             <div class="ld-section-number">11-B / CCPA / CPRA ADDENDUM</div>
             <h2>California CCPA / CPRA Addendum</h2>
-            <p>This Addendum applies where VaptFix.ai processes "personal information" of California residents on behalf of the Customer, as defined under Cal. Civil Code §1798.140. The parties agree that:</p>
+            <p>This Addendum applies where VAPTFIX.ai processes "personal information" of California residents on behalf of the Customer, as defined under Cal. Civil Code §1798.140. The parties agree that:</p>
             <ul>
-              <li>VaptFix.ai is a "Service Provider" (as defined in §1798.140(ag)) receiving personal information for a "Business Purpose" and is prohibited from retaining, using, or disclosing the personal information for any commercial purpose other than providing the services specified in the Terms of Service</li>
-              <li>VaptFix.ai is prohibited from selling or sharing the personal information and from combining the personal information with personal information received from other sources</li>
-              <li>VaptFix.ai shall assist Customer in responding to verified consumer requests within 45 days (extendable by 45 days with notice)</li>
-              <li>VaptFix.ai shall delete or return personal information upon instruction and at the conclusion of the service relationship</li>
-              <li>VaptFix.ai certifies that it understands the foregoing restrictions and will comply with them</li>
+              <li>VAPTFIX.ai is a "Service Provider" (as defined in §1798.140(ag)) receiving personal information for a "Business Purpose" and is prohibited from retaining, using, or disclosing the personal information for any commercial purpose other than providing the services specified in the Terms of Service</li>
+              <li>VAPTFIX.ai is prohibited from selling or sharing the personal information and from combining the personal information with personal information received from other sources</li>
+              <li>VAPTFIX.ai shall assist Customer in responding to verified consumer requests within 45 days (extendable by 45 days with notice)</li>
+              <li>VAPTFIX.ai shall delete or return personal information upon instruction and at the conclusion of the service relationship</li>
+              <li>VAPTFIX.ai certifies that it understands the foregoing restrictions and will comply with them</li>
               <li>Sensitive Personal Information (as defined in §1798.140(ae)) will be used only for the purposes set out in §1798.121</li>
             </ul>
           </section>
@@ -324,12 +324,12 @@
             <h2>Brazil LGPD Addendum</h2>
             <p>This Addendum applies to processing of personal data (dados pessoais) of Brazilian data subjects under Lei Geral de Proteção de Dados (Law 13,709/2018). The parties agree that:</p>
             <ul>
-              <li>VaptFix.ai acts as the Operador (operator) processing dados pessoais on behalf of the Customer as Controlador (controller), under Art. 39 LGPD</li>
-              <li>VaptFix.ai shall process dados pessoais only in accordance with the Controlador's instructions and shall not use data for its own purposes</li>
-              <li>VaptFix.ai appoints an Encarregado (Data Protection Officer) contactable at <a href="mailto:dpo@vaptfix.ai">dpo@vaptfix.ai</a></li>
-              <li>Security measures comply with Art. 46 LGPD standards; VaptFix.ai shall notify the Controlador of security incidents within 24 hours of awareness, with ANPD notification timing per Art. 48</li>
+              <li>VAPTFIX.ai acts as the Operador (operator) processing dados pessoais on behalf of the Customer as Controlador (controller), under Art. 39 LGPD</li>
+              <li>VAPTFIX.ai shall process dados pessoais only in accordance with the Controlador's instructions and shall not use data for its own purposes</li>
+              <li>VAPTFIX.ai appoints an Encarregado (Data Protection Officer) contactable at <a href="mailto:dpo@vaptfix.ai">dpo@vaptfix.ai</a></li>
+              <li>Security measures comply with Art. 46 LGPD standards; VAPTFIX.ai shall notify the Controlador of security incidents within 24 hours of awareness, with ANPD notification timing per Art. 48</li>
               <li>Cross-border transfers comply with LGPD Art. 33 as described in Section 10-C</li>
-              <li>VaptFix.ai assists the Controlador in responding to data subject rights under Art. 18 within the required timeframe</li>
+              <li>VAPTFIX.ai assists the Controlador in responding to data subject rights under Art. 18 within the required timeframe</li>
             </ul>
           </section>
 
@@ -338,51 +338,51 @@
             <h2>China PIPL Addendum</h2>
             <p>This Addendum applies to processing of personal information (个人信息) of individuals in the People's Republic of China under the Personal Information Protection Law (PIPL). The parties agree that:</p>
             <ul>
-              <li>VaptFix.ai acts as the "entrusted party" (受托人) processing personal information on behalf of the Customer as personal information handler (个人信息处理者), under PIPL Art. 21</li>
+              <li>VAPTFIX.ai acts as the "entrusted party" (受托人) processing personal information on behalf of the Customer as personal information handler (个人信息处理者), under PIPL Art. 21</li>
               <li>A written entrustment contract (委托处理协议) compliant with PIPL Art. 21 is established between the parties via this DPA</li>
-              <li>VaptFix.ai shall not process personal information beyond the scope, purpose, and manner agreed with the Customer; shall not sub-entrust without prior consent; and shall delete personal information upon completion of the entrustment purpose</li>
-              <li>VaptFix.ai assists the Customer in responding to requests from data subjects under PIPL Art. 50 within 15 days</li>
+              <li>VAPTFIX.ai shall not process personal information beyond the scope, purpose, and manner agreed with the Customer; shall not sub-entrust without prior consent; and shall delete personal information upon completion of the entrustment purpose</li>
+              <li>VAPTFIX.ai assists the Customer in responding to requests from data subjects under PIPL Art. 50 within 15 days</li>
               <li>Cross-border transfers comply with PIPL Art. 38–40 mechanisms as described in Section 10-E</li>
-              <li>VaptFix.ai shall conduct personal information protection impact assessments (PIPIA) as required under PIPL Art. 55 for high-risk processing activities</li>
-              <li>In the event of a personal information security incident, VaptFix.ai shall immediately notify the Customer and assist with CAC reporting obligations per PIPL Art. 57</li>
+              <li>VAPTFIX.ai shall conduct personal information protection impact assessments (PIPIA) as required under PIPL Art. 55 for high-risk processing activities</li>
+              <li>In the event of a personal information security incident, VAPTFIX.ai shall immediately notify the Customer and assist with CAC reporting obligations per PIPL Art. 57</li>
             </ul>
           </section>
 
           <section id="addendum-popia">
             <div class="ld-section-number">11-E / POPIA ADDENDUM (SOUTH AFRICA)</div>
             <h2>South Africa POPIA Addendum</h2>
-            <p>This Addendum applies to processing of personal information of South African data subjects under POPIA (Act 4 of 2013). VaptFix.ai acts as the "Operator" (as defined in S.1 POPIA) processing personal information on behalf of the Customer as "Responsible Party." VaptFix.ai shall: process personal information only with the knowledge and authorization of the Customer; treat personal information which comes to its knowledge as confidential; not disclose information without Customer authorization; and maintain appropriate security measures per S.19–22 POPIA. Cross-border transfers comply with S.72 as described in Section 10-H. VaptFix.ai will notify the Customer of security compromises as soon as reasonably possible per S.22 POPIA.</p>
+            <p>This Addendum applies to processing of personal information of South African data subjects under POPIA (Act 4 of 2013). VAPTFIX.ai acts as the "Operator" (as defined in S.1 POPIA) processing personal information on behalf of the Customer as "Responsible Party." VAPTFIX.ai shall: process personal information only with the knowledge and authorization of the Customer; treat personal information which comes to its knowledge as confidential; not disclose information without Customer authorization; and maintain appropriate security measures per S.19–22 POPIA. Cross-border transfers comply with S.72 as described in Section 10-H. VAPTFIX.ai will notify the Customer of security compromises as soon as reasonably possible per S.22 POPIA.</p>
           </section>
 
           <section id="addendum-pdpa">
             <div class="ld-section-number">11-F / PDPA ADDENDUM (SINGAPORE &amp; THAILAND)</div>
             <h2>Singapore &amp; Thailand PDPA Addendum</h2>
-            <p>This Addendum applies to processing of personal data of individuals in Singapore (PDPA 2012) and Thailand (PDPA B.E. 2562). VaptFix.ai acts as the "data processor" under both frameworks, processing personal data on behalf of and under the instructions of the Customer as "data controller." VaptFix.ai shall: process personal data only for the purposes authorized by the Customer; implement appropriate security arrangements; assist the Customer in fulfilling data subject rights; notify the Customer within 24 hours of awareness of any data breach; and not transfer personal data outside Singapore or Thailand except in compliance with Sections 10-G. VaptFix.ai has appointed a Data Protection Officer (DPO) registered with the PDPC Singapore (where required) contactable at <a href="mailto:dpo@vaptfix.ai">dpo@vaptfix.ai</a>.</p>
+            <p>This Addendum applies to processing of personal data of individuals in Singapore (PDPA 2012) and Thailand (PDPA B.E. 2562). VAPTFIX.ai acts as the "data processor" under both frameworks, processing personal data on behalf of and under the instructions of the Customer as "data controller." VAPTFIX.ai shall: process personal data only for the purposes authorized by the Customer; implement appropriate security arrangements; assist the Customer in fulfilling data subject rights; notify the Customer within 24 hours of awareness of any data breach; and not transfer personal data outside Singapore or Thailand except in compliance with Sections 10-G. VAPTFIX.ai has appointed a Data Protection Officer (DPO) registered with the PDPC Singapore (where required) contactable at <a href="mailto:dpo@vaptfix.ai">dpo@vaptfix.ai</a>.</p>
           </section>
 
           <section id="addendum-appi">
             <div class="ld-section-number">11-G / APPI ADDENDUM (JAPAN)</div>
             <h2>Japan APPI Addendum</h2>
-            <p>This Addendum applies to processing of personal information (個人情報) of individuals in Japan under the Act on the Protection of Personal Information (APPI). VaptFix.ai acts as a "consignee" (委託先) of the Customer and shall: handle personal information within the scope of the consignment purpose; implement necessary security management measures per Art. 23 APPI; provide appropriate supervision of sub-consignees; and notify the Customer without delay of any leakage incident. Third-party provision by VaptFix.ai of Japanese personal information is permitted only in compliance with APPI Art. 27. Cross-border transfers comply with APPI Art. 28 as described in Section 10-G. VaptFix.ai provides relevant information to the Customer annually or upon request to support APPI Art. 24(3) obligations (third-party provision records).</p>
+            <p>This Addendum applies to processing of personal information (個人情報) of individuals in Japan under the Act on the Protection of Personal Information (APPI). VAPTFIX.ai acts as a "consignee" (委託先) of the Customer and shall: handle personal information within the scope of the consignment purpose; implement necessary security management measures per Art. 23 APPI; provide appropriate supervision of sub-consignees; and notify the Customer without delay of any leakage incident. Third-party provision by VAPTFIX.ai of Japanese personal information is permitted only in compliance with APPI Art. 27. Cross-border transfers comply with APPI Art. 28 as described in Section 10-G. VAPTFIX.ai provides relevant information to the Customer annually or upon request to support APPI Art. 24(3) obligations (third-party provision records).</p>
           </section>
 
           <section id="addendum-pipa">
             <div class="ld-section-number">11-H / PIPA ADDENDUM (SOUTH KOREA)</div>
             <h2>South Korea PIPA Addendum</h2>
-            <p>This Addendum applies to processing of personal information (개인정보) of Korean data subjects under the Personal Information Protection Act (PIPA). VaptFix.ai acts as "consignee" (수탁자) of the Customer and shall: process personal information only within the scope of the consignment; implement security measures per PIPA Art. 29 and the PIPA Enforcement Decree; not subcontract without prior written consent of the Customer; notify the Customer immediately of any PIPA violations; allow supervision and audit by the Customer; and destroy personal information upon completion of the consignment purpose. This Addendum constitutes the written consignment agreement required by PIPA Art. 26. The consignment details are set out in Annex A. VaptFix.ai discloses consignment details on its website in compliance with PIPA Art. 26(2).</p>
+            <p>This Addendum applies to processing of personal information (개인정보) of Korean data subjects under the Personal Information Protection Act (PIPA). VAPTFIX.ai acts as "consignee" (수탁자) of the Customer and shall: process personal information only within the scope of the consignment; implement security measures per PIPA Art. 29 and the PIPA Enforcement Decree; not subcontract without prior written consent of the Customer; notify the Customer immediately of any PIPA violations; allow supervision and audit by the Customer; and destroy personal information upon completion of the consignment purpose. This Addendum constitutes the written consignment agreement required by PIPA Art. 26. The consignment details are set out in Annex A. VAPTFIX.ai discloses consignment details on its website in compliance with PIPA Art. 26(2).</p>
           </section>
 
           <section id="addendum-dpdp">
             <div class="ld-section-number">11-I / DPDP ADDENDUM (INDIA)</div>
             <h2>India DPDP Act Addendum</h2>
-            <p>This Addendum applies to processing of personal data (व्यक्तिगत डेटा) of Indian Data Principals under the Digital Personal Data Protection Act 2023 (DPDP Act). VaptFix.ai acts as a "Data Processor" processing personal data on behalf of the Customer as "Data Fiduciary." VaptFix.ai shall: process personal data only for the purpose and in the manner specified by the Customer; implement appropriate technical and organizational measures per S.8(5) DPDP Act; assist the Customer in responding to Data Principal rights requests; notify the Customer immediately of any personal data breach per S.8(6); engage sub-processors (Data Processors) only with Customer authorization; and delete personal data upon fulfilment of the purpose or upon Customer instruction. This Addendum will be updated to reflect rules notified by the Central Government upon their publication.</p>
+            <p>This Addendum applies to processing of personal data (व्यक्तिगत डेटा) of Indian Data Principals under the Digital Personal Data Protection Act 2023 (DPDP Act). VAPTFIX.ai acts as a "Data Processor" processing personal data on behalf of the Customer as "Data Fiduciary." VAPTFIX.ai shall: process personal data only for the purpose and in the manner specified by the Customer; implement appropriate technical and organizational measures per S.8(5) DPDP Act; assist the Customer in responding to Data Principal rights requests; notify the Customer immediately of any personal data breach per S.8(6); engage sub-processors (Data Processors) only with Customer authorization; and delete personal data upon fulfilment of the purpose or upon Customer instruction. This Addendum will be updated to reflect rules notified by the Central Government upon their publication.</p>
           </section>
 
           <section id="addendum-me">
             <div class="ld-section-number">11-J / MIDDLE EAST ADDENDUM</div>
             <h2>Middle East Addendum (UAE &amp; KSA)</h2>
-            <p><strong>UAE (Federal PDPL):</strong> VaptFix.ai acts as a "controller's contractor" processing personal data under the Customer's supervision and instructions. VaptFix.ai shall comply with security obligations per the PDPL UAE Executive Regulations; assist with Data Subject rights within 30 days; notify Customer and UAE Data Office of breaches; and process cross-border transfers per Section 10-I. ADGM/DIFC-specific obligations are addressed in separate addenda upon request.</p>
-            <p><strong>Saudi Arabia (PDPL KSA):</strong> VaptFix.ai processes personal data of Saudi data subjects on behalf of the Customer under a written data processing agreement compliant with PDPL KSA Art. 8 requirements. VaptFix.ai shall: implement security measures per SDAIA technical standards; appoint a Privacy Officer; notify Customer of breaches within 24 hours with Customer responsible for NDMO notification within 72 hours; not transfer data outside KSA except per Section 10-I; and observe data localization requirements for sensitive personal data categories.</p>
+            <p><strong>UAE (Federal PDPL):</strong> VAPTFIX.ai acts as a "controller's contractor" processing personal data under the Customer's supervision and instructions. VAPTFIX.ai shall comply with security obligations per the PDPL UAE Executive Regulations; assist with Data Subject rights within 30 days; notify Customer and UAE Data Office of breaches; and process cross-border transfers per Section 10-I. ADGM/DIFC-specific obligations are addressed in separate addenda upon request.</p>
+            <p><strong>Saudi Arabia (PDPL KSA):</strong> VAPTFIX.ai processes personal data of Saudi data subjects on behalf of the Customer under a written data processing agreement compliant with PDPL KSA Art. 8 requirements. VAPTFIX.ai shall: implement security measures per SDAIA technical standards; appoint a Privacy Officer; notify Customer of breaches within 24 hours with Customer responsible for NDMO notification within 72 hours; not transfer data outside KSA except per Section 10-I; and observe data localization requirements for sensitive personal data categories.</p>
           </section>
 
           <!-- ANNEXES & EXECUTION -->
@@ -390,18 +390,18 @@
           <section id="retention">
             <div class="ld-section-number">12 / RETENTION &amp; DELETION</div>
             <h2>Data Retention &amp; Deletion</h2>
-            <p>Upon termination or expiry of the Service agreement, or upon written request, VaptFix.ai shall — at the Customer's election — within 30 days:</p>
+            <p>Upon termination or expiry of the Service agreement, or upon written request, VAPTFIX.ai shall — at the Customer's election — within 30 days:</p>
             <ul>
               <li><strong>Return:</strong> Provide an export of Customer Personal Data in a standard machine-readable format (JSON, CSV, or PDF as applicable)</li>
               <li><strong>Delete:</strong> Securely delete all Customer Personal Data using NIST SP 800-88 compliant methods and provide a written certificate of deletion</li>
             </ul>
-            <p>VaptFix.ai may retain Personal Data beyond this period only to the extent required by applicable law (e.g., tax records, legal proceedings), and will notify the Customer of any such obligation. Anonymized or aggregated data not reasonably attributable to individuals may be retained for platform improvement.</p>
+            <p>VAPTFIX.ai may retain Personal Data beyond this period only to the extent required by applicable law (e.g., tax records, legal proceedings), and will notify the Customer of any such obligation. Anonymized or aggregated data not reasonably attributable to individuals may be retained for platform improvement.</p>
           </section>
 
           <section id="audit">
             <div class="ld-section-number">13 / AUDIT RIGHTS</div>
             <h2>Audit &amp; Inspection Rights</h2>
-            <p>VaptFix.ai shall:</p>
+            <p>VAPTFIX.ai shall:</p>
             <ul>
               <li>Make available all information necessary to demonstrate compliance with this DPA and applicable law</li>
               <li>Provide SOC 2 Type II audit reports, ISO 27001 certificates (when available), and other relevant compliance documentation upon written request</li>
@@ -414,7 +414,7 @@
           <section id="liability">
             <div class="ld-section-number">14 / LIABILITY</div>
             <h2>Liability</h2>
-            <p>Each party's liability to the other for breaches of this DPA is governed by the liability provisions of the Terms of Service, subject to mandatory provisions of applicable law (including GDPR Art. 82, LGPD Art. 42–45, PIPA Art. 39, and equivalent provisions). Neither party limits liability to Data Subjects or regulatory authorities as required by applicable law. VaptFix.ai's total aggregate liability under each applicable jurisdiction-specific addendum is limited to amounts permissible under the law of that jurisdiction.</p>
+            <p>Each party's liability to the other for breaches of this DPA is governed by the liability provisions of the Terms of Service, subject to mandatory provisions of applicable law (including GDPR Art. 82, LGPD Art. 42–45, PIPA Art. 39, and equivalent provisions). Neither party limits liability to Data Subjects or regulatory authorities as required by applicable law. VAPTFIX.ai's total aggregate liability under each applicable jurisdiction-specific addendum is limited to amounts permissible under the law of that jurisdiction.</p>
           </section>
 
           <section id="term">
@@ -432,7 +432,7 @@
                 <tr><td>Subject matter</td><td>Provision of VAPT platform services, vulnerability scanning, and security assessments</td></tr>
                 <tr><td>Duration</td><td>Duration of the Service agreement</td></tr>
                 <tr><td>Nature of processing</td><td>Collection, storage, analysis, transmission, deletion, and reporting of Personal Data</td></tr>
-                <tr><td>Purpose</td><td>Delivering VaptFix.ai services; account management; security scanning; report generation; analytics</td></tr>
+                <tr><td>Purpose</td><td>Delivering VAPTFIX.ai services; account management; security scanning; report generation; analytics</td></tr>
                 <tr><td>Categories of Personal Data</td><td>Account identifiers (name, email, job title, company); usage data (IP addresses, session logs); authentication data; communications (support tickets); scan target metadata (URLs, IP ranges, domain names); vulnerability findings and reports</td></tr>
                 <tr><td>Sensitive / Special Categories</td><td>None anticipated. Customer must not submit special category data as scan targets without a DPA amendment and appropriate safeguards.</td></tr>
                 <tr><td>Categories of Data Subjects</td><td>Customer employees, administrators, and authorized users; end users of Customer's systems where personal data appears in scan results</td></tr>
@@ -461,13 +461,13 @@
                 <tr><td>PagerDuty</td><td>USA</td><td>USA, EU</td><td>Incident management and on-call alerting</td></tr>
               </tbody>
             </table>
-            <p>The current sub-processor list is maintained at <a href="https://vaptfix.ai/sub-processors" target="_blank" rel="noopener noreferrer">vaptfix.ai/sub-processors</a> with real-time updates. Customers receive 14 days' email notice of any additions or changes. Each sub-processor has executed a DPA with VaptFix.ai containing obligations at least equivalent to those in this DPA.</p>
+            <p>The current sub-processor list is maintained at <a href="https://vaptfix.ai/sub-processors" target="_blank" rel="noopener noreferrer">VAPTFIX.ai/sub-processors</a> with real-time updates. Customers receive 14 days' email notice of any additions or changes. Each sub-processor has executed a DPA with VAPTFIX.ai containing obligations at least equivalent to those in this DPA.</p>
           </section>
 
           <section id="annex-c">
             <div class="ld-section-number">ANNEX C</div>
             <h2>Technical &amp; Organizational Security Measures</h2>
-            <p>The following measures are implemented and maintained by VaptFix.ai.</p>
+            <p>The following measures are implemented and maintained by VAPTFIX.ai.</p>
             <table class="ld-data-table">
               <thead>
                 <tr><th>Category</th><th>Measures Implemented</th><th>Relevant Standards / Laws</th></tr>
@@ -536,13 +536,13 @@
                 <div class="ld-sig-label">Date</div>
               </div>
               <div class="ld-sig-party">
-                <h4 class="ld-sig-party-title">Data Processor (VaptFix.ai)</h4>
+                <h4 class="ld-sig-party-title">Data Processor (VAPTFIX.ai)</h4>
                 <div class="ld-sig-line"></div>
                 <div class="ld-sig-label">Authorized Signature</div>
                 <div class="ld-sig-line"></div>
                 <div class="ld-sig-label">Name &amp; Title</div>
                 <div class="ld-sig-line ld-sig-line--accent"></div>
-                <div class="ld-sig-label ld-sig-label--accent">VaptFix.ai</div>
+                <div class="ld-sig-label ld-sig-label--accent">VAPTFIX.ai</div>
                 <div class="ld-sig-line"></div>
                 <div class="ld-sig-label">Date</div>
               </div>

@@ -32,7 +32,7 @@
           <div class="ld-callout ld-callout--warn">
             <p>
               <strong>PLEASE READ CAREFULLY.</strong> These Terms of Service ("Terms") constitute a legally binding
-              agreement between you and VaptFix.ai. By accessing or using our platform, you acknowledge that you have
+              agreement between you and VAPTFIX.ai. By accessing or using our platform, you acknowledge that you have
               read, understood, and agree to be bound by these Terms. If you do not agree, do not use our services.
             </p>
           </div>
@@ -41,7 +41,7 @@
             <div class="ld-section-number">01 / ACCEPTANCE</div>
             <h2>Acceptance of Terms</h2>
             <p>
-              These Terms govern your access to and use of the VaptFix.ai platform, including all related websites,
+              These Terms govern your access to and use of the VAPTFIX.ai platform, including all related websites,
               APIs, software, tools, reports, documentation, and services (collectively, the "Service"). By creating an
               account, clicking "I Agree," or otherwise accessing the Service, you agree to these Terms on behalf of
               yourself and, if applicable, the organization you represent.
@@ -56,10 +56,10 @@
             <div class="ld-section-number">02 / DEFINITIONS</div>
             <h2>Definitions</h2>
             <ul>
-              <li><strong>"VaptFix.ai," "we," "us," "our"</strong> — the company operating the Service at vaptfix.ai</li>
+              <li><strong>"VAPTFIX.ai," "we," "us," "our"</strong> — the company operating the Service at VAPTFIX.ai</li>
               <li><strong>"User," "you," "your"</strong> — any individual or entity accessing the Service</li>
               <li><strong>"Customer"</strong> — a User who has entered into a paid subscription or enterprise agreement</li>
-              <li><strong>"Service"</strong> — the VaptFix.ai VAPT platform, tools, APIs, and related offerings</li>
+              <li><strong>"Service"</strong> — the VAPTFIX.ai VAPT platform, tools, APIs, and related offerings</li>
               <li><strong>"Scan Target"</strong> — any system, network, URL, IP address, or asset submitted for scanning</li>
               <li>
                 <strong>"Authorized Target"</strong> — a Scan Target for which you have obtained explicit written
@@ -84,13 +84,13 @@
             <div class="ld-section-number">04 / LICENSE GRANT</div>
             <h2>License Grant</h2>
             <p>
-              Subject to your compliance with these Terms and timely payment of applicable fees, VaptFix.ai grants you a
+              Subject to your compliance with these Terms and timely payment of applicable fees, VAPTFIX.ai grants you a
               <strong>limited, non-exclusive, non-transferable, non-sublicensable, revocable license</strong> to:
             </p>
             <ul>
               <li>Access and use the Service for your internal security assessment purposes</li>
               <li>Generate, view, and download Output for your authorized systems</li>
-              <li>Integrate with the VaptFix.ai API in accordance with API documentation and rate limits</li>
+              <li>Integrate with the VAPTFIX.ai API in accordance with API documentation and rate limits</li>
             </ul>
             <p>
               This license does not include the right to resell, redistribute, reverse engineer, decompile, or create
@@ -139,7 +139,7 @@
               <p>
                 <strong>Unauthorized scanning is illegal.</strong> Scanning systems without proper authorization may
                 constitute a criminal offense under the Computer Fraud and Abuse Act (CFAA), the UK Computer Misuse Act,
-                the EU Directive on Attacks Against Information Systems, and equivalent legislation globally. VaptFix.ai
+                the EU Directive on Attacks Against Information Systems, and equivalent legislation globally. VAPTFIX.ai
                 will cooperate fully with law enforcement investigations.
               </p>
             </div>
@@ -162,7 +162,7 @@
               <li>Not share account credentials with unauthorized individuals</li>
             </ul>
             <p>
-              VaptFix.ai will not be liable for losses resulting from unauthorized account access caused by your failure
+              VAPTFIX.ai will not be liable for losses resulting from unauthorized account access caused by your failure
               to maintain credential security.
             </p>
           </section>
@@ -199,7 +199,7 @@
 
             <h3>Taxes</h3>
             <p>
-              You are responsible for all applicable taxes, levies, and duties. Where required by law, VaptFix.ai will
+              You are responsible for all applicable taxes, levies, and duties. Where required by law, VAPTFIX.ai will
               collect and remit taxes on your behalf.
             </p>
           </section>
@@ -211,14 +211,14 @@
             <h3>Our IP</h3>
             <p>
               The Service, including all software, algorithms, user interfaces, trademarks, logos, documentation, and
-              underlying technology, is owned by VaptFix.ai and protected by intellectual property laws. Nothing in these
+              underlying technology, is owned by VAPTFIX.ai and protected by intellectual property laws. Nothing in these
               Terms transfers any IP ownership to you.
             </p>
 
             <h3>Your Data &amp; Output</h3>
             <p>
               You retain full ownership of your Scan Targets, Input data, and the Output generated for your systems. You
-              grant VaptFix.ai a limited license to process your data solely to provide the Service. We do not use your
+              grant VAPTFIX.ai a limited license to process your data solely to provide the Service. We do not use your
               vulnerability data or scan results to train models or for any purpose beyond service delivery.
             </p>
 
@@ -239,7 +239,7 @@
               of these Terms for 3 years.
             </p>
             <p>
-              VaptFix.ai will not disclose your scan results or vulnerability data to any third party except as required by
+              VAPTFIX.ai will not disclose your scan results or vulnerability data to any third party except as required by
               law or with your explicit consent.
             </p>
           </section>
@@ -279,7 +279,7 @@
             <div class="ld-section-number">13 / INDEMNIFICATION</div>
             <h2>Indemnification</h2>
             <p>
-              You agree to indemnify, defend, and hold harmless VaptFix.ai, its officers, directors, employees, and agents
+              You agree to indemnify, defend, and hold harmless VAPTFIX.ai, its officers, directors, employees, and agents
               from and against any claims, liabilities, damages, losses, and expenses (including reasonable legal fees)
               arising out of or related to:
             </p>
@@ -294,7 +294,7 @@
           <section id="termination">
             <div class="ld-section-number">14 / TERMINATION</div>
             <h2>Termination</h2>
-            <p>Either party may terminate these Terms upon written notice. VaptFix.ai may suspend or terminate your access immediately and without notice if:</p>
+            <p>Either party may terminate these Terms upon written notice. VAPTFIX.ai may suspend or terminate your access immediately and without notice if:</p>
             <ul>
               <li>You materially breach these Terms</li>
               <li>We have reason to believe you are using the Service for unauthorized scanning</li>
@@ -328,7 +328,7 @@
             <h2>Contact</h2>
             <div class="ld-callout">
               <p>
-                <strong>VaptFix.ai — Legal Team</strong><br />
+                <strong>VAPTFIX.ai — Legal Team</strong><br />
                 Email: <a href="mailto:legal@vaptfix.ai">legal@vaptfix.ai</a><br />
                 Billing: <a href="mailto:billing@vaptfix.ai">billing@vaptfix.ai</a><br />
                 General: <a href="mailto:hello@vaptfix.ai">hello@vaptfix.ai</a>

@@ -4,11 +4,11 @@
 
       <!-- Logo Header -->
       <div class="text-center mb-4 signin-top-header">
-        <img src="@/assets/images/vaptfix_white.png" alt="VaptFix" class="signin-logo" />
+        <img src="@/assets/images/vaptfix_white.png" alt="VAPTFIX" class="signin-logo" />
       </div>
 
       <h2 class="signin-title">Welcome back</h2>
-      <p class="signin-sub mb-4">Sign in to your VaptFix account</p>
+      <p class="signin-sub mb-4">Sign in to your VAPTFIX account</p>
 
       <form @submit.prevent="handleLogin" autocomplete="off">
         <!-- Email -->

@@ -44,7 +44,7 @@
 
                     <div class="footer-bottom-row">
                         <p class="footer-copyright mb-0">
-                            © 2026 VaptFix.ai. All rights reserved.
+                            © 2026 VAPTFIX.ai. All rights reserved.
                         </p>
                         <ul class="list-unstyled mb-0 footer-legal-links">
                             <li class="footer-privacy-group">

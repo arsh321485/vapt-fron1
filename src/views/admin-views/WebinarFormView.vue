@@ -13,7 +13,7 @@
       <div class="container">
         <div class="hero-content">
           <span class="kicker">Webinar Registration</span>
-          <h1 class="title">Join the VaptFix Webinar</h1>
+          <h1 class="title">Join the VAPTFIX Webinar</h1>
           <p class="desc">
             Please fill in your details. Required fields are marked with an asterisk (*).
           </p>

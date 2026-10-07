@@ -312,7 +312,7 @@
           <div v-if="mode === 'admin' && !isMagicLinkAdmin" class="ma-security-card">
             <div>
               <h6 class="mb-1">Subscription</h6>
-              <p class="ma-hint mb-0">View plans and upgrade your VaptFix subscription.</p>
+              <p class="ma-hint mb-0">View plans and upgrade your VAPTFIX subscription.</p>
             </div>
             <router-link to="/pricingplan" class="btn btn-outline-dark btn-sm">Upgrade Plan</router-link>
           </div>
@@ -776,7 +776,7 @@ export default {
     async uninstallSlack() {
       const result = await Swal.fire({
         title: 'Uninstall Slack?',
-        text: 'Are you sure? This will permanently delete your VaptFix account and ALL data — reports, team members, vulnerabilities, everything. This cannot be undone.',
+        text: 'Are you sure? This will permanently delete your VAPTFIX account and ALL data — reports, team members, vulnerabilities, everything. This cannot be undone.',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonText: 'Yes, permanently delete',

@@ -24,7 +24,7 @@
       <!-- PAGE HEADER -->
       <div class="rc-page-header">
         <h1 class="rc-title">Configure Risk Severity</h1>
-        <p class="rc-subtitle">Define how VaptFix Pro classifies vulnerabilities across your infrastructure. Choose criteria that align with your organizational security standards.</p>
+        <p class="rc-subtitle">Define how VAPTFIX Pro classifies vulnerabilities across your infrastructure. Choose criteria that align with your organizational security standards.</p>
       </div>
 
       <!-- MAIN LAYOUT -->

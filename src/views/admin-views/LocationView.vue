@@ -214,7 +214,7 @@
                 Already added in Slack/Teams only?
               </p>
               <p class="loc-platform-import-hint">
-                Invite in Slack does not save to VaptFix DB. Enter the same email and roles here to register.
+                Invite in Slack does not save to VAPTFIX DB. Enter the same email and roles here to register.
               </p>
               <input
                 v-model="platformImportEmail"
@@ -568,7 +568,7 @@ export default {
           await Swal.fire({
             icon: "success",
             title: "Saved to database",
-            text: "User is now in VaptFix and linked to Slack/Teams channels for selected roles.",
+            text: "User is now in VAPTFIX and linked to Slack/Teams channels for selected roles.",
             timer: 2800,
             showConfirmButton: false,
           });

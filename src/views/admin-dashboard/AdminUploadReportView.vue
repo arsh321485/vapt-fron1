@@ -3,7 +3,7 @@
     <!-- Top bar -->
     <div class="aur-topbar">
       <router-link to="/home">
-        <img src="@/assets/images/vaptfix_white.png" alt="VaptFix" class="aur-logo" />
+        <img src="@/assets/images/vaptfix_white.png" alt="VAPTFIX" class="aur-logo" />
       </router-link>
     </div>
 
@@ -167,7 +167,7 @@
               </div>
               <h1 class="aur-title">Provide Your Scope</h1>
               <p class="aur-subtitle">
-                Choose how you want to start — upload an existing scan report, or enter the assets VAPTFix should test.
+                Choose how you want to start — upload an existing scan report, or enter the assets VAPTFIX should test.
               </p>
             </div>
 
@@ -527,7 +527,7 @@
                 {{
                   activePlanFitNotice
                     ? `Freemium shows ${activePlanFitNotice.limit} targets now. Extra assets stay locked until you upgrade.`
-                    : 'Upload a .csv, .xlsx, .xls, .txt, .xml, .nessus, .html, .htm, .pdf, .docx, or .doc file listing the assets you want VAPTFix to include in scope.'
+                    : 'Upload a .csv, .xlsx, .xls, .txt, .xml, .nessus, .html, .htm, .pdf, .docx, or .doc file listing the assets you want VAPTFIX to include in scope.'
                 }}
               </p>
             </div>

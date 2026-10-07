@@ -6,7 +6,7 @@
       <div class="text-center mb-4" :class="{ 'signup-top-header': !otpSent }">
         <img
           src="@/assets/images/vaptfix_white.png"
-          alt="VaptFix"
+          alt="VAPTFIX"
           class="signup-logo"
         />
       </div>
@@ -15,7 +15,7 @@
       <div v-if="otpSent" class="otp-verify-wrap">
         <header class="otp-verify-header">
           <div class="otp-brand">
-            <img src="@/assets/images/vaptfix_white.png" alt="VaptFix" class="otp-brand-logo" />
+            <img src="@/assets/images/vaptfix_white.png" alt="VAPTFIX" class="otp-brand-logo" />
           </div>
         </header>
 
@@ -91,7 +91,7 @@
       <!-- Signup Step -->
       <div v-else>
         <h2 class="signup-title">Get started</h2>
-        <p class="signup-sub mb-4">Create your VaptFix account to begin your security engagement</p>
+        <p class="signup-sub mb-4">Create your VAPTFIX account to begin your security engagement</p>
         <div v-if="inviteBannerText" class="invite-banner" :class="inviteBannerClass">
           {{ inviteBannerText }}
         </div>

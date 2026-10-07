@@ -7,7 +7,7 @@
       <div class="col-lg-6 col-md-12 px-5 pt-4 pb-4 form-section">
         <img src="@/assets/images/logo-capital.png" alt="" class="mb-4" style="height: 40px;">
         <h1 class="form-heading mb-2">Get started now</h1>
-        <p class="form-subheading mb-4">You’re invited to join VAPTfix by Amit Gopal.</p>
+        <p class="form-subheading mb-4">You’re invited to join VAPTFIX by Amit Gopal.</p>
 
         <button class="btn btn-outline-dark rounded-pill mb-2 mb-md-0 mb-lg-0 w-100"><img src="@/assets/images/google-icon.png" style="height: 23px;width: 23px;margin-top: -1px;"/> Login with Google</button>
 
@@ -50,7 +50,7 @@
             </div>
 
         <router-link to="/userdashboard">
-          <button type="submit" class="btn btn-vaptfix w-100 py-2 mt-3">Signup for vaptfix <i class="bi bi-arrow-right-circle-fill"></i></button></router-link>
+          <button type="submit" class="btn btn-vaptfix w-100 py-2 mt-3">Signup for VAPTFIX <i class="bi bi-arrow-right-circle-fill"></i></button></router-link>
         </form>
         
       </div>

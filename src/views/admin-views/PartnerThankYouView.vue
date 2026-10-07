@@ -122,7 +122,7 @@ tailwind.config = {
       </h1>
       <p class="text-lg md:text-xl text-on-surface-variant max-w-xl mx-auto leading-relaxed font-body">
         Our partnerships team will review your application and contact you shortly to discuss how
-        <span class="text-secondary font-semibold">VaptFix Pro</span> can accelerate your security services.
+        <span class="text-secondary font-semibold">VAPTFIX Pro</span> can accelerate your security services.
       </p>
     </div>
 

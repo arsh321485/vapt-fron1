@@ -6,7 +6,7 @@
 
       <div class="browser-bar">
         <router-link to="/userdashboard">
-          <img src="@/assets/images/vaptfix_white.png" alt="VaptFix">
+          <img src="@/assets/images/vaptfix_white.png" alt="VAPTFIX">
         </router-link>
       </div>
 
