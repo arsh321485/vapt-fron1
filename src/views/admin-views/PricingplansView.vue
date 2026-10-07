@@ -48,10 +48,7 @@
                   <div class="card-body d-flex flex-column">
                     <h2 class="card-title pricing-tier-title">{{ plan.name }}</h2>
                     <div class="pricing-price-slot" :aria-hidden="plan.id === 'freemium' ? undefined : 'true'">
-                      <template v-if="plan.id === 'freemium'">
-                        <p class="pricing-price mb-1">{{ plan.priceLabel }}</p>
-                        <p class="pricing-price-note">{{ planPriceNote(plan) }}</p>
-                      </template>
+                      <p v-if="plan.id === 'freemium'" class="pricing-price-note mb-0">{{ planPriceNote(plan) }}</p>
                     </div>
                     <button
                       type="button"
@@ -166,7 +163,6 @@
                         />
                         <div class="pricing-mode-option-top">
                           <span class="pricing-mode-tag">Management Only</span>
-                          <span class="pricing-mode-price">From $1.25 / IP</span>
                         </div>
                         <strong class="pricing-mode-title">I Already Have an Assessment Report</strong>
                         <p class="pricing-mode-copy">
@@ -198,7 +194,6 @@
                         />
                         <div class="pricing-mode-option-top">
                           <span class="pricing-mode-tag">Testing &amp; Retesting</span>
-                          <span class="pricing-mode-price">$20 / IP / year</span>
                         </div>
                         <strong class="pricing-mode-title">VAPTFIX Testing &amp; Retesting</strong>
                         <p class="pricing-mode-copy">
@@ -233,32 +228,42 @@
                             :value="cycle.id"
                             class="visually-hidden"
                           />
-                          <span class="pricing-cycle-name">{{ cycle.label }}</span>
-                          <span class="pricing-cycle-rate">{{ cycle.rate }}</span>
+                          <span class="pricing-cycle-head">
+                            <span class="pricing-cycle-name">{{ cycle.label }}</span>
+                            <span class="pricing-cycle-rate">{{ cycle.rate }}</span>
+                          </span>
                           <span class="pricing-cycle-commit">{{ cycle.commitment }}</span>
+                          <span class="pricing-cycle-example">
+                            <span class="pricing-cycle-example-label">Example · 50 IPs</span>
+                            <span class="pricing-cycle-example-math">{{ cycle.example }}</span>
+                            <span class="pricing-cycle-example-label is-total">Total</span>
+                            <span class="pricing-cycle-example-total">{{ cycle.total }}</span>
+                          </span>
                         </label>
                       </div>
-                      <p class="pricing-mode-example">
-                        Monthly: 50 × $2.00 × 1 month = <strong>$100 per month</strong>.
-                        Semi-Annual: 50 × $1.50 × 6 months = <strong>$450 per six months</strong>.
-                        One-Year Commitment: 50 × $1.25 × 12 months = <strong>$750 per year</strong>.
-                      </p>
                     </div>
 
-                    <div v-else-if="premiumDetailsOpen && premiumMode === 'testing'" class="pricing-plan-overview">
-                      <div class="pricing-testing-rate-row">
-                        <span class="pricing-testing-amount">$20 / IP / year</span>
-                        <span class="pricing-testing-badge">Annual</span>
-                      </div>
+                    <div v-else-if="premiumDetailsOpen && premiumMode === 'testing'" class="pricing-cycle-block">
                       <p class="pricing-cycle-label">Included Items</p>
-                      <ul class="pricing-testing-included">
-                        <li>Includes two security assessments per year.</li>
-                        <li>Includes both initial testing and retesting.</li>
-                        <li>Retesting included as part of each testing cycle.</li>
-                      </ul>
-                      <p class="pricing-mode-copy mb-0">
-                        Includes two testing cycles per year, with one cycle consisting of testing and retesting.
-                      </p>
+                      <div class="pricing-cycle-options pricing-testing-options">
+                        <div class="pricing-cycle-option active">
+                          <div class="pricing-testing-rate-row">
+                            <span class="pricing-cycle-name">Testing &amp; Retesting</span>
+                            <span class="pricing-testing-badge">Annual</span>
+                          </div>
+                          <span class="pricing-cycle-commit">Includes two testing cycles per year, with one cycle consisting of testing and retesting.</span>
+                          <span class="pricing-cycle-example">
+                            <span class="pricing-cycle-example-label">Included Items</span>
+                            <ul class="pricing-testing-included">
+                              <li>Includes two security assessments per year.</li>
+                              <li>Includes both initial testing and retesting.</li>
+                              <li>Retesting included as part of each testing cycle.</li>
+                            </ul>
+                            <span class="pricing-cycle-example-label is-total">Annual rate</span>
+                            <span class="pricing-cycle-example-total">$20 / IP / year</span>
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
                   </div>
@@ -626,9 +631,9 @@ export default {
       billingCycle: 'annual',
       paymentMethod: 'card',
       billingCycles: [
-        { id: 'monthly', label: 'Monthly', rate: '$2.00 / IP', commitment: 'Management services are provided for one month at the applicable monthly fee.' },
-        { id: 'semi', label: 'Semi-Annual', rate: '$1.50 / IP', commitment: 'Management services are provided for six months at the applicable fee.' },
-        { id: 'annual', label: 'One-Year Commitment', rate: '$1.25 / IP', commitment: 'Management services are provided for one year at the applicable annual fee.' },
+        { id: 'monthly', label: 'Monthly', rate: '$2.00 / IP', commitment: 'Management services are provided for one month at the applicable fee.', example: '50 × $2.00 × 1 month', total: '$100 per month' },
+        { id: 'semi', label: 'Semi-Annual', rate: '$1.50 / IP', commitment: 'Management services are provided for six months at the applicable fee.', example: '50 × $1.50 × 6 months', total: '$450 per six months' },
+        { id: 'annual', label: 'One-Year Commitment', rate: '$1.25 / IP', commitment: 'Management services are provided for one year at the applicable annual fee.', example: '50 × $1.25 × 12 months', total: '$750 per year' },
       ],
       paymentMethods: [
         { id: 'card', label: 'Credit / Debit Card', shortLabel: 'Card', icon: 'bi bi-credit-card-2-front' },
@@ -714,22 +719,22 @@ export default {
     fromScopeFile() {
       const source = String(this.$route.query.source || '').toLowerCase();
       const mode = String(this.$route.query.mode || '').toLowerCase();
-      const stored = peekPremiumEntrySource();
-      return (
+      const fromQuery =
         source === 'scope' ||
         source === 'scope-csv' ||
         source === 'scope-file' ||
         mode === 'testing' ||
-        mode === 'management_testing' ||
-        stored === 'scope'
-      );
+        mode === 'management_testing';
+      if (!this.isAuthenticated) return fromQuery;
+      return fromQuery || peekPremiumEntrySource() === 'scope';
     },
     fromScanReport() {
       const source = String(this.$route.query.source || '').toLowerCase();
-      const stored = peekPremiumEntrySource();
-      return source === 'upload' || stored === 'upload' || this.hasUploadedReport;
+      if (!this.isAuthenticated) return source === 'upload';
+      return source === 'upload' || peekPremiumEntrySource() === 'upload' || this.hasUploadedReport;
     },
     testingModeLocked() {
+      if (!this.isAuthenticated) return false;
       if (this.fromScopeFile && !this.fromScanReport) return false;
       return this.fromScanReport || String(this.$route.query.mode || '').toLowerCase() === 'management';
     },
@@ -806,11 +811,11 @@ export default {
       return this.selectedPlan === 'freemium' ? 'Start free trial' : 'Continue to Stripe Checkout';
     },
     detailsContinueDisabled() {
-      if (this.estimateLoading || this.checkoutLoading) return true;
-      if (this.needsScope) return true;
+      if (this.checkoutLoading) return true;
+      if (this.estimateLoading && !this.isTestingMode) return true;
+      if (this.needsScope && !this.isTestingMode) return true;
       if (this.selectedPlan === 'custom' && !this.canContinueCustom) return true;
       if (this.selectedPlan === 'premium' && this.needsReportUpload && !this.pendingAssetCount && !this.isTestingMode) return true;
-      if (this.isTestingMode && this.isAuthenticated && !(this.billedAssetCount > 0)) return true;
       return false;
     },
     canContinueCustom() {
@@ -949,9 +954,11 @@ export default {
     },
     testingModeLocked(locked) {
       if (locked && this.premiumMode === 'testing') this.premiumMode = 'management';
+      if (locked && this.selectedPlan === 'premium') this.premiumDetailsOpen = true;
     },
     managementModeLocked(locked) {
       if (locked && this.premiumMode === 'management') this.premiumMode = 'testing';
+      if (locked && this.selectedPlan === 'premium') this.premiumDetailsOpen = true;
     },
     billingCycle() {
       if (this.selectedPlan === 'premium' && (this.step === 'details' || this.step === 'payment')) {
@@ -1052,6 +1059,9 @@ export default {
           requestedMode === 'testing' || requestedMode === 'management_testing'
             ? 'testing'
             : 'management';
+        if (this.testingModeLocked || this.managementModeLocked) {
+          this.premiumDetailsOpen = true;
+        }
       }
       if (assets) {
         this.fileAssetCount = assets;
@@ -1571,12 +1581,20 @@ export default {
         await this.startFreemium();
         return;
       }
-      if (this.needsScope || this.detailsContinueDisabled) return;
+      if (this.detailsContinueDisabled) return;
       if (this.selectedPlan === 'custom' && !this.canContinueCustom) return;
       if (!this.isAuthenticated) {
         await this.promptAuth();
         return;
       }
+      if (this.isTestingMode && (this.needsScope || !(this.billedAssetCount > 0))) {
+        this.$router.push({
+          path: '/admin-upload-report',
+          query: { mode: 'testing', source: 'scope', returnTo: '/pricingplan' },
+        });
+        return;
+      }
+      if (this.needsScope) return;
       this.checkoutError = '';
       this.paymentMethod = 'card';
       this.step = 'payment';
@@ -1968,7 +1986,10 @@ export default {
 }
 
 .pricing-price-slot {
-  height: calc(clamp(2rem, 6vw, 3rem) * 1.1 + 0.35rem + 0.92rem * 1.4);
+  height: calc(0.92rem * 1.4);
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.85rem;
 }
 
 .pricing-price {
@@ -2322,25 +2343,57 @@ export default {
 }
 
 .pricing-testing-included {
-  margin: 0 0 0.75rem;
+  margin: 0.15rem 0 0.1rem;
   padding-left: 1.15rem;
-  color: #49454f;
+  color: #3f3a4a;
   font-size: 0.86rem;
+  font-weight: 600;
   line-height: 1.5;
 }
 
-.pricing-testing-included li + li {
-  margin-top: 0.35rem;
+.pricing-testing-options .pricing-cycle-option {
+  cursor: default;
 }
 
-.pricing-mode-example {
-  margin: 0.9rem 0 0;
-  font-size: 0.85rem;
-  color: #49454f;
-  line-height: 1.5;
-  padding: 0.75rem 0.9rem;
-  background: #f7f6fb;
+.pricing-cycle-example {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-top: auto;
+  padding: 0.7rem 0.75rem 0.75rem;
+  background: #f4f2f8;
+  border-radius: 10px;
+}
+
+.pricing-cycle-example-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #0f696e;
+}
+
+.pricing-cycle-example-label.is-total {
+  margin-top: 0.45rem;
+}
+
+.pricing-cycle-example-math {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #3f3a4a;
+  line-height: 1.35;
+}
+
+.pricing-cycle-example-total {
+  align-self: flex-start;
+  margin-top: 0.15rem;
+  padding: 0.32rem 0.6rem;
   border-radius: 8px;
+  background: #241447;
+  color: #fff;
+  font-size: 0.92rem;
+  font-weight: 800;
+  line-height: 1.3;
 }
 
 .pricing-mode-footnote {
@@ -2384,9 +2437,11 @@ export default {
 }
 
 .pricing-cycle-commit {
-  font-size: 0.75rem;
-  color: rgba(0, 0, 0, 0.55);
+  font-size: 0.78rem;
+  color: #5c5670;
+  line-height: 1.45;
   margin-top: 0.15rem;
+  margin-bottom: 0.85rem;
 }
 
 .pricing-cycle-label,
@@ -2400,43 +2455,76 @@ export default {
 
 .pricing-cycle-options {
   display: grid;
-  gap: 0.65rem;
+  gap: 0.85rem;
+  align-items: stretch;
 }
 
 @media (min-width: 768px) {
   .pricing-cycle-options {
     grid-template-columns: repeat(3, 1fr);
   }
+  .pricing-testing-options {
+    grid-template-columns: 1fr;
+  }
 }
 
 .pricing-cycle-option {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.2rem;
+  height: 100%;
   border: 1px solid rgba(36, 20, 71, 0.12);
-  border-radius: 10px;
-  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  padding: 1rem 1rem 0.9rem;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
   background: #fff;
+  box-shadow: 0 1px 2px rgba(36, 20, 71, 0.04);
+}
+
+.pricing-cycle-option:hover {
+  border-color: rgba(36, 20, 71, 0.28);
+  box-shadow: 0 8px 18px rgba(36, 20, 71, 0.08);
 }
 
 .pricing-cycle-option.active {
   border-color: #241447;
-  background: rgba(36, 20, 71, 0.04);
-  box-shadow: inset 0 0 0 1px #241447;
+  background: linear-gradient(180deg, #f6f4fb 0%, #fff 46%);
+  box-shadow: 0 10px 22px rgba(36, 20, 71, 0.1);
+}
+
+.pricing-cycle-option.active .pricing-cycle-example {
+  background: #fff;
+  border: 1px solid rgba(36, 20, 71, 0.08);
+}
+
+.pricing-cycle-option.active .pricing-cycle-example-total {
+  background: #0f696e;
+}
+
+.pricing-cycle-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 
 .pricing-cycle-name {
-  font-weight: 700;
+  font-weight: 800;
   color: #241447;
-  font-size: 0.92rem;
+  font-size: 0.98rem;
+  line-height: 1.25;
 }
 
 .pricing-cycle-rate {
-  font-weight: 600;
+  flex-shrink: 0;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(15, 105, 110, 0.12);
+  font-weight: 700;
   color: #0f696e;
-  font-size: 0.88rem;
+  font-size: 0.78rem;
+  white-space: nowrap;
 }
 
 .pricing-input {
