@@ -678,6 +678,19 @@ export default {
       const token = sessionStorage.getItem('authorization') || localStorage.getItem('authorization');
       return !!(token && token !== 'null' && token !== 'undefined');
     },
+    hasSignedInAccount() {
+      if (!this.isAuthenticated) return false;
+      try {
+        if (sessionStorage.getItem('isNewUser') === 'true' || localStorage.getItem('isNewUser') === 'true') {
+          return false;
+        }
+        const raw = sessionStorage.getItem('user') || localStorage.getItem('user');
+        const user = raw ? JSON.parse(raw) : null;
+        return !!(user && (user.email || user._id || user.id));
+      } catch {
+        return false;
+      }
+    },
     planList() {
       return [PLAN_CONFIG.freemium, PLAN_CONFIG.premium, PLAN_CONFIG.custom];
     },
@@ -1583,7 +1596,7 @@ export default {
       }
       if (this.detailsContinueDisabled) return;
       if (this.selectedPlan === 'custom' && !this.canContinueCustom) return;
-      if (!this.isAuthenticated) {
+      if (!this.hasSignedInAccount) {
         await this.promptAuth();
         return;
       }
@@ -1613,7 +1626,7 @@ export default {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
     async completeCheckout() {
-      if (!this.isAuthenticated) {
+      if (!this.hasSignedInAccount) {
         await this.promptAuth();
         return;
       }
