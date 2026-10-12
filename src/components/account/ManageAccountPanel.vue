@@ -75,12 +75,10 @@
 
           <div v-if="mode === 'admin'" class="ma-connect-block">
             <h4 class="ma-connect-title">Slack / Teams</h4>
-            <p
-              v-if="slackStatusLoading || slackConnected || (!slackConnected && !teamsConnected)"
-              class="ma-section-desc mb-3"
-            >
-              <template v-if="slackStatusLoading">Checking Slack connection…</template>
+            <p class="ma-section-desc mb-3">
+              <template v-if="slackStatusLoading">Checking connection…</template>
               <template v-else-if="slackConnected">Connected — {{ slackWorkspaceLabel }}</template>
+              <template v-else-if="teamsConnected">Connected — {{ teamsWorkspaceLabel }}</template>
               <template v-else>Not Connected</template>
             </p>
             <div class="ma-connect-actions">
@@ -103,24 +101,32 @@
                 Slack connected
               </button>
               <button
-                v-if="!slackStatusLoading && slackConnected"
+                v-if="!slackStatusLoading && !teamsConnected"
                 type="button"
-                class="btn ma-btn-danger"
-                :disabled="uninstalling"
-                @click="uninstallSlack"
-              >
-                <span v-if="uninstalling" class="spinner-border spinner-border-sm me-1"></span>
-                Uninstall
-              </button>
-              <button
-                type="button"
-                class="btn"
-                :class="teamsConnected ? 'ma-btn-connected' : 'ma-btn-outline'"
-                :disabled="oauthLoading === 'teams' || (!teamsConnected && slackConnected)"
+                class="btn ma-btn-outline"
+                :disabled="oauthLoading === 'teams' || slackConnected"
                 @click="connectTeams"
               >
                 <span v-if="oauthLoading === 'teams'" class="spinner-border spinner-border-sm me-1"></span>
-                {{ teamsConnected ? 'Teams connected' : 'Connect Teams' }}
+                Connect Teams
+              </button>
+              <button
+                v-else-if="!slackStatusLoading && teamsConnected"
+                type="button"
+                class="btn ma-btn-connected"
+                disabled
+              >
+                Teams connected
+              </button>
+              <button
+                v-if="!slackStatusLoading && (slackConnected || teamsConnected)"
+                type="button"
+                class="btn ma-btn-danger"
+                :disabled="uninstalling"
+                @click="uninstallConnectedPlatform"
+              >
+                <span v-if="uninstalling" class="spinner-border spinner-border-sm me-1"></span>
+                Uninstall
               </button>
             </div>
           </div>
@@ -383,6 +389,7 @@ export default {
       slackWorkspaceName: '',
       uninstalling: false,
       teamsConnected: false,
+      teamsWorkspaceName: '',
       activeProjectName: localStorage.getItem('activeProjectName') || '',
       preferredTeam: localStorage.getItem(USER_TEAM_KEY) || 'both',
       userTeams: [],
@@ -450,6 +457,9 @@ export default {
     slackWorkspaceLabel() {
       return this.slackWorkspaceName || 'Slack';
     },
+    teamsWorkspaceLabel() {
+      return this.teamsWorkspaceName || 'Microsoft Teams';
+    },
   },
   watch: {
     visibleNavItems: {
@@ -475,7 +485,12 @@ export default {
         await this.loadBilling();
       }
       this.syncConnectionState();
-      await this.loadSlackStatus();
+      await Promise.all([this.loadSlackStatus(), this.loadTeamsStatus()]);
+      if (this.authStore.getAdminLoginMethod() === 'teams' && this.teamsConnected) {
+        this.slackConnected = false;
+      } else if (this.slackConnected) {
+        this.teamsConnected = false;
+      }
       window.addEventListener('message', this.onOAuthMessage);
     }
   },
@@ -731,6 +746,18 @@ export default {
         localStorage.getItem('microsoft_graph_token') ||
         sessionStorage.getItem('admin_teams_connected') === 'true'
       );
+      if (!this.teamsWorkspaceName) {
+        this.teamsWorkspaceName = this.readStoredTeamsName();
+      }
+    },
+    readStoredTeamsName() {
+      try {
+        const team = JSON.parse(localStorage.getItem('vaptfix_team') || 'null');
+        const name = team?.displayName || team?.name || team?.team_name || team?.display_name || '';
+        return String(name || '').trim();
+      } catch {
+        return '';
+      }
     },
     async sendSetPasswordLink() {
       this.setPasswordSending = true;
@@ -758,6 +785,72 @@ export default {
         Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to send set-password link.', confirmButtonColor: '#241447' });
       } finally {
         this.setPasswordSending = false;
+      }
+    },
+    async loadTeamsStatus() {
+      try {
+        const res = await this.authStore.fetchMicrosoftTeamsLoginStatus();
+        const data = res?.data || {};
+        const team = data.vaptfix_team || data.team || null;
+        const name = team?.displayName || team?.name || team?.team_name || team?.display_name || '';
+        const connected = !!(
+          data.connected === true ||
+          data.teams_tab_url ||
+          team?.id ||
+          team?.team_id ||
+          String(data.status || '').toLowerCase() === 'ready'
+        );
+        if (connected) {
+          this.teamsConnected = true;
+          localStorage.setItem('teams_connected', 'true');
+          sessionStorage.setItem('admin_teams_connected', 'true');
+          if (name) this.teamsWorkspaceName = String(name).trim();
+          if (team) localStorage.setItem('vaptfix_team', JSON.stringify(team));
+        }
+      } catch {
+        /* keep the local Teams flag */
+      }
+      if (!this.teamsWorkspaceName) {
+        this.teamsWorkspaceName = this.readStoredTeamsName();
+      }
+    },
+    async uninstallConnectedPlatform() {
+      if (this.slackConnected) {
+        await this.uninstallSlack();
+        return;
+      }
+      if (this.teamsConnected) {
+        await this.uninstallTeams();
+      }
+    },
+    async uninstallTeams() {
+      const result = await Swal.fire({
+        title: 'Uninstall Microsoft Teams?',
+        text: 'Are you sure? This will permanently delete your VAPTFIX account and ALL data — reports, team members, vulnerabilities, everything. This cannot be undone.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, permanently delete',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#64748b',
+      });
+      if (!result.isConfirmed) return;
+
+      this.uninstalling = true;
+      try {
+        const res = await this.authStore.uninstallTeamsAccount();
+        if (!res.status) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Uninstall failed',
+            text: res.message || 'Unable to uninstall Microsoft Teams.',
+            confirmButtonColor: '#241447',
+          });
+          return;
+        }
+        await router.replace('/home');
+      } finally {
+        this.uninstalling = false;
       }
     },
     async loadSlackStatus() {
@@ -870,6 +963,10 @@ export default {
         this.teamsConnected = true;
         localStorage.setItem('teams_connected', 'true');
         sessionStorage.setItem('admin_teams_connected', 'true');
+        const team = event.data?.vaptfix_team;
+        const name = team?.displayName || team?.name || team?.team_name || '';
+        if (name) this.teamsWorkspaceName = String(name).trim();
+        if (team) localStorage.setItem('vaptfix_team', JSON.stringify(team));
       }
     },
     async savePassword() {

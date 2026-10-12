@@ -181,6 +181,7 @@ const AUTH_ENDPOINTS = [
   "/api/admin/users/token/refresh/", // refresh endpoint itself — infinite loop rokne ke liye
   "/api/admin/users/slack/pricing-handoff/",
   "/api/admin/users/slack/uninstall/",
+  "/api/admin/users/microsoft-teams/uninstall/",
   "/api/admin/upload_report/claim-invite/validate/",
   "/api/admin/report-invite/validate/",
 ];

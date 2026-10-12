@@ -2937,6 +2937,13 @@ export const useAuthStore = defineStore("auth", {
       localStorage.removeItem("slack_users");
       localStorage.removeItem("slack_user_login_data");
       localStorage.removeItem("admin_slack_connected");
+      localStorage.removeItem("teams_connected");
+      localStorage.removeItem("microsoft_graph_token");
+      localStorage.removeItem("microsoft_tenant_id");
+      localStorage.removeItem("vaptfix_team");
+      localStorage.removeItem("admin_teams_connected");
+      localStorage.removeItem("vaptfix_teams_deep_link");
+      localStorage.removeItem("teams_tab_url");
       clearLockedRoute();
       this.user = null;
       this.accessToken = null;
@@ -2958,6 +2965,22 @@ export const useAuthStore = defineStore("auth", {
         return {
           status: false,
           message: extractApiErrorMessage(error, "Unable to uninstall Slack."),
+        };
+      }
+    },
+    async uninstallTeamsAccount() {
+      try {
+        const res = await endpoint.post("/api/admin/users/microsoft-teams/uninstall/", { confirm: true });
+        this.discardDeletedAccountSession();
+        return {
+          status: true,
+          data: res.data,
+          message: res.data?.message || "Your account has been permanently deleted.",
+        };
+      } catch (error: unknown) {
+        return {
+          status: false,
+          message: extractApiErrorMessage(error, "Unable to uninstall Microsoft Teams."),
         };
       }
     },
