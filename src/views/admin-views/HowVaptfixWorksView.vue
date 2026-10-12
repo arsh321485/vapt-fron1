@@ -579,6 +579,33 @@
             </div>
           </div>
         </div>
+
+        <!-- Part 3 — Offboarding from Microsoft Teams -->
+        <div class="hvw-part-head hvw-part-head-spaced">
+          <span class="hvw-part-num hvw-part-num-off">Part 3</span>
+          <h3 class="hvw-part-title">Offboard: remove VAPTFIX from Microsoft Teams</h3>
+        </div>
+        <p class="hvw-conn-note">Removing the app only disconnects Microsoft Teams. Your VAPTFIX data stays safe unless you confirm deletion from the email.</p>
+
+        <div class="hvw-timeline">
+          <div v-for="(step, i) in teamsOffboardSteps" :key="step.title" class="hvw-tl-item">
+            <div class="hvw-tl-left">
+              <div class="hvw-tl-num is-off">{{ String(i + 1).padStart(2, '0') }}</div>
+              <div v-if="i < teamsOffboardSteps.length - 1" class="hvw-tl-line"></div>
+            </div>
+            <div class="hvw-tl-card" :class="{ 'hvw-tl-card-danger': step.danger }">
+              <div class="hvw-tl-icon">{{ step.icon }}</div>
+              <div class="hvw-tl-body">
+                <div class="hvw-tl-title">
+                  {{ step.title }}
+                  <span class="hvw-conn-where" :class="'is-' + step.where.toLowerCase()">{{ step.where }}</span>
+                  <span v-if="step.badge" class="hvw-tl-conditional">{{ step.badge }}</span>
+                </div>
+                <div class="hvw-tl-desc">{{ step.desc }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -636,6 +663,16 @@ export default {
         { icon: '🔒', where: 'VAPTFIX', title: 'Deletion Confirmed',    danger: true, desc: 'A page confirms your VAPTFIX account and all its data are permanently deleted.' },
       ],
 
+      teamsOffboardSteps: [
+        { icon: '👥', where: 'Teams', title: 'Open the Vaptfix team', desc: 'In Microsoft Teams, open the Vaptfix team from the sidebar.' },
+        { icon: '📱', where: 'Teams', title: 'Open Apps', desc: 'Inside the Vaptfix team, open the Apps tab.' },
+        { icon: '⋯', where: 'Teams', title: 'Choose Remove', desc: 'Next to the VaptFix app, click ••• and choose Remove.' },
+        { icon: '🗑️', where: 'Teams', title: 'Confirm Remove', desc: 'In the Remove VaptFix dialog, click Remove.' },
+        { icon: '📧', where: 'Email', title: 'Removal Email', desc: 'VAPTFIX emails you that Microsoft Teams is disconnected. Your account and data are still safe.' },
+        { icon: '⚠️', where: 'Email', title: 'Delete Account', badge: 'Optional', desc: 'From that email, click "Yes, permanently delete my account & data" within 48 hours. This cannot be undone. If you do nothing, nothing is deleted.' },
+        { icon: '🔒', where: 'VAPTFIX', title: 'Deletion Confirmed', danger: true, desc: 'Clicking the button in the email permanently deletes your VAPTFIX account and all of its data.' },
+      ],
+
       teamsConnectSteps: [
         { icon: '🚀', where: 'VAPTFIX',   title: 'Sign up with Microsoft Teams', desc: 'On VAPTFIX.ai, open Get Started and click Sign up with Microsoft Teams.' },
         { icon: '👤', where: 'Microsoft', title: 'Pick an Account',     desc: 'Choose your signed-in work account, or click Use another account.' },
@@ -682,7 +719,7 @@ export default {
   computed: {
     channelHint() {
       if (this.activeChannel === 'slack') return 'Showing the full Slack journey: connect, onboard, and offboard.';
-      if (this.activeChannel === 'teams') return 'Showing the Microsoft Teams journey: connect and onboard.';
+      if (this.activeChannel === 'teams') return 'Showing the full Microsoft Teams journey: connect, onboard, and offboard.';
       return 'Showing the Company Email journey, from sign-up to full access.';
     },
   },
