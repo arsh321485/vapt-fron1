@@ -10,6 +10,8 @@ lerna-debug.log*
 node_modules
 .DS_Store
 dist
+dist-next
+dist-prev-*
 dist-ssr
 coverage
 *.local
