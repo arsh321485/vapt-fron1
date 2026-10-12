@@ -38,7 +38,9 @@
                             <li>
                                 <router-link to="/pricingplan" style="text-decoration: none; color: #ffffff;">Pricing</router-link>
                             </li>
-                            <li>Features</li>
+                            <li>
+                                <router-link to="/features" style="text-decoration: none; color: #ffffff;">Features</router-link>
+                            </li>
                         </ul>
                     </div>
 

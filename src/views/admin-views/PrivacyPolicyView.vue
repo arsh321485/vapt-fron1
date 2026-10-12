@@ -1,20 +1,21 @@
 <template>
-  <div class="legal-page-root">
+  <div class="legal-page-root lf-page">
     <Header />
 
-    <div class="legal-page-frame">
+    <div class="container legal-page-frame">
     <div class="ld-page">
       <aside class="ld-sidebar">
-        <div class="ld-sidebar-label">On this page</div>
-        <nav ref="tocNav" @click="onTocNavClick">
+        <p class="lf-nav-label">Topics</p>
+        <nav class="lf-nav-list" aria-label="Privacy Policy topics">
           <template v-for="item in tocItems" :key="item.href || item.label">
-            <a
-              v-if="item.type === 'link'"
-              :href="item.href"
+            <p v-if="item.type === 'group'" class="lf-group">{{ item.label }}</p>
+            <button
+              v-else-if="item.type === 'link'"
+              type="button"
+              class="lf-topic"
               :class="{ 'is-active': activeTocHash === item.href }"
-            >{{ item.label }}</a>
-            <div v-else-if="item.type === 'group'" class="ld-sidebar-group">{{ item.label }}</div>
-            <div v-else-if="item.type === 'divider'" class="ld-sidebar-divider"></div>
+              @click="selectSection(item.href)"
+            >{{ item.label }}</button>
           </template>
         </nav>
       </aside>
@@ -32,20 +33,20 @@
           </p>
         </div>
 
-        <main ref="contentScroller" class="ld-content" @scroll.passive="onContentScroll">
+        <main ref="contentScroller" class="ld-content">
 
-        <div class="ld-callout">
+        <div class="ld-callout" v-show="activeTocHash === '#overview'">
           <p>This Privacy Policy applies to all users of VAPTFIX.ai globally. We comply with applicable data protection and privacy laws in every jurisdiction where we operate. General provisions apply to all users; the jurisdiction-specific notices (Sections 5-A through 5-P) supplement the general provisions with rights and obligations specific to your location. Where local law provides greater protections, those protections apply.</p>
         </div>
 
-        <section id="overview">
+        <section id="overview" v-show="activeTocHash === '#overview'">
           <div class="ld-section-number">01 / OVERVIEW</div>
           <h2>Who We Are</h2>
           <p>VAPTFIX.ai is a cybersecurity platform providing automated vulnerability assessment and penetration testing (VAPT), security scanning, remediation guidance, and reporting to organizations worldwide.</p>
           <p>This Policy covers all products and services available at VAPTFIX.ai and via our API. It applies regardless of how you access the Service — web, mobile, API, or integrations.</p>
         </section>
 
-        <section id="data-collected">
+        <section id="data-collected" v-show="activeTocHash === '#data-collected'">
           <div class="ld-section-number">02 / DATA COLLECTED</div>
           <h2>Data We Collect</h2>
 
@@ -85,7 +86,7 @@
           <p>We do not knowingly collect special categories of personal data (health, biometric, racial/ethnic origin, religious beliefs, political opinions, trade union membership, or sexual orientation) unless explicitly required for a specific purpose and processed under an appropriate legal basis with informed consent.</p>
         </section>
 
-        <section id="how-we-use">
+        <section id="how-we-use" v-show="activeTocHash === '#how-we-use'">
           <div class="ld-section-number">03 / HOW WE USE DATA</div>
           <h2>How We Use Your Data</h2>
           <table class="ld-data-table">
@@ -109,7 +110,7 @@
           </table>
         </section>
 
-        <section id="legal-basis">
+        <section id="legal-basis" v-show="activeTocHash === '#legal-basis'">
           <div class="ld-section-number">04 / LEGAL BASES — WORLDWIDE</div>
           <h2>Legal Bases for Processing — Global Overview</h2>
           <p>VAPTFIX.ai identifies and documents a lawful basis for every processing activity. The applicable legal basis varies by jurisdiction. Jurisdiction-specific sections below provide detail. Our general lawful bases are:</p>
@@ -155,7 +156,7 @@
 
         <!-- JURISDICTION NOTICES -->
 
-        <section id="gdpr">
+        <section id="gdpr" v-show="activeTocHash === '#gdpr'">
           <div class="ld-section-number">05-A / EUROPEAN UNION · UNITED KINGDOM · SWITZERLAND</div>
           <h2>EU / UK / Swiss Jurisdiction Notice</h2>
 
@@ -195,7 +196,7 @@
           </ul>
         </section>
 
-        <section id="usa">
+        <section id="usa" v-show="activeTocHash === '#usa'">
           <div class="ld-section-number">05-B / UNITED STATES</div>
           <h2>United States Jurisdiction Notice</h2>
 
@@ -235,7 +236,7 @@
           <p>Residents of any state with applicable privacy law may exercise rights by contacting <a href="mailto:privacy@vaptfix.ai">privacy@vaptfix.ai</a>. Responses delivered within the timeframe required by your state's law. We will not discriminate for exercising any privacy right.</p>
         </section>
 
-        <section id="canada">
+        <section id="canada" v-show="activeTocHash === '#canada'">
           <div class="ld-section-number">05-C / CANADA</div>
           <h2>Canada Jurisdiction Notice</h2>
 
@@ -265,7 +266,7 @@
           <p>Regulatory bodies: OPC — <a href="https://www.priv.gc.ca" target="_blank" rel="noopener">priv.gc.ca</a> | CAI Quebec — <a href="https://www.cai.gouv.qc.ca" target="_blank" rel="noopener">cai.gouv.qc.ca</a>.</p>
         </section>
 
-        <section id="brazil">
+        <section id="brazil" v-show="activeTocHash === '#brazil'">
           <div class="ld-section-number">05-D / BRAZIL</div>
           <h2>Brazil — Lei Geral de Proteção de Dados (LGPD)</h2>
 
@@ -293,7 +294,7 @@
           <p>Encarregado: <a href="mailto:dpo@vaptfix.ai">dpo@vaptfix.ai</a>. ANPD — <a href="https://www.gov.br/anpd" target="_blank" rel="noopener">gov.br/anpd</a>.</p>
         </section>
 
-        <section id="australia">
+        <section id="australia" v-show="activeTocHash === '#australia'">
           <div class="ld-section-number">05-E / AUSTRALIA</div>
           <h2>Australia — Privacy Act 1988 &amp; Australian Privacy Principles (APPs)</h2>
 
@@ -315,7 +316,7 @@
           <p>Eligible data breaches likely to result in serious harm are notified to the OAIC and affected individuals as soon as practicable. Regulatory body: OAIC — <a href="https://www.oaic.gov.au" target="_blank" rel="noopener">oaic.gov.au</a>.</p>
         </section>
 
-        <section id="japan">
+        <section id="japan" v-show="activeTocHash === '#japan'">
           <div class="ld-section-number">05-F / JAPAN</div>
           <h2>Japan — Act on Protection of Personal Information (APPI)</h2>
 
@@ -336,7 +337,7 @@
           <p>Disclosure, correction, addition, deletion, suspension of use, and suspension of third-party provision of retained personal data. Submit requests to <a href="mailto:privacy@vaptfix.ai">privacy@vaptfix.ai</a>. PPC — <a href="https://www.ppc.go.jp/en/" target="_blank" rel="noopener">ppc.go.jp</a>.</p>
         </section>
 
-        <section id="southkorea">
+        <section id="southkorea" v-show="activeTocHash === '#southkorea'">
           <div class="ld-section-number">05-G / SOUTH KOREA</div>
           <h2>South Korea — Personal Information Protection Act (PIPA)</h2>
 
@@ -358,7 +359,7 @@
           <p>Access, correction, deletion, and suspension of processing. Requests: <a href="mailto:privacy@vaptfix.ai">privacy@vaptfix.ai</a>. PIPC — <a href="https://www.pipc.go.kr/eng/" target="_blank" rel="noopener">pipc.go.kr</a>.</p>
         </section>
 
-        <section id="china">
+        <section id="china" v-show="activeTocHash === '#china'">
           <div class="ld-section-number">05-H / CHINA (PRC)</div>
           <h2>China — Personal Information Protection Law (PIPL)</h2>
 
@@ -383,7 +384,7 @@
           <p>Chinese users contact our designated personal information protection officer: <a href="mailto:cn-privacy@vaptfix.ai">cn-privacy@vaptfix.ai</a>. Regulatory body: Cyberspace Administration of China (CAC).</p>
         </section>
 
-        <section id="india">
+        <section id="india" v-show="activeTocHash === '#india'">
           <div class="ld-section-number">05-I / INDIA</div>
           <h2>India — Digital Personal Data Protection Act 2023 (DPDP Act)</h2>
 
@@ -404,7 +405,7 @@
           <p>Contact: <a href="mailto:privacy@vaptfix.ai">privacy@vaptfix.ai</a>. Regulatory body: Data Protection Board of India (DPBI), upon constitution.</p>
         </section>
 
-        <section id="singapore">
+        <section id="singapore" v-show="activeTocHash === '#singapore'">
           <div class="ld-section-number">05-J / SINGAPORE</div>
           <h2>Singapore — Personal Data Protection Act (PDPA)</h2>
 
@@ -425,7 +426,7 @@
           <p>Contact: <a href="mailto:privacy@vaptfix.ai">privacy@vaptfix.ai</a>. PDPC — <a href="https://www.pdpc.gov.sg" target="_blank" rel="noopener">pdpc.gov.sg</a>.</p>
         </section>
 
-        <section id="thailand">
+        <section id="thailand" v-show="activeTocHash === '#thailand'">
           <div class="ld-section-number">05-K / THAILAND</div>
           <h2>Thailand — Personal Data Protection Act (PDPA)</h2>
 
@@ -446,7 +447,7 @@
           <p>Contact: <a href="mailto:privacy@vaptfix.ai">privacy@vaptfix.ai</a>. PDPC Thailand — <a href="https://www.pdpc.go.th" target="_blank" rel="noopener">pdpc.go.th</a>.</p>
         </section>
 
-        <section id="southafrica">
+        <section id="southafrica" v-show="activeTocHash === '#southafrica'">
           <div class="ld-section-number">05-L / SOUTH AFRICA</div>
           <h2>South Africa — Protection of Personal Information Act (POPIA)</h2>
 
@@ -471,7 +472,7 @@
           <p>Contact: <a href="mailto:privacy@vaptfix.ai">privacy@vaptfix.ai</a>. Information Regulator — <a href="https://inforegulator.org.za" target="_blank" rel="noopener">inforegulator.org.za</a>.</p>
         </section>
 
-        <section id="middleeast">
+        <section id="middleeast" v-show="activeTocHash === '#middleeast'">
           <div class="ld-section-number">05-M / MIDDLE EAST</div>
           <h2>Middle East Jurisdiction Notice</h2>
 
@@ -487,7 +488,7 @@
           <p>Middle East privacy contact: <a href="mailto:me-privacy@vaptfix.ai">me-privacy@vaptfix.ai</a>.</p>
         </section>
 
-        <section id="latam">
+        <section id="latam" v-show="activeTocHash === '#latam'">
           <div class="ld-section-number">05-N / LATIN AMERICA</div>
           <h2>Latin America Jurisdiction Notice</h2>
 
@@ -509,13 +510,13 @@
           <p>Latin America privacy contact: <a href="mailto:latam-privacy@vaptfix.ai">latam-privacy@vaptfix.ai</a>.</p>
         </section>
 
-        <section id="newzealand">
+        <section id="newzealand" v-show="activeTocHash === '#newzealand'">
           <div class="ld-section-number">05-O / NEW ZEALAND</div>
           <h2>New Zealand — Privacy Act 2020</h2>
           <p>Privacy Act 2020, replacing the Privacy Act 1993, enforced by the Office of the Privacy Commissioner (OPC NZ). We comply with all 13 Information Privacy Principles (IPPs): collection from the individual where practicable; purpose specification; notification at collection; use and disclosure limitations; secure storage; access and correction rights. Mandatory breach notification: serious harm breaches reported to OPC and affected individuals as soon as practicable. Regulatory body: OPC NZ — <a href="https://www.privacy.org.nz" target="_blank" rel="noopener">privacy.org.nz</a>.</p>
         </section>
 
-        <section id="israel">
+        <section id="israel" v-show="activeTocHash === '#israel'">
           <div class="ld-section-number">05-P / ISRAEL</div>
           <h2>Israel — Privacy Protection Law &amp; Amendment No. 13</h2>
           <p>Privacy Protection Law, 5741-1981, as significantly amended by Amendment No. 13 (enacted 2023, effective 2025), enforced by the Privacy Protection Authority (PPA). Israel holds an EU adequacy decision. Amendment 13 aligns Israeli law more closely with GDPR, introducing: data minimization; purpose limitation; DPO requirements; enhanced data subject rights (access, correction, deletion); mandatory security measures; breach notification obligations; and restrictions on cross-border transfers. Database registration requirements maintained where applicable. Regulatory body: PPA — <a href="https://www.gov.il/en/departments/the_privacy_protection_authority" target="_blank" rel="noopener">gov.il/PPA</a>.</p>
@@ -523,7 +524,7 @@
 
         <!-- GLOBAL PROVISIONS -->
 
-        <section id="sharing">
+        <section id="sharing" v-show="activeTocHash === '#sharing'">
           <div class="ld-section-number">06 / DATA SHARING</div>
           <h2>Data Sharing &amp; Disclosure</h2>
           <p>We do not sell, rent, or trade your personal data to third parties for their own commercial purposes in any jurisdiction. Sharing occurs only as follows:</p>
@@ -544,7 +545,7 @@
           <p>For any other sharing purpose, we obtain explicit, informed, and freely given consent before disclosure.</p>
         </section>
 
-        <section id="retention">
+        <section id="retention" v-show="activeTocHash === '#retention'">
           <div class="ld-section-number">07 / RETENTION</div>
           <h2>Data Retention Schedule</h2>
           <p>We retain personal data only as long as necessary to fulfil stated purposes, comply with legal obligations, resolve disputes, and enforce agreements. Local law may impose minimum or maximum periods that override the defaults below.</p>
@@ -564,7 +565,7 @@
           <p>Upon expiry, data is securely deleted using NIST SP 800-88 compliant methods, or irreversibly anonymized.</p>
         </section>
 
-        <section id="your-rights">
+        <section id="your-rights" v-show="activeTocHash === '#your-rights'">
           <div class="ld-section-number">08 / YOUR RIGHTS — GLOBAL COMPARISON</div>
           <h2>Privacy Rights Worldwide</h2>
           <p>The table below summarizes rights under major frameworks. Your rights depend on your location. Submit all requests to <a href="mailto:privacy@vaptfix.ai">privacy@vaptfix.ai</a> with subject "Privacy Rights Request — [Your Country]." Response within the timeframe required by applicable law (typically 30 days; 45 days for CCPA with notice; 10 working days for POPIA). We will not discriminate against you for exercising any privacy right.</p>
@@ -602,7 +603,7 @@
           <p style="font-size:13px;color:#64748b;margin-top:0.5rem;">✔ = right available under that framework &nbsp;|&nbsp; — = not explicitly provided &nbsp;|&nbsp; * SG portability under advisory guidelines</p>
         </section>
 
-        <section id="cookies">
+        <section id="cookies" v-show="activeTocHash === '#cookies'">
           <div class="ld-section-number">09 / COOKIES</div>
           <h2>Cookies &amp; Tracking Technologies</h2>
           <p>We use cookies and similar tracking technologies for authentication, security, analytics, and personalization. Consent is obtained in accordance with local law — EU/UK/CH users see a granular cookie consent banner observing ePrivacy Directive and PECR requirements; other jurisdictions see consent mechanisms calibrated to their local rules (e.g., PDPA Thailand, PDPA Singapore, Quebec Law 25).</p>
@@ -620,7 +621,7 @@
           <p>Manage preferences at any time via our Cookie Preference Centre or your browser settings. Disabling essential cookies will impair platform functionality.</p>
         </section>
 
-        <section id="international">
+        <section id="international" v-show="activeTocHash === '#international'">
           <div class="ld-section-number">10 / CROSS-BORDER TRANSFERS</div>
           <h2>International Data Transfers</h2>
           <p>VAPTFIX.ai operates infrastructure across multiple regions. Personal data may be transferred internationally. We select safeguards based on the origin and destination of each data flow:</p>
@@ -648,7 +649,7 @@
           <p>We maintain records of all cross-border data flows and Transfer Impact Assessments. Copies of applicable SCCs or transfer mechanism documentation are available on request at <a href="mailto:privacy@vaptfix.ai">privacy@vaptfix.ai</a>.</p>
         </section>
 
-        <section id="changes">
+        <section id="changes" v-show="activeTocHash === '#changes'">
           <div class="ld-section-number">11 / POLICY CHANGES</div>
           <h2>Changes to This Policy</h2>
           <p>We review this Policy at least annually and update it when laws change, we add new features, or our practices evolve. For material changes, we will:</p>
@@ -659,7 +660,7 @@
           <p>Continued use after the effective date constitutes acceptance, except where applicable law requires explicit re-consent.</p>
         </section>
 
-        <section id="contact">
+        <section id="contact" v-show="activeTocHash === '#contact'">
           <div class="ld-section-number">12 / CONTACT, DPO &amp; AUTHORITIES</div>
           <h2>Contact Us &amp; Supervisory Authorities</h2>
           <div class="ld-callout">
@@ -729,7 +730,7 @@ export default {
   },
   data() {
     return {
-      activeTocHash: '',
+      activeTocHash: '#overview',
       _scrollSpyLocked: false,
       _scrollSpyUnlockTimer: null,
       tocItems: [
@@ -770,29 +771,16 @@ export default {
   },
   watch: {
     '$route.hash'() {
-      this.$nextTick(() => {
-        this.syncTocFromRoute();
-        this.lockWindowScroll();
-        this.scrollContentToHash(this.activeTocHash);
-      });
+      this.$nextTick(() => this.syncTocFromRoute());
     },
     activeTocHash() {
       this.$nextTick(() => this.ensureActiveTocVisible());
     },
   },
   mounted() {
-    document.documentElement.classList.add('legal-doc-sticky-context');
-    this.lockWindowScroll();
-    window.addEventListener('scroll', this.lockWindowScroll, { passive: true });
-    this.$nextTick(() => {
-      this.syncTocFromRoute();
-      if (this.$route.hash) this.scrollContentToHash(this.activeTocHash);
-      else this.updateActiveFromScroll();
-    });
+    this.$nextTick(() => this.syncTocFromRoute());
   },
   beforeUnmount() {
-    document.documentElement.classList.remove('legal-doc-sticky-context');
-    window.removeEventListener('scroll', this.lockWindowScroll);
     if (this._scrollSpyUnlockTimer) clearTimeout(this._scrollSpyUnlockTimer);
   },
   computed: {
@@ -805,6 +793,12 @@ export default {
     },
   },
   methods: {
+    selectSection(href) {
+      this.activeTocHash = href;
+      if (typeof history !== 'undefined' && history.replaceState) {
+        history.replaceState(null, '', `${window.location.pathname}${window.location.search}${href}`);
+      }
+    },
     lockWindowScroll() {
       if (window.matchMedia('(min-width: 769px)').matches && window.scrollY !== 0) {
         window.scrollTo(0, 0);

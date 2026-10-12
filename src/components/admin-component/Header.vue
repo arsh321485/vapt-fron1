@@ -16,13 +16,26 @@
           <!-- Left nav links -->
           <ul class="navbar-nav me-auto gap-4">
             <li class="nav-item">
-              <router-link :to="appHomePath" class="nav-link active text-white text-decoration-none" style="font-size: 1rem;"
-                aria-current="page">
+              <router-link
+                :to="appHomePath"
+                class="nav-link text-white text-decoration-none"
+                :class="{ 'nav-link-current': isPublicHomePage }"
+                style="font-size: 1rem;"
+                :aria-current="isPublicHomePage ? 'page' : undefined"
+              >
                 Home
               </router-link>
             </li>
             <li class="nav-item">
-              <a class="nav-link text-white" style="font-size: 1rem;" href="#">Features</a>
+              <router-link
+                to="/features"
+                class="nav-link text-white text-decoration-none"
+                :class="{ 'nav-link-current': $route.path === '/features' }"
+                style="font-size: 1rem;"
+                :aria-current="$route.path === '/features' ? 'page' : undefined"
+              >
+                Features
+              </router-link>
             </li>
             <li class="nav-item">
               <router-link to="/pricingplan" style="font-size: 1rem;" class="nav-link text-white text-decoration-none">
@@ -697,5 +710,10 @@ export default {
 
 .header-cta :deep(.nav-menu) {
   color: #ffffff;
+}
+
+.nav-link-current {
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 #ccfbf1;
 }
 </style>

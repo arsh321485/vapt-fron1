@@ -1,17 +1,21 @@
 <template>
-  <div class="legal-page-root kb-page">
+  <div class="legal-page-root kb-page lf-page">
     <Header />
 
-    <div class="legal-page-frame">
+    <div class="container legal-page-frame">
       <div class="ld-page">
         <aside class="ld-sidebar">
-          <nav ref="tocNav" @click="onTocNavClick">
-            <a
+          <p class="lf-nav-label">Topics</p>
+          <nav class="lf-nav-list" aria-label="Knowledge Base topics">
+            <button
               v-for="item in tocItems"
               :key="item.href"
-              :href="item.href"
+              type="button"
+              class="lf-topic"
               :class="{ 'is-active': activeTocHash === item.href }"
-            >{{ item.label }}</a>
+              :aria-selected="activeTocHash === item.href"
+              @click="selectSection(item.href)"
+            >{{ item.label }}</button>
           </nav>
         </aside>
 
@@ -27,17 +31,15 @@
             </p>
           </div>
 
-          <main ref="contentScroller" class="ld-content" @scroll.passive="onContentScroll">
-          <div class="ld-callout">
-            <p>
-              VAPTFIX is a web-based, real-time vulnerability management platform that identifies, classifies,
-              prioritizes, and remediates security vulnerabilities across an organization's assets — giving security
-              teams continuous visibility into where risk currently stands.
-            </p>
-          </div>
-
-          <!-- 1. Executive Summary -->
-          <section id="executive-summary">
+          <main ref="contentScroller" class="ld-content">
+          <section id="executive-summary" v-show="activeTocHash === '#executive-summary'">
+            <div class="ld-callout">
+              <p>
+                VAPTFIX is a web-based, real-time vulnerability management platform that identifies, classifies,
+                prioritizes, and remediates security vulnerabilities across an organization's assets — giving security
+                teams continuous visibility into where risk currently stands.
+              </p>
+            </div>
             <div class="ld-section-number">01 / EXECUTIVE SUMMARY</div>
             <h2>Overview</h2>
             <p>
@@ -79,7 +81,7 @@
           </section>
 
           <!-- 2. How VAPTFIX Works -->
-          <section id="how-vaptfix-works">
+          <section id="how-vaptfix-works" v-show="activeTocHash === '#how-vaptfix-works'">
             <div class="ld-section-number">02 / HOW VAPTFIX WORKS</div>
             <h2>Overview</h2>
             <p>
@@ -111,7 +113,7 @@
           </section>
 
           <!-- 3. Certifications and Compliance Alignment -->
-          <section id="certifications-compliance">
+          <section id="certifications-compliance" v-show="activeTocHash === '#certifications-compliance'">
             <div class="ld-section-number">03 / CERTIFICATIONS AND COMPLIANCE ALIGNMENT</div>
             <h2>Overview</h2>
             <p>
@@ -170,7 +172,7 @@
           </section>
 
           <!-- 4. Platform Architecture -->
-          <section id="platform-architecture">
+          <section id="platform-architecture" v-show="activeTocHash === '#platform-architecture'">
             <div class="ld-section-number">04 / PLATFORM ARCHITECTURE</div>
             <h2>Overview</h2>
             <p>
@@ -254,7 +256,7 @@
           </section>
 
           <!-- 5. Data Protection and Encryption -->
-          <section id="data-protection">
+          <section id="data-protection" v-show="activeTocHash === '#data-protection'">
             <div class="ld-section-number">05 / DATA PROTECTION AND ENCRYPTION</div>
             <h2>Overview</h2>
             <p>
@@ -295,7 +297,7 @@
           </section>
 
           <!-- 6. Identity and Access Control -->
-          <section id="identity-access">
+          <section id="identity-access" v-show="activeTocHash === '#identity-access'">
             <div class="ld-section-number">06 / IDENTITY AND ACCESS CONTROL</div>
             <h2>Overview</h2>
             <p>
@@ -350,7 +352,7 @@
           </section>
 
           <!-- 7. Network Security -->
-          <section id="network-security">
+          <section id="network-security" v-show="activeTocHash === '#network-security'">
             <div class="ld-section-number">07 / NETWORK SECURITY</div>
             <h2>Overview</h2>
             <p>
@@ -396,7 +398,7 @@
           </section>
 
           <!-- 8. Audit, Logging, and Monitoring -->
-          <section id="audit-logging">
+          <section id="audit-logging" v-show="activeTocHash === '#audit-logging'">
             <div class="ld-section-number">08 / AUDIT, LOGGING, AND MONITORING</div>
             <h2>Overview</h2>
             <p>
@@ -446,7 +448,7 @@
           </section>
 
           <!-- 9. Application Security and User Management -->
-          <section id="application-security">
+          <section id="application-security" v-show="activeTocHash === '#application-security'">
             <div class="ld-section-number">09 / APPLICATION SECURITY AND USER MANAGEMENT</div>
             <h2>Overview</h2>
             <p>
@@ -498,7 +500,7 @@
           </section>
 
           <!-- 10. Business Continuity -->
-          <section id="business-continuity">
+          <section id="business-continuity" v-show="activeTocHash === '#business-continuity'">
             <div class="ld-section-number">10 / BUSINESS CONTINUITY</div>
             <h2>Overview</h2>
             <p>
@@ -539,7 +541,7 @@
           </section>
 
           <!-- 11. Incident Response -->
-          <section id="incident-response">
+          <section id="incident-response" v-show="activeTocHash === '#incident-response'">
             <div class="ld-section-number">11 / INCIDENT RESPONSE</div>
             <h2>Overview</h2>
             <p>
@@ -585,7 +587,7 @@
           </section>
 
           <!-- 12. Assessment Report Processing -->
-          <section id="assessment-report">
+          <section id="assessment-report" v-show="activeTocHash === '#assessment-report'">
             <div class="ld-section-number">12 / ASSESSMENT REPORT PROCESSING</div>
             <h2>Overview</h2>
             <p>
@@ -621,7 +623,7 @@
           </section>
 
           <!-- 13. Business Value -->
-          <section id="business-value">
+          <section id="business-value" v-show="activeTocHash === '#business-value'">
             <div class="ld-section-number">13 / BUSINESS VALUE</div>
             <h2>Overview</h2>
             <p>
@@ -643,7 +645,7 @@
           </section>
 
           <!-- 14. Security Capabilities Summary -->
-          <section id="security-capabilities">
+          <section id="security-capabilities" v-show="activeTocHash === '#security-capabilities'">
             <div class="ld-section-number">14 / SECURITY CAPABILITIES SUMMARY</div>
             <h2>Overview</h2>
             <p>
@@ -690,7 +692,7 @@ export default {
   },
   data() {
     return {
-      activeTocHash: '',
+      activeTocHash: '#executive-summary',
       _scrollSpyLocked: false,
       _scrollSpyUnlockTimer: null,
       tocItems: [
@@ -713,29 +715,18 @@ export default {
   },
   watch: {
     '$route.hash'() {
-      this.$nextTick(() => {
-        this.syncTocFromRoute();
-        this.lockWindowScroll();
-        this.scrollContentToHash(this.activeTocHash);
-      });
+      this.$nextTick(() => this.syncTocFromRoute());
     },
     activeTocHash() {
       this.$nextTick(() => this.ensureActiveTocVisible());
     },
   },
   mounted() {
-    document.documentElement.classList.add('legal-doc-sticky-context');
-    this.lockWindowScroll();
-    window.addEventListener('scroll', this.lockWindowScroll, { passive: true });
     this.$nextTick(() => {
       this.syncTocFromRoute();
-      if (this.$route.hash) this.scrollContentToHash(this.activeTocHash);
-      else this.updateActiveFromScroll();
     });
   },
   beforeUnmount() {
-    document.documentElement.classList.remove('legal-doc-sticky-context');
-    window.removeEventListener('scroll', this.lockWindowScroll);
     if (this._scrollSpyUnlockTimer) clearTimeout(this._scrollSpyUnlockTimer);
   },
   computed: {
@@ -797,7 +788,7 @@ export default {
     ensureActiveTocVisible() {
       const nav = this.$refs.tocNav;
       if (!nav) return;
-      const active = nav.querySelector('a.is-active');
+      const active = nav.querySelector('.kb-topic.is-active');
       if (!active) return;
       active.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     },
@@ -826,20 +817,16 @@ export default {
         this.updateActiveFromScroll();
       }, 450);
     },
-    onTocNavClick(e) {
-      const a = e.target.closest?.('a[href^="#"]');
-      if (!a || !e.currentTarget.contains(a)) return;
-      const href = a.getAttribute('href');
-      if (!href) return;
-      e.preventDefault();
-      e.stopPropagation();
+    selectSection(href) {
       this.activeTocHash = href;
       if (typeof history !== 'undefined' && history.replaceState) {
         const url = `${window.location.pathname}${window.location.search}${href}`;
         history.replaceState(null, '', url);
       }
-      this.lockWindowScroll();
-      this.$nextTick(() => this.scrollContentToHash(href));
+      this.$nextTick(() => {
+        const panel = this.$el?.querySelector?.('.ld-main');
+        if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     },
   },
 };
@@ -1392,6 +1379,235 @@ section {
     border-radius: 6px;
   }
 }
+
+.kb-hero {
+  background: linear-gradient(135deg, #241447 0%, #0f696e 100%);
+  color: #ffffff;
+  padding: 112px 24px 56px;
+  margin-bottom: 0;
+  text-align: center;
+}
+
+.kb-hero-inner {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.kb-hero-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.14);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.kb-tag-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ccfbf1;
+}
+
+.kb-hero h1 {
+  margin: 0 0 14px;
+  font-family: 'Inter', sans-serif;
+  font-size: clamp(32px, 4vw, 46px);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+.kb-hero h1 span {
+  color: #ccfbf1;
+}
+
+.kb-hero-inner > p:not(.kb-topic-hint) {
+  max-width: 640px;
+  margin: 0 auto 28px;
+  font-family: 'Inter', sans-serif;
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.kb-topic-bar {
+  position: sticky;
+  top: 72px;
+  z-index: 30;
+  background: #ffffff;
+  border-bottom: 1px solid #ebe6f3;
+  padding: 18px 24px;
+  box-shadow: 0 8px 20px rgba(36, 20, 71, 0.05);
+}
+
+.kb-topics {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.kb-topic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 46px;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid #e4dfec;
+  background: #f6f4fa;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  color: #334155;
+  cursor: pointer;
+  outline: none;
+  box-shadow: none;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.kb-topic:hover {
+  background: #ffffff;
+  color: #241447;
+  border-color: #0f696e;
+}
+
+.kb-topic:focus {
+  outline: none;
+}
+
+.kb-topic:focus-visible {
+  border-color: #0f696e;
+  box-shadow: 0 0 0 3px rgba(15, 105, 110, 0.2);
+}
+
+.kb-topic.is-active,
+.kb-topic.is-active:hover {
+  background: #241447;
+  color: #ffffff;
+  border-color: #241447;
+}
+
+.kb-page.kb-flow {
+  padding-top: 0;
+  background: #f6f4fa;
+  background-image: none;
+  font-family: 'Inter', sans-serif;
+}
+
+.kb-page.kb-flow .legal-page-frame {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 28px 20px 64px;
+}
+
+.kb-page.kb-flow .ld-page {
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.kb-page.kb-flow .ld-sidebar {
+  width: 280px;
+  border: 1px solid #ebe6f3;
+  border-right: 1px solid #ebe6f3;
+  border-radius: 20px;
+  background: #ffffff;
+  background-image: none;
+  padding: 12px 10px;
+  box-shadow: 0 8px 24px rgba(36, 20, 71, 0.06);
+}
+
+.kb-page.kb-flow .ld-main {
+  overflow: visible;
+  background: #ffffff;
+  border: 1px solid #ebe6f3;
+  border-radius: 20px;
+  box-shadow: 0 8px 24px rgba(36, 20, 71, 0.06);
+  scroll-margin-top: 240px;
+}
+
+.kb-page.kb-flow .ld-doc-header {
+  border-radius: 20px 20px 0 0;
+}
+
+.kb-page.kb-flow .ld-content {
+  overflow: visible;
+}
+
+@media (min-width: 769px) {
+  .kb-page.kb-flow {
+    height: auto;
+    overflow: visible;
+    display: block;
+  }
+
+  .kb-page.kb-flow .legal-page-frame,
+  .kb-page.kb-flow .ld-page {
+    height: auto;
+    overflow: visible;
+    min-height: 0;
+  }
+
+  .kb-page.kb-flow .legal-page-frame {
+    display: block;
+  }
+
+  .kb-page.kb-flow .ld-page {
+    display: flex;
+  }
+
+  .kb-page.kb-flow .ld-sidebar {
+    position: sticky;
+    top: 88px;
+    align-self: flex-start;
+    height: auto;
+    max-height: calc(100vh - 110px);
+  }
+
+  .kb-page.kb-flow .ld-main,
+  .kb-page.kb-flow .ld-content {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 1100px) {
+  .kb-topics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .kb-hero {
+    padding: 96px 18px 40px;
+  }
+
+  .kb-topics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .kb-page.kb-flow .ld-sidebar {
+    width: 100%;
+    position: static;
+    max-height: none;
+    border-right: none;
+  }
+}
 </style>
 
 <!-- Unscoped: Windows Chrome needs this to hide classic scrollbars -->
@@ -1523,5 +1739,25 @@ section {
   font-weight: 500 !important;
   line-height: 1.8 !important;
   color: #334155 !important;
+}
+
+.legal-page-root.kb-page.kb-flow .ld-content,
+.legal-page-root.kb-page.kb-flow .ld-main {
+  overflow: visible !important;
+  height: auto !important;
+}
+
+.legal-page-root.kb-page.kb-flow .kb-hero h1,
+.legal-page-root.kb-page.kb-flow .kb-hero-inner > p:not(.kb-topic-hint) {
+  color: #ffffff !important;
+}
+
+.legal-page-root.kb-page.kb-flow .kb-topic.is-active {
+  color: #ffffff !important;
+  background: #241447 !important;
+}
+
+.legal-page-root.kb-page.kb-flow .kb-hero h1 span {
+  color: #ccfbf1 !important;
 }
 </style>

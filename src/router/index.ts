@@ -76,6 +76,11 @@ const router = createRouter({
       component: () => import("../views/admin-views/HowVaptfixWorksView.vue"),
     },
     {
+      path: "/features",
+      name: "features",
+      component: () => import("../views/admin-views/FeaturesView.vue"),
+    },
+    {
       path: "/support",
       name: "public-support",
       component: () => import("../views/admin-views/SupportCenterView.vue"),
@@ -626,7 +631,8 @@ router.beforeEach(async (to, from, next) => {
 
   // Public marketing pages must always render (Chrome leftover login used to
   // bounce /home → dashboard → /home and leave a white screen).
-  const isPublicMarketing = to.path === "/" || to.path === "/home";
+  const isPublicMarketing =
+    to.path === "/" || to.path === "/home" || to.path === "/features";
 
   // Typed URL / refresh (no previous in-app route). Stay on the last real page.
   // Deep links (Teams / Slack / email) skip this lock and use token auth only.

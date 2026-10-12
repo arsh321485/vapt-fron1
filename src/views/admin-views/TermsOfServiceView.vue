@@ -1,25 +1,27 @@
 <template>
-  <div class="legal-page-root">
+  <div class="legal-page-root lf-page">
     <Header />
 
-    <div class="legal-page-frame">
+    <div class="container legal-page-frame">
       <div class="ld-page">
         <aside class="ld-sidebar">
-          <div class="ld-sidebar-label">On this page</div>
-          <nav ref="tocNav" @click="onTocNavClick">
-            <a
+          <p class="lf-nav-label">Topics</p>
+          <nav class="lf-nav-list" aria-label="Terms of Service topics">
+            <button
               v-for="item in tocItems"
               :key="item.href"
-              :href="item.href"
+              type="button"
+              class="lf-topic"
               :class="{ 'is-active': activeTocHash === item.href }"
-            >{{ item.label }}</a>
+              @click="selectSection(item.href)"
+            >{{ item.label }}</button>
           </nav>
         </aside>
 
         <div class="ld-main">
           <div class="ld-doc-header">
             <div class="ld-doc-tag">Legal Document</div>
-            <h1 class="ld-doc-title">Terms of Service<br />&amp; EULA</h1>
+            <h1 class="ld-doc-title">{{ activeSectionLabel }}</h1>
             <p class="ld-doc-meta">
               <strong>Effective Date:</strong> May 12, 2026 &nbsp;|&nbsp;
               <strong>Last Updated:</strong> May 12, 2026 &nbsp;|&nbsp;
@@ -27,9 +29,9 @@
             </p>
           </div>
 
-          <main ref="contentScroller" class="ld-content" @scroll.passive="onContentScroll">
+          <main ref="contentScroller" class="ld-content">
 
-          <div class="ld-callout ld-callout--warn">
+          <div class="ld-callout ld-callout--warn" v-show="activeTocHash === '#acceptance'">
             <p>
               <strong>PLEASE READ CAREFULLY.</strong> These Terms of Service ("Terms") constitute a legally binding
               agreement between you and VAPTFIX.ai. By accessing or using our platform, you acknowledge that you have
@@ -37,7 +39,7 @@
             </p>
           </div>
 
-          <section id="acceptance">
+          <section id="acceptance" v-show="activeTocHash === '#acceptance'">
             <div class="ld-section-number">01 / ACCEPTANCE</div>
             <h2>Acceptance of Terms</h2>
             <p>
@@ -52,7 +54,7 @@
             </p>
           </section>
 
-          <section id="definitions">
+          <section id="definitions" v-show="activeTocHash === '#definitions'">
             <div class="ld-section-number">02 / DEFINITIONS</div>
             <h2>Definitions</h2>
             <ul>
@@ -70,7 +72,7 @@
             </ul>
           </section>
 
-          <section id="eligibility">
+          <section id="eligibility" v-show="activeTocHash === '#eligibility'">
             <div class="ld-section-number">03 / ELIGIBILITY</div>
             <h2>Eligibility</h2>
             <p>
@@ -80,7 +82,7 @@
             </p>
           </section>
 
-          <section id="license">
+          <section id="license" v-show="activeTocHash === '#license'">
             <div class="ld-section-number">04 / LICENSE GRANT</div>
             <h2>License Grant</h2>
             <p>
@@ -98,7 +100,7 @@
             </p>
           </section>
 
-          <section id="permitted-use">
+          <section id="permitted-use" v-show="activeTocHash === '#permitted-use'">
             <div class="ld-section-number">05 / PERMITTED USE</div>
             <h2>Permitted Use</h2>
             <p>
@@ -119,7 +121,7 @@
             </div>
           </section>
 
-          <section id="prohibited">
+          <section id="prohibited" v-show="activeTocHash === '#prohibited'">
             <div class="ld-section-number">06 / PROHIBITED CONDUCT</div>
             <h2>Prohibited Conduct</h2>
             <p>You must NOT use the Service to:</p>
@@ -145,7 +147,7 @@
             </div>
           </section>
 
-          <section id="accounts">
+          <section id="accounts" v-show="activeTocHash === '#accounts'">
             <div class="ld-section-number">07 / ACCOUNTS</div>
             <h2>Accounts &amp; Security</h2>
             <p>
@@ -167,7 +169,7 @@
             </p>
           </section>
 
-          <section id="subscriptions">
+          <section id="subscriptions" v-show="activeTocHash === '#subscriptions'">
             <div class="ld-section-number">08 / SUBSCRIPTIONS &amp; PAYMENT</div>
             <h2>Subscriptions &amp; Payment</h2>
 
@@ -204,7 +206,7 @@
             </p>
           </section>
 
-          <section id="ip">
+          <section id="ip" v-show="activeTocHash === '#ip'">
             <div class="ld-section-number">09 / INTELLECTUAL PROPERTY</div>
             <h2>Intellectual Property</h2>
 
@@ -229,7 +231,7 @@
             </p>
           </section>
 
-          <section id="confidentiality">
+          <section id="confidentiality" v-show="activeTocHash === '#confidentiality'">
             <div class="ld-section-number">10 / CONFIDENTIALITY</div>
             <h2>Confidentiality</h2>
             <p>
@@ -244,7 +246,7 @@
             </p>
           </section>
 
-          <section id="disclaimers">
+          <section id="disclaimers" v-show="activeTocHash === '#disclaimers'">
             <div class="ld-section-number">11 / DISCLAIMERS</div>
             <h2>Disclaimers</h2>
             <div class="ld-callout ld-callout--warn">
@@ -261,7 +263,7 @@
             </div>
           </section>
 
-          <section id="liability">
+          <section id="liability" v-show="activeTocHash === '#liability'">
             <div class="ld-section-number">12 / LIMITATION OF LIABILITY</div>
             <h2>Limitation of Liability</h2>
             <p>TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW:</p>
@@ -275,7 +277,7 @@
             <p>These limitations apply regardless of the theory of liability, even if we have been advised of the possibility of such damages.</p>
           </section>
 
-          <section id="indemnification">
+          <section id="indemnification" v-show="activeTocHash === '#indemnification'">
             <div class="ld-section-number">13 / INDEMNIFICATION</div>
             <h2>Indemnification</h2>
             <p>
@@ -291,7 +293,7 @@
             </ul>
           </section>
 
-          <section id="termination">
+          <section id="termination" v-show="activeTocHash === '#termination'">
             <div class="ld-section-number">14 / TERMINATION</div>
             <h2>Termination</h2>
             <p>Either party may terminate these Terms upon written notice. VAPTFIX.ai may suspend or terminate your access immediately and without notice if:</p>
@@ -307,7 +309,7 @@
             </p>
           </section>
 
-          <section id="governing-law">
+          <section id="governing-law" v-show="activeTocHash === '#governing-law'">
             <div class="ld-section-number">15 / GOVERNING LAW</div>
             <h2>Governing Law &amp; Disputes</h2>
             <p>
@@ -323,7 +325,7 @@
             </p>
           </section>
 
-          <section id="contact">
+          <section id="contact" v-show="activeTocHash === '#contact'">
             <div class="ld-section-number">16 / CONTACT</div>
             <h2>Contact</h2>
             <div class="ld-callout">
@@ -356,7 +358,7 @@ export default {
   },
   data() {
     return {
-      activeTocHash: '',
+      activeTocHash: '#acceptance',
       _scrollSpyLocked: false,
       _scrollSpyUnlockTimer: null,
       tocItems: [
@@ -381,32 +383,31 @@ export default {
   },
   watch: {
     '$route.hash'() {
-      this.$nextTick(() => {
-        this.syncTocFromRoute();
-        this.lockWindowScroll();
-        this.scrollContentToHash(this.activeTocHash);
-      });
+      this.$nextTick(() => this.syncTocFromRoute());
     },
     activeTocHash() {
       this.$nextTick(() => this.ensureActiveTocVisible());
     },
   },
   mounted() {
-    document.documentElement.classList.add('legal-doc-sticky-context');
-    this.lockWindowScroll();
-    window.addEventListener('scroll', this.lockWindowScroll, { passive: true });
-    this.$nextTick(() => {
-      this.syncTocFromRoute();
-      if (this.$route.hash) this.scrollContentToHash(this.activeTocHash);
-      else this.updateActiveFromScroll();
-    });
+    this.$nextTick(() => this.syncTocFromRoute());
   },
   beforeUnmount() {
-    document.documentElement.classList.remove('legal-doc-sticky-context');
-    window.removeEventListener('scroll', this.lockWindowScroll);
     if (this._scrollSpyUnlockTimer) clearTimeout(this._scrollSpyUnlockTimer);
   },
+  computed: {
+    activeSectionLabel() {
+      const active = this.tocItems.find((i) => i.href === this.activeTocHash);
+      return active ? active.label : 'Terms of Service';
+    },
+  },
   methods: {
+    selectSection(href) {
+      this.activeTocHash = href;
+      if (typeof history !== 'undefined' && history.replaceState) {
+        history.replaceState(null, '', `${window.location.pathname}${window.location.search}${href}`);
+      }
+    },
     lockWindowScroll() {
       if (window.matchMedia('(min-width: 769px)').matches && window.scrollY !== 0) {
         window.scrollTo(0, 0);

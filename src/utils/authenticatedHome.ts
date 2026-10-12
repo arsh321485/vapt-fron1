@@ -164,6 +164,7 @@ export function getAuthenticatedAppHome(currentPath = ""): string {
     path === "/home" ||
     path === "/pricingplan" ||
     path === "/how-vaptfix-works" ||
+    path === "/features" ||
     path === "/knowledge-base" ||
     path === "/signin" ||
     path === "/signup";

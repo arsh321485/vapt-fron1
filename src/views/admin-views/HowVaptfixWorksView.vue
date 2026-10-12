@@ -15,11 +15,11 @@
         <p class="hvw-hero-sub">
           Choose your entry point — Email, Slack, or Microsoft Teams. All three follow the same onboarding journey
         </p>
-        <div class="hvw-channels">
-          <div class="hvw-channel-badge email-badge" @click="scrollTo('journey1')" style="cursor:pointer">
+        <div class="hvw-channels" role="tablist" aria-label="Onboarding channel">
+          <button type="button" class="hvw-channel-badge email-badge" :class="{ 'is-active': activeChannel === 'email' }" role="tab" :aria-selected="activeChannel === 'email'" @click="selectChannel('email')">
             <span>📧</span> Company Email
-          </div>
-          <div class="hvw-channel-badge slack-badge" @click="scrollTo('journey2')" style="cursor:pointer">
+          </button>
+          <button type="button" class="hvw-channel-badge slack-badge" :class="{ 'is-active': activeChannel === 'slack' }" role="tab" :aria-selected="activeChannel === 'slack'" @click="selectChannel('slack')">
             <svg width="16" height="16" viewBox="0 0 124 124" fill="none">
               <path d="M26.3 78.8a13.15 13.15 0 0 1-13.15 13.15A13.15 13.15 0 0 1 0 78.8a13.15 13.15 0 0 1 13.15-13.15h13.15v13.15z" fill="#E01E5A"/>
               <path d="M32.9 78.8a13.15 13.15 0 0 1 13.15-13.15 13.15 13.15 0 0 1 13.15 13.15v32.9A13.15 13.15 0 0 1 46.05 124a13.15 13.15 0 0 1-13.15-13.15V78.8z" fill="#E01E5A"/>
@@ -31,8 +31,8 @@
               <path d="M77.95 91.1a13.15 13.15 0 0 1-13.15-13.15 13.15 13.15 0 0 1 13.15-13.15h32.9A13.15 13.15 0 0 1 124 77.95a13.15 13.15 0 0 1-13.15 13.15H77.95z" fill="#ECB22E"/>
             </svg>
             Slack
-          </div>
-          <div class="hvw-channel-badge teams-badge" @click="scrollTo('journey3')" style="cursor:pointer">
+          </button>
+          <button type="button" class="hvw-channel-badge teams-badge" :class="{ 'is-active': activeChannel === 'teams' }" role="tab" :aria-selected="activeChannel === 'teams'" @click="selectChannel('teams')">
             <svg width="26" height="26" viewBox="0 0 28 28" fill="none">
               <path d="M16 10.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" fill="#5059C9"/>
               <path d="M17.5 12H13a2.5 2.5 0 0 0-2.5 2.5v4c0 .28.22.5.5.5h7c.28 0 .5-.22.5-.5v-4C18.5 13.12 18.11 12 17.5 12z" fill="#5059C9"/>
@@ -40,13 +40,14 @@
               <path d="M15 13H8c-.55 0-1 .45-1 1v4.5c0 .83.67 1.5 1.5 1.5h6c.83 0 1.5-.67 1.5-1.5V14c0-.55-.45-1-1-1z" fill="#7B83EB"/>
             </svg>
             Microsoft Teams
-          </div>
+          </button>
         </div>
+        <p class="hvw-channel-hint">{{ channelHint }}</p>
       </div>
     </section>
 
     <!-- ═══════════════════ JOURNEY 1 — EMAIL ═══════════════════ -->
-    <section class="hvw-section" id="journey1">
+    <section v-show="activeChannel === 'email'" class="hvw-section" id="journey1">
       <div class="hvw-container">
         <h2 class="hvw-section-title">From Sign-Up to Full Access</h2>
         <p class="hvw-section-sub">Admin signs up directly on the VAPTFIX website using their company email address and a password. Five clear steps take the admin from registration to full dashboard access.</p>
@@ -167,7 +168,7 @@
 
 
     <!-- ═══════════════════ JOURNEY 2 — SLACK ═══════════════════ -->
-    <section class="hvw-section hvw-section-alt" id="journey2">
+    <section v-show="activeChannel === 'slack'" class="hvw-section hvw-section-alt" id="journey2">
       <div class="hvw-container">
         <h2 class="hvw-section-title">Slack Onboarding Flow</h2>
         <p class="hvw-section-sub">The Slack journey follows the same onboarding logic, delivered through interactive Slack cards within the workspace.</p>
@@ -395,7 +396,7 @@
     </section>
 
     <!-- ═══════════════════ JOURNEY 3 — MS TEAMS ═══════════════════ -->
-    <section class="hvw-section" id="journey3">
+    <section v-show="activeChannel === 'teams'" class="hvw-section" id="journey3">
       <div class="hvw-container">
         <h2 class="hvw-section-title">Microsoft Teams Onboarding Flow</h2>
         <p class="hvw-section-sub">The MS Teams journey mirrors the Slack journey exactly. The VAPTFIX bot posts Adaptive Cards inside a Teams chat or channel. Richer views like Add Users can use a Teams Tab.</p>
@@ -609,6 +610,7 @@ export default {
       showSignInModal: false,
       showAdminSignUpModal: false,
       oauthLoading: '',
+      activeChannel: 'email',
       backendBase: 'https://vaptbackend.secureitlab.com',
       authStore: null,
 
@@ -677,6 +679,13 @@ export default {
     };
   },
 
+  computed: {
+    channelHint() {
+      if (this.activeChannel === 'slack') return 'Showing the full Slack journey: connect, onboard, and offboard.';
+      if (this.activeChannel === 'teams') return 'Showing the Microsoft Teams journey: connect and onboard.';
+      return 'Showing the Company Email journey, from sign-up to full access.';
+    },
+  },
   mounted() {
     this.authStore = useAuthStore();
     window.addEventListener('message', this.onPlatformOAuthMessage);
@@ -686,9 +695,13 @@ export default {
   },
 
   methods: {
-    scrollTo(id) {
-      const el = document.getElementById(id);
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    selectChannel(channel) {
+      this.activeChannel = channel;
+      this.$nextTick(() => {
+        const id = channel === 'slack' ? 'journey2' : channel === 'teams' ? 'journey3' : 'journey1';
+        const el = document.getElementById(id);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     },
 
     openEmailLogin() {
@@ -830,18 +843,34 @@ export default {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 20px;
-  border-radius: 24px;
-  font-size: 14px;
+  padding: 12px 22px;
+  border-radius: 999px;
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
   font-weight: 600;
-  backdrop-filter: blur(4px);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s, transform 0.2s;
 }
-.email-badge  { background: rgba(79,70,229,0.25); color: #c7d2fe; border: 1px solid rgba(79,70,229,0.4); }
-.slack-badge  { background: rgba(224,30,90,0.20); color: #fecdd3; border: 1px solid rgba(224,30,90,0.35); }
-.teams-badge  { background: rgba(80,89,201,0.22); color: #c7d2fe; border: 1px solid rgba(80,89,201,0.4); }
-
-/* ── Sections ── */
-.hvw-section { padding: 80px 0; background: #fff; }
+.hvw-channel-badge.is-active {
+  background: #fff;
+  color: #241447;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+  transform: translateY(-2px);
+}
+.email-badge  { background: rgba(79,70,229,0.25); color: #c7d2fe; border-color: rgba(79,70,229,0.4); }
+.slack-badge  { background: rgba(224,30,90,0.20); color: #fecdd3; border-color: rgba(224,30,90,0.35); }
+.teams-badge  { background: rgba(80,89,201,0.22); color: #c7d2fe; border-color: rgba(80,89,201,0.4); }
+.email-badge.is-active { border-color: #0f696e; }
+.slack-badge.is-active { border-color: #e01e5a; }
+.teams-badge.is-active { border-color: #5059c9; }
+.hvw-channel-hint {
+  margin: 18px 0 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.78);
+}
+.hvw-section { padding: 80px 0; background: #fff; scroll-margin-top: 88px; }
 .hvw-section-alt { background: #f8f9fc; }
 .hvw-section-kicker {
   font-size: 13px;
