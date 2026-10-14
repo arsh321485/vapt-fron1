@@ -101,11 +101,32 @@
                                 <span v-else class="yt-custom-role-name" :style="{ color: customTeamColor({ id: option.short }) }">{{ option.full }}</span>
                               </label>
                             </template>
+                            <div class="yt-own-team" @click.stop>
+                              <button
+                                v-if="!ownTeamOpen"
+                                type="button"
+                                class="yt-own-team-btn"
+                                @click.stop="startOwnTeam"
+                              >
+                                + Create Own Team
+                              </button>
+                              <form v-else class="yt-own-team-form" @submit.prevent="submitOwnTeam" @click.stop>
+                                <input
+                                  ref="ownTeamInput"
+                                  v-model="ownTeamDraft"
+                                  class="yt-own-team-input"
+                                  type="text"
+                                  maxlength="80"
+                                  placeholder="Team name"
+                                  @click.stop
+                                />
+                                <button type="submit" class="yt-own-team-add" :disabled="ownTeamSaving">
+                                  {{ ownTeamSaving ? '...' : 'Add' }}
+                                </button>
+                              </form>
+                            </div>
                           </div>
                         </div>
-                        <button type="button" class="yt-modal-create" @click="openCreateTeamModal(true)">
-                          + Create Team
-                        </button>
                       </div>
 
                       <div class="col-md-4">
@@ -159,7 +180,7 @@
                     :style="{ width: tabWidth + '%', ...tabNavStyle(tab, activeTab === index) }"
                     @click="selectTab(index)"
                   >
-                    {{ tab.name }}
+                    {{ teamTabLabel(tab) }}
                   </p>
                   <div
                     class="tab-line"
@@ -374,7 +395,6 @@
       @close="closeAssignmentModal"
       @apply="applyAssignmentModal"
     />
-    <CreateCustomTeamModal ref="createTeamModal" @created="onCustomTeamCreated" />
   </main>
 </template>
 
@@ -382,7 +402,6 @@
 import DashboardMenu from '@/components/admin-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/admin-component/DashboardHeader.vue';
 import RoleAssignmentDrawer from '@/components/admin-component/RoleAssignmentDrawer.vue';
-import CreateCustomTeamModal from '@/components/admin-component/CreateCustomTeamModal.vue';
 import VulnFreeAssetsDropdown from '@/components/admin-component/VulnFreeAssetsDropdown.vue';
 import { useAuthStore } from "@/stores/authStore";
 import { isRealScanHost } from "@/utils/assetDummyData";
@@ -404,6 +423,7 @@ import {
   fullToRoleShort,
   shortToRoleFull,
   ensureRoleBucket,
+  capitalizeFirst,
 } from '@/utils/roleAssignmentData';
 import { isFreemiumTeamLimitMessage } from '@/utils/planLimits';
 import Swal from 'sweetalert2';
@@ -414,7 +434,6 @@ export default {
     DashboardMenu,
     DashboardHeader,
     RoleAssignmentDrawer,
-    CreateCustomTeamModal,
     VulnFreeAssetsDropdown,
   },
   data() {
@@ -427,6 +446,9 @@ export default {
       roleOptions: FIXED_ROLE_OPTIONS,
       customTeams: [],
       selectCreatedTeam: false,
+      ownTeamOpen: false,
+      ownTeamDraft: '',
+      ownTeamSaving: false,
       tabLine: { left: '0px', width: '0px', backgroundColor: '#5b21b6' },
       linkCopied: false,
       activeTab: 0,
@@ -469,7 +491,7 @@ export default {
     },
     selectedRoleText2() {
       const labels = this.selectedRoles2
-        .map((short) => shortToRoleFull(short, this.customTeams))
+        .map((short) => capitalizeFirst(shortToRoleFull(short, this.customTeams)))
         .filter(Boolean);
       return labels.length ? labels.join(', ') : '';
     },
@@ -567,6 +589,7 @@ export default {
     if (this.activeAssignmentRole === role.short) {
       this.closeAssignmentModal();
     }
+    if (role.custom) this.removeOwnTeamFromTabs(role.short);
   },
   async openAssignmentModal(roleShort) {
     if (!roleShort || !this.selectedRoles2.includes(roleShort)) return;
@@ -838,6 +861,10 @@ this.applyUserRoleState(newUser);
       this.externalSubTab = "list";
       this.$nextTick(() => this.updateTabLine());
     },
+    teamTabLabel(tab) {
+      if (!tab?.custom) return tab?.name || '';
+      return capitalizeFirst(tab.name);
+    },
     customTeamColor(tab) {
       const palette = ['#f97316', '#16a34a', '#e11d48', '#ca8a04', '#4f46e5', '#0f766e'];
       const index = this.customTeams.findIndex((team) => String(team.id) === String(tab?.id));
@@ -864,7 +891,7 @@ this.applyUserRoleState(newUser);
         .filter(Boolean);
       this.selectedRoles[user._id] = shorts;
       this.selectedRoleText[user._id] = shorts
-        .map((short) => shortToRoleFull(short, this.customTeams))
+        .map((short) => capitalizeFirst(shortToRoleFull(short, this.customTeams)))
         .filter(Boolean)
         .join(', ');
       this.isOpen[user._id] = this.isOpen[user._id] || false;
@@ -880,10 +907,30 @@ this.applyUserRoleState(newUser);
         backgroundColor: tab.custom ? '#0f696e' : getTeamColor(tab.name),
       };
     },
-    openCreateTeamModal(selectAfter) {
-      this.selectCreatedTeam = !!selectAfter;
-      this.isOpen.dropdown2 = false;
-      this.$refs.createTeamModal?.open();
+    startOwnTeam() {
+      this.ownTeamOpen = true;
+      this.isOpen.dropdown2 = true;
+      this.$nextTick(() => this.$refs.ownTeamInput?.focus());
+    },
+    async submitOwnTeam() {
+      const name = capitalizeFirst(this.ownTeamDraft);
+      if (!name) return;
+      this.ownTeamSaving = true;
+      const res = await this.authStore.createCustomTeam(name);
+      this.ownTeamSaving = false;
+      if (!res.status || !res.data) {
+        Swal.fire({
+          icon: res.httpStatus === 400 ? 'warning' : 'error',
+          title: 'Could not create team',
+          text: res.message || 'Try a different name.',
+          confirmButtonColor: '#0f696e',
+        });
+        return;
+      }
+      this.ownTeamDraft = '';
+      this.ownTeamOpen = false;
+      this.selectCreatedTeam = true;
+      this.onCustomTeamCreated(res.data);
     },
     onCustomTeamCreated(team) {
       const id = String(team?.id || '');
@@ -911,7 +958,7 @@ this.applyUserRoleState(newUser);
       const result = await Swal.fire({
         icon: 'warning',
         title: 'Delete this team?',
-        text: `"${tab.name}" will be removed. Members stay in the workspace.`,
+        text: `"${this.teamTabLabel(tab)}" will be removed from the tabs. Members stay in the workspace.`,
         showCancelButton: true,
         confirmButtonText: 'Delete team',
         confirmButtonColor: '#b91c1c',
@@ -927,9 +974,10 @@ this.applyUserRoleState(newUser);
         });
         return;
       }
-      const index = this.teamTabs.findIndex((item) => item.id === tab.id);
-      this.customTeams = this.customTeams.filter((item) => item.id !== tab.id);
-      this.selectedRoles2 = this.selectedRoles2.filter((short) => short !== tab.id);
+      const removedId = String(tab.id);
+      const index = this.teamTabs.findIndex((item) => String(item.id) === removedId);
+      this.customTeams = this.customTeams.filter((item) => String(item.id) !== removedId);
+      this.selectedRoles2 = this.selectedRoles2.filter((short) => String(short) !== removedId);
       clearRoleAssignments(this.roleAssignments, tab.id);
       if (this.activeTab === index || this.activeTab >= this.teamTabs.length) {
         this.activeTab = 0;
@@ -1059,13 +1107,15 @@ this.applyUserRoleState(newUser);
 
     async handleRoleChange(event, user, option) {
   const isChecked = event.target.checked;
-  const roleFullName = option.full;
+  const roleFullName = option.custom
+    ? (shortToRoleFull(option.short, this.customTeams) || option.full)
+    : option.full;
 
-  // close dropdown
   this.isOpen[user._id] = false;
 
   if (!isChecked) {
-    await this.deleteRoleFromUser(user, roleFullName);
+    const removed = await this.deleteRoleFromUser(user, roleFullName);
+    if (removed && option.custom) await this.removeOwnTeamFromTabs(option.short);
   } else {
     await this.updateSelectedRoleText(user._id);
   }
@@ -1130,7 +1180,7 @@ async deleteRoleFromUser(user, roleToRemove) {
       if (shortCode && !this.selectedRoles[user._id].includes(shortCode)) {
         this.selectedRoles[user._id].push(shortCode);
       }
-      return;
+      return false;
     }
 
     // ✅ Update UI from store response
@@ -1143,12 +1193,37 @@ async deleteRoleFromUser(user, roleToRemove) {
       timer: 1500,
       showConfirmButton: false,
     });
+    return true;
 
   } catch (err) {
     console.log(err);
     Swal.fire("Error", "Failed to remove role", "error");
+    return false;
   }
 },
+    async removeOwnTeamFromTabs(teamId) {
+      const id = String(teamId || "");
+      if (!id) return;
+      const res = await this.authStore.deleteCustomTeam(id);
+      if (!res.status) {
+        Swal.fire({
+          icon: "error",
+          title: "Could not remove team",
+          text: res.message || "Please try again.",
+          confirmButtonColor: "#0f696e",
+        });
+        return;
+      }
+      const index = this.teamTabs.findIndex((item) => String(item.id) === id);
+      this.customTeams = this.customTeams.filter((item) => String(item.id) !== id);
+      this.selectedRoles2 = this.selectedRoles2.filter((short) => String(short) !== id);
+      if (index < 0) return;
+      if (this.activeTab === index || this.activeTab >= this.teamTabs.length) {
+        this.activeTab = 0;
+      } else if (this.activeTab > index) {
+        this.activeTab -= 1;
+      }
+    },
 
 
     async removeUser(user) {
@@ -1185,7 +1260,7 @@ async deleteRoleFromUser(user, roleToRemove) {
       const fullRoles = (this.selectedRoles[userId] || [])
         .map((short) => shortToRoleFull(short, this.customTeams))
         .filter(Boolean);
-      this.selectedRoleText[userId] = fullRoles.join(', ');
+      this.selectedRoleText[userId] = fullRoles.map((name) => capitalizeFirst(name)).join(', ');
       const res = await this.authStore.updateUserRoles(userId, fullRoles);
 
       if (res.status) {
@@ -1591,15 +1666,10 @@ async deleteRoleFromUser(user, roleToRemove) {
 
 .subtab-header {
   display: flex;
+  align-items: center;
   gap: 54px;
   margin-bottom: 16px;
   font-weight: 500;
-  /* display: flex;
-  justify-content: space-around;
-  align-items: center;
-  gap: 58px;
-  margin-bottom: 16px;
-  font-weight: 500; */
 }
 
 .subtab {
@@ -1683,15 +1753,60 @@ async deleteRoleFromUser(user, roleToRemove) {
   transition: all 0.3s ease;
 }
 
-.yt-modal-create {
-  margin-top: 8px;
-  padding: 0;
+.yt-own-team {
+  border-top: 1px solid #e2e8f0;
+  background: #f0fdfa;
+  position: sticky;
+  bottom: 0;
+}
+
+.yt-own-team-btn,
+.yt-own-team-add {
   border: none;
   background: transparent;
   color: #0f696e;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
+}
+
+.yt-own-team-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+}
+
+.yt-own-team-form {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+}
+
+.yt-own-team-input {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0 8px;
+  font-size: 13px;
+}
+
+.yt-own-team-input:focus {
+  outline: none;
+  border-color: #0f696e;
+}
+
+.yt-own-team-add {
+  padding: 0 10px;
+  border-radius: 6px;
+  background: #0f696e;
+  color: #ffffff;
+}
+
+.yt-own-team-add:disabled {
+  opacity: 0.6;
 }
 
 .yt-role-list {

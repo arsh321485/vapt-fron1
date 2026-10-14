@@ -133,12 +133,21 @@ export const FIXED_ROLE_OPTIONS = [
   { short: "AF", full: "Architectural Flaws" },
 ];
 
+export function capitalizeFirst(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  return text
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 export function customRoleOptions(teams) {
   return (teams || [])
     .filter((team) => team && team.id != null && String(team.name || "").trim())
     .map((team) => ({
       short: String(team.id),
-      full: String(team.name).trim(),
+      full: capitalizeFirst(team.name),
       custom: true,
     }));
 }

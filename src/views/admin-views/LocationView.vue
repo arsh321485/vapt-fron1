@@ -108,9 +108,30 @@
                         <span :class="{ 'loc-custom-role': role.custom }">{{ role.full }}</span>
                       </label>
                     </template>
-                    <button type="button" class="loc-create-team" @click.stop="openCreateTeamModal">
-                      + Create Team
-                    </button>
+                    <div class="loc-own-team" @click.stop>
+                      <button
+                        v-if="!ownTeamOpen"
+                        type="button"
+                        class="loc-create-team"
+                        @click.stop="startOwnTeam"
+                      >
+                        + Create Own Team
+                      </button>
+                      <form v-else class="loc-own-team-form" @submit.prevent="submitOwnTeam" @click.stop>
+                        <input
+                          ref="ownTeamInput"
+                          v-model="ownTeamDraft"
+                          class="loc-own-team-input"
+                          type="text"
+                          maxlength="80"
+                          placeholder="Team name"
+                          @click.stop
+                        />
+                        <button type="submit" class="loc-own-team-add" :disabled="ownTeamSaving">
+                          {{ ownTeamSaving ? "..." : "Add" }}
+                        </button>
+                      </form>
+                    </div>
                   </div>
                 </teleport>
                 <div v-if="selectedRoles.length" class="loc-assignment-summary">
@@ -259,14 +280,12 @@
       @close="closeAssignmentModal"
       @apply="applyAssignmentModal"
     />
-    <CreateCustomTeamModal ref="createTeamModal" @created="onCustomTeamCreated" />
   </main>
 </template>
 
 <script>
 import DashboardHeader from "@/components/admin-component/DashboardHeader.vue";
 import RoleAssignmentDrawer from "@/components/admin-component/RoleAssignmentDrawer.vue";
-import CreateCustomTeamModal from "@/components/admin-component/CreateCustomTeamModal.vue";
 import VulnFreeAssetsDropdown from "@/components/admin-component/VulnFreeAssetsDropdown.vue";
 import { useAuthStore } from "@/stores/authStore";
 import { isRealScanHost } from "@/utils/assetDummyData";
@@ -286,6 +305,7 @@ import {
   customRoleOptions,
   shortToRoleFull,
   ensureRoleBucket,
+  capitalizeFirst,
 } from "@/utils/roleAssignmentData";
 
 export default {
@@ -293,7 +313,6 @@ export default {
   components: {
     DashboardHeader,
     RoleAssignmentDrawer,
-    CreateCustomTeamModal,
     VulnFreeAssetsDropdown,
   },
   data() {
@@ -314,6 +333,9 @@ export default {
       },
       roleOptions: FIXED_ROLE_OPTIONS,
       customTeams: [],
+      ownTeamOpen: false,
+      ownTeamDraft: "",
+      ownTeamSaving: false,
       showAssignmentModal: false,
       activeAssignmentRole: null,
       roleAssignments: createEmptyRoleAssignments(),
@@ -340,7 +362,7 @@ export default {
     },
     selectedRoleLabels() {
       return this.selectedRoles
-        .map((r) => shortToRoleFull(r, this.customTeams))
+        .map((r) => capitalizeFirst(shortToRoleFull(r, this.customTeams)))
         .filter(Boolean)
         .join(", ");
     },
@@ -443,9 +465,29 @@ export default {
       this.showAssignmentModal = true;
       await this.loadRoleCatalog(roleShort);
     },
-    openCreateTeamModal() {
-      this.isRoleOpen = false;
-      this.$refs.createTeamModal?.open();
+    startOwnTeam() {
+      this.ownTeamOpen = true;
+      this.isRoleOpen = true;
+      this.$nextTick(() => this.$refs.ownTeamInput?.focus());
+    },
+    async submitOwnTeam() {
+      const name = capitalizeFirst(this.ownTeamDraft);
+      if (!name) return;
+      this.ownTeamSaving = true;
+      const res = await this.authStore.createCustomTeam(name);
+      this.ownTeamSaving = false;
+      if (!res.status || !res.data) {
+        Swal.fire({
+          icon: res.httpStatus === 400 ? "warning" : "error",
+          title: "Could not create team",
+          text: res.message || "Try a different name.",
+          confirmButtonColor: "#0f696e",
+        });
+        return;
+      }
+      this.ownTeamDraft = "";
+      this.ownTeamOpen = false;
+      this.onCustomTeamCreated(res.data);
     },
     onCustomTeamCreated(team) {
       const id = String(team?.id || "");
@@ -1421,21 +1463,47 @@ export default {
   color: #64748b;
 }
 .loc-custom-role { color: #0f696e; font-weight: 600; }
+.loc-own-team {
+  margin-top: 4px;
+  border-top: 1px solid #e2e8f0;
+  background: #f0fdfa;
+  position: sticky;
+  bottom: 0;
+}
 .loc-create-team {
   display: flex;
   width: 100%;
-  margin-top: 4px;
   border: none;
-  border-top: 1px solid #e2e8f0;
-  background: #f0fdfa;
+  background: transparent;
   color: #0f696e;
   font-weight: 700;
   font-size: 13px;
   padding: 10px 12px;
   cursor: pointer;
-  position: sticky;
-  bottom: 0;
-  border-radius: 0 0 6px 6px;
+}
+.loc-own-team-form {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+}
+.loc-own-team-input {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0 8px;
+  font-size: 13px;
+}
+.loc-own-team-add {
+  border: none;
+  border-radius: 6px;
+  background: #0f696e;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 0 10px;
+  cursor: pointer;
 }
 
 .loc-slack-badge {
