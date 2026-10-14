@@ -407,6 +407,41 @@ function flattenFieldErrors(value: unknown): string[] {
 }
 
 /** Prefer backend field errors (`detail` / `errors`) over Axios "status code 400". */
+function normalizeCustomTeam(raw: any): { id: string; name: string; created_at: string } | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const id = raw.id ?? raw._id ?? raw.team_id;
+  const name = String(raw.name ?? raw.team_name ?? "").trim();
+  if (id == null || !name) return null;
+  return { id: String(id), name, created_at: raw.created_at || "" };
+}
+
+function normalizeCustomTeamList(raw: any): { id: string; name: string; created_at: string }[] {
+  const list = Array.isArray(raw)
+    ? raw
+    : Array.isArray(raw?.data)
+      ? raw.data
+      : Array.isArray(raw?.results)
+        ? raw.results
+        : Array.isArray(raw?.teams)
+          ? raw.teams
+          : [];
+  return list
+    .map((item: any) => normalizeCustomTeam(item))
+    .filter((item): item is { id: string; name: string; created_at: string } => !!item);
+}
+
+function customTeamErrorMessage(error: any, fallback: string): string {
+  const data = error?.response?.data;
+  if (typeof data === "string" && /<!DOCTYPE|<html/i.test(data)) return fallback;
+  const nameErr = data?.name;
+  if (Array.isArray(nameErr) && nameErr.length) return nameErr.map((item) => String(item)).join(" ");
+  if (typeof nameErr === "string" && nameErr.trim()) return nameErr.trim();
+  const flat = flattenFieldErrors(data).filter((item) => !/<!DOCTYPE|<html/i.test(item));
+  if (flat.length) return flat.join(" ");
+  const message = extractApiErrorMessage(error, fallback);
+  return /<!DOCTYPE|<html/i.test(message) ? fallback : message;
+}
+
 function extractApiErrorMessage(error: unknown, fallback = "Request failed"): string {
   const err = error as any;
   const data = err?.response?.data ?? err?.data ?? err;
@@ -1460,6 +1495,52 @@ export const useAuthStore = defineStore("auth", {
           message: extractApiErrorMessage(err, "Create user detail failed"),
           details: err.response?.data || null,
           httpStatus: err.response?.status || null,
+        };
+      }
+    },
+
+    async listCustomTeams() {
+      try {
+        const res = await endpoint.get("/api/admin/users_details/custom-teams/");
+        return { status: true, data: normalizeCustomTeamList(res.data) };
+      } catch (error: unknown) {
+        return {
+          status: false,
+          data: [] as { id: string; name: string; created_at: string }[],
+          message: extractApiErrorMessage(error, "Could not load custom teams"),
+        };
+      }
+    },
+
+    async createCustomTeam(name: string) {
+      try {
+        const res = await endpoint.post("/api/admin/users_details/custom-teams/", {
+          name: String(name || "").trim(),
+        });
+        const team = normalizeCustomTeam(res.data?.data || res.data);
+        if (!team) {
+          return { status: false, data: null, message: "Team was created but the response was empty" };
+        }
+        return { status: true, data: team };
+      } catch (error: unknown) {
+        const err = error as any;
+        return {
+          status: false,
+          data: null,
+          message: customTeamErrorMessage(err, "Could not create team"),
+          httpStatus: err?.response?.status || null,
+        };
+      }
+    },
+
+    async deleteCustomTeam(teamId: string) {
+      try {
+        await endpoint.delete(`/api/admin/users_details/custom-teams/${encodeURIComponent(teamId)}/`);
+        return { status: true };
+      } catch (error: unknown) {
+        return {
+          status: false,
+          message: extractApiErrorMessage(error, "Could not delete team"),
         };
       }
     },

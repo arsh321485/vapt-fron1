@@ -87,18 +87,25 @@
                             <span>{{ selectedRoleText2 || 'Select roles' }}</span>
                             <i class="bi bi-chevron-down"></i>
                           </div>
-                          <div class="dropdown-list" v-show="isOpen.dropdown2">
-                            <label v-for="option in roleOptions" :key="option.short">
-                              <input
-                                type="checkbox"
-                                :value="option.short"
-                                v-model="selectedRoles2"
-                                @change="onRoleToggle2(option, $event)"
-                              />
-                              <TeamNameText :name="option.full" />
-                            </label>
+                          <div class="dropdown-list yt-role-list" v-show="isOpen.dropdown2">
+                            <template v-for="(option, optionIndex) in allRoleOptions" :key="option.short">
+                              <div v-if="showYourTeamsDivider(option, optionIndex)" class="yt-role-divider">Your teams</div>
+                              <label>
+                                <input
+                                  type="checkbox"
+                                  :value="option.short"
+                                  v-model="selectedRoles2"
+                                  @change="onRoleToggle2(option, $event)"
+                                />
+                                <TeamNameText v-if="!option.custom" :name="option.full" />
+                                <span v-else class="yt-custom-role-name" :style="{ color: customTeamColor({ id: option.short }) }">{{ option.full }}</span>
+                              </label>
+                            </template>
                           </div>
                         </div>
+                        <button type="button" class="yt-modal-create" @click="openCreateTeamModal(true)">
+                          + Create Team
+                        </button>
                       </div>
 
                       <div class="col-md-4">
@@ -145,11 +152,11 @@
               <div class="col-12">
                 <div class="d-flex justify-content-between tab-wrapper position-relative">
                   <p
-                    v-for="(tab, index) in tabs"
-                    :key="index"
+                    v-for="(tab, index) in teamTabs"
+                    :key="tab.id || tab.name"
                     class="nav-item yt-team-tab"
-                    :class="[{ active: activeTab === index }, getTeamTextClass(tab.name)]"
-                    :style="{ width: tabWidth + '%', ...getTeamTabNavStyle(tab.name, activeTab === index) }"
+                    :class="[{ active: activeTab === index }, tab.custom ? '' : getTeamTextClass(tab.name)]"
+                    :style="{ width: tabWidth + '%', ...tabNavStyle(tab, activeTab === index) }"
                     @click="selectTab(index)"
                   >
                     {{ tab.name }}
@@ -159,16 +166,17 @@
                     :style="{
                       width: tabWidth + '%',
                       left: tabWidth * activeTab + '%',
-                      ...getTeamTabUnderlineStyle(tabs[activeTab]?.name),
+                      backgroundColor: teamTabs[activeTab]?.custom
+                        ? customTeamColor(teamTabs[activeTab])
+                        : getTeamColor(teamTabs[activeTab]?.name),
                     }"
                   ></div>
-
                 </div>
               </div>
 
               <div class="col-12 mt-4">
                 <!-- Dynamic Content per Tab -->
-                <div v-for="(tab, index) in tabs" :key="index" v-show="activeTab === index">
+                <div v-for="(tab, index) in teamTabs" :key="tab.id || tab.name" v-show="activeTab === index">
 
                     <!-- ================= INTERNAL SECTION ================= -->
                     <div class="team-section mb-5">
@@ -221,16 +229,20 @@
         <i class="bi bi-chevron-down"></i>
       </div>
 
-      <div class="dropdown-list" v-show="isOpen[user._id]">
-        <label v-for="option in roleOptions" :key="option.short">
-          <input
-            type="checkbox"
-            :value="option.short"
-            v-model="selectedRoles[user._id]"
-            @change="handleRoleChange($event, user, option)"
-          />
-          <TeamNameText :name="option.full" />
-        </label>
+      <div class="dropdown-list yt-role-list" v-show="isOpen[user._id]">
+        <template v-for="(option, optionIndex) in allRoleOptions" :key="option.short">
+          <div v-if="showYourTeamsDivider(option, optionIndex)" class="yt-role-divider">Your teams</div>
+          <label>
+            <input
+              type="checkbox"
+              :value="option.short"
+              v-model="selectedRoles[user._id]"
+              @change="handleRoleChange($event, user, option)"
+            />
+            <TeamNameText v-if="!option.custom" :name="option.full" />
+            <span v-else class="yt-custom-role-name" :style="{ color: customTeamColor({ id: option.short }) }">{{ option.full }}</span>
+          </label>
+        </template>
       </div>
     </div>
 
@@ -309,12 +321,16 @@
                                       <i class="bi bi-chevron-down"></i>
                                     </div>
 
-                                    <div class="dropdown-list" v-show="isOpen[user._id]">
-                                      <label v-for="option in roleOptions" :key="option.short">
-                                        <input type="checkbox" :value="option.short" v-model="selectedRoles[user._id]"
-                                          @change="handleRoleChange($event, user, option)" />
-                                        <TeamNameText :name="option.full" />
-                                      </label>
+                                    <div class="dropdown-list yt-role-list" v-show="isOpen[user._id]">
+                                      <template v-for="(option, optionIndex) in allRoleOptions" :key="option.short">
+                                        <div v-if="showYourTeamsDivider(option, optionIndex)" class="yt-role-divider">Your teams</div>
+                                        <label>
+                                          <input type="checkbox" :value="option.short" v-model="selectedRoles[user._id]"
+                                            @change="handleRoleChange($event, user, option)" />
+                                          <TeamNameText v-if="!option.custom" :name="option.full" />
+                                          <span v-else class="yt-custom-role-name" :style="{ color: customTeamColor({ id: option.short }) }">{{ option.full }}</span>
+                                        </label>
+                                      </template>
                                     </div>
                                   </div>
 
@@ -349,7 +365,7 @@
       :show="showAssignmentModal"
       :active-role="activeAssignmentRole"
       :selected-roles="selectedRoles2"
-      :role-options="roleOptions"
+      :role-options="allRoleOptions"
       :role-assignments="roleAssignments"
       :catalog="roleAssignmentCatalog"
       :catalog-loading="catalogLoading"
@@ -358,6 +374,7 @@
       @close="closeAssignmentModal"
       @apply="applyAssignmentModal"
     />
+    <CreateCustomTeamModal ref="createTeamModal" @created="onCustomTeamCreated" />
   </main>
 </template>
 
@@ -365,6 +382,7 @@
 import DashboardMenu from '@/components/admin-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/admin-component/DashboardHeader.vue';
 import RoleAssignmentDrawer from '@/components/admin-component/RoleAssignmentDrawer.vue';
+import CreateCustomTeamModal from '@/components/admin-component/CreateCustomTeamModal.vue';
 import VulnFreeAssetsDropdown from '@/components/admin-component/VulnFreeAssetsDropdown.vue';
 import { useAuthStore } from "@/stores/authStore";
 import { isRealScanHost } from "@/utils/assetDummyData";
@@ -381,6 +399,11 @@ import {
   clearRoleAssignments,
   resetAllRoleAssignments,
   uniqueCatalogAssets,
+  FIXED_ROLE_OPTIONS,
+  customRoleOptions,
+  fullToRoleShort,
+  shortToRoleFull,
+  ensureRoleBucket,
 } from '@/utils/roleAssignmentData';
 import { isFreemiumTeamLimitMessage } from '@/utils/planLimits';
 import Swal from 'sweetalert2';
@@ -391,6 +414,7 @@ export default {
     DashboardMenu,
     DashboardHeader,
     RoleAssignmentDrawer,
+    CreateCustomTeamModal,
     VulnFreeAssetsDropdown,
   },
   data() {
@@ -400,21 +424,12 @@ export default {
       selectedRoles1: [],
       selectedRoles2: [],
       selectedRoles3: [],
-      roleOptions: [
-        { short: 'PM', full: 'Patch Management' },
-        { short: 'CM', full: 'Configuration Management' },
-        { short: 'NS', full: 'Network Security' },
-        { short: 'AF', full: 'Architectural Flaws' }
-      ],
+      roleOptions: FIXED_ROLE_OPTIONS,
+      customTeams: [],
+      selectCreatedTeam: false,
+      tabLine: { left: '0px', width: '0px', backgroundColor: '#5b21b6' },
       linkCopied: false,
       activeTab: 0,
-      tabs: [
-        { name: "Patch Management" },
-        { name: "Configuration Management" },
-        { name: "Network Security" },
-        { name: "Architectural Flaws" },
-        // { name: "Assign IP to Team" }
-      ],
       authStore: useAuthStore(),
       users: [],
       isOpen: {},
@@ -453,7 +468,26 @@ export default {
       return this.selectedRoles1.length > 0 ? this.selectedRoles1.join(', ') : 'Select roles';
     },
     selectedRoleText2() {
-      return this.selectedRoles2.length > 0 ? this.selectedRoles2.join(', ') : 'Select roles';
+      const labels = this.selectedRoles2
+        .map((short) => shortToRoleFull(short, this.customTeams))
+        .filter(Boolean);
+      return labels.length ? labels.join(', ') : '';
+    },
+    allRoleOptions() {
+      return [...this.roleOptions, ...customRoleOptions(this.customTeams)];
+    },
+    teamTabs() {
+      return [
+        { name: 'Patch Management', custom: false },
+        { name: 'Configuration Management', custom: false },
+        { name: 'Network Security', custom: false },
+        { name: 'Architectural Flaws', custom: false },
+        ...this.customTeams.map((team) => ({
+          name: team.name,
+          id: team.id,
+          custom: true,
+        })),
+      ];
     },
     selectedRoleText3() {
       return this.selectedRoles3.length > 0 ? this.selectedRoles3.join(', ') : 'Select roles';
@@ -487,10 +521,10 @@ export default {
         : 'Select Role';
     },
     isAssignIpTab() {
-      return this.tabs[this.activeTab].name === "Assign IP to Team";
+      return this.teamTabs[this.activeTab]?.name === "Assign IP to Team";
     },
     tabWidth() {
-      return 100 / this.tabs.length;
+      return 100 / (this.teamTabs.length || 1);
     },
     vulnFreeAssets() {
       // One combined list across all selected team roles, each host once.
@@ -536,6 +570,7 @@ export default {
   },
   async openAssignmentModal(roleShort) {
     if (!roleShort || !this.selectedRoles2.includes(roleShort)) return;
+    ensureRoleBucket(this.roleAssignments, roleShort);
     this.activeAssignmentRole = roleShort;
     this.showAssignmentModal = true;
 
@@ -545,16 +580,12 @@ export default {
       this.roleAssignmentCatalog[roleShort]?.vulnerabilities?.length
     ) return;
 
-    const roleFullMap = {
-      PM: 'Patch Management',
-      CM: 'Configuration Management',
-      NS: 'Network Security',
-      AF: 'Architectural Flaws',
-    };
+    const roleName = shortToRoleFull(roleShort, this.customTeams);
+    if (!roleName) return;
 
     this.catalogLoading = true;
     try {
-      const res = await this.authStore.fetchReportAssetVulnsByRole(roleFullMap[roleShort]);
+      const res = await this.authStore.fetchReportAssetVulnsByRole(roleName);
       if (!res.status || !res.data) {
         this.roleAssignmentCatalog = {
           ...this.roleAssignmentCatalog,
@@ -628,6 +659,9 @@ export default {
   },
   resetRoleAssignments() {
     resetAllRoleAssignments(this.roleAssignments);
+    Object.keys(this.roleAssignments).forEach((key) => {
+      if (!["PM", "CM", "NS", "AF"].includes(key)) delete this.roleAssignments[key];
+    });
     this.activeAssignmentRole = null;
     this.closeAssignmentModal();
     // Reset catalog so fresh data is fetched next time
@@ -645,16 +679,8 @@ export default {
       return;
     }
 
-    // 🧠 Role mapping
-    const roleFullMap = {
-      PM: "Patch Management",
-      CM: "Configuration Management",
-      NS: "Network Security",
-      AF: "Architectural Flaws",
-    };
-
     const memberRoles = this.selectedRoles2
-      .map(short => roleFullMap[short])
+      .map(short => shortToRoleFull(short, this.customTeams))
       .filter(Boolean);
 
     // ❗ Basic validation
@@ -674,7 +700,7 @@ export default {
     // Build role_assignments from drawer selections
     const role_assignments = {};
     this.selectedRoles2.forEach(roleShort => {
-      const fullName = roleFullMap[roleShort];
+      const fullName = shortToRoleFull(roleShort, this.customTeams);
       const ra = this.roleAssignments[roleShort];
       if (!ra) return;
       const assets = [...(ra.assets || [])];
@@ -727,13 +753,7 @@ const newUser = res.data;
 this.users.unshift(newUser);
 
 // ✅ 🔑 INITIALIZE DROPDOWN STATE FOR NEW USER
-this.selectedRoles[newUser._id] =
-  newUser.Member_role?.map(full => this.roleMapping[full]) || [];
-
-this.selectedRoleText[newUser._id] =
-  this.selectedRoles[newUser._id].join(", ");
-
-this.isOpen[newUser._id] = false;
+this.applyUserRoleState(newUser);
 
 
     // 🔁 Reset modal
@@ -758,7 +778,10 @@ this.isOpen[newUser._id] = false;
           this.authStore.cachedUsersByAdmin = [];
           this.authStore.usersByAdminFetched = false;
           const refreshed = await this.authStore.fetchUsersByAdmin();
-          if (refreshed.status) this.users = refreshed.data;
+          if (refreshed.status) {
+            this.users = refreshed.data;
+            this.users.forEach((user) => this.applyUserRoleState(user));
+          }
         }, 3000);
       });
     }
@@ -813,6 +836,108 @@ this.isOpen[newUser._id] = false;
       // ✅ RESET subtabs every time role changes
       this.internalSubTab = "list";
       this.externalSubTab = "list";
+      this.$nextTick(() => this.updateTabLine());
+    },
+    customTeamColor(tab) {
+      const palette = ['#f97316', '#16a34a', '#e11d48', '#ca8a04', '#4f46e5', '#0f766e'];
+      const index = this.customTeams.findIndex((team) => String(team.id) === String(tab?.id));
+      return palette[(index >= 0 ? index : 0) % palette.length];
+    },
+    tabNavStyle(tab, isActive) {
+      if (tab?.custom) {
+        const color = this.customTeamColor(tab);
+        return {
+          color,
+          fontWeight: '600',
+          textShadow: isActive ? `0 2px 10px ${color}59` : 'none',
+        };
+      }
+      return getTeamTabNavStyle(tab?.name, isActive);
+    },
+    showYourTeamsDivider(option, optionIndex) {
+      return option.custom && (optionIndex === 0 || !this.allRoleOptions[optionIndex - 1]?.custom);
+    },
+    applyUserRoleState(user) {
+      if (!user?._id) return;
+      const shorts = (user.Member_role || [])
+        .map((full) => fullToRoleShort(full, this.customTeams))
+        .filter(Boolean);
+      this.selectedRoles[user._id] = shorts;
+      this.selectedRoleText[user._id] = shorts
+        .map((short) => shortToRoleFull(short, this.customTeams))
+        .filter(Boolean)
+        .join(', ');
+      this.isOpen[user._id] = this.isOpen[user._id] || false;
+    },
+    updateTabLine() {
+      const bar = this.$refs.tabBar;
+      const btn = bar?.querySelectorAll?.('.yt-tab')?.[this.activeTab];
+      const tab = this.teamTabs[this.activeTab];
+      if (!btn || !tab) return;
+      this.tabLine = {
+        left: `${btn.offsetLeft}px`,
+        width: `${btn.offsetWidth}px`,
+        backgroundColor: tab.custom ? '#0f696e' : getTeamColor(tab.name),
+      };
+    },
+    openCreateTeamModal(selectAfter) {
+      this.selectCreatedTeam = !!selectAfter;
+      this.isOpen.dropdown2 = false;
+      this.$refs.createTeamModal?.open();
+    },
+    onCustomTeamCreated(team) {
+      const id = String(team?.id || '');
+      if (!id) return;
+      if (!this.customTeams.some((item) => String(item.id) === id)) {
+        this.customTeams.push(team);
+      }
+      ensureRoleBucket(this.roleAssignments, id);
+      if (this.selectCreatedTeam) {
+        if (!this.selectedRoles2.includes(id)) this.selectedRoles2.push(id);
+        this.openAssignmentModal(id);
+        this.$nextTick(() => this.updateTabLine());
+        return;
+      }
+      const index = this.teamTabs.findIndex((tab) => tab.id === id);
+      if (index >= 0) this.selectTab(index);
+    },
+    async loadCustomTeams() {
+      const res = await this.authStore.listCustomTeams();
+      if (res.status) this.customTeams = res.data || [];
+      this.$nextTick(() => this.updateTabLine());
+    },
+    async confirmDeleteCustomTeam(tab) {
+      if (!tab?.id) return;
+      const result = await Swal.fire({
+        icon: 'warning',
+        title: 'Delete this team?',
+        text: `"${tab.name}" will be removed. Members stay in the workspace.`,
+        showCancelButton: true,
+        confirmButtonText: 'Delete team',
+        confirmButtonColor: '#b91c1c',
+      });
+      if (!result.isConfirmed) return;
+      const res = await this.authStore.deleteCustomTeam(tab.id);
+      if (!res.status) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Could not delete team',
+          text: res.message || 'Please try again.',
+          confirmButtonColor: '#0f696e',
+        });
+        return;
+      }
+      const index = this.teamTabs.findIndex((item) => item.id === tab.id);
+      this.customTeams = this.customTeams.filter((item) => item.id !== tab.id);
+      this.selectedRoles2 = this.selectedRoles2.filter((short) => short !== tab.id);
+      clearRoleAssignments(this.roleAssignments, tab.id);
+      if (this.activeTab === index || this.activeTab >= this.teamTabs.length) {
+        this.activeTab = 0;
+      } else if (this.activeTab > index) {
+        this.activeTab -= 1;
+      }
+      this.users.forEach((user) => this.applyUserRoleState(user));
+      this.$nextTick(() => this.updateTabLine());
     },
     copyLink() {
       const copyText = document.getElementById("shareLink");
@@ -878,7 +1003,7 @@ this.isOpen[newUser._id] = false;
 
     //  Remove user from current role tab
     async removeUserFromCurrentTab(user) {
-      const roleToRemove = this.tabs[this.activeTab].name; // now matches backend exactly
+      const roleToRemove = this.teamTabs[this.activeTab].name; // now matches backend exactly
 
       try {
         console.log('Deleting role', { confirm: true, member_role: roleToRemove });
@@ -1001,7 +1126,7 @@ async deleteRoleFromUser(user, roleToRemove) {
       Swal.fire("Error", res.message, "error");
 
       // revert checkbox
-      const shortCode = this.roleMapping[roleToRemove];
+      const shortCode = fullToRoleShort(roleToRemove, this.customTeams);
       if (shortCode && !this.selectedRoles[user._id].includes(shortCode)) {
         this.selectedRoles[user._id].push(shortCode);
       }
@@ -1010,12 +1135,7 @@ async deleteRoleFromUser(user, roleToRemove) {
 
     // ✅ Update UI from store response
     user.Member_role = res.remaining_roles || [];
-
-    this.selectedRoles[user._id] =
-      user.Member_role.map(full => this.roleMapping[full]) || [];
-
-    this.selectedRoleText[user._id] =
-      this.selectedRoles[user._id].join(", ");
+    this.applyUserRoleState(user);
 
     Swal.fire({
       icon: "success",
@@ -1062,10 +1182,10 @@ async deleteRoleFromUser(user, roleToRemove) {
     },
 
     async updateSelectedRoleText(userId) {
-      this.selectedRoleText[userId] = this.selectedRoles[userId].join(", ");
-      const fullRoles = this.selectedRoles[userId].map(short =>
-        Object.keys(this.roleMapping).find(key => this.roleMapping[key] === short)
-      );
+      const fullRoles = (this.selectedRoles[userId] || [])
+        .map((short) => shortToRoleFull(short, this.customTeams))
+        .filter(Boolean);
+      this.selectedRoleText[userId] = fullRoles.join(', ');
       const res = await this.authStore.updateUserRoles(userId, fullRoles);
 
       if (res.status) {
@@ -1110,33 +1230,35 @@ async deleteRoleFromUser(user, roleToRemove) {
           this.authStore.cachedUsersByAdmin = [];
           this.authStore.usersByAdminFetched = false;
           const refreshed = await this.authStore.fetchUsersByAdmin();
-          if (refreshed.status) this.users = refreshed.data;
+          if (refreshed.status) {
+            this.users = refreshed.data;
+            this.users.forEach((user) => this.applyUserRoleState(user));
+          }
         }, 3000);
       });
     }
 
+    await this.loadCustomTeams();
     const res = await this.authStore.fetchUsersByAdmin();
 
     if (res.status) {
       this.users = res.data;
 
       this.users.forEach(user => {
-        this.selectedRoles[user._id] =
-          user.Member_role?.map(full => this.roleMapping[full]) || [];
-
-        this.selectedRoleText[user._id] =
-          this.selectedRoles[user._id].join(", ");
-
-        this.isOpen[user._id] = false;
+        this.applyUserRoleState(user);
       });
 
       console.log("✅ Users loaded for admin:", this.users);
     } else {
       console.error("❌ Failed to load users:", res.message);
     }
+    this._onTabResize = () => this.updateTabLine();
+    window.addEventListener('resize', this._onTabResize);
+    this.$nextTick(() => this.updateTabLine());
   },
   beforeUnmount() {
     document.removeEventListener('click', this.onClickOutside);
+    window.removeEventListener('resize', this._onTabResize);
   }
 };
 </script>
@@ -1559,6 +1681,52 @@ async deleteRoleFromUser(user, roleToRemove) {
   bottom: 0;
   height: 3px;
   transition: all 0.3s ease;
+}
+
+.yt-modal-create {
+  margin-top: 8px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #0f696e;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.yt-role-list {
+  max-height: 280px;
+}
+
+.yt-role-divider {
+  margin: 4px 10px 2px;
+  padding-top: 8px;
+  border-top: 1px solid #e2e8f0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.yt-custom-role-name {
+  color: #0f696e;
+  font-weight: 600;
+}
+
+.yt-create-inline {
+  display: flex;
+  width: 100%;
+  border: none;
+  border-top: 1px solid #e2e8f0;
+  background: #f0fdfa;
+  color: #0f696e;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 10px 12px;
+  cursor: pointer;
+  position: sticky;
+  bottom: 0;
 }
 
 .nav-item {

@@ -93,16 +93,24 @@
                 </div>
                 <teleport to="body">
                   <div v-if="isRoleOpen" class="loc-dropdown-list" :style="roleDropdownStyle">
-                    <label v-for="role in roleOptions" :key="role.short" class="loc-dropdown-item">
-                      <input
-                        type="checkbox"
-                        :value="role.short"
-                        v-model="selectedRoles"
-                        class="me-2"
-                        @change="onRoleToggle(role, $event)"
-                      />
-                      {{ role.full }}
-                    </label>
+                    <template v-for="(role, roleIndex) in allRoleOptions" :key="role.short">
+                      <div v-if="role.custom && (roleIndex === 0 || !allRoleOptions[roleIndex - 1]?.custom)" class="loc-role-divider">
+                        Your teams
+                      </div>
+                      <label class="loc-dropdown-item">
+                        <input
+                          type="checkbox"
+                          :value="role.short"
+                          v-model="selectedRoles"
+                          class="me-2"
+                          @change="onRoleToggle(role, $event)"
+                        />
+                        <span :class="{ 'loc-custom-role': role.custom }">{{ role.full }}</span>
+                      </label>
+                    </template>
+                    <button type="button" class="loc-create-team" @click.stop="openCreateTeamModal">
+                      + Create Team
+                    </button>
                   </div>
                 </teleport>
                 <div v-if="selectedRoles.length" class="loc-assignment-summary">
@@ -242,7 +250,7 @@
       :show="showAssignmentModal"
       :active-role="activeAssignmentRole"
       :selected-roles="selectedRoles"
-      :role-options="roleOptions"
+      :role-options="allRoleOptions"
       :role-assignments="roleAssignments"
       :catalog="roleAssignmentCatalog"
       :catalog-loading="catalogLoading"
@@ -251,12 +259,14 @@
       @close="closeAssignmentModal"
       @apply="applyAssignmentModal"
     />
+    <CreateCustomTeamModal ref="createTeamModal" @created="onCustomTeamCreated" />
   </main>
 </template>
 
 <script>
 import DashboardHeader from "@/components/admin-component/DashboardHeader.vue";
 import RoleAssignmentDrawer from "@/components/admin-component/RoleAssignmentDrawer.vue";
+import CreateCustomTeamModal from "@/components/admin-component/CreateCustomTeamModal.vue";
 import VulnFreeAssetsDropdown from "@/components/admin-component/VulnFreeAssetsDropdown.vue";
 import { useAuthStore } from "@/stores/authStore";
 import { isRealScanHost } from "@/utils/assetDummyData";
@@ -272,6 +282,10 @@ import {
   clearRoleAssignments,
   resetAllRoleAssignments,
   uniqueCatalogAssets,
+  FIXED_ROLE_OPTIONS,
+  customRoleOptions,
+  shortToRoleFull,
+  ensureRoleBucket,
 } from "@/utils/roleAssignmentData";
 
 export default {
@@ -279,6 +293,7 @@ export default {
   components: {
     DashboardHeader,
     RoleAssignmentDrawer,
+    CreateCustomTeamModal,
     VulnFreeAssetsDropdown,
   },
   data() {
@@ -297,12 +312,8 @@ export default {
         user_type: "",
         email: "",
       },
-      roleOptions: [
-        { short: "PM", full: "Patch Management" },
-        { short: "CM", full: "Configuration Management" },
-        { short: "NS", full: "Network Security" },
-        { short: "AF", full: "Architectural Flaws" }
-      ],
+      roleOptions: FIXED_ROLE_OPTIONS,
+      customTeams: [],
       showAssignmentModal: false,
       activeAssignmentRole: null,
       roleAssignments: createEmptyRoleAssignments(),
@@ -329,8 +340,12 @@ export default {
     },
     selectedRoleLabels() {
       return this.selectedRoles
-        .map((r) => this.roleOptions.find((o) => o.short === r)?.full || r)
+        .map((r) => shortToRoleFull(r, this.customTeams))
+        .filter(Boolean)
         .join(", ");
+    },
+    allRoleOptions() {
+      return [...this.roleOptions, ...customRoleOptions(this.customTeams)];
     },
     vulnFreeAssets() {
       // One combined list across all selected team roles, each host once.
@@ -423,9 +438,28 @@ export default {
     },
     async openAssignmentModal(roleShort) {
       if (!roleShort || !this.selectedRoles.includes(roleShort)) return;
+      ensureRoleBucket(this.roleAssignments, roleShort);
       this.activeAssignmentRole = roleShort;
       this.showAssignmentModal = true;
       await this.loadRoleCatalog(roleShort);
+    },
+    openCreateTeamModal() {
+      this.isRoleOpen = false;
+      this.$refs.createTeamModal?.open();
+    },
+    onCustomTeamCreated(team) {
+      const id = String(team?.id || "");
+      if (!id) return;
+      if (!this.customTeams.some((item) => String(item.id) === id)) {
+        this.customTeams.push(team);
+      }
+      ensureRoleBucket(this.roleAssignments, id);
+      if (!this.selectedRoles.includes(id)) this.selectedRoles.push(id);
+      this.openAssignmentModal(id);
+    },
+    async loadCustomTeams() {
+      const res = await this.authStore.listCustomTeams();
+      if (res.status) this.customTeams = res.data || [];
     },
     async loadRoleCatalog(roleShort) {
       // Loaded (even if empty) or already in flight → skip. Checking assets
@@ -442,12 +476,8 @@ export default {
     },
     async fetchRoleCatalog(roleShort) {
 
-      const roleFullMap = {
-        PM: 'Patch Management',
-        CM: 'Configuration Management',
-        NS: 'Network Security',
-        AF: 'Architectural Flaws',
-      };
+      const roleName = shortToRoleFull(roleShort, this.customTeams);
+      if (!roleName) return;
 
       this.catalogLoading = true;
       try {
@@ -459,7 +489,7 @@ export default {
             localStorage.setItem('reportId', status.reportId);
           }
         } catch (_) { /* fall back to the cached report id */ }
-        const res = await this.authStore.fetchReportAssetVulnsByRole(roleFullMap[roleShort]);
+        const res = await this.authStore.fetchReportAssetVulnsByRole(roleName);
         if (!res.status || !res.data) {
           this.roleAssignmentCatalog = {
             ...this.roleAssignmentCatalog,
@@ -531,6 +561,9 @@ export default {
       resetAllRoleAssignments(this.roleAssignments);
       this.activeAssignmentRole = null;
       this.closeAssignmentModal();
+      Object.keys(this.roleAssignments).forEach((key) => {
+        if (!["PM", "CM", "NS", "AF"].includes(key)) delete this.roleAssignments[key];
+      });
       this.roleAssignmentCatalog = { PM: { assets: [], vulnerabilities: [] }, CM: { assets: [], vulnerabilities: [] }, NS: { assets: [], vulnerabilities: [] }, AF: { assets: [], vulnerabilities: [] } };
       this.vulnIdToData = {};
       this.catalogLoading = false;
@@ -553,9 +586,9 @@ export default {
 
       this.platformImportLoading = true;
       try {
-        const memberRoles = this.selectedRoles.map(
-          (r) => this.roleOptions.find((o) => o.short === r)?.full || r,
-        );
+        const memberRoles = this.selectedRoles
+          .map((r) => shortToRoleFull(r, this.customTeams))
+          .filter(Boolean);
         const res = await this.authStore.importPlatformMemberToDatabase({
           email,
           memberRoles,
@@ -610,14 +643,8 @@ export default {
           return;
         }
 
-        const roleFullMap = {
-          PM: "Patch Management",
-          CM: "Configuration Management",
-          NS: "Network Security",
-          AF: "Architectural Flaws",
-        };
         const memberRoles = this.selectedRoles
-          .map((short) => roleFullMap[short])
+          .map((short) => shortToRoleFull(short, this.customTeams))
           .filter(Boolean);
         if (!memberRoles.length) {
           Swal.fire("Missing Field", "Please select at least one Role.", "warning");
@@ -627,7 +654,7 @@ export default {
         const platform = this.authStore.detectAdminCommunicationPlatform();
         const role_assignments = {};
         this.selectedRoles.forEach((roleShort) => {
-          const fullName = roleFullMap[roleShort];
+          const fullName = shortToRoleFull(roleShort, this.customTeams);
           const ra = this.roleAssignments[roleShort];
           if (!ra || !fullName) return;
           const assets = [...(ra.assets || [])];
@@ -952,6 +979,7 @@ export default {
     } catch {
       /* keep current session user */
     }
+    await this.loadCustomTeams();
     await this.loadAddedUsers();
     if (this.hasTeamsIntegration) {
       await this.authStore.ensureTeamsChannelsCached();
@@ -1377,9 +1405,38 @@ export default {
   padding: 6px;
   min-width: 200px;
   width: auto;
+  max-height: 320px;
+  overflow-y: auto;
 }
 .loc-dropdown-item { display: flex; align-items: center; padding: 8px 10px; font-size: 0.82rem; cursor: pointer; border-radius: 6px; white-space: nowrap; color: #1e293b; font-weight: 500; }
 .loc-dropdown-item:hover { background: #f0fdf9; color: #0f696e; }
+.loc-role-divider {
+  margin: 4px 8px 2px;
+  padding-top: 8px;
+  border-top: 1px solid #e2e8f0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+.loc-custom-role { color: #0f696e; font-weight: 600; }
+.loc-create-team {
+  display: flex;
+  width: 100%;
+  margin-top: 4px;
+  border: none;
+  border-top: 1px solid #e2e8f0;
+  background: #f0fdfa;
+  color: #0f696e;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 10px 12px;
+  cursor: pointer;
+  position: sticky;
+  bottom: 0;
+  border-radius: 0 0 6px 6px;
+}
 
 .loc-slack-badge {
   display: inline-flex;

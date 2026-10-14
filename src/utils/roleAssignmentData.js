@@ -125,3 +125,45 @@ export function resetAllRoleAssignments(roleAssignments) {
     clearRoleAssignments(roleAssignments, roleShort);
   });
 }
+
+export const FIXED_ROLE_OPTIONS = [
+  { short: "PM", full: "Patch Management" },
+  { short: "CM", full: "Configuration Management" },
+  { short: "NS", full: "Network Security" },
+  { short: "AF", full: "Architectural Flaws" },
+];
+
+export function customRoleOptions(teams) {
+  return (teams || [])
+    .filter((team) => team && team.id != null && String(team.name || "").trim())
+    .map((team) => ({
+      short: String(team.id),
+      full: String(team.name).trim(),
+      custom: true,
+    }));
+}
+
+export function fullToRoleShort(fullName, customTeams = []) {
+  const name = String(fullName || "").trim().toLowerCase();
+  if (!name) return "";
+  const fixed = FIXED_ROLE_OPTIONS.find((option) => option.full.toLowerCase() === name);
+  if (fixed) return fixed.short;
+  const team = (customTeams || []).find(
+    (item) => String(item?.name || "").trim().toLowerCase() === name,
+  );
+  return team ? String(team.id) : "";
+}
+
+export function shortToRoleFull(short, customTeams = []) {
+  const fixed = FIXED_ROLE_OPTIONS.find((option) => option.short === short);
+  if (fixed) return fixed.full;
+  const team = (customTeams || []).find((item) => String(item?.id) === String(short));
+  return team ? String(team.name).trim() : "";
+}
+
+export function ensureRoleBucket(bucket, key) {
+  if (!bucket || !key) return;
+  if (!bucket[key]) {
+    bucket[key] = { assets: [], vulnerabilities: [] };
+  }
+}

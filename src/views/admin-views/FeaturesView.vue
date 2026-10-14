@@ -231,7 +231,7 @@
             <div class="fp-example-teams" aria-label="Example custom teams">
               <div class="fp-ex-label">EXAMPLE TEAMS</div>
               <div class="fp-ex"><strong>Finance Applications</strong><em>BY APPLICATION</em></div>
-              <div class="fp-ex"><strong>Mumbai Data Centre</strong><em>BY LOCATION</em></div>
+              <div class="fp-ex"><strong>Regional Data Centre</strong><em>BY LOCATION</em></div>
               <div class="fp-ex"><strong>Cloud Operations</strong><em>BY BUSINESS UNIT</em></div>
               <div class="fp-ex fp-ex-add">+ Add a Team</div>
             </div>
