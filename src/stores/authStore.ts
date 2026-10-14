@@ -425,9 +425,8 @@ function normalizeCustomTeamList(raw: any): { id: string; name: string; created_
         : Array.isArray(raw?.teams)
           ? raw.teams
           : [];
-  return list
-    .map((item: any) => normalizeCustomTeam(item))
-    .filter((item): item is { id: string; name: string; created_at: string } => !!item);
+  const teams = (list as any[]).map((item) => normalizeCustomTeam(item));
+  return teams.filter((item): item is { id: string; name: string; created_at: string } => item != null);
 }
 
 function customTeamErrorMessage(error: any, fallback: string): string {
