@@ -6399,7 +6399,7 @@ export const useAuthStore = defineStore("auth", {
       text: string,
       visibility: string,
       retried = false,
-    ) {
+    ): Promise<{ status: boolean; data?: any; message?: string }> {
       const id = retried
         ? String(reportId || "").trim()
         : await this.resolveLatestUploadedReportId(reportId);
@@ -6441,7 +6441,11 @@ export const useAuthStore = defineStore("auth", {
     },
 
     // Get all support requests by report id
-    async getSupportRequestsByReport(reportId: string, force = false, retried = false) {
+    async getSupportRequestsByReport(
+      reportId: string,
+      force = false,
+      retried = false,
+    ): Promise<{ status: boolean; data: any[]; count: number }> {
       const id = retried
         ? String(reportId || "").trim()
         : await this.resolveLatestUploadedReportId(reportId);
