@@ -6342,24 +6342,83 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    /** Backend rejects any report except the latest upload and returns latest_report_id. */
+    rememberLatestReportId(error: unknown): string | null {
+      let data = (error as AxiosError<any>)?.response?.data;
+      if (typeof data === "string") {
+        try {
+          data = JSON.parse(data);
+        } catch {
+          data = null;
+        }
+      }
+      const latest = String(data?.latest_report_id || data?.latestReportId || "").trim();
+      if (!latest) return null;
+      this.latestReportId = latest;
+      this.reportStatus.reportId = latest;
+      localStorage.setItem("reportId", latest);
+      return latest;
+    },
+
+    saveReportId(reportId: string) {
+      const id = String(reportId || "").trim();
+      if (!id) return;
+      this.latestReportId = id;
+      this.reportStatus.reportId = id;
+      localStorage.setItem("reportId", id);
+    },
+
+    /** Latest uploaded report, not the id left in memory from an older upload. */
+    async resolveLatestUploadedReportId(fallbackId = ""): Promise<string> {
+      const latestRes = await this.fetchLatestUploadedReport();
+      const root = latestRes.data;
+      const payload = Array.isArray(root)
+        ? root[0]
+        : root?.report || root?.data || root || null;
+      const fromLatest = String(
+        payload?.latest_report_id ||
+          payload?.report_id ||
+          payload?.reportId ||
+          root?.latest_report_id ||
+          root?.report_id ||
+          payload?.id ||
+          payload?._id ||
+          "",
+      ).trim();
+      if (fromLatest) {
+        this.saveReportId(fromLatest);
+        return fromLatest;
+      }
+      return String(fallbackId || this.latestReportId || localStorage.getItem("reportId") || "").trim();
+    },
+
     // Admin: POST message on a support request
     async sendAdminSupportMessage(
       reportId: string,
       requestId: string,
       text: string,
       visibility: string,
+      retried = false,
     ) {
+      const id = retried
+        ? String(reportId || "").trim()
+        : await this.resolveLatestUploadedReportId(reportId);
       try {
         const res = await endpoint.post(
-          `/api/admin/adminregister/support-requests/report/${reportId}/`,
+          `/api/admin/adminregister/support-requests/report/${id}/`,
           { request_id: requestId, text, visibility },
         );
         return { status: true, data: res.data };
       } catch (error) {
         const err = error as AxiosError<any>;
+        const latest = this.rememberLatestReportId(error);
+        if (!retried && latest && latest !== id) {
+          return this.sendAdminSupportMessage(latest, requestId, text, visibility, true);
+        }
+        const detail = err.response?.data?.detail;
         return {
           status: false,
-          message: err.response?.data?.detail || err.response?.data?.message || 'Failed to send message',
+          message: (typeof detail === "string" ? detail : "") || err.response?.data?.message || "Failed to send message",
         };
       }
     },
@@ -6382,29 +6441,40 @@ export const useAuthStore = defineStore("auth", {
     },
 
     // Get all support requests by report id
-    async getSupportRequestsByReport(reportId: string, force = false) {
-      if (!force && this.cachedSupportRequests[reportId]) {
+    async getSupportRequestsByReport(reportId: string, force = false, retried = false) {
+      const id = retried
+        ? String(reportId || "").trim()
+        : await this.resolveLatestUploadedReportId(reportId);
+      if (!id) {
+        return { status: false, data: [], count: 0 };
+      }
+      if (!force && this.cachedSupportRequests[id]) {
         return {
           status: true,
-          data: this.cachedSupportRequests[reportId],
-          count: this.cachedSupportRequests[reportId].length,
+          data: this.cachedSupportRequests[id],
+          count: this.cachedSupportRequests[id].length,
         };
       }
       try {
-        console.log("📡 Store API called with:", reportId);
+        console.log("📡 Store API called with:", id);
 
         const res = await endpoint.get(
-          `/api/admin/adminregister/support-requests/report/${reportId}/`,
+          `/api/admin/adminregister/support-requests/report/${id}/`,
         );
 
         const results = res?.data?.results || [];
-        this.cachedSupportRequests[reportId] = results;
+        this.cachedSupportRequests[id] = results;
         return {
           status: true,
           data: results,
           count: res?.data?.count || 0,
         };
       } catch (error) {
+        const latest = this.rememberLatestReportId(error);
+        if (!retried && latest && latest !== id) {
+          delete this.cachedSupportRequests[id];
+          return this.getSupportRequestsByReport(latest, true, true);
+        }
         console.error("❌ Support request API error:", error);
         return {
           status: false,

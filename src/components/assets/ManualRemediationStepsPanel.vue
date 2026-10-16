@@ -248,7 +248,10 @@ import { getTeamColor } from '@/utils/teamColors';
 import { useAuthStore } from '@/stores/authStore';
 import { FREEMIUM_RETEST_MESSAGE } from '@/utils/planLimits';
 import { pickVulnDescription, extractCreatedFixVulnerabilityId } from '@/utils/assetVulnerabilities';
-import { notifyLiveData } from '@/utils/livePageSync';
+import { notifyLiveData, suppressLiveSync } from '@/utils/livePageSync';
+
+/** After OK on the closed alert, keep Send for retest clickable before the row moves down. */
+const RETEST_GRACE_MS = 8000;
 
 /** Keep manual-fix steps in memory so tab switches / remounts do not replay the loader. */
 const fixPanelCache = new Map();
@@ -311,6 +314,8 @@ export default {
       vulnerabilityStatus: '',
       allStepsCompletedFlag: false,
       requestingRetest: false,
+      holdClosedPublish: false,
+      retestGraceTimer: null,
       _fixInitSeq: 0,
       _loadedFixCacheKey: '',
       _fixPollTimer: null,
@@ -426,7 +431,10 @@ export default {
     }
   },
   beforeUnmount() {
+    const stillHolding = this.holdClosedPublish && !this.isInReview;
+    this.clearRetestGraceTimer();
     this.clearFixPoll();
+    if (stillHolding) this.publishClosedMove();
   },
   methods: {
     fixCacheKey(fixId = '') {
@@ -573,13 +581,16 @@ export default {
       if (status) {
         const next = String(status).toLowerCase();
         this.vulnerabilityStatus = next;
-        this.$emit('vulnerability-status-changed', {
-          vulnName: this.vulnName,
-          assetIp: this.assetIp,
-          status: next,
-          all_steps_completed: allDone || next === 'closed',
-        });
-      } else if (allDone) {
+        const closing = allDone || next === 'closed';
+        if (!(this.holdClosedPublish && closing)) {
+          this.$emit('vulnerability-status-changed', {
+            vulnName: this.vulnName,
+            assetIp: this.assetIp,
+            status: next,
+            all_steps_completed: closing,
+          });
+        }
+      } else if (allDone && !this.holdClosedPublish) {
         this.$emit('vulnerability-status-changed', {
           vulnName: this.vulnName,
           assetIp: this.assetIp,
@@ -587,6 +598,33 @@ export default {
           all_steps_completed: true,
         });
       }
+    },
+    clearRetestGraceTimer() {
+      if (this.retestGraceTimer) {
+        clearTimeout(this.retestGraceTimer);
+        this.retestGraceTimer = null;
+      }
+    },
+    publishClosedMove() {
+      this.holdClosedPublish = false;
+      this.$emit('vulnerability-status-changed', {
+        vulnName: this.vulnName,
+        assetIp: this.assetIp,
+        status: 'closed',
+        all_steps_completed: true,
+      });
+      notifyLiveData('fix-step-complete-all');
+    },
+    scheduleClosedMove() {
+      this.clearRetestGraceTimer();
+      this.retestGraceTimer = setTimeout(() => {
+        this.retestGraceTimer = null;
+        if (this.isInReview || this.requestingRetest) {
+          this.holdClosedPublish = false;
+          return;
+        }
+        this.publishClosedMove();
+      }, RETEST_GRACE_MS);
     },
     applyStepProgressFromPost(res, completedTaskId = null) {
       const nextStep = res.next_step ?? null;
@@ -1324,32 +1362,42 @@ export default {
         Swal.fire({ icon: 'error', title: 'Error', text: 'Fix vulnerability session not loaded. Please refresh and try again.', timer: 2500, showConfirmButton: false });
         return;
       }
+      this.holdClosedPublish = true;
       try {
-        const res = await this.authStore.completeUserFixVulnerabilityStep(
+        const res = await suppressLiveSync(() => this.authStore.completeUserFixVulnerabilityStep(
           this.fixVulnerabilityId,
           { complete_all: true, comment: 'All done at once' },
           this.selectedOs,
-        );
+        ));
         if (res.status) {
-          notifyLiveData('fix-step-complete-all');
           this.applyStepProgressFromPost(res);
           await this.refreshStepsFromApi(res);
           const closed =
             res.all_steps_completed
             || String(res.vulnerability_status || '').toLowerCase() === 'closed';
-          Swal.fire({
+          const closedText = res.message || 'All steps done. Vulnerability closed.';
+          await Swal.fire({
             icon: 'success',
             title: closed ? 'Vulnerability closed' : 'All steps completed',
             text: closed
-              ? (res.message || 'All steps done. Case closed — you can Send for retest if needed.')
+              ? `${closedText} After OK, Send for retest stays here for a few seconds.`
               : (res.message || 'All steps completed.'),
-            timer: 2800,
-            showConfirmButton: false,
+            confirmButtonText: 'OK',
+            confirmButtonColor: '#0f696e',
+            allowOutsideClick: false,
           });
+          if (closed && !this.isInReview) {
+            this.scheduleClosedMove();
+          } else {
+            this.holdClosedPublish = false;
+            notifyLiveData('fix-step-complete-all');
+          }
         } else {
+          this.holdClosedPublish = false;
           Swal.fire({ icon: 'error', title: 'Failed', text: res.message || 'Failed to complete all steps', timer: 2000, showConfirmButton: false });
         }
       } catch {
+        this.holdClosedPublish = false;
         Swal.fire({ icon: 'error', title: 'Error', text: 'Network error — please try again.', timer: 2000, showConfirmButton: false });
       }
     },
@@ -1359,6 +1407,8 @@ export default {
         return;
       }
       if (!this.showSendForRetest) return;
+      this.clearRetestGraceTimer();
+      this.holdClosedPublish = false;
       if (this.authStore.automationPremiumRequired) {
         Swal.fire({
           icon: 'info',
@@ -1366,12 +1416,16 @@ export default {
           text: FREEMIUM_RETEST_MESSAGE,
           confirmButtonColor: '#241447',
         });
+        this.holdClosedPublish = true;
+        this.scheduleClosedMove();
         return;
       }
       this.requestingRetest = true;
+      let sent = false;
       try {
         const res = await this.authStore.sendUserFixVerification(this.fixVulnerabilityId);
         if (res.status) {
+          sent = true;
           notifyLiveData('fix-retest-requested');
           const nextStatus = String(
             res.vulnerability_status || 'open/review',
@@ -1380,8 +1434,11 @@ export default {
           this.$emit('vulnerability-status-changed', {
             vulnName: this.vulnName,
             assetIp: this.assetIp,
-            status: nextStatus,
+            status: 'closed',
             all_steps_completed: true,
+            retestSent: true,
+            severity: this.severity,
+            fixVulnerabilityId: this.fixVulnerabilityId,
           });
           Swal.fire({
             icon: 'success',
@@ -1402,6 +1459,10 @@ export default {
         Swal.fire({ icon: 'error', title: 'Error', text: 'Network error — please try again.', timer: 2000, showConfirmButton: false });
       } finally {
         this.requestingRetest = false;
+        if (!sent && !this.isInReview) {
+          this.holdClosedPublish = true;
+          this.scheduleClosedMove();
+        }
       }
     },
     isStepSupportRaised(stepId) {

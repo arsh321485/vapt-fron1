@@ -1059,6 +1059,7 @@ export default {
       currentPage: 1,
       pageSize: 5,
       closedFixVulnerabilities: [],
+      keptFixedRows: {},
       loadingClosedFix: false,
       highlightedFixedId: null,
       supportRequests: [],
@@ -1488,13 +1489,54 @@ class TLSConfigurator:
         }
       });
     },
-    async onVulnStatusChanged({ vulnName, assetIp, status }) {
+    async onVulnStatusChanged(payload) {
+      const { vulnName, assetIp, status, retestSent } = payload || {};
       if (!vulnName || !assetIp) return;
       const s = String(status || '').toLowerCase();
-      if (s && !['closed', 'resolved', 'fixed', 'remediated', 'complete', 'completed'].includes(s)) {
-        return;
-      }
+      const closing = ['closed', 'resolved', 'fixed', 'remediated', 'complete', 'completed'].includes(s);
+      if (!closing && !retestSent) return;
+      if (retestSent) this.rememberSentForRetest(payload);
       await this.loadClosedFixForAsset(this.activeIndex || assetIp);
+    },
+    rememberSentForRetest({ vulnName, assetIp, severity, fixVulnerabilityId }) {
+      const host = String(assetIp || this.activeIndex || '').trim();
+      const name = String(vulnName || '').trim();
+      if (!host || !name) return;
+      const source = (this.authStore.selectedAssetVulnerabilities || []).find((v) => {
+        const n = String(v.vul_name || v.plugin_name || v.vulnerability_name || '').trim().toLowerCase();
+        return n === name.toLowerCase();
+      });
+      const key = `${host.toLowerCase()}::${name.toLowerCase()}`;
+      this.keptFixedRows = {
+        ...(this.keptFixedRows || {}),
+        [key]: {
+          ...(source || {}),
+          vulnerability_name: name,
+          plugin_name: source?.plugin_name || name,
+          vul_name: source?.vul_name || name,
+          host_name: host,
+          asset: host,
+          status: 'closed',
+          severity: source?.severity || severity || '',
+          fix_vulnerability_id: fixVulnerabilityId || source?.fix_vulnerability_id || null,
+        },
+      };
+    },
+    mergeKeptFixedRows(host, rows) {
+      const current = String(host || '').trim().toLowerCase();
+      const list = Array.isArray(rows) ? [...rows] : [];
+      const seen = new Set(
+        list.map((v) => String(v.plugin_name || v.vulnerability_name || v.vul_name || '').trim().toLowerCase()),
+      );
+      Object.values(this.keptFixedRows || {}).forEach((row) => {
+        const rowHost = String(row.host_name || row.asset || '').trim().toLowerCase();
+        if (current && rowHost && rowHost !== current) return;
+        const name = String(row.plugin_name || row.vulnerability_name || row.vul_name || '').trim().toLowerCase();
+        if (!name || seen.has(name)) return;
+        seen.add(name);
+        list.unshift(row);
+      });
+      return list;
     },
     async loadClosedFixForAsset(assetIp) {
       const host = String(assetIp || this.activeIndex || '').trim();
@@ -1505,17 +1547,16 @@ class TLSConfigurator:
       this.loadingClosedFix = true;
       const res = await this.authStore.getUserClosedVulnerabilities(host, this.authStore.userSelectedTeam);
       this.loadingClosedFix = false;
-      if (res.status && res.data?.results) {
-        const current = host.toLowerCase();
-        this.closedFixVulnerabilities = res.data.results.filter((v) => {
+      const current = host.toLowerCase();
+      const fromApi = res.status && res.data?.results
+        ? res.data.results.filter((v) => {
           if (String(v.status || '').toLowerCase() !== 'closed') return false;
           const h = String(v.host_name || v.asset || v.host || '').trim().toLowerCase();
           if (h && current && h !== current) return false;
           return true;
-        });
-      } else {
-        this.closedFixVulnerabilities = [];
-      }
+        })
+        : [];
+      this.closedFixVulnerabilities = this.mergeKeptFixedRows(host, fromApi);
     },
     descriptionText(vuln) {
       return pickVulnDescription(vuln);
