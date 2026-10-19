@@ -949,7 +949,7 @@ import FixAvailableIndicator from '@/components/assets/FixAvailableIndicator.vue
 import AutomationNotSafeBanner from '@/components/assets/AutomationNotSafeBanner.vue';
 import FixPanelHeaderAlerts from '@/components/assets/FixPanelHeaderAlerts.vue';
 import TruncatedVulnName from '@/components/common/TruncatedVulnName.vue';
-import { isAutomationNotAvailable, matchesVulnStatusFilter, isActiveVulnStatus, rowStatusValue, closedVulnHostKey, closedRecordVulnName, closedRecordHostName, buildClosedVulnHostSet, normalizeReportVulnerability, pickVulnDescription, lookupFixVulnerabilityId, lookupRegisterRow, extractFixVulnerabilityId, vulnNameKey } from '@/utils/assetVulnerabilities';
+import { isAutomationNotAvailable, matchesVulnStatusFilter, isActiveVulnStatus, rowStatusValue, closedVulnHostKey, closedRecordVulnName, closedRecordHostName, buildClosedVulnHostSet, normalizeReportVulnerability, hostNamesFromReportVuln, pickVulnDescription, lookupFixVulnerabilityId, lookupRegisterRow, extractFixVulnerabilityId, vulnNameKey } from '@/utils/assetVulnerabilities';
 import {
   ASSET_TYPE_FILTERS,
   assetTypeFromFilterKey,
@@ -960,6 +960,7 @@ import {
   normalizeAssetTypeCounts,
   collectReportHostTypes,
   lookupReportHostType,
+  soleCountedAssetType,
   hasAssetTypeCounts,
   assetTypeCountChips as buildAssetTypeCountChips,
   assetTypeCountForFilter,
@@ -1240,6 +1241,7 @@ export default {
         const openCount = locallyAllClosed
           ? 0
           : (reportOpenCount != null ? reportOpenCount : (g.assets || []).length);
+        const reportHosts = hostNamesFromReportVuln(report);
         return {
           ...g,
           description,
@@ -1248,8 +1250,9 @@ export default {
           total_assets: report.total_assets ?? g.total_assets,
           open_count: openCount,
           status: openCount > 0 ? 'open' : 'closed',
-          // Keep only open hosts in the active assets list when report says fully closed
-          assets: openCount > 0 ? g.assets : [],
+          // Register hosts stay when we have them. A report-only finding still
+          // carries hosts[] — use those so Manual Fix has an asset to load.
+          assets: openCount > 0 ? ((g.assets && g.assets.length) ? g.assets : reportHosts) : [],
         };
       });
       reportByKey.forEach((report, key) => {
@@ -1380,6 +1383,15 @@ export default {
           // automation badge fall back to "In Progress". Fall back to the
           // register's own open, not-closed hosts.
           let visibleAssets = openAssets;
+          if (isOpen && !visibleAssets.length) {
+            visibleAssets = hostNamesFromReportVuln(v).filter((ip) =>
+              !this.isVulnHostHeld(v, ip) &&
+              !this.isVulnHostDeleted(v, ip) &&
+              !closedSet.has(closedVulnHostKey(name, ip)) &&
+              !closedSet.has(closedVulnHostKey(key, ip)) &&
+              !this.isHostClosedInFixRecords(name, ip),
+            );
+          }
           if (isOpen && !visibleAssets.length) {
             visibleAssets = (v.rows || [])
               .filter((r) => isActiveVulnStatus(rowStatusValue(r) || 'open'))
@@ -1755,7 +1767,7 @@ export default {
       return fromReport || fromCatalog || '';
     },
     hostAssetType(ip, vuln) {
-      return this.explicitHostAssetType(ip, vuln) || 'other';
+      return this.explicitHostAssetType(ip, vuln) || soleCountedAssetType(vuln?.asset_type_counts) || 'other';
     },
     assetTypeTabCount(type) {
       // Prefer the backend's own asset_type_totals (from the report's
@@ -1809,7 +1821,7 @@ export default {
     },
     vulnBelongsToType(vuln, wanted, filterKey) {
       if (this.assetsForVulnType(vuln, wanted).length > 0) return true;
-      if ((vuln?.assets || []).length) return false;
+      if ((vuln?.assets || []).length || hostNamesFromReportVuln(vuln).length) return false;
       if (hasAssetTypeCounts(vuln?.asset_type_counts)) {
         return assetTypeCountForFilter(vuln.asset_type_counts, filterKey || wanted) > 0;
       }

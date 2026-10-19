@@ -1,5 +1,46 @@
 /** Normalize API vulnerability rows for asset detail / accordion UI */
 
+import { isRealScanHost } from '@/utils/assetDummyData';
+
+const REPORT_HOST_KEYS = ['host_name', 'hostname', 'host', 'asset', 'ip', 'ip_address', 'target', 'fqdn'];
+
+function pushReportHostName(found, seen, name) {
+  const raw = String(name || '').trim();
+  if (!raw || raw.length > 220 || !isRealScanHost(raw)) return;
+  const key = raw.toLowerCase();
+  if (seen.has(key)) return;
+  seen.add(key);
+  found.push(raw);
+}
+
+/** Host names from a GET .../vulnerabilities/ row (`hosts[]`), not the register. */
+export function hostNamesFromReportVuln(record) {
+  const found = [];
+  const seen = new Set();
+  const take = (node, depth) => {
+    if (!node || depth > 5) return;
+    if (typeof node === 'string' || typeof node === 'number') {
+      pushReportHostName(found, seen, node);
+      return;
+    }
+    if (Array.isArray(node)) {
+      node.forEach((item) => take(item, depth + 1));
+      return;
+    }
+    if (typeof node !== 'object') return;
+    REPORT_HOST_KEYS.forEach((key) => pushReportHostName(found, seen, node[key]));
+    Object.entries(node).forEach(([key, value]) => {
+      if (!value || typeof value !== 'object') return;
+      const childType = value.asset_type ?? value.assetType ?? value.classification;
+      if (childType != null && String(childType).trim() !== '') pushReportHostName(found, seen, key);
+      take(value, depth + 1);
+    });
+  };
+  [record?.hosts, record?.host_list, record?.affected_hosts, record?.affected_assets].forEach((list) => take(list, 0));
+  return found;
+}
+
+
 export function canonSeverity(sev) {
   const s = String(sev || '').trim().toLowerCase();
   if (s === 'critical') return 'Critical';
@@ -326,7 +367,7 @@ export function normalizeReportVulnerability(v) {
     asset_type_counts: v.asset_type_counts && typeof v.asset_type_counts === 'object'
       ? v.asset_type_counts
       : null,
-    assets: [],
+    assets: hostNamesFromReportVuln(v),
     rows: [],
     description: pickVulnDescription(v),
     selected: false,
