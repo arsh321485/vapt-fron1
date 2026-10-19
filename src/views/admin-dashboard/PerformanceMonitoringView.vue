@@ -27,7 +27,7 @@
 
               <!-- Team Cards Grid -->
               <div class="pm-cards-grid">
-                <div v-for="cfg in teamConfigs" :key="cfg.name" class="pm-team-card" :style="{ borderTop: '4px solid ' + cfg.color }">
+                <div v-for="cfg in visibleTeamConfigs" :key="cfg.name" class="pm-team-card" :style="{ borderTop: '4px solid ' + cfg.color }">
                   <!-- Card Header -->
                   <div class="d-flex justify-content-between align-items-start mb-4">
                     <div>
@@ -105,7 +105,7 @@
 import DashboardMenu from '@/components/admin-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/admin-component/DashboardHeader.vue';
 import { useAuthStore } from '@/stores/authStore';
-import { PERFORMANCE_TEAM_CONFIGS } from '@/utils/teamColors';
+import { PERFORMANCE_TEAM_CONFIGS, colorForTeamName } from '@/utils/teamColors';
 
 export default {
   name: 'PerformanceMonitoringView',
@@ -114,8 +114,31 @@ export default {
     return {
       loading: false,
       teamDetail: {},
-      teamConfigs: [...PERFORMANCE_TEAM_CONFIGS],
     };
+  },
+  computed: {
+    visibleTeamConfigs() {
+      const detail = this.teamDetail || {};
+      const names = Object.keys(detail).filter((name) => {
+        const label = String(name || '').toLowerCase().trim();
+        if (!label || label === 'unassigned' || label === 'none' || label === 'n/a') return false;
+        const row = detail[name];
+        return row && typeof row === 'object' && !Array.isArray(row)
+          && ('total' in row || 'open' in row || 'closed' in row || 'by_risk' in row);
+      });
+      const known = new Map(PERFORMANCE_TEAM_CONFIGS.map((cfg) => [cfg.name.toLowerCase(), cfg]));
+      if (!names.length) return PERFORMANCE_TEAM_CONFIGS.map((cfg) => ({ ...cfg }));
+      const ordered = [];
+      PERFORMANCE_TEAM_CONFIGS.forEach((cfg) => {
+        const actual = names.find((name) => name.toLowerCase() === cfg.name.toLowerCase());
+        if (actual) ordered.push({ ...cfg, name: actual });
+      });
+      names.forEach((name) => {
+        if (known.has(name.toLowerCase())) return;
+        ordered.push({ name, focus: 'Custom team', color: colorForTeamName(name) });
+      });
+      return ordered;
+    },
   },
   methods: {
     closureRate(teamName) {

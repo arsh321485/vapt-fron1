@@ -34,10 +34,12 @@
         <div class="mf-label">SOLUTION</div>
         <p class="mf-value mf-pretext">{{ fixVulnData.solution }}</p>
       </div>
-      <div v-if="fixVulnData.assigned_team || (fixVulnData.assigned_team_members && fixVulnData.assigned_team_members.length)" class="mf-fix-info-row">
+      <div v-if="showAssignedTeamRow" class="mf-fix-info-row">
         <div class="mf-label">ASSIGNED TEAM</div>
-        <p v-if="fixVulnData.assigned_team" class="mf-value mf-team" :style="{ color: getTeamColor(fixVulnData.assigned_team) }">
-          {{ fixVulnData.assigned_team }}
+        <p v-if="displayedAssignedTeams.length" class="mf-value mf-team">
+          <template v-for="(name, index) in displayedAssignedTeams" :key="name">
+            <span :style="{ color: colorForTeamName(name) }">{{ name }}</span><span v-if="index < displayedAssignedTeams.length - 1">, </span>
+          </template>
         </p>
         <div v-if="fixVulnData.assigned_team_members && fixVulnData.assigned_team_members.length" class="mf-member-row">
           <span v-for="m in fixVulnData.assigned_team_members" :key="m.user_id" class="mf-member-chip">
@@ -87,8 +89,10 @@
           </div>
           <div class="mf-cell mf-cell-divider">
             <div class="mf-label">ASSIGNED TO</div>
-            <p v-if="task.assignedTeam" class="mf-value mf-team" :style="{ color: getTeamColor(task.assignedTeam) }">
-              {{ task.assignedTeam }}
+            <p v-if="teamNamesFor(task).length" class="mf-value mf-team">
+              <template v-for="(name, index) in teamNamesFor(task)" :key="name">
+                <span :style="{ color: colorForTeamName(name) }">{{ name }}</span><span v-if="index < teamNamesFor(task).length - 1">, </span>
+              </template>
             </p>
             <div v-if="task.members && task.members.length" class="mf-member-row">
               <span v-for="m in task.members" :key="m.user_id" class="mf-member-chip">
@@ -244,7 +248,7 @@
 <script>
 import Swal from 'sweetalert2';
 import { MOCK_MANUAL_STEPS } from '@/constants/mockManualRemediationSteps';
-import { getTeamColor } from '@/utils/teamColors';
+import { colorForTeamName, getTeamColor } from '@/utils/teamColors';
 import { useAuthStore } from '@/stores/authStore';
 import { FREEMIUM_RETEST_MESSAGE } from '@/utils/planLimits';
 import { pickVulnDescription, extractCreatedFixVulnerabilityId } from '@/utils/assetVulnerabilities';
@@ -255,6 +259,24 @@ const RETEST_GRACE_MS = 8000;
 
 /** Keep manual-fix steps in memory so tab switches / remounts do not replay the loader. */
 const fixPanelCache = new Map();
+
+function teamNameList(source) {
+  if (!source || typeof source !== 'object') return [];
+  const raw = []
+    .concat(Array.isArray(source.all_assigned_teams) ? source.all_assigned_teams : [])
+    .concat(source.assigned_team ? [source.assigned_team] : [])
+    .concat(Array.isArray(source.additional_teams) ? source.additional_teams : []);
+  const seen = new Set();
+  const names = [];
+  raw.forEach((item) => {
+    const name = String(item || '').trim();
+    const key = name.toLowerCase();
+    if (!name || seen.has(key)) return;
+    seen.add(key);
+    names.push(name);
+  });
+  return names;
+}
 
 function buildFixCacheKey({ isUser, assetIp, vulnName, fixId }) {
   return [
@@ -382,6 +404,13 @@ export default {
     // After all steps complete → closed → show Send for retest (until sent → open/review)
     showSendForRetest() {
       return this.isUser && (this.isVulnerabilityClosed || this.allStepsCompleted) && !this.isInReview;
+    },
+    displayedAssignedTeams() {
+      return teamNameList(this.fixVulnData);
+    },
+    showAssignedTeamRow() {
+      const members = this.fixVulnData?.assigned_team_members || [];
+      return this.displayedAssignedTeams.length > 0 || members.length > 0;
     },
     canRaiseSupport() {
       return !this.isVulnerabilityClosed && !this.isInReview;
@@ -518,6 +547,11 @@ export default {
       }
     },
     getTeamColor,
+    colorForTeamName,
+    teamNamesFor(task) {
+      if (this.displayedAssignedTeams.length) return this.displayedAssignedTeams;
+      return task?.assignedTeam ? [task.assignedTeam] : [];
+    },
     resolveOsKey(value) {
       const normalized = String(value || 'windows').toLowerCase();
       return normalized.includes('linux') ? 'linux' : 'windows';
@@ -658,7 +692,25 @@ export default {
       }
       this.syncCurrentAndLocks();
     },
+    rememberAssignedTeams(source) {
+      if (!source) return;
+      const incoming = teamNameList(source);
+      if (!incoming.length) return;
+      const hasFullList = Array.isArray(source.all_assigned_teams) || Array.isArray(source.additional_teams);
+      const names = hasFullList ? incoming : teamNameList({
+        all_assigned_teams: [...teamNameList(this.fixVulnData), ...incoming],
+      });
+      const primary = String(source.assigned_team || this.fixVulnData?.assigned_team || names[0] || '').trim();
+      this.fixVulnData = {
+        ...(this.fixVulnData || {}),
+        assigned_team: primary,
+        additional_teams: names.filter((name) => name.toLowerCase() !== primary.toLowerCase()),
+        all_assigned_teams: names,
+      };
+    },
     applyStepsFromApi(data, postOverride = null) {
+      this.rememberAssignedTeams(data);
+      if (postOverride) this.rememberAssignedTeams(postOverride);
       const osKey = this.resolveOsKey(data.operating_system || this.assetOs || this.selectedOs);
       this.selectedOs = osKey;
       // Emit resolved team to parent so outer badge matches
@@ -1129,6 +1181,7 @@ export default {
               assigned_team: cardData.assigned_team || '',
               assigned_team_members: cardData.assigned_team_members || [],
             };
+            this.rememberAssignedTeams(cardData);
           }
         }
         this.persistFixCache();

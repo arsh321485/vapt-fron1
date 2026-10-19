@@ -38,6 +38,19 @@ export function getTeamColor(teamName?: string | null): string {
   return key ? TEAM_COLORS[key] : '#64748b';
 }
 
+const CUSTOM_TEAM_PALETTE = ['#f97316', '#16a34a', '#e11d48', '#ca8a04', '#4f46e5', '#0f766e'];
+
+/** Fixed teams keep their colors. Any other team name gets a stable palette color. */
+export function colorForTeamName(teamName?: string | null): string {
+  const raw = String(teamName || '').trim().toLowerCase();
+  const canonical = CANONICAL_TEAM_NAMES.find((name) => name.toLowerCase() === raw);
+  if (canonical) return getTeamColor(canonical);
+  if (!raw) return '#64748b';
+  let hash = 0;
+  for (let i = 0; i < raw.length; i += 1) hash = (hash + raw.charCodeAt(i) * (i + 1)) % CUSTOM_TEAM_PALETTE.length;
+  return CUSTOM_TEAM_PALETTE[hash];
+}
+
 export function getTeamTextClass(teamName?: string | null): string {
   const key = resolveTeamKey(teamName);
   return key ? `team-txt-${key}` : '';

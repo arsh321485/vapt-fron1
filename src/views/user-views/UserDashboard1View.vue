@@ -1359,8 +1359,21 @@ export default {
       const assignedSet = new Set((this.userTeams || []).map(canonicalTeam).filter(Boolean));
       const apiTeamSet = new Set(Object.keys(teams).map(canonicalTeam).filter(Boolean));
       const effectiveSet = assignedSet.size ? assignedSet : apiTeamSet;
+      const fixedKeys = new Set(teamConfigs.map(cfg => canonicalTeam(cfg.key)));
+      const extraConfigs = [...effectiveSet]
+        .filter(key => key && key !== 'unassigned' && key !== 'none' && key !== 'n/a' && !fixedKeys.has(key))
+        .map(key => {
+          const matchKey = Object.keys(teams).find(name => canonicalTeam(name) === key) || key;
+          return {
+            key: matchKey,
+            icon: 'bi bi-people',
+            assigned: 'ASSIGNED TO TEAM',
+            assetType: 'Hosts',
+            tags: [],
+          };
+        });
       const visibleTeamConfigs = effectiveSet.size
-        ? teamConfigs.filter(cfg => effectiveSet.has(canonicalTeam(cfg.key)))
+        ? [...teamConfigs.filter(cfg => effectiveSet.has(canonicalTeam(cfg.key))), ...extraConfigs]
         : [];
 
       return visibleTeamConfigs.map(cfg => {

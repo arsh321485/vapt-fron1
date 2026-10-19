@@ -741,7 +741,7 @@
 
               <!-- Team Cards -->
               <div class="row g-3 mb-4">
-                <div class="col-md-3" v-for="tab in mitigationTabs" :key="tab.key">
+                <div class="col-md-3" v-for="tab in visibleMitigationTabs" :key="tab.key">
                   <div class="cv-team-card" :class="mitigationActiveTab === tab.key ? 'cv-team-card-active' : ''" @click="setMitigationTab(tab.key)">
                     <div class="d-flex justify-content-between align-items-start mb-2">
                       <div class="cv-team-icon-wrap">
@@ -1705,6 +1705,27 @@ export default {
       return this.mteStaticData[this.extPopupSeverity]
         .filter(r => r.ip === this.extPopupAsset)
         .map(r => r.vulName);
+    },
+    visibleMitigationTabs() {
+      const fixed = this.mitigationTabs || [];
+      const teams = this.mitigationByTeamData?.teams || this.mitigationByTeamData || {};
+      const known = new Set(fixed.map((tab) => String(tab.key || '').toLowerCase()));
+      const extras = Object.keys(teams || {})
+        .filter((key) => {
+          const value = teams[key];
+          if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+          if (!Array.isArray(value.vulnerabilities) && value.count == null && value.total == null) return false;
+          const name = String(key).toLowerCase().trim();
+          if (!name || name === 'unassigned' || name === 'none' || name === 'n/a') return false;
+          return !known.has(name);
+        })
+        .map((key) => ({
+          key,
+          label: key,
+          icon: 'bi bi-people',
+          assigned: 'ASSIGNED TO TEAM',
+        }));
+      return [...fixed, ...extras];
     },
     mitigationActiveTeamData() {
       if (!this.mitigationByTeamData) return { count: 0, vulnerabilities: [] };

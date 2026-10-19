@@ -589,7 +589,6 @@ export default {
     if (this.activeAssignmentRole === role.short) {
       this.closeAssignmentModal();
     }
-    if (role.custom) this.removeOwnTeamFromTabs(role.short);
   },
   async openAssignmentModal(roleShort) {
     if (!roleShort || !this.selectedRoles2.includes(roleShort)) return;
@@ -1114,8 +1113,7 @@ this.applyUserRoleState(newUser);
   this.isOpen[user._id] = false;
 
   if (!isChecked) {
-    const removed = await this.deleteRoleFromUser(user, roleFullName);
-    if (removed && option.custom) await this.removeOwnTeamFromTabs(option.short);
+    await this.deleteRoleFromUser(user, roleFullName);
   } else {
     await this.updateSelectedRoleText(user._id);
   }
@@ -1201,31 +1199,6 @@ async deleteRoleFromUser(user, roleToRemove) {
     return false;
   }
 },
-    async removeOwnTeamFromTabs(teamId) {
-      const id = String(teamId || "");
-      if (!id) return;
-      const res = await this.authStore.deleteCustomTeam(id);
-      if (!res.status) {
-        Swal.fire({
-          icon: "error",
-          title: "Could not remove team",
-          text: res.message || "Please try again.",
-          confirmButtonColor: "#0f696e",
-        });
-        return;
-      }
-      const index = this.teamTabs.findIndex((item) => String(item.id) === id);
-      this.customTeams = this.customTeams.filter((item) => String(item.id) !== id);
-      this.selectedRoles2 = this.selectedRoles2.filter((short) => String(short) !== id);
-      if (index < 0) return;
-      if (this.activeTab === index || this.activeTab >= this.teamTabs.length) {
-        this.activeTab = 0;
-      } else if (this.activeTab > index) {
-        this.activeTab -= 1;
-      }
-    },
-
-
     async removeUser(user) {
       const confirm = await Swal.fire({
         title: "Remove User",

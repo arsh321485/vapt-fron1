@@ -190,7 +190,15 @@
                         <td>{{ row.id }}</td>
                         <td :title="row.name"><span class="vuln-name-cell">{{ truncateVulnName(row.name) }}</span></td>
                         <td>{{ row.asset }}</td>
-                        <td><span :class="['team-pill', 'team-pill-' + row.team]">{{ row.teamLabel }}</span></td>
+                        <td>
+                          <div class="team-pill-cell">
+                            <span
+                              v-for="team in row.teamPills"
+                              :key="team.name"
+                              :class="['team-pill', 'team-pill-' + team.pill]"
+                            >{{ team.name }}</span>
+                          </div>
+                        </td>
                         <td><span :class="['sev-pill', row.severity]">{{ row.severity }}</span></td>
                         <td>{{ row.found }}</td>
                         <td><span :class="['status-pill', (row.status || '').toLowerCase() === 'open' ? 'open' : 'closed']">{{ formatStatusLabel(row.status) }}</span></td>
@@ -216,10 +224,57 @@ import Chart from 'chart.js/auto';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { useAuthStore } from '@/stores/authStore';
-import { PERFORMANCE_TEAM_CONFIGS, TEAM_COLORS, resolveTeamKey } from '@/utils/teamColors';
+import { PERFORMANCE_TEAM_CONFIGS, colorForTeamName, resolveTeamKey } from '@/utils/teamColors';
 import { SEV, SEV_CHART, getSeverityColor, getSeverityBg } from '@/utils/severityColors';
 import { formatStatusLabel } from '@/utils/statusLabel';
 import { filterAssetsByType } from '@/utils/assetDummyData';
+
+function blankTeamName(name) {
+  const text = String(name || '').trim().toLowerCase();
+  return !text || text === 'unassigned' || text === 'none' || text === 'n/a' || text === 'na';
+}
+
+function pushReportTeamName(list, seen, value) {
+  if (value == null) return;
+  if (Array.isArray(value)) {
+    value.forEach((item) => pushReportTeamName(list, seen, item));
+    return;
+  }
+  if (typeof value === 'object') {
+    pushReportTeamName(list, seen, value.team || value.team_name || value.name || value.label);
+    return;
+  }
+  String(value).split(',').forEach((part) => {
+    const name = part.trim();
+    const key = name.toLowerCase();
+    if (!name || blankTeamName(name) || seen.has(key)) return;
+    seen.add(key);
+    list.push(name);
+  });
+}
+
+function reportRowTeams(row) {
+  const list = [];
+  const seen = new Set();
+  [
+    row?.all_assigned_teams,
+    row?.additional_teams,
+    row?.assigned_teams,
+    row?.teams,
+    row?.team_names,
+    row?.assigned_team,
+    row?.team,
+    row?.team_name,
+  ].forEach((value) => pushReportTeamName(list, seen, value));
+  return list;
+}
+
+function reportTeamCount(item) {
+  if (!item || typeof item !== 'object') return 0;
+  const direct = item.count ?? item.total ?? item.vulnerability_count ?? item.vuln_count ?? item.findings ?? item.value;
+  if (direct != null && direct !== '') return Number(direct) || 0;
+  return (Number(item.open) || 0) + (Number(item.closed) || 0);
+}
 
 const REPORT_WATERMARK_TEXT = 'VAPTFIX.ai';
 /** Manual uploaded scan file name until API field is wired */
@@ -366,14 +421,8 @@ export default {
       ];
     },
     teamLegend() {
-      const colorMap = {
-        'Network Security': TEAM_COLORS.network,
-        'Patch Management': TEAM_COLORS.patch,
-        'Configuration Management': TEAM_COLORS.configuration,
-        'Architectural Flaws': TEAM_COLORS.architectural,
-      };
       const dist = this.teamDistribution.length
-        ? this.teamDistribution.filter((d) => d.team !== 'Unassigned')
+        ? this.teamDistribution.filter((d) => !blankTeamName(d.team))
         : [
             { team: 'Network Security', count: 0 },
             { team: 'Patch Management', count: 0 },
@@ -384,9 +433,8 @@ export default {
       return dist.map((d) => ({
         label: d.team,
         value: Number(d.count) || 0,
-        color: colorMap[d.team] || '#6b7280',
-        percent:
-          d.percentage != null ? Math.round(Number(d.percentage)) : Math.round(((Number(d.count) || 0) / total) * 100),
+        color: colorForTeamName(d.team),
+        percent: Math.round(((Number(d.count) || 0) / total) * 100),
       }));
     },
     severityConicStyle() {
@@ -510,26 +558,56 @@ export default {
         }
 
         // 3. Team distribution (for bar/doughnut charts)
+        const counts = new Map();
+        const rememberTeamCount = (name, count) => {
+          if (blankTeamName(name)) return;
+          const key = String(name).trim().toLowerCase();
+          const next = Number(count) || 0;
+          const prev = counts.get(key);
+          if (!prev) counts.set(key, { team: String(name).trim(), count: next });
+          else if (next > prev.count) prev.count = next;
+        };
         if (Array.isArray(d.team_distribution)) {
-          this.teamDistribution = d.team_distribution.map(t => ({
-            team: t.team,
-            count: t.count,
-            percentage: t.percentage,
-          }));
+          d.team_distribution.forEach((item) => {
+            rememberTeamCount(item.team || item.team_name || item.name, reportTeamCount(item));
+          });
         }
 
         // 4. Vulnerability detail list + derive teamDetail for open/closed counts
         if (Array.isArray(d.vulnerabilities_detail)) {
-          this.tableData = d.vulnerabilities_detail.map((v, i) => ({
+          this.tableData = d.vulnerabilities_detail.map((v, i) => {
+            const teams = reportRowTeams(v);
+            const label = teams[0] || 'Unassigned';
+            return {
             id: i + 1,
             name: v.vulnerability_name,
             asset: v.assets,
-            team: resolveTeamKey(v.assigned_team) || 'unassigned',
-            teamLabel: v.assigned_team || 'Unassigned',
+            team: resolveTeamKey(label) || label,
+            teams,
+            teamPills: (teams.length ? teams : ['Unassigned']).map((name) => ({
+              name,
+              pill: blankTeamName(name) ? 'unassigned' : (resolveTeamKey(name) || 'custom'),
+            })),
+            teamLabel: teams.join(', ') || 'Unassigned',
             severity: (v.risk_factor || '').toLowerCase(),
             found: v.found_date ? v.found_date.split('T')[0] : '—',
             status: v.status,
-          }));
+            };
+          });
+          this.tableData.forEach((row) => {
+            (row.teams || []).forEach((name) => rememberTeamCount(name, 0));
+          });
+          const rowCounts = {};
+          this.tableData.forEach((row) => {
+            (row.teams || []).forEach((name) => {
+              const key = name.toLowerCase();
+              rowCounts[key] = (rowCounts[key] || 0) + 1;
+            });
+          });
+          Object.entries(rowCounts).forEach(([key, count]) => {
+            const entry = counts.get(key);
+            if (entry && count > entry.count) entry.count = count;
+          });
 
           // Derive per-team open/closed counts from detail list
           const teamDetailMap = {};
@@ -548,6 +626,27 @@ export default {
           });
           this.teamDetail = teamDetailMap;
         }
+
+        try {
+          const teamResult = await store.fetchDistributionByTeamDetail(true);
+          const bucket = teamResult.data?.teams || teamResult.data || {};
+          Object.entries(bucket).forEach(([name, row]) => {
+            if (!row || typeof row !== 'object' || Array.isArray(row)) return;
+            if (!('total' in row || 'open' in row || 'closed' in row)) return;
+            rememberTeamCount(name, reportTeamCount(row));
+          });
+        } catch {
+          /* report list still renders from download-data */
+        }
+
+        const distribution = [...counts.values()].filter((item) => !blankTeamName(item.team));
+        const distributionTotal = distribution.reduce((sum, item) => sum + item.count, 0) || 1;
+        this.teamDistribution = distribution.map((item) => ({
+          team: item.team,
+          count: item.count,
+          percentage: Math.round((item.count / distributionTotal) * 100),
+        }));
+        if (this.charts?.length) this.$nextTick(() => this.initCharts());
       } catch (err) {
         console.error('Report data fetch failed:', err);
       } finally {
@@ -635,14 +734,8 @@ export default {
           id: 'rTeamDistributionChart',
           type: 'doughnut',
           data: (() => {
-            const colorMap = {
-              'Network Security': TEAM_COLORS.network,
-              'Patch Management': TEAM_COLORS.patch,
-              'Configuration Management': TEAM_COLORS.configuration,
-              'Architectural Flaws': TEAM_COLORS.architectural,
-            };
             const dist = this.teamDistribution.length
-              ? this.teamDistribution.filter(d => d.team !== 'Unassigned')
+              ? this.teamDistribution.filter(d => !blankTeamName(d.team))
               : [
                   { team: 'Network Security', count: 0 },
                   { team: 'Patch Management', count: 0 },
@@ -653,8 +746,8 @@ export default {
               labels: dist.map(d => d.team),
               datasets: [{
                 data: dist.map(d => d.count),
-                backgroundColor: dist.map(d => colorMap[d.team] || '#6b7280'),
-                hoverBackgroundColor: dist.map(d => colorMap[d.team] || '#6b7280'),
+                backgroundColor: dist.map(d => colorForTeamName(d.team)),
+                hoverBackgroundColor: dist.map(d => colorForTeamName(d.team)),
                 borderWidth: 0,
                 hoverBorderWidth: 0,
                 hoverOffset: 0,
@@ -1319,12 +1412,14 @@ ${this.getExportLayoutCss()}
 .status-pill { font-size: 12px; font-weight: 700; }
 .status-pill.open { color: #b91c1c; }
 .status-pill.closed { color: #0f766e; }
+.team-pill-cell { display: flex; flex-wrap: wrap; gap: 6px; }
 .team-pill { font-size: 12px; font-weight: 700; border-radius: 999px; padding: 4px 10px; border: 1px solid transparent; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .team-pill-network { color: var(--team-network-color); background: var(--team-network-bg); border-color: var(--team-network-color); }
 .team-pill-patch { color: var(--team-patch-color); background: var(--team-patch-bg); border-color: var(--team-patch-color); }
 .team-pill-configuration { color: var(--team-configuration-color); background: var(--team-configuration-bg); border-color: var(--team-configuration-color); }
 .team-pill-architectural { color: var(--team-architectural-color); background: var(--team-architectural-bg); border-color: var(--team-architectural-color); }
 .team-pill-unassigned { color: #475569; background: #f1f5f9; border-color: #e2e8f0; }
+.team-pill-custom { color: #9a3412; background: #ffedd5; border-color: #fdba74; }
 .table-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 4px 0; color: #7b8497; font-size: 12px; }
 .table-footer-actions button { border: none; background: transparent; color: #6b7280; font-size: 12px; margin-left: 8px; }
 .btn-export {
