@@ -2,90 +2,25 @@
   <main class="pricing-page">
     <Header />
 
-    <section class="vulnerability-explorer">
+    <section class="vulnerability-explorer" :class="{ 'pricing-bg-bleed': step === 'plans' }">
       <div class="container-fluid py-4 py-md-5">
         <div class="container mt-2 mt-md-3 pt-1">
 
-          <!-- STEP 1: Plan cards -->
-          <template v-if="step === 'plans'">
-            <div class="row text-center mt-4 mt-md-5">
-              <div class="col-12">
-                <h2 class="vuln-exp-heading mb-3 mb-md-4">Pricing plans</h2>
-                <p class="vuln-exp-subhead mb-4 mb-md-5 px-sm-2">
-                  Freemium, Premium &amp; Custom — choose the plan that fits your asset scope and how you run VAPT.
-                </p>
-                <div v-if="autoSelectNotice" class="pricing-return-banner mb-4">
-                  {{ autoSelectNotice }}
-                </div>
-                <div v-else-if="comingFromUpload" class="pricing-return-banner mb-4">
-                  Select a plan to continue. Freemium can keep this file — extra assets stay locked until you upgrade.
-                </div>
-                <p v-if="freemiumLockedExtrasNotice" class="text-center text-muted mx-auto mt-2 mb-4" style="font-size:0.95rem; line-height:1.6; max-width:600px;">
-                  {{ freemiumLockedExtrasNotice }}
-                </p>
-              </div>
-            </div>
-
-            <div class="row g-4 justify-content-center mb-2 align-items-stretch">
-              <div
-                v-for="plan in planList"
-                :key="plan.id"
-                class="col-12 col-md-6 col-xl-4"
-              >
-                <div
-                  class="card text-start shadow h-100 pricing-card"
-                  :class="{
-                    'pricing-card--featured': isHighlightedPlan(plan),
-                    'pricing-card--current': isCurrentPlan(plan.id),
-                    'pricing-card--locked': isScopeFreemiumLocked(plan),
-                  }"
-                >
-                  <div class="pricing-badge-slot">
-                    <div v-if="isCurrentPlan(plan.id)" class="pricing-popular-badge">YOUR PLAN</div>
-                    <div v-else-if="autoSelectedPlan === plan.id" class="pricing-popular-badge">RECOMMENDED</div>
-                    <div v-else-if="plan.featured && !currentPlanId && !autoSelectedPlan" class="pricing-popular-badge">MOST POPULAR</div>
-                  </div>
-                  <div class="card-body d-flex flex-column">
-                    <h2 class="card-title pricing-tier-title">{{ plan.name }}</h2>
-                    <div class="pricing-price-slot" :aria-hidden="plan.id === 'freemium' ? undefined : 'true'">
-                      <p v-if="plan.id === 'freemium'" class="pricing-price-note mb-0">{{ planPriceNote(plan) }}</p>
-                    </div>
-                    <button
-                      type="button"
-                      class="btn text-light rounded-pill w-100 pricing-cta"
-                      :class="{
-                        'pricing-cta--featured': isHighlightedPlan(plan) && !isCurrentPlan(plan.id),
-                        'pricing-cta--current': isCurrentPlan(plan.id),
-                      }"
-                      :disabled="isScopeFreemiumLocked(plan)"
-                      :title="isScopeFreemiumLocked(plan) ? 'Scope entry requires Premium. Freemium is not available.' : ''"
-                      @click="selectPlan(plan.id)"
-                    >
-                      {{ planButtonLabel(plan) }}
-                      <i class="bi bi-arrow-right-circle-fill" aria-hidden="true"></i>
-                    </button>
-                    <hr />
-                    <p class="vuln-exp-subhead mb-2">{{ plan.featuresHeading }}</p>
-                    <ul class="list-unstyled mb-0">
-                      <li
-                        v-for="(feature, idx) in plan.features"
-                        :key="idx"
-                        class="d-flex align-items-start mb-2 pricing-feature-line"
-                        :class="{ 'is-muted': (testingModeLocked && isTestingFeature(feature.text)) || (managementModeLocked && isManagementFeature(feature.text)) }"
-                      >
-                        <i
-                          class="bi me-2 flex-shrink-0"
-                          :class="feature.included ? 'bi-check2 pricing-check' : 'bi-x-lg pricing-x'"
-                          aria-hidden="true"
-                        ></i>
-                        <span>{{ feature.text }}</span>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </template>
+          <PricingShowcase
+            v-if="step === 'plans'"
+            :freemium-locked="fromScopeFile && !fromScanReport"
+            :management-locked="managementModeLocked"
+            :testing-locked="testingModeLocked"
+            :asset-count="detectedAssetCount"
+            :checkout-loading="checkoutLoading"
+            :notice="showcaseNotice"
+            :error="checkoutError"
+            :over-ceiling="detectedAssetCount > 250"
+            :initial-mode="premiumMode === 'testing' ? 'test' : 'mgmt'"
+            @freemium="selectPlan('freemium')"
+            @custom="selectPlan('custom')"
+            @pay="checkoutFromQuote"
+          />
 
           <!-- STEP 2: Plan details -->
           <template v-else-if="step === 'details' && activePlan">
@@ -507,6 +442,7 @@
 import Header from '@/components/admin-component/Header.vue';
 import Footer from '@/components/admin-component/Footer.vue';
 import AdminSignUpModal from '@/components/admin-component/AdminSignUpModal.vue';
+import PricingShowcase from '@/views/admin-views/PricingShowcase.vue';
 import Swal from 'sweetalert2';
 import {
   billingErrorMessage,
@@ -620,6 +556,7 @@ export default {
     Header,
     Footer,
     AdminSignUpModal,
+    PricingShowcase,
   },
   data() {
     return {
@@ -792,6 +729,11 @@ export default {
       const extra = extraIpCount(count, planAssetLimit('freemium'));
       if (extra <= 0) return '';
       return `This report has ${count} IPs.`;
+    },
+    showcaseNotice() {
+      return this.autoSelectNotice || (this.comingFromUpload
+        ? 'Select a plan to continue. Freemium can keep this file — extra assets stay locked until you upgrade.'
+        : this.freemiumLockedExtrasNotice);
     },
     autoSelectNotice() {
       const count = this.detectedAssetCount;
@@ -1028,8 +970,20 @@ export default {
         this.leadForm.assets = String(this.fileAssetCount);
       }
       const alreadyShowing =
-        this.selectedPlan === planId && this.step === 'details';
-      if (alreadyShowing) {
+        this.selectedPlan === planId && (this.step === 'details' || planId === 'premium');
+      if (planId === 'premium') {
+        const mode = requestedMode;
+        this.premiumMode = this.managementModeLocked
+          ? 'testing'
+          : (!this.testingModeLocked && (mode === 'testing' || mode === 'management_testing'))
+            ? 'testing'
+            : 'management';
+        this.premiumDetailsOpen = true;
+        this.billingCycle = 'annual';
+        this.step = 'plans';
+        this.applyLocalEstimate();
+        await this.fetchEstimate();
+      } else if (alreadyShowing) {
         this.applyLocalEstimate();
         await this.fetchEstimate();
       } else {
@@ -1066,7 +1020,7 @@ export default {
       const planId = assets > 250 ? 'custom' : requestedPlan;
       this.autoSelectedPlan = planId;
       this.selectedPlan = planId;
-      this.step = 'details';
+      this.step = planId === 'custom' ? 'details' : 'plans';
       if (planId === 'premium') {
         this.premiumMode =
           requestedMode === 'testing' || requestedMode === 'management_testing'
@@ -1537,6 +1491,45 @@ export default {
       this.premiumMode = mode;
       this.premiumDetailsOpen = true;
     },
+    async checkoutFromQuote(mode) {
+      if (mode === 'free') {
+        await this.selectPlan('freemium');
+        return;
+      }
+      if ((this.detectedAssetCount || 0) > 250) {
+        await this.selectPlan('custom');
+        return;
+      }
+      const wantsTesting = mode === 'test';
+      if (wantsTesting && this.testingModeLocked) return;
+      if (!wantsTesting && this.managementModeLocked) return;
+      this.selectedPlan = 'premium';
+      this.premiumMode = wantsTesting ? 'testing' : 'management';
+      this.billingCycle = 'annual';
+      this.premiumDetailsOpen = true;
+      this.checkoutError = '';
+      if (!this.hasSignedInAccount) {
+        await this.promptAuth();
+        return;
+      }
+      await this.fetchEstimate();
+      if (this.estimate?.over_ceiling) {
+        await this.selectPlan('custom');
+        return;
+      }
+      if (this.isTestingMode && (this.needsScope || !(this.billedAssetCount > 0))) {
+        this.$router.push({
+          path: '/admin-upload-report',
+          query: { mode: 'testing', source: 'scope', returnTo: '/pricingplan' },
+        });
+        return;
+      }
+      if (!this.isTestingMode && this.needsReportUpload && !this.pendingAssetCount) {
+        this.step = 'details';
+        return;
+      }
+      await this.startPremium();
+    },
     async selectPlan(planId, options = {}) {
       if ((this.managementModeLocked || (this.fromScopeFile && !this.fromScanReport)) && planId === 'freemium') {
         planId = 'premium';
@@ -1937,6 +1930,11 @@ export default {
 </script>
 
 <style scoped>
+.pricing-bg-bleed {
+  overflow-x: hidden;
+}
+
+
 .pricing-page {
   overflow-x: hidden;
 }
