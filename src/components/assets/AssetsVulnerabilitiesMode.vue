@@ -956,6 +956,7 @@ import {
   resolveHostAssetType,
   buildAssetCatalogHostIndex,
   resolveAssetType,
+  normalizeAssetType,
   normalizeAssetTypeCounts,
   hasAssetTypeCounts,
   assetTypeCountChips as buildAssetTypeCountChips,
@@ -1234,6 +1235,7 @@ export default {
         return {
           ...g,
           description,
+          hosts: Array.isArray(report.hosts) && report.hosts.length ? report.hosts : (g.hosts || []),
           asset_type_counts: normalizeAssetTypeCounts(report.asset_type_counts),
           total_assets: report.total_assets ?? g.total_assets,
           open_count: openCount,
@@ -1731,8 +1733,24 @@ export default {
         .map((v) => ({ ...v, assets: this.assetsForVulnType(v, wanted) }))
         .filter((v) => this.vulnBelongsToType(v, wanted, filterKey));
     },
+    reportHostAssetType(vuln, target) {
+      const list = Array.isArray(vuln?.hosts) ? vuln.hosts : [];
+      if (!target || !list.length) return '';
+      const match = list.find((host) => {
+        if (!host || typeof host !== 'object') return false;
+        return [host.host_name, host.asset, host.ip, host.hostname].some(
+          (value) => String(value || '').trim().toLowerCase() === target,
+        );
+      });
+      if (!match) return '';
+      const raw = match.asset_type ?? match.assetType;
+      if (raw == null || String(raw).trim() === '') return '';
+      return normalizeAssetType(raw) || 'other';
+    },
     hostAssetType(ip, vuln) {
       const target = String(ip || '').trim().toLowerCase();
+      const fromReport = this.reportHostAssetType(vuln, target);
+      if (fromReport) return fromReport;
       const fetched = (this.vulnAssetRowsByKey[vuln?._key] || []).find((row) =>
         String(row.host_name || row.asset || row.host || '').trim().toLowerCase() === target,
       );
