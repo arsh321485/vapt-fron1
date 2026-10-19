@@ -90,6 +90,70 @@ export function extractIpAddress(name) {
   return "";
 }
 
+const REPORT_HOST_NAME_KEYS = ["host_name", "hostname", "host", "asset", "ip", "ip_address", "target", "fqdn", "name"];
+
+function hostLookupKeys(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw || raw.length > 220 || /\s/.test(raw)) return [];
+  const keys = [raw];
+  const ip = extractIpAddress(raw);
+  if (ip && ip !== raw) keys.push(ip);
+  return keys;
+}
+
+function rememberReportHostType(map, name, type) {
+  if (!type) return;
+  hostLookupKeys(name).forEach((key) => {
+    const prev = map.get(key);
+    if (!prev || type === "other") map.set(key, type);
+  });
+}
+
+function readReportNodeType(node) {
+  if (!node || typeof node !== "object" || Array.isArray(node)) return "";
+  const raw = node.asset_type ?? node.assetType ?? node.classification ?? node.asset_category;
+  if (raw == null || String(raw).trim() === "") return "";
+  return normalizeAssetType(raw) || "other";
+}
+
+/** Host → asset_type from GET .../vulnerabilities/. `other` wins over a guessed server/web type. */
+export function collectReportHostTypes(records) {
+  const map = new Map();
+  const visit = (node, depth) => {
+    if (!node || depth > 6) return;
+    if (Array.isArray(node)) {
+      node.forEach((item) => visit(item, depth + 1));
+      return;
+    }
+    if (typeof node !== "object") return;
+    const type = readReportNodeType(node);
+    if (type) REPORT_HOST_NAME_KEYS.forEach((key) => rememberReportHostType(map, node[key], type));
+    Object.entries(node).forEach(([key, value]) => {
+      if (key === "asset_type_counts" || key === "asset_type_totals" || key === "severity_counts") return;
+      if (typeof value === "string" || typeof value === "number") {
+        rememberReportHostType(map, key, normalizeAssetType(value));
+        return;
+      }
+      if (value && typeof value === "object") {
+        const childType = Array.isArray(value) ? "" : readReportNodeType(value);
+        if (childType) rememberReportHostType(map, key, childType);
+        visit(value, depth + 1);
+      }
+    });
+  };
+  (records || []).forEach((record) => visit(record, 0));
+  return map;
+}
+
+export function lookupReportHostType(map, hostName) {
+  const keys = hostLookupKeys(hostName);
+  for (const key of keys) {
+    const type = map?.get?.(key);
+    if (type) return type;
+  }
+  return "";
+}
+
 export function countUniqueIpHosts(rows) {
   const ips = new Set();
   (rows || []).forEach((row) => {

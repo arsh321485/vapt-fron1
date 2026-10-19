@@ -958,6 +958,8 @@ import {
   resolveAssetType,
   normalizeAssetType,
   normalizeAssetTypeCounts,
+  collectReportHostTypes,
+  lookupReportHostType,
   hasAssetTypeCounts,
   assetTypeCountChips as buildAssetTypeCountChips,
   assetTypeCountForFilter,
@@ -1153,6 +1155,12 @@ export default {
     },
     assetCatalogHostIndex() {
       return buildAssetCatalogHostIndex(this.assetCatalog);
+    },
+    reportHostTypeIndex() {
+      const rows = this.isUser
+        ? this.authStore.userAllReportVulnerabilities
+        : this.authStore.allReportVulnerabilities;
+      return collectReportHostTypes(rows);
     },
     groupedVulns() {
       const map = new Map();
@@ -1733,34 +1741,21 @@ export default {
         .map((v) => ({ ...v, assets: this.assetsForVulnType(v, wanted) }))
         .filter((v) => this.vulnBelongsToType(v, wanted, filterKey));
     },
-    reportHostAssetType(vuln, target) {
-      const list = Array.isArray(vuln?.hosts) ? vuln.hosts : [];
-      if (!target || !list.length) return '';
-      const match = list.find((host) => {
-        if (!host || typeof host !== 'object') return false;
-        return [host.host_name, host.asset, host.ip, host.hostname].some(
-          (value) => String(value || '').trim().toLowerCase() === target,
-        );
-      });
-      if (!match) return '';
-      const raw = match.asset_type ?? match.assetType;
-      if (raw == null || String(raw).trim() === '') return '';
-      return normalizeAssetType(raw) || 'other';
+    catalogReportedAssetType(target) {
+      const row = this.assetCatalogHostIndex instanceof Map ? this.assetCatalogHostIndex.get(target) : null;
+      if (!row) return '';
+      return normalizeAssetType(row.reported_asset_type) || '';
+    },
+    explicitHostAssetType(ip, vuln) {
+      const target = String(ip || '').trim().toLowerCase();
+      if (!target) return '';
+      const fromReport = lookupReportHostType(this.reportHostTypeIndex, target);
+      const fromCatalog = this.catalogReportedAssetType(target);
+      if (fromReport === 'other' || fromCatalog === 'other') return 'other';
+      return fromReport || fromCatalog || '';
     },
     hostAssetType(ip, vuln) {
-      const target = String(ip || '').trim().toLowerCase();
-      const fromReport = this.reportHostAssetType(vuln, target);
-      if (fromReport) return fromReport;
-      const fetched = (this.vulnAssetRowsByKey[vuln?._key] || []).find((row) =>
-        String(row.host_name || row.asset || row.host || '').trim().toLowerCase() === target,
-      );
-      if (fetched) {
-        return resolveAssetType(fetched);
-      }
-      const row = (vuln?.rows || []).find((r) =>
-        String(r.asset || r.host_name || '').trim().toLowerCase() === target,
-      );
-      return resolveHostAssetType(ip, this.assetCatalogHostIndex, row);
+      return this.explicitHostAssetType(ip, vuln) || 'other';
     },
     assetTypeTabCount(type) {
       // Prefer the backend's own asset_type_totals (from the report's
@@ -1792,37 +1787,7 @@ export default {
         if (this.closedVulnHostSet.has(closedVulnHostKey(name, host))) return false;
         return true;
       };
-      // Prefer the backend's own asset_type_counts whenever it unambiguously
-      // confirms this vuln belongs to exactly one type — trust it ahead of
-      // any per-host classification below, both of which fall back to the
-      // same unreliable keyword-guessing heuristic when a host row has no
-      // asset_type field. Checking this first (rather than only as a
-      // fallback after the fetched-rows branch) matters because a non-empty
-      // `fetched` list whose rows all misclassify away from `wanted` used to
-      // return an empty array and stop right there — silently emptying
-      // v.assets for a vuln the backend already confirmed belongs here,
-      // which cascaded into a blank Manual Fix panel and a wrong
-      // automation-status badge (no asset to resolve either against).
-      if (hasAssetTypeCounts(vuln?.asset_type_counts)) {
-        const counts = normalizeAssetTypeCounts(vuln.asset_type_counts);
-        if ((counts[wanted] || 0) <= 0) return [];
-        const onlyThisType = ['server', 'web_app', 'firewall', 'other'].every(
-          (type) => type === wanted || (counts[type] || 0) <= 0,
-        );
-        if (onlyThisType) return (vuln?.assets || []).filter((ip) => keepOpen(ip));
-        // Mixed types: if per-host classification finds nothing for `wanted`
-        // although the backend counts some here, show only hosts that didn't
-        // resolve to one of this vuln's OTHER counted types — never a host
-        // that clearly belongs to another tab.
-        const byHost = this.assetsForVulnTypeByHost(vuln, wanted, keepOpen);
-        if (byHost.length) return byHost;
-        return (vuln?.assets || []).filter((ip) => {
-          if (!keepOpen(ip)) return false;
-          const type = this.hostAssetType(ip, vuln);
-          return type === wanted || (counts[type] || 0) <= 0;
-        });
-      }
-      return this.assetsForVulnTypeByHost(vuln, wanted, keepOpen);
+      return (vuln?.assets || []).filter((ip) => keepOpen(ip) && this.hostAssetType(ip, vuln) === wanted);
     },
     assetsForVulnTypeByHost(vuln, wanted, keepOpen) {
       // Classify every open host individually with hostAssetType() — the same
@@ -1843,10 +1808,12 @@ export default {
       });
     },
     vulnBelongsToType(vuln, wanted, filterKey) {
+      if (this.assetsForVulnType(vuln, wanted).length > 0) return true;
+      if ((vuln?.assets || []).length) return false;
       if (hasAssetTypeCounts(vuln?.asset_type_counts)) {
         return assetTypeCountForFilter(vuln.asset_type_counts, filterKey || wanted) > 0;
       }
-      return this.assetsForVulnType(vuln, wanted).length > 0;
+      return false;
     },
     assetTypeCountChips(item) {
       return buildAssetTypeCountChips(item?.asset_type_counts);
@@ -1926,7 +1893,7 @@ export default {
         const rows = (res?.assets || [])
           .map((row) => ({
             host_name: row.host_name || row.asset || row.host || '',
-            asset_type: resolveAssetType(row),
+            asset_type: normalizeAssetType(row.asset_type ?? row.assetType) || '',
             severity: row.severity || '',
             status: row.status || '',
             operating_system: row.operating_system || row.os || '',

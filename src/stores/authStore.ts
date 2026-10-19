@@ -5012,10 +5012,12 @@ export const useAuthStore = defineStore("auth", {
           .map((a: any) => {
             const asset = getAssetHostName(a);
             if (!asset) return null;
+            const reported = normalizeAssetType(a?.asset_type ?? a?.assetType);
             return {
               ...a,
               asset,
-              asset_type: resolveAssetType(a),
+              reported_asset_type: reported,
+              asset_type: reported || resolveAssetType(a),
               selected: false,
               held: false,
               isInternal: a.member_type === "internal",
@@ -7898,10 +7900,12 @@ export const useAuthStore = defineStore("auth", {
           .map((a: any) => {
             const asset = getAssetHostName(a);
             if (!asset) return null;
+            const reported = normalizeAssetType(a?.asset_type ?? a?.assetType);
             return {
               ...a,
               asset,
-              asset_type: resolveAssetType(a),
+              reported_asset_type: reported,
+              asset_type: reported || resolveAssetType(a),
               selected: false,
               held: false,
               isInternal: res.data.member_type === "internal" || a.member_type === "internal",
