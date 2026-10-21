@@ -1748,7 +1748,7 @@ export default {
       return set;
     },
     cvModalGroupedVulns() {
-      const vulns = this.mitigationActiveTeamData?.vulnerabilities || [];
+      const vulns = this.teamVulnRows(this.mitigationActiveTab);
       const groups = { critical: [], high: [], medium: [], low: [] };
       for (const vuln of vulns) {
         const sev = (vuln.risk_factor || '').toLowerCase();
@@ -2435,18 +2435,57 @@ export default {
     setMitigationTab(key) {
       this.mitigationActiveTab = key;
     },
-    getTeamVulnCount(teamKey) {
+    cvHostKey(value) {
+      return String(value || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/+$/, '');
+    },
+    // By-team rows are one short of the vuln-asset-count API (TLS 1.0 had 10
+    // rows and asset_count 11). Append those hosts so the card total, the
+    // severity lines, and the modal all count the same hosts.
+    teamVulnRows(teamKey) {
       const teams = this.mitigationByTeamData?.teams || this.mitigationByTeamData || {};
-      const normalize = s => String(s).toLowerCase().replace(/\s+/g, ' ').trim();
-      const matchKey = Object.keys(teams).find(k => normalize(k) === normalize(teamKey));
-      return matchKey ? (teams[matchKey]?.vulnerabilities?.length || 0) : 0;
+      const normalize = (s) => String(s).toLowerCase().replace(/\s+/g, ' ').trim();
+      const matchKey = Object.keys(teams).find((key) => normalize(key) === normalize(teamKey));
+      const vulns = matchKey ? [...(teams[matchKey]?.vulnerabilities || [])] : [];
+      const byPlugin = new Map();
+      vulns.forEach((vuln) => {
+        const pluginKey = String(vuln.plugin_name || '').trim().toLowerCase();
+        if (!pluginKey) return;
+        if (!byPlugin.has(pluginKey)) {
+          byPlugin.set(pluginKey, { name: vuln.plugin_name, risk: vuln.risk_factor, hosts: new Set() });
+        }
+        const host = vuln.host_name || vuln.asset || vuln.ip || vuln.hostname;
+        const key = this.cvHostKey(host);
+        if (key) byPlugin.get(pluginKey).hosts.add(key);
+      });
+      const countTeams = this.vulnAssetCountData?.teams || {};
+      const countKey = Object.keys(countTeams).find((key) => normalize(key) === normalize(teamKey));
+      const counted = countKey ? (countTeams[countKey].vulnerabilities || []) : [];
+      counted.forEach((entry) => {
+        const pluginKey = String(entry.plugin_name || '').trim().toLowerCase();
+        const known = byPlugin.get(pluginKey);
+        if (!known || !Array.isArray(entry.assets)) return;
+        entry.assets.forEach((asset) => {
+          const key = this.cvHostKey(asset);
+          if (!key || known.hosts.has(key)) return;
+          known.hosts.add(key);
+          vulns.push({
+            plugin_name: known.name,
+            host_name: asset,
+            os: '',
+            status: 'Open',
+            risk_factor: known.risk || '',
+          });
+        });
+      });
+      return vulns;
+    },
+    getTeamVulnCount(teamKey) {
+      const rows = this.teamVulnRows(teamKey).length;
+      const fromApi = this.getTeamAssetCount(teamKey);
+      return Math.max(rows, fromApi);
     },
     getTeamSevCount(teamKey, sev) {
-      const teams = this.mitigationByTeamData?.teams || this.mitigationByTeamData || {};
-      const normalize = s => String(s).toLowerCase().replace(/\s+/g, ' ').trim();
-      const matchKey = Object.keys(teams).find(k => normalize(k) === normalize(teamKey));
-      if (!matchKey) return 0;
-      return (teams[matchKey]?.vulnerabilities || []).filter(v => (v.risk_factor || '').toLowerCase() === sev).length;
+      return this.teamVulnRows(teamKey).filter((v) => (v.risk_factor || '').toLowerCase() === sev).length;
     },
     // Real distinct-host count per vuln type, computed straight from this
     // team's own rows — same host fields/logic as uniqueMitigationVulns()'s
@@ -2495,16 +2534,14 @@ export default {
           if (seen.has(key)) return;
           seen.add(key);
         }
-        const accurate = this.getVulnAssetCount(v, teamKey);
+        const accurate = Number(this.getVulnAssetCount(v, teamKey)) || 0;
         const ownHostCount = key ? (hostCounts.get(key)?.size || 0) : 0;
-        // The cross-team vuln-asset-count API can simply have no entry for
-        // this vuln under THIS team (e.g. the same vuln type also affects
-        // hosts assigned to a different team, and that API attributes the
-        // asset_count to only one team) — falling straight to "+1 per type"
-        // in that case undercounts whenever this team's own rows list more
-        // than one host for it. Prefer this team's own real host count first.
-        if (ownHostCount) affectedAssets += ownHostCount;
-        else if (accurate) affectedAssets += accurate;
+        // vuln-asset-count is already split by team and is the count the
+        // cards show (11 + 11 + 11). The by-team host rows can be one short,
+        // which made Configuration Management read 32. Use that API count
+        // when it exists, and the host rows only when it does not.
+        if (accurate) affectedAssets += accurate;
+        else if (ownHostCount) affectedAssets += ownHostCount;
         else if (Array.isArray(v.assets)) affectedAssets += v.assets.length;
         else if (v.host_name) affectedAssets += 1;
       });

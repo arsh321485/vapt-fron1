@@ -30,7 +30,7 @@
                 <span>{{ platform === 'teams' ? 'Yesterday 13:00' : 'APP  Yesterday at 13:00' }}</span>
               </div>
 
-              <div class="bot-card">
+              <div v-if="platform === 'teams'" class="bot-card">
                 <div class="bot-tabs">
                   <span>Home</span>
                   <span class="on">Fix</span>
@@ -146,6 +146,109 @@
                   </div>
                 </transition>
               </div>
+
+              <div v-else class="bot-card slack-card">
+                <div class="bot-tabs slack-tabs">
+                  <span>Home</span>
+                  <span>Fix</span>
+                  <span>Register</span>
+                  <span>Automations</span>
+                  <span class="on">Team</span>
+                  <span>+ 3 more</span>
+                </div>
+                <div class="sub-tabs slack-actions">
+                  <span :class="{ on: screen === 'performance' }">Team Performance</span>
+                  <button ref="addUser" type="button" :class="{ on: screen === 'add' || screen === 'add-filled' || screen === 'added' }" @click="jump('add')">Add User</button>
+                  <button ref="deleteUser" type="button" :class="{ on: screen === 'delete' }" @click="jump('delete')">Delete User</button>
+                  <button ref="updateRole" type="button" :class="{ on: screen === 'role' || screen === 'role-filled' }" @click="jump('role')">Update User Role</button>
+                  <button ref="externalUser" type="button" :class="{ on: screen === 'external' }" @click="jump('external')">External User</button>
+                </div>
+
+                <transition name="fade">
+                  <div v-if="screen === 'performance'" key="performance" class="bot-screen">
+                    <p class="bot-kicker">Team Performance Monitoring</p>
+                    <p class="bot-note">Per-team closure rate, open/closed counts, and severity breakdown across all teams.</p>
+                    <div class="perf-grid">
+                      <div v-for="team in perfTeams" :key="team.name" class="perf-card">
+                        <b>{{ team.name }}</b>
+                        <small>{{ team.focus }}</small>
+                        <div class="perf-stats">
+                          <span><em>Closure</em><strong>{{ team.rate }}</strong></span>
+                          <span><em>Closed</em><strong class="ok">{{ team.closed }}</strong></span>
+                          <span><em>Open</em><strong class="bad">{{ team.open }}</strong></span>
+                        </div>
+                        <i class="perf-bar" :class="team.bar"></i>
+                        <div class="sev-boxes">
+                          <span>C {{ team.sev[0] }}</span>
+                          <span>H {{ team.sev[1] }}</span>
+                          <span>M {{ team.sev[2] }}</span>
+                          <span>L {{ team.sev[3] }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div v-else-if="screen === 'add' || screen === 'add-filled'" key="add" class="bot-screen">
+                    <p class="bot-kicker">Add User</p>
+                    <p class="field-label">User</p>
+                    <button ref="addUserPick" type="button" class="fake-input" @click="jump('add-filled')">
+                      {{ screen === 'add-filled' ? 'Ritika Bhikonde' : 'Select a user' }}
+                    </button>
+                    <p class="field-label">Type</p>
+                    <p class="fake-input">{{ screen === 'add-filled' ? 'internal' : 'external' }}</p>
+                    <p class="field-label">Team(s)</p>
+                    <p class="check on">Patch Management</p>
+                    <p class="check">Configuration Management</p>
+                    <p class="check">Network Security</p>
+                    <p class="check">Architectural Flaws</p>
+                    <p class="bot-note">Assets — 0 selected of 1</p>
+                    <p class="asset-line">161.126.58.98 [High]</p>
+                    <button ref="addUserSubmit" type="button" class="green-btn" @click="jump('added')">Add User</button>
+                  </div>
+
+                  <div v-else-if="screen === 'added'" key="added" class="bot-screen">
+                    <p class="bot-kicker ok-title">User Updated in VaptFix</p>
+                    <p class="bot-note">Adds a Slack user to VaptFix with team access.</p>
+                    <p class="meta-line"><span>Name</span> Ritika Bhikonde</p>
+                    <p class="meta-line"><span>Email</span> ritubhikonde2000@gmail.com</p>
+                    <p class="meta-line"><span>Type</span> internal</p>
+                    <p class="meta-line"><span>Team(s)</span> Patch Management, Configuration Management</p>
+                    <p class="bot-note">Their team access now includes: Patch Management, Configuration Management.</p>
+                  </div>
+
+                  <div v-else-if="screen === 'delete'" key="delete" class="bot-screen">
+                    <p class="bot-kicker">Delete User</p>
+                    <p class="bot-note">A user can be removed from the workspace as needed.</p>
+                    <p class="field-label">User</p>
+                    <p class="fake-input">Select a user</p>
+                    <p class="field-label">Action</p>
+                    <p class="fake-input">Deactivate (reversible)</p>
+                    <button type="button" class="green-btn">Confirm</button>
+                  </div>
+
+                  <div v-else-if="screen === 'role' || screen === 'role-filled'" key="role" class="bot-screen">
+                    <p class="bot-kicker">Update User Role</p>
+                    <p class="bot-note">A user’s role can be changed as needed.</p>
+                    <p class="field-label">Select User</p>
+                    <button ref="rolePick" type="button" class="fake-input" @click="jump('role-filled')">
+                      {{ screen === 'role-filled' ? 'Ritika Bhikonde' : 'Pick an option' }}
+                    </button>
+                    <template v-if="screen === 'role-filled'">
+                      <p class="field-label">Update Team Role(s)</p>
+                      <p class="check on">Patch Management</p>
+                      <p class="check">Configuration Management</p>
+                    </template>
+                    <button type="button" class="green-btn">Update</button>
+                  </div>
+
+                  <div v-else key="external" class="bot-screen">
+                    <p class="bot-kicker">External Users</p>
+                    <p class="bot-note">All external users — name, email, assigned assets/vulns, access deadline, and status.</p>
+                    <p class="meta-line"><span>Total</span> 0</p>
+                    <p class="bot-note">No external users found.</p>
+                  </div>
+                </transition>
+              </div>
             </div>
           </div>
         </div>
@@ -168,7 +271,7 @@ export default {
   emits: ['finished'],
   data() {
     return {
-      screen: 'common',
+      screen: this.platform === 'slack' ? 'performance' : 'common',
       paused: false,
       cursorX: 62,
       cursorY: 22,
@@ -181,6 +284,12 @@ export default {
         { host: 'ss.methak.com', open: true },
         { host: 'ss.sedal.com.sa', open: true },
       ],
+      perfTeams: [
+        { name: 'Network Security Team', focus: 'Infrastructure focus', rate: '0%', closed: 0, open: 7, sev: [0, 0, 7, 0], bar: 'bar-orange' },
+        { name: 'Patch Management Team', focus: 'Lifecycle management', rate: '0%', closed: 0, open: 1, sev: [0, 1, 0, 0], bar: 'bar-red' },
+        { name: 'Configuration Management Team', focus: 'System configuration', rate: '0%', closed: 0, open: 37, sev: [0, 7, 30, 0], bar: 'bar-orange' },
+        { name: 'Architectural Flaws Team', focus: 'Design and architecture', rate: '0%', closed: 0, open: 0, sev: [0, 0, 0, 0], bar: 'bar-empty' },
+      ],
     };
   },
   computed: {
@@ -189,6 +298,7 @@ export default {
     },
   },
   mounted() {
+    this.screen = this.platform === 'slack' ? 'performance' : 'common';
     this.play();
   },
   beforeUnmount() {
@@ -237,11 +347,23 @@ export default {
     },
     async play() {
       if (this.paused) return;
-      this.screen = 'common';
-      await this.delay(1500);
-      if (!(await this.clickRef('viewCommon', 'assets', 1700))) return;
-      if (!(await this.clickRef('viewReis', 'manual', 1900))) return;
-      if (!(await this.clickRef('autoTab', 'auto', 2000))) return;
+      if (this.platform === 'slack') {
+        this.screen = 'performance';
+        await this.delay(1600);
+        if (!(await this.clickRef('addUser', 'add', 1400))) return;
+        if (!(await this.clickRef('addUserPick', 'add-filled', 1500))) return;
+        if (!(await this.clickRef('addUserSubmit', 'added', 1700))) return;
+        if (!(await this.clickRef('deleteUser', 'delete', 1500))) return;
+        if (!(await this.clickRef('updateRole', 'role', 1200))) return;
+        if (!(await this.clickRef('rolePick', 'role-filled', 1500))) return;
+        if (!(await this.clickRef('externalUser', 'external', 1600))) return;
+      } else {
+        this.screen = 'common';
+        await this.delay(1500);
+        if (!(await this.clickRef('viewCommon', 'assets', 1700))) return;
+        if (!(await this.clickRef('viewReis', 'manual', 1900))) return;
+        if (!(await this.clickRef('autoTab', 'auto', 2000))) return;
+      }
       if (!this.paused) this.$emit('finished');
     },
   },
@@ -348,4 +470,61 @@ export default {
 .mock-cursor.clicking .cursor-ring { border-color: #e53e3e; }
 .fade-enter-active, .fade-leave-active { transition: opacity 0.22s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
+.chat-frame--slack .slack-tabs span.on,
+.chat-frame--slack .slack-actions .on {
+  background: #0f7a4b;
+  border-color: #0f7a4b;
+  color: #fff;
+}
+.slack-actions button {
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #3c3c46;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 7px;
+  cursor: pointer;
+}
+.perf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+.perf-card { border: 1px solid #e8edf3; border-radius: 8px; padding: 6px; }
+.perf-card b { display: block; font-size: 10px; color: #1d4ed8; }
+.perf-card small { display: block; font-size: 8px; color: #94a3b8; letter-spacing: 0.04em; text-transform: uppercase; }
+.perf-stats { display: flex; gap: 8px; margin-top: 4px; }
+.perf-stats span { display: flex; flex-direction: column; font-size: 8px; color: #94a3b8; }
+.perf-stats strong { font-size: 12px; color: #0f172a; }
+.perf-stats .ok { color: #16a34a; }
+.perf-stats .bad { color: #dc2626; }
+.perf-bar { display: block; height: 4px; border-radius: 99px; margin-top: 4px; background: #e5e7eb; }
+.perf-bar.bar-orange { background: linear-gradient(90deg, #fb923c, #f97316); }
+.perf-bar.bar-red { background: #ef4444; }
+.sev-boxes { display: flex; gap: 3px; margin-top: 4px; }
+.sev-boxes span { flex: 1; text-align: center; font-size: 8px; font-weight: 700; border-radius: 4px; padding: 2px 0; background: #f8fafc; color: #64748b; }
+.field-label { margin: 6px 0 2px; font-size: 10px; font-weight: 700; color: #64748b; }
+.fake-input {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  color: #1e293b;
+  font-size: 11px;
+  padding: 5px 8px;
+}
+.check { margin: 2px 0 0; font-size: 11px; color: #334155; }
+.check.on { font-weight: 700; }
+.asset-line { margin: 2px 0 0; font-size: 11px; color: #334155; }
+.green-btn {
+  margin-top: 8px;
+  border: 0;
+  background: #0f7a4b;
+  color: #fff;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.ok-title { color: #15803d; }
 </style>
