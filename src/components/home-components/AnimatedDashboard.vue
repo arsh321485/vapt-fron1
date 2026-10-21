@@ -859,6 +859,10 @@
 <script>
 export default {
   name: 'AnimatedDashboard',
+  props: {
+    loop: { type: Boolean, default: true },
+  },
+  emits: ['finished'],
   data() {
     return {
       currentPage: 'dashboard',
@@ -1234,9 +1238,9 @@ export default {
 
       this.currentPage = 'dashboard';
       await this.delay(1000);
-      if (!this.demoPaused) {
-        this.runAnimationSequence();
-      }
+      if (this.demoPaused) return;
+      if (this.loop) this.runAnimationSequence();
+      else this.$emit('finished');
     },
     moveCursor(x, y) {
       this.cursorX = x;

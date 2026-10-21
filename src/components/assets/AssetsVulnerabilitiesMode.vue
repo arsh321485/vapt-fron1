@@ -1770,19 +1770,10 @@ export default {
       return this.explicitHostAssetType(ip, vuln) || soleCountedAssetType(vuln?.asset_type_counts) || 'other';
     },
     assetTypeTabCount(type) {
-      // Prefer the backend's own asset_type_totals (from the report's
-      // /vulnerabilities/ response, cached on fetch) — it's the source of
-      // truth and avoids drift from this page's own grouping/classification
-      // logic. Fall back to the local grouped-vulns count only when the
-      // backend hasn't returned totals yet (e.g. before the first fetch).
-      const totals = this.isUser
-        ? this.authStore.userAllReportVulnerabilitiesAssetTypeTotals
-        : this.authStore.allReportVulnerabilitiesAssetTypeTotals;
-      if (totals && typeof totals === 'object') {
-        const wanted = assetTypeFromFilterKey(type);
-        const value = Number(totals[wanted]);
-        if (Number.isFinite(value)) return value;
-      }
+      // Count the cards this tab actually lists. The report payload's
+      // asset_type_totals can disagree with that list (a vuln is counted
+      // once per type it touches, and hosts the page classifies locally
+      // are not in that total).
       return this.vulnsGroupedByType(type).length;
     },
     assetsForVulnType(vuln, wanted) {

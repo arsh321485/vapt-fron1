@@ -30,7 +30,7 @@
             </div>
           </div>
           <div class="hv-hero-img-wrap">
-            <AnimatedDashboard />
+            <HeroProductDemo />
           </div>
         </div>
       </div>
@@ -377,7 +377,7 @@ export default {
     Header,
     Footer,
     AdminSignUpModal: defineAsyncComponent(() => import('@/components/admin-component/AdminSignUpModal.vue')),
-    AnimatedDashboard: defineAsyncComponent(() => import('@/components/home-components/AnimatedDashboard.vue')),
+    HeroProductDemo: defineAsyncComponent(() => import('@/components/home-components/HeroProductDemo.vue')),
   },
   data() {
     return {

@@ -72,7 +72,7 @@
           >
             <span v-if="oauthLoading === 'slack'" class="spinner-border spinner-border-sm"></span>
             <template v-else>
-              <img :src="slackIcon" alt="" class="social-btn-icon" />
+              <span class="slack-logo-frame"><img :src="slackIcon" alt="" /></span>
               Sign in with Slack
             </template>
           </button>
@@ -83,7 +83,7 @@
             :disabled="oauthLoading === 'teams'"
             @click.prevent="startSlackLogin"
           >
-            <img :src="slackIcon" alt="" class="social-btn-icon" />
+            <span class="slack-logo-frame"><img :src="slackIcon" alt="" /></span>
             <i class="bi bi-check-circle-fill"></i>
             Slack connected
           </button>
@@ -169,7 +169,7 @@ import { extractDjangoOAuthTokens, persistDjangoOAuthTokens } from '@/utils/djan
 import { consumePendingPlanResume, pendingPlanResumeUrl } from '@/utils/planLimits'
 import Swal from 'sweetalert2'
 import teamsIcon from '@/assets/images/teams.png'
-import slackIcon from '@/assets/images/slack.png'
+import slackIcon from '@/assets/images/slack-logo.jpg'
 
 export default {
   name: 'SignInView',
@@ -719,6 +719,21 @@ export default {
   width: 20px;
   height: 20px;
   object-fit: contain;
+}
+.slack-logo-frame {
+  width: 20px;
+  height: 20px;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.slack-logo-frame img {
+  width: 155%;
+  height: 155%;
+  max-width: none;
+  object-fit: cover;
 }
 
 .signup-link {

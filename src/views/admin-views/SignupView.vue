@@ -201,7 +201,7 @@
             :disabled="invitePending || loading"
             @click.prevent="startSlackLogin"
           >
-            <img :src="slackIcon" alt="" class="social-btn-icon" />
+            <span class="slack-logo-frame"><img :src="slackIcon" alt="" /></span>
             Sign up with Slack
           </button>
           <button
@@ -243,7 +243,7 @@ import { fetchClaimInviteValidate } from '@/services/claimInviteApi'
 import { consumePendingPlanResume, pendingPlanResumeUrl } from '@/utils/planLimits'
 import Swal from 'sweetalert2'
 import teamsIcon from '@/assets/images/teams.png'
-import slackIcon from '@/assets/images/slack.png'
+import slackIcon from '@/assets/images/slack-logo.jpg'
 import { openTeamsOAuthPopup } from '@/utils/teamsDeepLink'
 
 export default {
@@ -996,5 +996,20 @@ export default {
   height: 20px;
   object-fit: contain;
   flex-shrink: 0;
+}
+.slack-logo-frame {
+  width: 20px;
+  height: 20px;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.slack-logo-frame img {
+  width: 155%;
+  height: 155%;
+  max-width: none;
+  object-fit: cover;
 }
 </style>

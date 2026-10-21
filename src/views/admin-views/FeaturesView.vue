@@ -26,7 +26,7 @@
               <span class="fp-access-copy"><strong>Web Platform</strong></span>
             </div>
             <button type="button" class="fp-access-item" @click="startSlackSignup">
-              <span class="fp-access-icon"><img :src="slackIcon" alt="" width="28" height="28" /></span>
+              <span class="fp-access-icon"><span class="slack-logo-frame is-28"><img :src="slackIcon" alt="" /></span></span>
               <span class="fp-access-copy"><strong>Slack</strong><span>Sign up with Slack</span></span>
               <i class="bi bi-arrow-right" aria-hidden="true"></i>
             </button>
@@ -160,7 +160,7 @@
               <div class="fp-platforms">
                 <button type="button" class="fp-platform" @click="startSlackSignup">
                   <span class="fp-platform-logo">
-                    <img :src="slackIcon" alt="" width="32" height="32" />
+                    <span class="slack-logo-frame is-32"><img :src="slackIcon" alt="" /></span>
                   </span>
                   <span><strong>Slack</strong><em>Sign up with Slack</em></span>
                 </button>
@@ -297,7 +297,7 @@ import Footer from '@/components/admin-component/Footer.vue';
 import AdminSignUpModal from '@/components/admin-component/AdminSignUpModal.vue';
 import Swal from 'sweetalert2';
 import teamsIcon from '@/assets/images/teams.png';
-import slackIcon from '@/assets/images/slack.png';
+import slackIcon from '@/assets/images/slack-logo.jpg';
 
 const PAGE_TITLE = 'Features | VAPTFIX';
 const PAGE_DESCRIPTION = 'VAPTFIX capabilities: a centralized vulnerability register, automated and guided remediation, SLA governance, continuous assessment, expert-validated mitigation, and vulnerability workflows inside Slack and Microsoft Teams.';
@@ -545,6 +545,22 @@ button.fp-access-item:hover .bi-arrow-right { color: #0f696e; transform: transla
 }
 .fp-access-icon svg { width: 22px; height: 22px; }
 .fp-access-icon img { width: 26px; height: 26px; object-fit: contain; }
+.slack-logo-frame {
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.slack-logo-frame.is-28 { width: 28px; height: 28px; }
+.slack-logo-frame.is-32 { width: 32px; height: 32px; }
+.fp-access-icon .slack-logo-frame img,
+.fp-platform-logo .slack-logo-frame img {
+  width: 155%;
+  height: 155%;
+  max-width: none;
+  object-fit: cover;
+}
 .fp-access-copy { min-width: 0; }
 .fp-access-item strong { display: block; font-size: 16px; font-weight: 700; color: #241447; }
 .fp-access-item strong + span { display: block; margin-top: 2px; font-size: 13px; font-weight: 500; color: #64748b; }

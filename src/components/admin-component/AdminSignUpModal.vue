@@ -122,7 +122,7 @@
                 :disabled="isSlackDisabled || invitePending"
                 @click.prevent="startSlackLogin"
               >
-                <img :src="slackIcon" alt="" class="social-btn-icon" />
+                <span class="slack-logo-frame"><img :src="slackIcon" alt="" /></span>
                 Sign up with Slack
               </button>
               <button
@@ -131,7 +131,7 @@
                 class="social-connected-btn social-connected-slack"
                 @click.prevent="startSlackLogin"
               >
-                <img :src="slackIcon" alt="" class="social-btn-icon" />
+                <span class="slack-logo-frame"><img :src="slackIcon" alt="" /></span>
                 <i class="bi bi-check-circle-fill"></i>
                 Slack connected
               </button>
@@ -246,7 +246,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { markAdminSetPasswordEmailIfNew } from '@/utils/postLoginSuccess';
 import Swal from 'sweetalert2';
 import teamsIcon from '@/assets/images/teams.png';
-import slackIcon from '@/assets/images/slack.png';
+import slackIcon from '@/assets/images/slack-logo.jpg';
 import {
   clearClaimInvite,
   isClaimInviteFlow,
@@ -1431,6 +1431,21 @@ export default {
   height: 20px;
   object-fit: contain;
   flex-shrink: 0;
+}
+.slack-logo-frame {
+  width: 20px;
+  height: 20px;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.slack-logo-frame img {
+  width: 155%;
+  height: 155%;
+  max-width: none;
+  object-fit: cover;
 }
 
 /* Footer */

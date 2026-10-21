@@ -215,7 +215,7 @@
                               <th style="width: 22%;">Name</th>
 
                               <th style="width: 25%;">Email</th>
-                              <th style="width: 22%;">Role</th>
+                              <th style="width: 22%;">Team</th>
                               <!-- <th style="width: 13%;">Action</th> -->
                             </tr>
                           </thead>
@@ -308,7 +308,7 @@
                               <th style="width: 22%;">Name</th>
 
                               <th style="width: 25%;">Email</th>
-                              <th style="width: 22%;">Role</th>
+                              <th style="width: 22%;">Team</th>
                               <!-- <th style="width: 13%;">Action</th> -->
                             </tr>
                           </thead>
