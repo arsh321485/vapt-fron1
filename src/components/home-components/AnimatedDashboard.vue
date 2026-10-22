@@ -17,26 +17,18 @@
           <span class="sidebar-item-label">Home</span>
         </button>
         <button
+          ref="fixNav"
           type="button"
           class="sidebar-item"
-          :class="{ active: currentPage === 'calendar' }"
-          aria-label="Calendar"
-          @click="goToPage('calendar')"
+          :class="{ active: currentPage === 'assets' }"
+          aria-label="Fix"
+          @click="goToPage('assets')"
         >
-          <i class="bi bi-calendar3"></i>
-          <span class="sidebar-item-label">Calendar</span>
+          <i class="bi bi-laptop"></i>
+          <span class="sidebar-item-label">Fix</span>
         </button>
         <button
-          type="button"
-          class="sidebar-item"
-          :class="{ active: currentPage === 'team' }"
-          aria-label="Teams"
-          @click="goToPage('team')"
-        >
-          <i class="bi bi-people"></i>
-          <span class="sidebar-item-label">Teams</span>
-        </button>
-        <button
+          ref="registerNav"
           type="button"
           class="sidebar-item"
           :class="{ active: currentPage === 'register' }"
@@ -47,16 +39,18 @@
           <span class="sidebar-item-label">Register</span>
         </button>
         <button
+          ref="teamNav"
           type="button"
           class="sidebar-item"
-          :class="{ active: currentPage === 'assets' }"
-          aria-label="Assets"
-          @click="goToPage('assets')"
+          :class="{ active: currentPage === 'team' }"
+          aria-label="Team"
+          @click="goToPage('team')"
         >
-          <i class="bi bi-laptop"></i>
-          <span class="sidebar-item-label">Assets</span>
+          <i class="bi bi-people"></i>
+          <span class="sidebar-item-label">Team</span>
         </button>
         <button
+          ref="perfNav"
           type="button"
           class="sidebar-item"
           :class="{ active: currentPage === 'performance' }"
@@ -67,14 +61,26 @@
           <span class="sidebar-item-label">Team Performance</span>
         </button>
         <button
+          ref="calNav"
+          type="button"
+          class="sidebar-item"
+          :class="{ active: currentPage === 'calendar' }"
+          aria-label="Calendar"
+          @click="goToPage('calendar')"
+        >
+          <i class="bi bi-calendar3"></i>
+          <span class="sidebar-item-label">Calendar</span>
+        </button>
+        <button
+          ref="supportNav"
           type="button"
           class="sidebar-item"
           :class="{ active: currentPage === 'support' }"
-          aria-label="Support Requests"
+          aria-label="Support Request"
           @click="goToPage('support')"
         >
           <i class="bi bi-exclamation-circle"></i>
-          <span class="sidebar-item-label">Support Requests</span>
+          <span class="sidebar-item-label">Support Request</span>
         </button>
       </aside>
 
@@ -253,7 +259,7 @@
                   </div>
                 </div>
 
-                <!-- Card 4: Mitigation criteria timeline (simplified) -->
+                <!-- Card 4: Mitigation criteria timeline -->
                 <div class="vmp-card vmp-card-timeline">
                   <div class="vmp-card-head">
                     <div class="stat-icon-dash">
@@ -261,26 +267,47 @@
                     </div>
                     <span class="vmp-card-label">Mitigation Criteria Timeline</span>
                   </div>
-                  <div class="gauge-row">
-                    <div class="gauge-cell">
-                      <div class="gauge-arc g-crit"></div>
-                      <span class="gauge-lbl">Critical</span>
-                      <span class="gauge-val">3D</span>
+                  <span class="mct-update"><i class="bi bi-sliders"></i> Update Risk Criteria</span>
+                  <div class="mct-gauges">
+                    <div class="mct-gauge">
+                      <div class="mct-arc">
+                        <svg viewBox="0 0 72 42" aria-hidden="true">
+                          <path d="M6 38 A30 30 0 0 1 66 38" fill="none" stroke="#f1f5f9" stroke-width="8" stroke-linecap="round" />
+                          <path d="M6 38 A30 30 0 0 1 66 38" fill="none" stroke="#b42318" stroke-width="8" stroke-linecap="round" />
+                        </svg>
+                        <b>2 Days</b>
+                      </div>
+                      <span class="mct-sev sev-c">Critical</span>
                     </div>
-                    <div class="gauge-cell">
-                      <div class="gauge-arc g-high"></div>
-                      <span class="gauge-lbl">High</span>
-                      <span class="gauge-val">4D</span>
+                    <div class="mct-gauge">
+                      <div class="mct-arc">
+                        <svg viewBox="0 0 72 42" aria-hidden="true">
+                          <path d="M6 38 A30 30 0 0 1 66 38" fill="none" stroke="#f1f5f9" stroke-width="8" stroke-linecap="round" />
+                          <path d="M6 38 A30 30 0 0 1 66 38" fill="none" stroke="#dc2626" stroke-width="8" stroke-linecap="round" />
+                        </svg>
+                        <b>3 Days</b>
+                      </div>
+                      <span class="mct-sev sev-h">High</span>
                     </div>
-                    <div class="gauge-cell">
-                      <div class="gauge-arc g-med"></div>
-                      <span class="gauge-lbl">Medium</span>
-                      <span class="gauge-val">2W</span>
+                    <div class="mct-gauge">
+                      <div class="mct-arc">
+                        <svg viewBox="0 0 72 42" aria-hidden="true">
+                          <path d="M6 38 A30 30 0 0 1 66 38" fill="none" stroke="#f1f5f9" stroke-width="8" stroke-linecap="round" />
+                          <path d="M6 38 A30 30 0 0 1 66 38" fill="none" stroke="#f59e0b" stroke-width="8" stroke-linecap="round" />
+                        </svg>
+                        <b>4 Days</b>
+                      </div>
+                      <span class="mct-sev sev-m">Medium</span>
                     </div>
-                    <div class="gauge-cell">
-                      <div class="gauge-arc g-low"></div>
-                      <span class="gauge-lbl">Low</span>
-                      <span class="gauge-val">2W</span>
+                    <div class="mct-gauge">
+                      <div class="mct-arc">
+                        <svg viewBox="0 0 72 42" aria-hidden="true">
+                          <path d="M6 38 A30 30 0 0 1 66 38" fill="none" stroke="#f1f5f9" stroke-width="8" stroke-linecap="round" />
+                          <path d="M6 38 A30 30 0 0 1 66 38" fill="none" stroke="#10b981" stroke-width="8" stroke-linecap="round" />
+                        </svg>
+                        <b>5 Days</b>
+                      </div>
+                      <span class="mct-sev sev-l">Low</span>
                     </div>
                   </div>
                   <div class="gauge-legend">
@@ -876,19 +903,19 @@ export default {
         'Patch Management',
         'Configuration Management',
         'Network Security',
-        'Application Security'
+        'Architectural Flaws'
       ],
-      selectedAssetIp: '192.168.0.26',
+      selectedAssetIp: 'app.demo.local',
       assetsDemoList: [
-        { ip: '192.168.0.26', exposure: 'External', severity: 'HIGH', vulns: 12, c: 0, h: 1, m: 8, l: 3 },
-        { ip: '192.168.0.2', exposure: 'Internal', severity: 'MEDIUM', vulns: 6, c: 0, h: 0, m: 4, l: 2 },
-        { ip: '192.168.0.5', exposure: 'Internal', severity: 'MEDIUM', vulns: 4, c: 0, h: 0, m: 2, l: 2 },
-        { ip: '10.0.0.12', exposure: 'DMZ', severity: 'LOW', vulns: 2, c: 0, h: 0, m: 0, l: 2 }
+        { ip: 'app.demo.local', exposure: 'External', severity: 'HIGH', vulns: 12, c: 0, h: 1, m: 8, l: 3 },
+        { ip: 'api.demo.local', exposure: 'Internal', severity: 'MEDIUM', vulns: 6, c: 0, h: 0, m: 4, l: 2 },
+        { ip: 'portal.demo.local', exposure: 'Internal', severity: 'MEDIUM', vulns: 4, c: 0, h: 0, m: 2, l: 2 },
+        { ip: 'db.demo.local', exposure: 'DMZ', severity: 'LOW', vulns: 2, c: 0, h: 0, m: 0, l: 2 }
       ],
       demoThreats: [
-        { title: 'Redis Server Unprotected Instance', sev: 'HIGH', status: 'OPEN' },
-        { title: 'SSL Medium Strength Cipher Suites (SWEET32)', sev: 'MEDIUM', status: 'OPEN' },
-        { title: 'TLS 1.0 / 1.1 Deprecated Protocol Enabled', sev: 'MEDIUM', status: 'OPEN' }
+        { title: 'Dummy High Finding — Open Test Port', sev: 'HIGH', status: 'OPEN' },
+        { title: 'Dummy Medium Finding — Sample Header Gap', sev: 'MEDIUM', status: 'OPEN' },
+        { title: 'Dummy Medium Finding — Placeholder Cipher', sev: 'MEDIUM', status: 'OPEN' }
       ],
       severityFilters: ['All', 'Critical', 'High', 'Medium', 'Low'],
       activeVulnFilter: 'All',
@@ -900,8 +927,8 @@ export default {
       registerDemoRows: [
         {
           no: '01',
-          vuln: 'Redis Server Unprotected by Password or Authentication',
-          asset: '192.168.0.26',
+          vuln: 'Dummy High Finding — Open Test Port',
+          asset: 'app.demo.local',
           sev: 'HIGH',
           sevKey: 'high',
           firstObs: '08/05/2026',
@@ -910,8 +937,8 @@ export default {
         },
         {
           no: '02',
-          vuln: 'SSL Certificate Cannot Be Trusted',
-          asset: '192.168.0.2',
+          vuln: 'Dummy Medium Finding — Sample Header Gap',
+          asset: 'api.demo.local',
           sev: 'MEDIUM',
           sevKey: 'medium',
           firstObs: '08/05/2026',
@@ -920,8 +947,8 @@ export default {
         },
         {
           no: '03',
-          vuln: 'SSL Certificate Cannot Be Trusted',
-          asset: '192.168.0.5',
+          vuln: 'Dummy Medium Finding — Placeholder Cipher',
+          asset: 'portal.demo.local',
           sev: 'MEDIUM',
           sevKey: 'medium',
           firstObs: '08/05/2026',
@@ -930,8 +957,8 @@ export default {
         },
         {
           no: '04',
-          vuln: 'SSL Certificate Cannot Be Trusted',
-          asset: '192.168.0.6',
+          vuln: 'Dummy Medium Finding — Sample Cookie Flag',
+          asset: 'db.demo.local',
           sev: 'MEDIUM',
           sevKey: 'medium',
           firstObs: '08/05/2026',
@@ -940,8 +967,8 @@ export default {
         },
         {
           no: '05',
-          vuln: 'SSL Self-Signed Certificate',
-          asset: '192.168.0.6',
+          vuln: 'Dummy Medium Finding — Sample Debug Mode',
+          asset: 'db.demo.local',
           sev: 'MEDIUM',
           sevKey: 'medium',
           firstObs: '08/05/2026',
@@ -950,8 +977,8 @@ export default {
         },
         {
           no: '06',
-          vuln: 'SSL Certificate Cannot Be Trusted',
-          asset: '192.168.0.9',
+          vuln: 'Dummy Medium Finding — Demo Default Account',
+          asset: 'mail.demo.local',
           sev: 'MEDIUM',
           sevKey: 'medium',
           firstObs: '08/05/2026',
@@ -964,7 +991,7 @@ export default {
           id: 'ns',
           title: 'Network Security Team',
           subtitle: 'INFRASTRUCTURE FOCUS',
-          accent: 'blue',
+          accent: 'network',
           closure: 2,
           closed: 1,
           open: 45,
@@ -977,7 +1004,7 @@ export default {
           id: 'pm',
           title: 'Patch Management Team',
           subtitle: 'LIFECYCLE MANAGEMENT',
-          accent: 'green',
+          accent: 'patch',
           closure: 0,
           closed: 0,
           open: 4,
@@ -990,7 +1017,7 @@ export default {
           id: 'cm',
           title: 'Configuration Management Team',
           subtitle: 'SYSTEM CONFIGURATION',
-          accent: 'orange',
+          accent: 'config',
           closure: 0,
           closed: 0,
           open: 15,
@@ -1003,7 +1030,7 @@ export default {
           id: 'af',
           title: 'Architectural Flaws Team',
           subtitle: 'DESIGN & ARCHITECTURE',
-          accent: 'red',
+          accent: 'arch',
           closure: 0,
           closed: 0,
           open: 0,
@@ -1016,39 +1043,39 @@ export default {
       supportRequestsDemo: [
         {
           id: 1,
-          asset: '192.168.0.26',
-          assetEmail: 'abc@company.com',
-          vuln: 'Redis Server Unprotected b...',
+          asset: 'app.demo.local',
+          assetEmail: 'alex.morgan@example.com',
+          vuln: 'Dummy High Finding — Open Test Port',
           criticality: 'HIGH',
-          requestedBy: 'abc@company.com',
+          requestedBy: 'alex.morgan@example.com',
           raised: 'May 8, 2026',
           status: 'OPEN'
         },
         {
           id: 2,
-          asset: '192.168.0.26',
-          assetEmail: 'abc@company.com',
-          vuln: 'SSL Certificate Cannot Be T...',
+          asset: 'app.demo.local',
+          assetEmail: 'alex.morgan@example.com',
+          vuln: 'Dummy Medium Finding — Sample Header Gap',
           criticality: 'MEDIUM',
-          requestedBy: 'abc@company.com',
+          requestedBy: 'alex.morgan@example.com',
           raised: 'May 8, 2026',
           status: 'OPEN'
         },
         {
           id: 3,
-          asset: '192.168.0.2',
-          assetEmail: 'ops@vaptfix.demo',
-          vuln: 'Weak SSH Algorithms Enabled',
+          asset: 'api.demo.local',
+          assetEmail: 'ops@example.com',
+          vuln: 'Dummy Medium Finding — Placeholder Cipher',
           criticality: 'MEDIUM',
-          requestedBy: 'ops@vaptfix.demo',
+          requestedBy: 'ops@example.com',
           raised: 'May 8, 2026',
           status: 'OPEN'
         },
         {
           id: 4,
-          asset: '10.0.0.12',
+          asset: 'vpn.demo.local',
           assetEmail: 'security@example.com',
-          vuln: 'Outdated TLS 1.0 Protocol',
+          vuln: 'Dummy High Finding — Sample Cookie Flag',
           criticality: 'HIGH',
           requestedBy: 'security@example.com',
           raised: 'May 8, 2026',
@@ -1056,9 +1083,9 @@ export default {
         },
         {
           id: 5,
-          asset: '192.168.0.5',
+          asset: 'portal.demo.local',
           assetEmail: 'admin@example.com',
-          vuln: 'Missing Security Patches (C...',
+          vuln: 'Dummy Medium Finding — Sample Debug Mode',
           criticality: 'MEDIUM',
           requestedBy: 'admin@example.com',
           raised: 'May 8, 2026',
@@ -1066,11 +1093,11 @@ export default {
         },
         {
           id: 6,
-          asset: '192.168.0.26',
-          assetEmail: 'abc@company.com',
-          vuln: 'Default Credentials on Admin...',
+          asset: 'app.demo.local',
+          assetEmail: 'alex.morgan@example.com',
+          vuln: 'Dummy High Finding — Demo Default Account',
           criticality: 'HIGH',
-          requestedBy: 'abc@company.com',
+          requestedBy: 'alex.morgan@example.com',
           raised: 'May 8, 2026',
           status: 'OPEN'
         }
@@ -1167,7 +1194,7 @@ export default {
       this.currentPage = page;
       this.activeDashCard = '';
       if (page === 'assets') {
-        this.selectedAssetIp = '192.168.0.26';
+        this.selectedAssetIp = 'app.demo.local';
         this.activeVulnFilter = 'All';
       }
       if (page === 'support') {
@@ -1199,39 +1226,28 @@ export default {
       await this.delay(450);
       this.activeDashCard = '';
 
-      const goNav = async (x, y, page) => {
-        this.moveCursor(x, y);
-        await this.delay(650);
-        this.clickCursor();
-        await this.delay(380);
-        if (this.demoPaused) return false;
-        this.currentPage = page;
-        return true;
-      };
-
-      if (!(await goNav(5.5, 23, 'calendar'))) return;
-
-      await this.delay(2000);
+      if (!(await this.clickNav('fixNav', 'assets'))) return;
+      this.selectedAssetIp = 'app.demo.local';
+      await this.delay(1800);
       if (this.demoPaused) return;
 
-      if (!(await goNav(5.5, 33, 'team'))) return;
-      await this.delay(2000);
+      if (!(await this.clickNav('registerNav', 'register'))) return;
+      await this.delay(1800);
       if (this.demoPaused) return;
 
-      if (!(await goNav(5.5, 43, 'register'))) return;
-      await this.delay(2000);
+      if (!(await this.clickNav('teamNav', 'team'))) return;
+      await this.delay(1800);
       if (this.demoPaused) return;
 
-      if (!(await goNav(5.5, 53, 'assets'))) return;
-      this.selectedAssetIp = '192.168.0.26';
-      await this.delay(2000);
+      if (!(await this.clickNav('perfNav', 'performance'))) return;
+      await this.delay(1800);
       if (this.demoPaused) return;
 
-      if (!(await goNav(5.5, 63, 'performance'))) return;
-      await this.delay(2000);
+      if (!(await this.clickNav('calNav', 'calendar'))) return;
+      await this.delay(1800);
       if (this.demoPaused) return;
 
-      if (!(await goNav(5.5, 73, 'support'))) return;
+      if (!(await this.clickNav('supportNav', 'support'))) return;
       this.supportStatusTab = 'all';
       await this.delay(2200);
       if (this.demoPaused) return;
@@ -1241,6 +1257,26 @@ export default {
       if (this.demoPaused) return;
       if (this.loop) this.runAnimationSequence();
       else this.$emit('finished');
+    },
+    async clickNav(refName, page) {
+      await this.$nextTick();
+      const frame = this.$el && this.$el.querySelector('.dashboard-mockup');
+      const target = this.$refs[refName];
+      const node = Array.isArray(target) ? target[0] : target;
+      if (frame && node && node.getBoundingClientRect) {
+        const fr = frame.getBoundingClientRect();
+        const r = node.getBoundingClientRect();
+        this.moveCursor(
+          ((r.left + r.width / 2 - fr.left) / fr.width) * 100,
+          ((r.top + r.height / 2 - fr.top) / fr.height) * 100
+        );
+      }
+      await this.delay(650);
+      this.clickCursor();
+      await this.delay(380);
+      if (this.demoPaused) return false;
+      this.currentPage = page;
+      return true;
     },
     moveCursor(x, y) {
       this.cursorX = x;
@@ -1556,7 +1592,7 @@ export default {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: #2563eb;
+  background: #111111;
   color: #fff;
   font-size: 13px;
   font-weight: 700;
@@ -1579,7 +1615,7 @@ export default {
 
 .mock-stats {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: 0.9fr 1fr 1fr 1.3fr;
   gap: 8px;
   align-items: stretch;
   width: 100%;
@@ -1787,48 +1823,72 @@ export default {
   text-transform: capitalize;
 }
 
-/* Mitigation mini gauges */
-.vmp-card-timeline .gauge-row {
+/* Mitigation criteria timeline — half-circle gauges */
+.mct-update {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  margin: -2px 0 2px;
+  font-size: 7px;
+  font-weight: 700;
+  color: #0f696e;
+  line-height: 1.2;
+  text-align: right;
+}
+
+.mct-gauges {
   display: flex;
   justify-content: space-between;
+  align-items: flex-end;
   gap: 2px;
-  padding: 4px 0 2px;
+  margin-top: 2px;
   min-width: 0;
 }
 
-.gauge-cell {
+.mct-gauge {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  min-width: 0;
+  gap: 1px;
 }
 
-.gauge-arc {
+.mct-arc {
+  position: relative;
   width: 100%;
-  max-width: 26px;
-  height: 13px;
-  border-radius: 26px 26px 0 0;
-  opacity: 0.95;
+  max-width: 46px;
 }
 
-.g-crit { background: linear-gradient(90deg, #fecaca, #b42318); }
-.g-high { background: linear-gradient(90deg, #fecaca, #dc2626); }
-.g-med { background: linear-gradient(90deg, #fde68a, #f59e0b); }
-.g-low { background: linear-gradient(90deg, #bbf7d0, #10b981); }
+.mct-arc svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
 
-.gauge-lbl {
+.mct-arc b {
+  position: absolute;
+  left: 50%;
+  bottom: 1px;
+  transform: translateX(-50%);
   font-size: 6px;
-  color: #64748b;
-  font-weight: 600;
+  font-weight: 800;
+  color: #1f2937;
+  white-space: nowrap;
+  line-height: 1;
 }
 
-.gauge-val {
-  font-size: 8px;
+.mct-sev {
+  font-size: 6px;
   font-weight: 800;
-  color: #1e293b;
+  line-height: 1.1;
 }
+
+.mct-sev.sev-c { color: #b42318; }
+.mct-sev.sev-h { color: #dc2626; }
+.mct-sev.sev-m { color: #f59e0b; }
+.mct-sev.sev-l { color: #10b981; }
 
 .gauge-legend {
   display: flex;
@@ -1836,8 +1896,13 @@ export default {
   flex-wrap: wrap;
   gap: 6px;
   font-size: 6px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
   color: #64748b;
   margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid #f1f5f9;
 }
 
 .gauge-legend .dot {
@@ -1849,7 +1914,7 @@ export default {
   vertical-align: middle;
 }
 
-.dot-sla { background: #1e1b4b; }
+.dot-sla { background: #0f696e; }
 .dot-non { background: #cbd5e1; }
 
 /* Bottom panel — table scrolls; title never clipped */
@@ -3333,21 +3398,25 @@ export default {
   border-top: 4px solid #cbd5e1;
 }
 
-.perf-accent-blue {
+.perf-accent-network {
   border-top-color: #3b82f6;
 }
+.perf-accent-network .perf-card-title { color: #3b82f6; }
 
-.perf-accent-green {
-  border-top-color: #22c55e;
+.perf-accent-patch {
+  border-top-color: #5b21b6;
 }
+.perf-accent-patch .perf-card-title { color: #5b21b6; }
 
-.perf-accent-orange {
-  border-top-color: #f97316;
+.perf-accent-config {
+  border-top-color: #06b6d4;
 }
+.perf-accent-config .perf-card-title { color: #06b6d4; }
 
-.perf-accent-red {
-  border-top-color: #ef4444;
+.perf-accent-arch {
+  border-top-color: #c026d3;
 }
+.perf-accent-arch .perf-card-title { color: #c026d3; }
 
 .perf-card-title {
   font-size: 12px;
@@ -3439,19 +3508,19 @@ export default {
 }
 
 .perf-seg.seg-c {
-  background: #fecaca;
+  background: #b42318;
 }
 
 .perf-seg.seg-h {
-  background: #fed7aa;
+  background: #dc2626;
 }
 
 .perf-seg.seg-m {
-  background: #fef08a;
+  background: #f59e0b;
 }
 
 .perf-seg.seg-l {
-  background: #86efac;
+  background: #10b981;
 }
 
 .perf-seg.seg-empty {
