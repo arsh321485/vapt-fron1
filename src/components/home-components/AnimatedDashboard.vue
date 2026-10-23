@@ -169,7 +169,7 @@
                     <span class="vmp-card-label">Total Assets</span>
                   </div>
                   <div class="vmp-card-num-wrap">
-                    <span class="vmp-card-num">15</span>
+                    <span class="vmp-card-num">200</span>
                   </div>
                 </div>
 
@@ -179,7 +179,7 @@
                     <div class="stat-icon-dash">
                       <i class="bi bi-hourglass-split"></i>
                     </div>
-                    <span class="vmp-card-label">Mean time to remediate</span>
+                    <span class="vmp-card-label">Vulnerability level</span>
                   </div>
                   <div class="mttr-body">
                     <div class="mttr-donut">
@@ -216,14 +216,13 @@
                         />
                       </svg>
                       <div class="mttr-center">
-                        <div class="mttr-time">1w 1d 18hrs</div>
-                        <div class="mttr-sub">MTTR</div>
+                        <div class="mttr-time">High</div>
+                        <div class="mttr-sub">XYZ</div>
                       </div>
                     </div>
                   </div>
                   <div class="mttr-footer">
-                    <span class="mttr-foot-lbl">Avg. remediation</span>
-                    <span class="mttr-foot-pill">2</span>
+                    <span class="mttr-foot-lbl">Overall rating · Concerning</span>
                   </div>
                 </div>
 
@@ -237,22 +236,22 @@
                   </div>
                   <div class="vuln-bars">
                     <div class="vuln-col">
-                      <span class="vuln-n v-crit">0</span>
+                      <span class="vuln-n v-crit">18</span>
                       <div class="vuln-bar b-crit"></div>
                       <span class="vuln-sev">Critical</span>
                     </div>
                     <div class="vuln-col">
-                      <span class="vuln-n v-high">1</span>
+                      <span class="vuln-n v-high">11</span>
                       <div class="vuln-bar b-high"></div>
                       <span class="vuln-sev">High</span>
                     </div>
                     <div class="vuln-col">
-                      <span class="vuln-n v-med">47</span>
+                      <span class="vuln-n v-med">18</span>
                       <div class="vuln-bar b-med"></div>
                       <span class="vuln-sev">Medium</span>
                     </div>
                     <div class="vuln-col">
-                      <span class="vuln-n v-low">16</span>
+                      <span class="vuln-n v-low">4</span>
                       <div class="vuln-bar b-low"></div>
                       <span class="vuln-sev">Low</span>
                     </div>
@@ -345,7 +344,7 @@
                 <aside class="assets-col-left">
                   <div class="assets-list-head">
                     <h3 class="assets-list-title">All Assets</h3>
-                    <span class="assets-count-pill">15 Assets</span>
+                    <span class="assets-count-pill">200 Assets</span>
                     <div class="assets-list-tools">
                       <i class="bi bi-trash"></i>
                       <i class="bi bi-eye-slash"></i>
@@ -684,11 +683,11 @@
                           <tr>
                             <td>
                               <div class="teams-name-cell">
-                                <span class="teams-ava">UV</span>
-                                <span class="teams-name-txt">User vapt</span>
+                                <span class="teams-ava">AD</span>
+                                <span class="teams-name-txt">Abc Demo</span>
                               </div>
                             </td>
-                            <td class="teams-td-mail">user@company.com</td>
+                            <td class="teams-td-mail">abc.demo@example.com</td>
                             <td>
                               <select class="teams-role-dd" aria-label="Role">
                                 <option>AF</option>
@@ -905,17 +904,17 @@ export default {
         'Network Security',
         'Architectural Flaws'
       ],
-      selectedAssetIp: 'app.demo.local',
+      selectedAssetIp: '172.28.1.84',
       assetsDemoList: [
-        { ip: 'app.demo.local', exposure: 'External', severity: 'HIGH', vulns: 12, c: 0, h: 1, m: 8, l: 3 },
-        { ip: 'api.demo.local', exposure: 'Internal', severity: 'MEDIUM', vulns: 6, c: 0, h: 0, m: 4, l: 2 },
-        { ip: 'portal.demo.local', exposure: 'Internal', severity: 'MEDIUM', vulns: 4, c: 0, h: 0, m: 2, l: 2 },
-        { ip: 'db.demo.local', exposure: 'DMZ', severity: 'LOW', vulns: 2, c: 0, h: 0, m: 0, l: 2 }
+        { ip: '172.28.1.84', exposure: 'Internal', severity: 'CRITICAL', vulns: 9, c: 3, h: 1, m: 1, l: 4 },
+        { ip: '161.126.61.102', exposure: 'Internal', severity: 'CRITICAL', vulns: 14, c: 3, h: 0, m: 5, l: 6 },
+        { ip: '161.126.61.101', exposure: 'Internal', severity: 'CRITICAL', vulns: 16, c: 2, h: 0, m: 6, l: 8 },
+        { ip: '172.28.1.121', exposure: 'Internal', severity: 'CRITICAL', vulns: 8, c: 2, h: 1, m: 2, l: 3 }
       ],
       demoThreats: [
-        { title: 'Dummy High Finding — Open Test Port', sev: 'HIGH', status: 'OPEN' },
-        { title: 'Dummy Medium Finding — Sample Header Gap', sev: 'MEDIUM', status: 'OPEN' },
-        { title: 'Dummy Medium Finding — Placeholder Cipher', sev: 'MEDIUM', status: 'OPEN' }
+        { title: 'VMware ESXi Multiple Vulnerabilities (VMSA-2025-0004)', sev: 'CRITICAL', status: 'OPEN' },
+        { title: 'PaperCut MF Path Traversal (CVE-2023-39143)', sev: 'CRITICAL', status: 'OPEN' },
+        { title: 'SNMP Agent Default Community Name (public)', sev: 'HIGH', status: 'OPEN' }
       ],
       severityFilters: ['All', 'Critical', 'High', 'Medium', 'Low'],
       activeVulnFilter: 'All',
@@ -927,62 +926,62 @@ export default {
       registerDemoRows: [
         {
           no: '01',
-          vuln: 'Dummy High Finding — Open Test Port',
-          asset: 'app.demo.local',
-          sev: 'HIGH',
-          sevKey: 'high',
-          firstObs: '08/05/2026',
-          secondObs: '—',
+          vuln: 'VMware ESXi Multiple Vulnerabilities (VMSA-2025-0004)',
+          asset: '172.28.1.84',
+          sev: 'CRITICAL',
+          sevKey: 'critical',
+          firstObs: '31/12/2024',
+          secondObs: '05/01/2025',
           status: 'open'
         },
         {
           no: '02',
-          vuln: 'Dummy Medium Finding — Sample Header Gap',
-          asset: 'api.demo.local',
-          sev: 'MEDIUM',
-          sevKey: 'medium',
-          firstObs: '08/05/2026',
-          secondObs: '—',
+          vuln: 'PaperCut MF Path Traversal (CVE-2023-39143)',
+          asset: '161.126.61.102',
+          sev: 'CRITICAL',
+          sevKey: 'critical',
+          firstObs: '31/12/2024',
+          secondObs: '05/01/2025',
           status: 'open'
         },
         {
           no: '03',
-          vuln: 'Dummy Medium Finding — Placeholder Cipher',
-          asset: 'portal.demo.local',
-          sev: 'MEDIUM',
-          sevKey: 'medium',
-          firstObs: '08/05/2026',
-          secondObs: '—',
+          vuln: 'SNMP Agent Default Community Name (public)',
+          asset: '161.126.61.101',
+          sev: 'HIGH',
+          sevKey: 'high',
+          firstObs: '31/12/2024',
+          secondObs: '05/01/2025',
           status: 'open'
         },
         {
           no: '04',
-          vuln: 'Dummy Medium Finding — Sample Cookie Flag',
-          asset: 'db.demo.local',
+          vuln: 'SMB Signing Not Required',
+          asset: '172.28.1.121',
           sev: 'MEDIUM',
           sevKey: 'medium',
-          firstObs: '08/05/2026',
-          secondObs: '—',
+          firstObs: '31/12/2024',
+          secondObs: '05/01/2025',
           status: 'open'
         },
         {
           no: '05',
-          vuln: 'Dummy Medium Finding — Sample Debug Mode',
-          asset: 'db.demo.local',
+          vuln: 'TLS Version 1.0 Protocol Detection',
+          asset: '172.28.1.250',
           sev: 'MEDIUM',
           sevKey: 'medium',
-          firstObs: '08/05/2026',
-          secondObs: '—',
-          status: 'closed'
+          firstObs: '31/12/2024',
+          secondObs: '05/01/2025',
+          status: 'open'
         },
         {
           no: '06',
-          vuln: 'Dummy Medium Finding — Demo Default Account',
-          asset: 'mail.demo.local',
-          sev: 'MEDIUM',
-          sevKey: 'medium',
-          firstObs: '08/05/2026',
-          secondObs: '—',
+          vuln: 'ICMP Timestamp Request Remote Date Disclosure',
+          asset: '172.28.1.1',
+          sev: 'LOW',
+          sevKey: 'low',
+          firstObs: '31/12/2024',
+          secondObs: '05/01/2025',
           status: 'open'
         }
       ],
@@ -992,13 +991,13 @@ export default {
           title: 'Network Security Team',
           subtitle: 'INFRASTRUCTURE FOCUS',
           accent: 'network',
-          closure: 2,
-          closed: 1,
-          open: 45,
-          crit: 0,
-          high: 0,
-          med: 42,
-          low: 4
+          closure: 0,
+          closed: 0,
+          open: 15,
+          crit: 4,
+          high: 2,
+          med: 6,
+          low: 3
         },
         {
           id: 'pm',
@@ -1007,11 +1006,11 @@ export default {
           accent: 'patch',
           closure: 0,
           closed: 0,
-          open: 4,
-          crit: 0,
-          high: 0,
-          med: 3,
-          low: 1
+          open: 20,
+          crit: 10,
+          high: 6,
+          med: 4,
+          low: 0
         },
         {
           id: 'cm',
@@ -1020,11 +1019,11 @@ export default {
           accent: 'config',
           closure: 0,
           closed: 0,
-          open: 15,
-          crit: 0,
-          high: 0,
-          med: 4,
-          low: 11
+          open: 16,
+          crit: 4,
+          high: 3,
+          med: 8,
+          low: 1
         },
         {
           id: 'af',
@@ -1043,62 +1042,62 @@ export default {
       supportRequestsDemo: [
         {
           id: 1,
-          asset: 'app.demo.local',
-          assetEmail: 'alex.morgan@example.com',
-          vuln: 'Dummy High Finding — Open Test Port',
-          criticality: 'HIGH',
-          requestedBy: 'alex.morgan@example.com',
-          raised: 'May 8, 2026',
+          asset: '172.28.1.84',
+          assetEmail: 'abc.demo@example.com',
+          vuln: 'VMware ESXi Multiple Vulnerabilities (VMSA-2025-0004)',
+          criticality: 'CRITICAL',
+          requestedBy: 'abc.demo@example.com',
+          raised: 'Jan 10, 2025',
           status: 'OPEN'
         },
         {
           id: 2,
-          asset: 'app.demo.local',
-          assetEmail: 'alex.morgan@example.com',
-          vuln: 'Dummy Medium Finding — Sample Header Gap',
-          criticality: 'MEDIUM',
-          requestedBy: 'alex.morgan@example.com',
-          raised: 'May 8, 2026',
+          asset: '161.126.61.102',
+          assetEmail: 'abc.demo@example.com',
+          vuln: 'PaperCut MF Path Traversal (CVE-2023-39143)',
+          criticality: 'CRITICAL',
+          requestedBy: 'abc.demo@example.com',
+          raised: 'Jan 10, 2025',
           status: 'OPEN'
         },
         {
           id: 3,
-          asset: 'api.demo.local',
-          assetEmail: 'ops@example.com',
-          vuln: 'Dummy Medium Finding — Placeholder Cipher',
-          criticality: 'MEDIUM',
-          requestedBy: 'ops@example.com',
-          raised: 'May 8, 2026',
+          asset: '161.126.61.101',
+          assetEmail: 'xyz.demo@example.com',
+          vuln: 'SNMP Agent Default Community Name (public)',
+          criticality: 'HIGH',
+          requestedBy: 'xyz.demo@example.com',
+          raised: 'Jan 10, 2025',
           status: 'OPEN'
         },
         {
           id: 4,
-          asset: 'vpn.demo.local',
-          assetEmail: 'security@example.com',
-          vuln: 'Dummy High Finding — Sample Cookie Flag',
-          criticality: 'HIGH',
-          requestedBy: 'security@example.com',
-          raised: 'May 8, 2026',
+          asset: '172.28.1.121',
+          assetEmail: 'xyz.demo@example.com',
+          vuln: 'SMB Signing Not Required',
+          criticality: 'MEDIUM',
+          requestedBy: 'xyz.demo@example.com',
+          raised: 'Jan 10, 2025',
           status: 'OPEN'
         },
         {
           id: 5,
-          asset: 'portal.demo.local',
-          assetEmail: 'admin@example.com',
-          vuln: 'Dummy Medium Finding — Sample Debug Mode',
+          asset: '172.28.1.250',
+          assetEmail: 'abc.demo@example.com',
+          vuln: 'TLS Version 1.0 Protocol Detection',
           criticality: 'MEDIUM',
-          requestedBy: 'admin@example.com',
-          raised: 'May 8, 2026',
+          requestedBy: 'abc.demo@example.com',
+          raised: 'Jan 10, 2025',
           status: 'OPEN'
         },
         {
           id: 6,
-          asset: 'app.demo.local',
-          assetEmail: 'alex.morgan@example.com',
-          vuln: 'Dummy High Finding — Demo Default Account',
-          criticality: 'HIGH',
-          requestedBy: 'alex.morgan@example.com',
-          raised: 'May 8, 2026',
+          asset: '172.28.1.1',
+          assetEmail: 'xyz.demo@example.com',
+          vuln: 'ICMP Timestamp Request Remote Date Disclosure',
+          criticality: 'LOW',
+          requestedBy: 'xyz.demo@example.com',
+          raised: 'Jan 10, 2025',
           status: 'OPEN'
         }
       ]
@@ -1194,7 +1193,7 @@ export default {
       this.currentPage = page;
       this.activeDashCard = '';
       if (page === 'assets') {
-        this.selectedAssetIp = 'app.demo.local';
+        this.selectedAssetIp = '172.28.1.84';
         this.activeVulnFilter = 'All';
       }
       if (page === 'support') {
@@ -1227,7 +1226,7 @@ export default {
       this.activeDashCard = '';
 
       if (!(await this.clickNav('fixNav', 'assets'))) return;
-      this.selectedAssetIp = 'app.demo.local';
+      this.selectedAssetIp = '172.28.1.84';
       await this.delay(1800);
       if (this.demoPaused) return;
 
@@ -1810,10 +1809,10 @@ export default {
   min-height: 4px;
 }
 
-.b-crit { height: 8%; background: #b42318; }
-.b-high { height: 18%; background: #dc2626; }
+.b-crit { height: 85%; background: #b42318; }
+.b-high { height: 52%; background: #dc2626; }
 .b-med { height: 85%; background: #f59e0b; }
-.b-low { height: 40%; background: #10b981; }
+.b-low { height: 20%; background: #10b981; }
 
 .vuln-sev {
   font-size: 6px;
@@ -2147,6 +2146,11 @@ export default {
   border-radius: 6px;
 }
 
+.alc-sev.sev-critical {
+  background: #fee2e2;
+  color: #b42318;
+}
+
 .alc-sev.sev-high {
   background: #fee2e2;
   color: #dc2626;
@@ -2240,6 +2244,11 @@ export default {
   text-transform: uppercase;
   padding: 3px 8px;
   border-radius: 6px;
+}
+
+.ad-badge-critical {
+  background: #fee2e2;
+  color: #b42318;
 }
 
 .ad-badge-high {
@@ -2392,6 +2401,10 @@ export default {
   margin-top: 2px;
 }
 
+.ad-threat-ico.ico-critical {
+  color: #b42318;
+}
+
 .ad-threat-ico.ico-high {
   color: #dc2626;
 }
@@ -2426,6 +2439,11 @@ export default {
   text-transform: uppercase;
   padding: 2px 6px;
   border-radius: 4px;
+}
+
+.ad-mini-sev.sev-critical {
+  background: #fee2e2;
+  color: #b42318;
 }
 
 .ad-mini-sev.sev-high {
@@ -2679,6 +2697,11 @@ export default {
   border-radius: 6px;
 }
 
+.crit-critical {
+  background: #fee2e2;
+  color: #b42318;
+}
+
 .crit-high {
   background: #fee2e2;
   color: #b91c1c;
@@ -2687,6 +2710,11 @@ export default {
 .crit-medium {
   background: #fef9c3;
   color: #a16207;
+}
+
+.crit-low {
+  background: #d1fae5;
+  color: #047857;
 }
 
 .td-by {
@@ -3271,6 +3299,11 @@ export default {
   text-transform: uppercase;
 }
 
+.reg-sev-pill-td.sev-critical {
+  background: #fee2e2;
+  color: #b42318;
+}
+
 .reg-sev-pill-td.sev-high {
   background: #fee2e2;
   color: #dc2626;
@@ -3279,6 +3312,11 @@ export default {
 .reg-sev-pill-td.sev-medium {
   background: #fef3c7;
   color: #f59e0b;
+}
+
+.reg-sev-pill-td.sev-low {
+  background: #d1fae5;
+  color: #047857;
 }
 
 .reg-st-pill {
