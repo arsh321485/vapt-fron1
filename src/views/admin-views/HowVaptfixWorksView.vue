@@ -609,9 +609,7 @@
       </div>
     </section>
 
-
-
-
+    <Footer />
 
     <!-- Modals -->
     <SignUpModal v-if="showSignInModal" :show="showSignInModal" @close="closeModal" />
@@ -621,6 +619,7 @@
 
 <script>
 import Header from '@/components/admin-component/Header.vue';
+import Footer from '@/components/admin-component/Footer.vue';
 import SignUpModal from '@/components/admin-component/SignUpModal.vue';
 import AdminSignUpModal from '@/components/admin-component/AdminSignUpModal.vue';
 import { useAuthStore } from '@/stores/authStore';
@@ -630,7 +629,7 @@ import { openTeamsOAuthPopup } from '@/utils/teamsDeepLink';
 
 export default {
   name: 'HowVaptfixWorksView',
-  components: { Header, SignUpModal, AdminSignUpModal },
+  components: { Header, Footer, SignUpModal, AdminSignUpModal },
 
   data() {
     return {

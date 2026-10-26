@@ -12,6 +12,7 @@
 import { defineComponent } from "vue";
 import { useAuthStore } from "../src/stores/authStore";
 import ErrorBoundary from "./components/common/ErrorBoundary.vue";
+import { syncTawk } from "./utils/tawk";
 
 export default defineComponent({
   name: "App",
@@ -19,6 +20,14 @@ export default defineComponent({
   computed: {
     authStore() {
       return useAuthStore();
+    },
+  },
+  watch: {
+    "$route.name": {
+      immediate: true,
+      handler(name: unknown) {
+        syncTawk(name);
+      },
     },
   },
   mounted() {
