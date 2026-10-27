@@ -102,7 +102,7 @@
                 <div class="hvw-tl-paths">
                   <div class="hvw-path-block path-a">
                     <div class="hvw-path-label">Path A — Upload Existing Report</div>
-                    <div class="hvw-path-desc">Admin uploads an existing VA report on the website. Accepted today: Nessus files, AWS Security Hub exports, and custom assessment files. Configuration and CIS benchmark results are included when they are already inside that report. There is no separate live connector for other scanners. The system reads the assets in the file and sets the plan from that count.</div>
+                    <div class="hvw-path-desc">Admin uploads an existing VA report on the website. Accepted today: Nessus files, AWS Security Hub exports, and custom assessment files. There is no separate live connector for other scanners. The system reads the assets in the file and sets the plan from that count.</div>
                     <div class="hvw-tl-tags">
                       <span class="hvw-tag-pill">Nessus</span>
                       <span class="hvw-tag-pill">AWS Security Hub</span>
@@ -284,7 +284,7 @@
                 <div class="hvw-tl-paths">
                   <div class="hvw-path-block path-a">
                     <div class="hvw-path-label">Path A — Upload Report Card</div>
-                    <div class="hvw-path-desc">Admin uploads an existing VA report directly in Slack. Accepted today: Nessus files, AWS Security Hub exports, and custom assessment files. Configuration and CIS benchmark results are included when they are already inside that report. There is no separate live connector for other scanners.</div>
+                    <div class="hvw-path-desc">Admin uploads an existing VA report directly in Slack. Accepted today: Nessus files, AWS Security Hub exports, and custom assessment files. There is no separate live connector for other scanners.</div>
                     <div class="hvw-tl-tags">
                       <span class="hvw-tag-pill">Nessus</span>
                       <span class="hvw-tag-pill">AWS Security Hub</span>
@@ -530,7 +530,7 @@
                 <div class="hvw-tl-paths">
                   <div class="hvw-path-block path-a">
                     <div class="hvw-path-label">Path A — Upload Report Card</div>
-                    <div class="hvw-path-desc">Upload an existing VA report via the Teams card. Accepted today: Nessus files, AWS Security Hub exports, and custom assessment files. Configuration and CIS benchmark results are included when they are already inside that report. There is no separate live connector for other scanners.</div>
+                    <div class="hvw-path-desc">Upload an existing VA report via the Teams card. Accepted today: Nessus files, AWS Security Hub exports, and custom assessment files. There is no separate live connector for other scanners.</div>
                     <div class="hvw-tl-tags">
                       <span class="hvw-tag-pill">Nessus</span>
                       <span class="hvw-tag-pill">AWS Security Hub</span>
@@ -2146,12 +2146,15 @@ export default {
   padding: 0;
   display: grid;
   grid-auto-flow: column;
-  grid-template-rows: repeat(2, auto);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
   grid-template-columns: 1fr 1fr;
   column-gap: 48px;
+  align-items: stretch;
 }
 .hvw-flow-list li {
   position: relative;
+  display: flex;
+  min-height: 100%;
   padding-bottom: 28px;
 }
 .hvw-flow-list li:not(:last-child)::after {
@@ -2170,8 +2173,9 @@ export default {
   display: grid;
   grid-template-columns: 52px 1fr;
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
   width: 100%;
+  height: 100%;
   margin: 0;
   padding: 0;
   border: 0;
@@ -2187,26 +2191,31 @@ export default {
   border-radius: 16px;
 }
 .hvw-flow-copy {
-  display: block;
-  min-height: 100%;
-  padding: 14px 18px 16px;
+  display: flex;
+  flex-direction: column;
+  min-height: 220px;
+  height: 100%;
+  padding: 18px 20px;
   border-radius: 16px;
-  border: 1px solid transparent;
-  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
 .hvw-flow-btn:hover .hvw-flow-copy {
-  background: rgba(255, 255, 255, 0.7);
-  border-color: #e2e8f0;
+  border-color: #cbd5e1;
+  box-shadow: 0 8px 20px rgba(36, 20, 71, 0.08);
 }
 .hvw-flow-list li.is-active .hvw-flow-copy {
   background: #fff;
-  border-color: #ebe6f3;
-  box-shadow: 0 10px 28px rgba(36, 20, 71, 0.08);
+  border-color: #0f696e;
+  box-shadow: 0 12px 28px rgba(15, 105, 110, 0.18);
 }
 .hvw-flow-num {
   width: 52px;
   height: 52px;
-  margin-top: 10px;
+  margin-top: 14px;
+  align-self: start;
   border-radius: 50%;
   border: 2px solid #0f696e;
   background: #fff;
