@@ -83,6 +83,7 @@
           </p>
 
           <footer class="otp-verify-footer">
+            <p class="otp-entity">VAPTFIX.ai is a product of Secureitabservices Inc, a Delaware corporation.</p>
             <p>© 2026 VAPTFIX. All rights reserved.</p>
           </footer>
         </div>
@@ -888,6 +889,14 @@ export default {
   text-transform: uppercase;
   color: #7a7580;
   font-weight: 600;
+}
+
+.otp-verify-footer .otp-entity {
+  margin-top: 6px;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 500;
+  line-height: 1.4;
 }
 
 /* OTP boxes */

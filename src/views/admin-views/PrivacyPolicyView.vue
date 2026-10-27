@@ -25,89 +25,89 @@
           <div class="ld-doc-tag">Global Privacy · 20+ Jurisdictions</div>
           <h1 class="ld-doc-title">{{ activeSectionLabel }}</h1>
           <p class="ld-doc-meta">
-            <span><strong>Effective:</strong> May 12, 2025</span>
+            <span><strong>Last updated:</strong> October 26, 2026</span>
             <span style="color:#e2e8f0">|</span>
-            <span><strong>Updated:</strong> May 12, 2025</span>
-            <span style="color:#e2e8f0">|</span>
-            <span><strong>v</strong>2.0</span>
+            <span><strong>Version:</strong> 3.0</span>
           </p>
         </div>
 
         <main ref="contentScroller" class="ld-content">
 
         <div class="ld-callout" v-show="activeTocHash === '#overview'">
-          <p>This Privacy Policy applies to all users of VAPTFIX.ai globally. We comply with applicable data protection and privacy laws in every jurisdiction where we operate. General provisions apply to all users; the jurisdiction-specific notices (Sections 5-A through 5-P) supplement the general provisions with rights and obligations specific to your location. Where local law provides greater protections, those protections apply.</p>
+          <p>This Privacy Policy explains what information VAPTFIX processes through its website and platform, third-party integrations, and customer-authorized workflows; how that information is used, stored, protected, shared, retained, and deleted; and how privacy requests may be submitted.</p>
         </div>
 
         <section id="overview" v-show="activeTocHash === '#overview'">
           <div class="ld-section-number">01 / OVERVIEW</div>
-          <h2>Who We Are</h2>
-          <p>VAPTFIX.ai is a cybersecurity platform providing automated vulnerability assessment and penetration testing (VAPT), security scanning, remediation guidance, and reporting to organizations worldwide.</p>
-          <p>This Policy covers all products and services available at VAPTFIX.ai and via our API. It applies regardless of how you access the Service — web, mobile, API, or integrations.</p>
+          <h2>Overview</h2>
+          <p>VAPTFIX.ai ("VAPTFIX," "we," "our," or "us") is a vulnerability management platform that helps organizations identify, assign, track, and remediate security vulnerabilities. VAPTFIX.ai is a product of Secureitabservices Inc, a Delaware corporation. The platform may integrate with third-party services, including Slack, to support notifications, remediation workflows, task assignments, and audit logging.</p>
+          <p>VAPTFIX follows data-minimization, purpose-limitation, access-control, and secure-data-handling principles. Information is processed only as needed to provide, secure, and maintain the service, subject to applicable agreements and laws.</p>
+          <p>General provisions apply to all users. The jurisdiction-specific notices later on this page supplement those provisions with rights and obligations specific to your location. Where local law provides greater protections, those protections apply.</p>
         </section>
 
         <section id="data-collected" v-show="activeTocHash === '#data-collected'">
-          <div class="ld-section-number">02 / DATA COLLECTED</div>
-          <h2>Data We Collect</h2>
+          <div class="ld-section-number">02 / INFORMATION WE COLLECT</div>
+          <h2>Information We Collect</h2>
+          <p>The information VAPTFIX processes depends on how a customer uses the platform and which integrations are enabled. It may include the following categories.</p>
 
-          <h3>Account &amp; Identity Data</h3>
-          <ul>
-            <li>Full name, email address, and organization name</li>
-            <li>Billing address and payment information</li>
-            <li>Authentication credentials — passwords stored in hashed form only, never in plaintext</li>
-            <li>Profile preferences, notification settings, and language/locale</li>
-          </ul>
+          <h3>Account, organization, and configuration information</h3>
+          <p>Customer organization names; administrator names and business email addresses; user roles, permissions, and team assignments; subscription and billing-related information; account configuration and integration settings.</p>
 
-          <h3>Usage &amp; Technical Data</h3>
-          <ul>
-            <li>IP addresses, browser type/version, operating system, and device identifiers</li>
-            <li>Pages visited, features used, click paths, and session duration</li>
-            <li>API request logs, error logs, and performance diagnostics</li>
-            <li>Geolocation at city/country level derived from IP address</li>
-            <li>Referral source and campaign identifiers (UTM parameters)</li>
-          </ul>
+          <h3>Vulnerability, asset, and assessment information</h3>
+          <p>Asset names, IP addresses, and hostnames; CVE identifiers; CVSS scores and severity classifications; configuration benchmark results and security findings; assessment evidence, technical details, and supporting notes.</p>
+          <p>Customers may upload supported security assessment reports and scanner exports. VAPTFIX processes these files to extract asset information, findings, severity classifications, technical evidence, and remediation details, and organizes the results in the customer's account for vulnerability management, reporting, and remediation tracking. Temporary processing files are handled under applicable retention and deletion procedures.</p>
 
-          <h3>Scan &amp; Assessment Data</h3>
-          <ul>
-            <li>Target URLs, IP ranges, domain names, and API endpoints submitted for scanning</li>
-            <li>Vulnerability findings, CVSS scores, severity ratings, and remediation status</li>
-            <li>Scan configurations, schedules, scope definitions, and credentials for authenticated scans</li>
-            <li>Security reports, audit logs, and historical scan results</li>
-          </ul>
+          <h3>Remediation and support records</h3>
+          <p>Task assignments and responsible users; remediation status changes and due dates; comments and supporting evidence; approval decisions and closure records; timeline-extension and support requests.</p>
 
-          <h3>Communications Data</h3>
-          <ul>
-            <li>Support tickets and email correspondence</li>
-            <li>Survey responses and product feedback submissions</li>
-            <li>Webinar and event registrations and participation records</li>
-          </ul>
+          <h3>Operational, security, and audit information</h3>
+          <p>User actions and timestamps; authentication and authorization events; application requests, errors, and performance information; administrative changes, data exports, and security-relevant events; relevant actions performed through the website, Slack, or authorized APIs. Sensitive credentials, OAuth tokens, and secrets are redacted from operational logs.</p>
 
-          <h3>What We Do Not Collect</h3>
-          <p>We do not knowingly collect special categories of personal data (health, biometric, racial/ethnic origin, religious beliefs, political opinions, trade union membership, or sexual orientation) unless explicitly required for a specific purpose and processed under an appropriate legal basis with informed consent.</p>
+          <h3>Slack integration information</h3>
+          <p>OAuth access tokens used to authenticate authorized API requests; workspace and enterprise IDs and workspace names; Slack user IDs; display names and email addresses where permitted by granted permissions and available; authorized channel IDs; slash-command text, button clicks, form inputs, and other interactive payloads; timestamps of messages posted by VAPTFIX to update or close vulnerability cards.</p>
+          <p>VAPTFIX requests only the Slack permissions needed for its documented functionality. It does not read, index, or store general Slack channel conversation history, or collect unrelated channel messages, files, or conversations that are not addressed to the app or needed for an authorized interaction. Slack-derived information is used to provide requested functionality, maintain security, enforce permissions, and support customer-authorized remediation workflows. VAPTFIX does not build behavioral profiles of Slack users or use Slack data for advertising.</p>
         </section>
 
         <section id="how-we-use" v-show="activeTocHash === '#how-we-use'">
-          <div class="ld-section-number">03 / HOW WE USE DATA</div>
-          <h2>How We Use Your Data</h2>
-          <table class="ld-data-table">
-            <thead>
-              <tr>
-                <th>Purpose</th>
-                <th>Data Used</th>
-                <th>Representative Legal Bases</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td>Service delivery &amp; account management</td><td>Account, usage, scan data</td><td>Contract; legitimate interest</td></tr>
-              <tr><td>Security scanning &amp; vulnerability analysis</td><td>Scan targets, configurations</td><td>Contract</td></tr>
-              <tr><td>Billing &amp; payment processing</td><td>Account, billing data</td><td>Contract; legal obligation</td></tr>
-              <tr><td>Product improvement &amp; anonymized analytics</td><td>Aggregated usage data</td><td>Legitimate interest; consent (where required)</td></tr>
-              <tr><td>Security monitoring &amp; fraud prevention</td><td>Technical, usage data</td><td>Legitimate interest; legal obligation</td></tr>
-              <tr><td>Marketing &amp; promotional communications</td><td>Account data, preferences</td><td>Consent (opt-in); legitimate interest for existing customers where permitted</td></tr>
-              <tr><td>Legal compliance &amp; dispute resolution</td><td>All relevant data</td><td>Legal obligation; legitimate interest</td></tr>
-              <tr><td>Customer support &amp; onboarding</td><td>Communications, account data</td><td>Contract; legitimate interest</td></tr>
-            </tbody>
-          </table>
+          <div class="ld-section-number">03 / HOW WE USE INFORMATION</div>
+          <h2>How We Use Information</h2>
+          <ul>
+            <li>Create and administer customer accounts, configure integrations, and provide support.</li>
+            <li>Organize vulnerability findings, prioritize risks, assign remediation work, and track resolution.</li>
+            <li>Execute user-requested actions through authorized platform and Slack workflows.</li>
+            <li>Maintain auditability, troubleshoot errors, monitor service performance, detect misuse, and protect the platform.</li>
+            <li>Meet contractual requirements and applicable legal obligations.</li>
+          </ul>
+          <p>Vulnerability and remediation data is treated as confidential customer information and processed to provide the contracted service. Slack data and customer vulnerability data are not used to train or fine-tune AI or machine-learning models, including third-party models. VAPTFIX may use AI-assisted processing to analyze customer-uploaded assessment reports, extract and classify findings, and generate remediation recommendations. Customer reports are not used to train or fine-tune VAPTFIX's own AI models. Any third-party AI processing is subject to applicable service terms, data-protection requirements, and security controls.</p>
+        </section>
+
+        <section id="storage" v-show="activeTocHash === '#storage'">
+          <div class="ld-section-number">04 / STORAGE, HOSTING, AND SECURITY</div>
+          <h2>Storage, Hosting, and Security</h2>
+          <p>VAPTFIX stores application and customer data using its designated enterprise cloud infrastructure, database, and file-storage providers. Data is held in managed infrastructure rather than employee devices during normal production operations. Any authorized local handling for support or maintenance must follow applicable security controls. Hosting providers and regions depend on the deployed service configuration and the customer agreement.</p>
+          <h3>Separation and access</h3>
+          <ul>
+            <li>Customer records are associated with the relevant customer account and logically separated. Application queries enforce customer-level access restrictions.</li>
+            <li>Users may access only information permitted by their roles and customer-account permissions.</li>
+            <li>Production data is accessible only to authorized personnel with a legitimate operational or support need. Support access requires a valid support ticket and is limited to the approved task's scope and duration.</li>
+          </ul>
+          <h3>Encryption and secrets</h3>
+          <ul>
+            <li>Connections use TLS 1.2 or higher.</li>
+            <li>Databases, file storage, and backups are encrypted using AES-256 or equivalent controls supported by the applicable infrastructure.</li>
+            <li>Slack OAuth tokens are encrypted at the field level using keys maintained through a managed key-management service. Tokens are not exposed through API responses or written to application logs.</li>
+            <li>Application secrets and encryption keys are maintained in managed secrets or key-management facilities, with access restricted to authorized services and personnel. Keys and secrets are rotated at least annually and immediately when exposure is suspected.</li>
+          </ul>
+          <h3>Integration and operational safeguards</h3>
+          <ul>
+            <li>Incoming Slack requests are verified using Slack's request-signing mechanism and configured signing secret. Interactive actions are validated against applicable Slack security requirements; where interactive tokens are used, they are time-limited and validated before processing.</li>
+            <li>Single sign-on and multi-factor authentication are required for applicable privileged and production-access workflows.</li>
+            <li>Access rights are reviewed quarterly and removed within 24 hours of a role change or departure, where applicable.</li>
+            <li>Production access, configuration changes, and data exports are logged to tamper-evident storage and monitored for anomalies.</li>
+            <li>Personnel with access to customer information are subject to confidentiality obligations and annual security training.</li>
+          </ul>
+          <h3>Backups</h3>
+          <p>Encrypted backups are taken daily and retained for up to 35 days before being overwritten, according to the applicable backup schedule. Backups are stored in the designated region for the deployment. Customers may request a specific hosting region where supported and agreed in the customer agreement.</p>
         </section>
 
         <section id="legal-basis" v-show="activeTocHash === '#legal-basis'">
@@ -525,83 +525,58 @@
         <!-- GLOBAL PROVISIONS -->
 
         <section id="sharing" v-show="activeTocHash === '#sharing'">
-          <div class="ld-section-number">06 / DATA SHARING</div>
-          <h2>Data Sharing &amp; Disclosure</h2>
-          <p>We do not sell, rent, or trade your personal data to third parties for their own commercial purposes in any jurisdiction. Sharing occurs only as follows:</p>
-
-          <h3>Service Providers &amp; Sub-processors</h3>
-          <p>We engage trusted third-party processors (cloud infrastructure, payment, email, analytics, support). All are bound by Data Processing Agreements and restricted to processing data solely to provide services to us.</p>
-
-          <h3>Business Transfers</h3>
-          <p>In a merger, acquisition, or asset sale, personal data may transfer as a business asset. We provide 30 days' prior notice via email and platform notice. You may request deletion before transfer if no legal obligation requires retention.</p>
-
-          <h3>Legal Requirements</h3>
-          <p>We disclose data when required by court order, government request, or applicable law. Where legally permissible, we notify you before complying. We publish an annual transparency report on government data requests.</p>
-
-          <h3>Safety &amp; Security</h3>
-          <p>We may disclose data to protect the safety, rights, or property of VAPTFIX.ai, our users, or the public, including cooperation with law enforcement in cybercrime investigations.</p>
-
-          <h3>With Your Explicit Consent</h3>
-          <p>For any other sharing purpose, we obtain explicit, informed, and freely given consent before disclosure.</p>
+          <div class="ld-section-number">06 / SHARING AND SERVICE PROVIDERS</div>
+          <h2>Sharing and Service Providers</h2>
+          <p>VAPTFIX does not sell, rent, or share Slack data with third parties for their independent purposes. Information may be processed by authorized sub-processors when necessary to provide and maintain the service, including cloud hosting and infrastructure providers, database and file-storage providers, transactional email services, and error-monitoring or operational-support services.</p>
+          <p>Sub-processors may process information only for authorized service purposes and are subject to appropriate contractual confidentiality, data-protection, and security obligations. VAPTFIX provides at least 30 days' notice before adding a new sub-processor, subject to the applicable customer agreement and legal requirements.</p>
+          <p>VAPTFIX may disclose information when required by applicable law, valid legal process, or a binding order from a competent authority. Where legally permitted, VAPTFIX will notify the affected customer before disclosure.</p>
         </section>
 
         <section id="retention" v-show="activeTocHash === '#retention'">
-          <div class="ld-section-number">07 / RETENTION</div>
-          <h2>Data Retention Schedule</h2>
-          <p>We retain personal data only as long as necessary to fulfil stated purposes, comply with legal obligations, resolve disputes, and enforce agreements. Local law may impose minimum or maximum periods that override the defaults below.</p>
+          <div class="ld-section-number">07 / DATA RETENTION</div>
+          <h2>Data Retention</h2>
+          <p>VAPTFIX retains personal information and customer data only for as long as necessary to provide the service, meet contractual requirements, maintain security and auditability, and comply with applicable legal obligations. Unless law or a written customer agreement requires a different period, the following schedule applies:</p>
           <table class="ld-data-table">
             <thead>
-              <tr><th>Data Category</th><th>Default Retention</th><th>Legal Minimum Note</th></tr>
+              <tr><th>Data category</th><th>Retention period</th></tr>
             </thead>
             <tbody>
-              <tr><td>Account &amp; profile data</td><td>Account lifetime + 30 days</td><td>Varies by jurisdiction</td></tr>
-              <tr><td>Scan results &amp; security reports</td><td>2 years (configurable per plan)</td><td>No universal minimum</td></tr>
-              <tr><td>Security &amp; access logs</td><td>12 months</td><td>90 days in some jurisdictions</td></tr>
-              <tr><td>Support communications</td><td>3 years</td><td>No universal minimum</td></tr>
-              <tr><td>Marketing preferences &amp; consent records</td><td>Until opt-out or account deletion; 5 years for consent records</td><td>Required by GDPR, PIPL, LGPD</td></tr>
-              <tr><td>Data breach incident records</td><td>10 years</td><td>5 years (GDPR guidance)</td></tr>
+              <tr><td>Slack OAuth tokens</td><td>Deleted immediately after app uninstall or token revocation, subject to receipt and processing of the applicable event.</td></tr>
+              <tr><td>Slack workspace, user, and channel identifiers; display names and email addresses</td><td>Deleted within 30 days after uninstall.</td></tr>
+              <tr><td>Slash-command and interactive payloads</td><td>Retained only as relevant audit-log entries and deleted according to the audit-log schedule.</td></tr>
+              <tr><td>Vulnerability findings and remediation records</td><td>Deleted within 30 days after contract termination, or earlier upon an approved customer request.</td></tr>
+              <tr><td>Audit logs</td><td>Retained for 12 months from the event, unless the customer agreement specifies otherwise; deleted within 30 days after contract termination where a shorter contractual period applies.</td></tr>
+              <tr><td>Operational logs</td><td>Rolling 30-day retention.</td></tr>
+              <tr><td>Encrypted backups</td><td>Up to 35 days before being overwritten.</td></tr>
+              <tr><td>Billing records</td><td>As required by applicable tax, accounting, and other legal obligations.</td></tr>
             </tbody>
           </table>
-          <p>Upon expiry, data is securely deleted using NIST SP 800-88 compliant methods, or irreversibly anonymized.</p>
+          <p>The periods above are subject to overriding legal retention obligations or documented contractual requirements. Customers may export vulnerability and remediation data in CSV or JSON before deletion where the platform supports the requested export.</p>
+        </section>
+
+        <section id="deletion" v-show="activeTocHash === '#deletion'">
+          <div class="ld-section-number">08 / DELETION AND ACCOUNT CLOSURE</div>
+          <h2>Deletion and Account Closure</h2>
+          <p>VAPTFIX supports deletion following Slack app removal, token revocation, approved customer requests, and contract termination. Deletion requests may cover original uploaded files, extracted vulnerability records, generated reports, and associated customer data, subject to applicable legal and contractual retention requirements. Where third-party services process data on VAPTFIX's behalf, deletion is handled under the applicable service arrangements and retention requirements.</p>
+          <h3>Slack app uninstall</h3>
+          <p>After VAPTFIX receives and processes Slack's app_uninstalled event, associated OAuth tokens are deleted immediately and other Slack-derived data is deleted within 30 days. Relevant deletion activity is recorded without retaining the deleted content.</p>
+          <h3>Token revocation</h3>
+          <p>After VAPTFIX receives and processes a tokens_revoked event, affected OAuth tokens are deleted immediately. Related Slack-derived user data is deleted within 30 days where no other lawful or contractual retention requirement applies.</p>
+          <h3>Customer deletion requests</h3>
+          <p>An authorized workspace administrator or VAPTFIX account owner may email <a href="mailto:privacy@vaptfix.ai">privacy@vaptfix.ai</a>. VAPTFIX verifies the request and the requester's authority. Approved requests are completed within 30 days, subject to applicable legal requirements, and confirmation is provided in writing.</p>
+          <h3>Contract termination</h3>
+          <p>Customer data is deleted within 30 days after subscription termination unless law or an agreed contractual obligation requires a different period.</p>
+          <p>Deleted information may remain temporarily in encrypted backups until those backups are overwritten, within a maximum of 35 days under the standard schedule. Backups are not restored to reintroduce data that has been deleted. If disaster recovery restores an affected backup, applicable deletion requirements must be reapplied. VAPTFIX records relevant deletion activity, including date, data category, and requester where applicable, without retaining the deleted content.</p>
         </section>
 
         <section id="your-rights" v-show="activeTocHash === '#your-rights'">
-          <div class="ld-section-number">08 / YOUR RIGHTS — GLOBAL COMPARISON</div>
-          <h2>Privacy Rights Worldwide</h2>
-          <p>The table below summarizes rights under major frameworks. Your rights depend on your location. Submit all requests to <a href="mailto:privacy@vaptfix.ai">privacy@vaptfix.ai</a> with subject "Privacy Rights Request — [Your Country]." Response within the timeframe required by applicable law (typically 30 days; 45 days for CCPA with notice; 10 working days for POPIA). We will not discriminate against you for exercising any privacy right.</p>
-
-          <div class="ld-rights-table-wrap">
-            <table class="ld-rights-table">
-              <thead>
-                <tr>
-                  <th>Right</th>
-                  <th>GDPR (EU/UK)</th>
-                  <th>CCPA (CA)</th>
-                  <th>LGPD (BR)</th>
-                  <th>PIPL (CN)</th>
-                  <th>POPIA (ZA)</th>
-                  <th>PDPA (SG)</th>
-                  <th>PDPA (TH)</th>
-                  <th>APPI (JP)</th>
-                  <th>PIPA (KR)</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr><td>Access / Know</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td></tr>
-                <tr><td>Correction / Rectification</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td></tr>
-                <tr><td>Deletion / Erasure</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-dash">—</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td></tr>
-                <tr><td>Data Portability</td><td class="ld-tick">✔</td><td class="ld-dash">—</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-dash">—</td><td class="ld-tick">✔*</td><td class="ld-tick">✔</td><td class="ld-dash">—</td><td class="ld-dash">—</td></tr>
-                <tr><td>Restriction of Processing</td><td class="ld-tick">✔</td><td class="ld-dash">—</td><td class="ld-tick">✔</td><td class="ld-dash">—</td><td class="ld-dash">—</td><td class="ld-dash">—</td><td class="ld-tick">✔</td><td class="ld-dash">—</td><td class="ld-tick">✔</td></tr>
-                <tr><td>Objection to Processing</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-dash">—</td><td class="ld-tick">✔</td><td class="ld-dash">—</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-dash">—</td></tr>
-                <tr><td>Opt-Out of Sale / Sharing</td><td class="ld-dash">—</td><td class="ld-tick">✔</td><td class="ld-dash">—</td><td class="ld-dash">—</td><td class="ld-dash">—</td><td class="ld-dash">—</td><td class="ld-dash">—</td><td class="ld-dash">—</td><td class="ld-dash">—</td></tr>
-                <tr><td>Withdraw Consent</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td></tr>
-                <tr><td>Automated Decision Review</td><td class="ld-tick">✔</td><td class="ld-dash">—</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-dash">—</td><td class="ld-dash">—</td><td class="ld-dash">—</td><td class="ld-dash">—</td><td class="ld-dash">—</td></tr>
-                <tr><td>Complaint to Authority</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td><td class="ld-tick">✔</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <p style="font-size:13px;color:#64748b;margin-top:0.5rem;">✔ = right available under that framework &nbsp;|&nbsp; — = not explicitly provided &nbsp;|&nbsp; * SG portability under advisory guidelines</p>
+          <div class="ld-section-number">09 / PRIVACY RIGHTS</div>
+          <h2>Privacy Rights and Responsibilities</h2>
+          <p>Depending on applicable data-protection laws, individuals may have rights to request access to, correction of, export of, or deletion of their personal information, and may have additional rights concerning processing.</p>
+          <p>Where a customer determines the purposes and means of processing information within its workspace, that customer generally acts as the data controller and VAPTFIX acts as its service provider or data processor, as applicable. Requests concerning personal data associated with a customer workspace may be referred to the relevant customer. VAPTFIX assists customers with applicable data-protection obligations in accordance with its contractual commitments and legal requirements.</p>
+          <p>Privacy requests may be submitted to <a href="mailto:privacy@vaptfix.ai">privacy@vaptfix.ai</a>.</p>
         </section>
+
 
         <section id="cookies" v-show="activeTocHash === '#cookies'">
           <div class="ld-section-number">09 / COOKIES</div>
@@ -649,31 +624,27 @@
           <p>We maintain records of all cross-border data flows and Transfer Impact Assessments. Copies of applicable SCCs or transfer mechanism documentation are available on request at <a href="mailto:privacy@vaptfix.ai">privacy@vaptfix.ai</a>.</p>
         </section>
 
+        <section id="incidents" v-show="activeTocHash === '#incidents'">
+          <div class="ld-section-number">12 / SECURITY INCIDENTS</div>
+          <h2>Security Incidents and Breach Notification</h2>
+          <p>VAPTFIX maintains processes to identify, investigate, contain, and respond to security incidents affecting customer information. Where a confirmed personal-data breach or security incident affects customer data, VAPTFIX will notify the affected customer without undue delay and within 72 hours of confirmation, in accordance with applicable contractual commitments and legal requirements.</p>
+          <p>Notifications will include available information about the nature of the incident, categories of data affected, known or reasonably identifiable impacts, containment and remediation measures taken or planned, and relevant follow-up actions. Where Slack OAuth tokens may have been exposed, VAPTFIX will revoke and rotate affected credentials as appropriate and investigate potential unauthorized access. VAPTFIX will cooperate with affected customers in investigation, remediation, and applicable notification obligations.</p>
+        </section>
+
         <section id="changes" v-show="activeTocHash === '#changes'">
-          <div class="ld-section-number">11 / POLICY CHANGES</div>
+          <div class="ld-section-number">13 / CHANGES TO THIS POLICY</div>
           <h2>Changes to This Policy</h2>
-          <p>We review this Policy at least annually and update it when laws change, we add new features, or our practices evolve. For material changes, we will:</p>
-          <ul>
-            <li>Provide at least 30 days' advance notice via email and a prominent in-platform notice</li>
-            <li>Maintain a version archive of prior policies at VAPTFIX.ai/privacy-archive</li>
-          </ul>
-          <p>Continued use after the effective date constitutes acceptance, except where applicable law requires explicit re-consent.</p>
+          <p>VAPTFIX may update this Privacy Policy to reflect changes in integrations, data-processing practices, security controls, service functionality, or legal obligations. Material changes will be published on this page, and customer administrators will be notified by email at least 30 days before changes take effect, subject to applicable legal requirements and contractual terms. The version number and last-updated date will be revised whenever this policy is updated. Continued use of the service after the effective date of an update is subject to applicable contractual terms and legal requirements.</p>
         </section>
 
         <section id="contact" v-show="activeTocHash === '#contact'">
-          <div class="ld-section-number">12 / CONTACT, DPO &amp; AUTHORITIES</div>
-          <h2>Contact Us &amp; Supervisory Authorities</h2>
+          <div class="ld-section-number">14 / CONTACT</div>
+          <h2>Contact Information</h2>
           <div class="ld-callout">
             <p>
-              <strong>VAPTFIX.ai — Global Privacy Team</strong><br />
-              General Privacy: <a href="mailto:privacy@vaptfix.ai">privacy@vaptfix.ai</a><br />
-              Data Protection Officer (DPO / Encarregado / PIPO): <a href="mailto:dpo@vaptfix.ai">dpo@vaptfix.ai</a><br />
-              EU Representative (Art. 27 GDPR): <a href="mailto:eu-rep@vaptfix.ai">eu-rep@vaptfix.ai</a><br />
-              UK Representative: <a href="mailto:uk-rep@vaptfix.ai">uk-rep@vaptfix.ai</a><br />
-              China Privacy Officer (PIPL): <a href="mailto:cn-privacy@vaptfix.ai">cn-privacy@vaptfix.ai</a><br />
-              Middle East Privacy: <a href="mailto:me-privacy@vaptfix.ai">me-privacy@vaptfix.ai</a><br />
-              Latin America Privacy: <a href="mailto:latam-privacy@vaptfix.ai">latam-privacy@vaptfix.ai</a><br />
-              Response time: within 30 days of receipt (shorter timelines per local law observed)
+              For privacy requests, data access, correction, export, or deletion inquiries: <a href="mailto:privacy@vaptfix.ai">privacy@vaptfix.ai</a><br />
+              For security vulnerabilities and security incident reports: <a href="mailto:security@vaptfix.ai">security@vaptfix.ai</a><br />
+              Please do not include passwords, OAuth tokens, or other sensitive credentials in email communications.
             </p>
           </div>
 
@@ -736,8 +707,9 @@ export default {
       tocItems: [
         { type: 'group', label: 'General' },
         { type: 'link', href: '#overview', label: 'Overview' },
-        { type: 'link', href: '#data-collected', label: 'Data We Collect' },
-        { type: 'link', href: '#how-we-use', label: 'How We Use Data' },
+        { type: 'link', href: '#data-collected', label: 'Information We Collect' },
+        { type: 'link', href: '#how-we-use', label: 'How We Use Information' },
+        { type: 'link', href: '#storage', label: 'Storage, Hosting, and Security' },
         { type: 'link', href: '#legal-basis', label: 'Legal Bases Worldwide' },
         { type: 'divider' },
         { type: 'group', label: 'Jurisdiction Notices' },
@@ -759,13 +731,15 @@ export default {
         { type: 'link', href: '#israel', label: 'Israel' },
         { type: 'divider' },
         { type: 'group', label: 'Global Provisions' },
-        { type: 'link', href: '#sharing', label: 'Data Sharing' },
-        { type: 'link', href: '#retention', label: 'Retention Schedule' },
-        { type: 'link', href: '#your-rights', label: 'Your Rights Table' },
+        { type: 'link', href: '#sharing', label: 'Sharing and Service Providers' },
+        { type: 'link', href: '#retention', label: 'Data Retention' },
+        { type: 'link', href: '#deletion', label: 'Deletion and Account Closure' },
+        { type: 'link', href: '#your-rights', label: 'Privacy Rights' },
         { type: 'link', href: '#cookies', label: 'Cookies' },
         { type: 'link', href: '#international', label: 'Cross-Border Transfers' },
-        { type: 'link', href: '#changes', label: 'Policy Changes' },
-        { type: 'link', href: '#contact', label: 'Contact & Authorities' },
+        { type: 'link', href: '#incidents', label: 'Security Incidents' },
+        { type: 'link', href: '#changes', label: 'Changes to This Policy' },
+        { type: 'link', href: '#contact', label: 'Contact Information' },
       ],
     };
   },

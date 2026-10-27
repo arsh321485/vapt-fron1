@@ -46,6 +46,26 @@
       </div>
     </section>
 
+    <section class="hvw-section hvw-flow" id="product-flow">
+      <div class="hvw-container">
+        <p class="hvw-section-kicker">Product flow</p>
+        <h2 class="hvw-section-title">From a finding to a verified fix</h2>
+        <p class="hvw-section-sub">Four steps. The model writes the plan. A person approves it before anything runs. The plan stays on record with the finding it came from and the model that wrote it.</p>
+
+        <ol class="hvw-flow-list">
+          <li v-for="(step, index) in productFlow" :key="step.num" :class="{ 'is-active': activeFlow === index }">
+            <button type="button" class="hvw-flow-btn" :aria-pressed="activeFlow === index" @click="activeFlow = index">
+              <span class="hvw-flow-num">{{ step.num }}</span>
+              <span class="hvw-flow-copy">
+                <h3>{{ step.title }}</h3>
+                <p>{{ step.body }}</p>
+              </span>
+            </button>
+          </li>
+        </ol>
+      </div>
+    </section>
+
     <!-- ═══════════════════ JOURNEY 1 — EMAIL ═══════════════════ -->
     <section v-show="activeChannel === 'email'" class="hvw-section" id="journey1">
       <div class="hvw-container">
@@ -82,11 +102,11 @@
                 <div class="hvw-tl-paths">
                   <div class="hvw-path-block path-a">
                     <div class="hvw-path-label">Path A — Upload Existing Report</div>
-                    <div class="hvw-path-desc">Admin uploads an existing VA report, such as Nessus, AWS, or a custom file. The system identifies the total number of IPs/assets from the uploaded report and determines the applicable plan based on the asset count.</div>
+                    <div class="hvw-path-desc">Admin uploads an existing VA report on the website. Accepted today: Nessus files, AWS Security Hub exports, and custom assessment files. Configuration and CIS benchmark results are included when they are already inside that report. There is no separate live connector for other scanners. The system reads the assets in the file and sets the plan from that count.</div>
                     <div class="hvw-tl-tags">
                       <span class="hvw-tag-pill">Nessus</span>
-                      <span class="hvw-tag-pill">AWS</span>
-                      <span class="hvw-tag-pill">Custom (OpenAI)</span>
+                      <span class="hvw-tag-pill">AWS Security Hub</span>
+                      <span class="hvw-tag-pill">Custom assessment</span>
                     </div>
                   </div>
                   <div class="hvw-path-divider">OR</div>
@@ -171,7 +191,28 @@
     <section v-show="activeChannel === 'slack'" class="hvw-section hvw-section-alt" id="journey2">
       <div class="hvw-container">
         <h2 class="hvw-section-title">Slack Onboarding Flow</h2>
-        <p class="hvw-section-sub">The Slack journey follows the same onboarding logic, delivered through interactive Slack cards within the workspace.</p>
+        <p class="hvw-section-sub hvw-section-sub-tight">The Slack journey follows the same onboarding logic, delivered through interactive Slack cards within the workspace.</p>
+        <article class="hvw-market-card is-slack">
+          <div class="hvw-tl-icon" aria-hidden="true">
+            <svg width="28" height="28" viewBox="0 0 124 124" fill="none">
+              <path d="M26.3 78.8a13.15 13.15 0 0 1-13.15 13.15A13.15 13.15 0 0 1 0 78.8a13.15 13.15 0 0 1 13.15-13.15h13.15v13.15z" fill="#E01E5A"/>
+              <path d="M32.9 78.8a13.15 13.15 0 0 1 13.15-13.15 13.15 13.15 0 0 1 13.15 13.15v32.9A13.15 13.15 0 0 1 46.05 124a13.15 13.15 0 0 1-13.15-13.15V78.8z" fill="#E01E5A"/>
+              <path d="M46.05 26.3a13.15 13.15 0 0 1-13.15-13.15A13.15 13.15 0 0 1 46.05 0a13.15 13.15 0 0 1 13.15 13.15v13.15H46.05z" fill="#36C5F0"/>
+              <path d="M46.05 32.9a13.15 13.15 0 0 1 13.15 13.15 13.15 13.15 0 0 1-13.15 13.15H13.15A13.15 13.15 0 0 1 0 46.05a13.15 13.15 0 0 1 13.15-13.15h32.9z" fill="#36C5F0"/>
+              <path d="M97.7 46.05a13.15 13.15 0 0 1 13.15-13.15A13.15 13.15 0 0 1 124 46.05a13.15 13.15 0 0 1-13.15 13.15H97.7V46.05z" fill="#2EB67D"/>
+              <path d="M91.1 46.05a13.15 13.15 0 0 1-13.15 13.15 13.15 13.15 0 0 1-13.15-13.15V13.15A13.15 13.15 0 0 1 77.95 0a13.15 13.15 0 0 1 13.15 13.15v32.9z" fill="#2EB67D"/>
+              <path d="M77.95 97.7a13.15 13.15 0 0 1 13.15 13.15A13.15 13.15 0 0 1 77.95 124a13.15 13.15 0 0 1-13.15-13.15V97.7h13.15z" fill="#ECB22E"/>
+              <path d="M77.95 91.1a13.15 13.15 0 0 1-13.15-13.15 13.15 13.15 0 0 1 13.15-13.15h32.9A13.15 13.15 0 0 1 124 77.95a13.15 13.15 0 0 1-13.15 13.15H77.95z" fill="#ECB22E"/>
+            </svg>
+          </div>
+          <div class="hvw-tl-body">
+            <div class="hvw-market-card-top">
+              <div class="hvw-tl-title">Slack</div>
+              <span class="hvw-market-badge">Marketplace: in review</span>
+            </div>
+            <div class="hvw-tl-desc">Sign up with Slack and run remediation from cards in the workspace: assign a finding, approve a step, and close it with the audit record attached. The Slack app is available for that workflow. The Slack Marketplace listing is in review.</div>
+          </div>
+        </article>
 
         <!-- Part 1 — Connect Slack workspace -->
         <div class="hvw-part-head">
@@ -243,11 +284,11 @@
                 <div class="hvw-tl-paths">
                   <div class="hvw-path-block path-a">
                     <div class="hvw-path-label">Path A — Upload Report Card</div>
-                    <div class="hvw-path-desc">Admin uploads an existing VA report directly in Slack. Supported formats include Nessus files, AWS Security Hub exports, or custom files processed through OpenAI.</div>
+                    <div class="hvw-path-desc">Admin uploads an existing VA report directly in Slack. Accepted today: Nessus files, AWS Security Hub exports, and custom assessment files. Configuration and CIS benchmark results are included when they are already inside that report. There is no separate live connector for other scanners.</div>
                     <div class="hvw-tl-tags">
                       <span class="hvw-tag-pill">Nessus</span>
-                      <span class="hvw-tag-pill">AWS</span>
-                      <span class="hvw-tag-pill">Custom (OpenAI)</span>
+                      <span class="hvw-tag-pill">AWS Security Hub</span>
+                      <span class="hvw-tag-pill">Custom assessment</span>
                     </div>
                   </div>
                   <div class="hvw-path-divider">OR</div>
@@ -399,7 +440,24 @@
     <section v-show="activeChannel === 'teams'" class="hvw-section" id="journey3">
       <div class="hvw-container">
         <h2 class="hvw-section-title">Microsoft Teams Onboarding Flow</h2>
-        <p class="hvw-section-sub">The MS Teams journey mirrors the Slack journey exactly. The VAPTFIX bot posts Adaptive Cards inside a Teams chat or channel. Richer views like Add Users can use a Teams Tab.</p>
+        <p class="hvw-section-sub hvw-section-sub-tight">The MS Teams journey mirrors the Slack journey exactly. The VAPTFIX bot posts Adaptive Cards inside a Teams chat or channel. Richer views like Add Users can use a Teams Tab.</p>
+        <article class="hvw-market-card is-teams">
+          <div class="hvw-tl-icon" aria-hidden="true">
+            <svg width="32" height="32" viewBox="0 0 28 28" fill="none">
+              <path d="M16 10.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" fill="#5059C9"/>
+              <path d="M17.5 12H13a2.5 2.5 0 0 0-2.5 2.5v4c0 .28.22.5.5.5h7c.28 0 .5-.22.5-.5v-4C18.5 13.12 18.11 12 17.5 12z" fill="#5059C9"/>
+              <path d="M12 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" fill="#7B83EB"/>
+              <path d="M15 13H8c-.55 0-1 .45-1 1v4.5c0 .83.67 1.5 1.5 1.5h6c.83 0 1.5-.67 1.5-1.5V14c0-.55-.45-1-1-1z" fill="#7B83EB"/>
+            </svg>
+          </div>
+          <div class="hvw-tl-body">
+            <div class="hvw-market-card-top">
+              <div class="hvw-tl-title">Microsoft Teams</div>
+              <span class="hvw-market-badge">Marketplace: in review</span>
+            </div>
+            <div class="hvw-tl-desc">Sign up with Microsoft Teams and use the same remediation cards inside Teams: the plan, the approval, and the closure stay on the finding. The Microsoft Teams Marketplace listing is in review.</div>
+          </div>
+        </article>
 
         <!-- Part 1 — Connect Microsoft Teams -->
         <div class="hvw-part-head">
@@ -472,11 +530,11 @@
                 <div class="hvw-tl-paths">
                   <div class="hvw-path-block path-a">
                     <div class="hvw-path-label">Path A — Upload Report Card</div>
-                    <div class="hvw-path-desc">Upload an existing VA report via the Teams card. Supported formats: Nessus, AWS, or custom file processed via OpenAI.</div>
+                    <div class="hvw-path-desc">Upload an existing VA report via the Teams card. Accepted today: Nessus files, AWS Security Hub exports, and custom assessment files. Configuration and CIS benchmark results are included when they are already inside that report. There is no separate live connector for other scanners.</div>
                     <div class="hvw-tl-tags">
                       <span class="hvw-tag-pill">Nessus</span>
-                      <span class="hvw-tag-pill">AWS</span>
-                      <span class="hvw-tag-pill">Custom (OpenAI)</span>
+                      <span class="hvw-tag-pill">AWS Security Hub</span>
+                      <span class="hvw-tag-pill">Custom assessment</span>
                     </div>
                   </div>
                   <div class="hvw-path-divider">OR</div>
@@ -637,6 +695,29 @@ export default {
       showAdminSignUpModal: false,
       oauthLoading: '',
       activeChannel: 'email',
+      activeFlow: 0,
+      productFlow: [
+        {
+          num: '01',
+          title: 'Ingest',
+          body: 'Findings come in from an uploaded assessment. Accepted today: Nessus files, AWS Security Hub exports, and custom assessment files. VAPTFIX reads the file for assets, findings, severity, and the technical evidence already in the report.',
+        },
+        {
+          num: '02',
+          title: 'Prioritise',
+          body: 'Each finding is ranked by severity. This step is rules and ownership in VAPTFIX. The model does not decide priority.',
+        },
+        {
+          num: '03',
+          title: 'Plan',
+          body: 'This is the step the model performs. NVIDIA NIM processes the ingested finding and generates a remediation plan: ordered steps, a script where automation applies, instructions to verify the fix, and rollback guidance. Nothing in that plan runs automatically. A person on your team must approve it first. VAPTFIX stores the plan alongside the source finding and records which NVIDIA model generated the remediation steps, preserving traceability between the original finding and the proposed fix.',
+        },
+        {
+          num: '04',
+          title: 'Execute',
+          body: 'Approved work runs in the order on the plan, in the website, Slack, or Microsoft Teams. A step that changes a system waits for approval. If the change should not stand, the team stops it and follows the rollback written in the plan. The model does not execute the fix.',
+        },
+      ],
       backendBase: 'https://vaptbackend.secureitlab.com',
       authStore: null,
 
@@ -944,6 +1025,41 @@ export default {
   max-width: 680px;
   line-height: 1.7;
   margin-bottom: 48px;
+}
+.hvw-section-sub-tight { margin-bottom: 20px; }
+.hvw-market-card {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #4A154B;
+  border-radius: 16px;
+  padding: 22px 24px;
+  margin-bottom: 36px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+.hvw-market-card.is-teams { border-left-color: #5059C9; }
+.hvw-market-card .hvw-tl-body { flex: 1; min-width: 0; }
+.hvw-market-card-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-bottom: 8px;
+}
+.hvw-market-card .hvw-tl-title { margin-bottom: 0; }
+.hvw-market-badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 /* ── JOURNEY 1 TIMELINE ── */
@@ -2017,6 +2133,115 @@ export default {
   transition: background 0.2s;
 }
 .htc-btn-success:hover { background: #0a4e52; }
+
+.hvw-flow { background: #f1f5f9; }
+.hvw-flow .hvw-section-kicker {
+  color: #0f696e;
+  letter-spacing: 0.08em;
+  font-size: 12px;
+}
+.hvw-flow-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(2, auto);
+  grid-template-columns: 1fr 1fr;
+  column-gap: 48px;
+}
+.hvw-flow-list li {
+  position: relative;
+  padding-bottom: 28px;
+}
+.hvw-flow-list li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 25px;
+  top: 68px;
+  bottom: 10px;
+  width: 2px;
+  background: #d9d3e8;
+  z-index: 0;
+}
+.hvw-flow-btn {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 16px;
+  align-items: start;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.hvw-flow-btn:focus-visible {
+  outline: 2px solid #0f696e;
+  outline-offset: 6px;
+  border-radius: 16px;
+}
+.hvw-flow-copy {
+  display: block;
+  min-height: 100%;
+  padding: 14px 18px 16px;
+  border-radius: 16px;
+  border: 1px solid transparent;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+.hvw-flow-btn:hover .hvw-flow-copy {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: #e2e8f0;
+}
+.hvw-flow-list li.is-active .hvw-flow-copy {
+  background: #fff;
+  border-color: #ebe6f3;
+  box-shadow: 0 10px 28px rgba(36, 20, 71, 0.08);
+}
+.hvw-flow-num {
+  width: 52px;
+  height: 52px;
+  margin-top: 10px;
+  border-radius: 50%;
+  border: 2px solid #0f696e;
+  background: #fff;
+  color: #0f696e;
+  font-size: 14px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+.hvw-flow-btn:hover .hvw-flow-num {
+  border-color: #241447;
+  color: #241447;
+}
+.hvw-flow-list li.is-active .hvw-flow-num,
+.hvw-flow-list li.is-active .hvw-flow-btn:hover .hvw-flow-num {
+  background: #241447;
+  border-color: #241447;
+  color: #ccfbf1;
+}
+.hvw-flow-list h3 { margin: 0 0 6px; font-size: 18px; font-weight: 700; color: #241447; }
+.hvw-flow-list p { margin: 0; font-size: 15px; line-height: 1.6; color: #64748b; }
+@media (min-width: 801px) {
+  .hvw-flow-list li:nth-child(2)::after { display: none; }
+}
+@media (max-width: 800px) {
+  .hvw-flow-list {
+    grid-auto-flow: row;
+    grid-template-rows: none;
+    grid-template-columns: 1fr;
+  }
+}
 
 /* ── Responsive ── */
 @media (max-width: 900px) {

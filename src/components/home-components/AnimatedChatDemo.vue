@@ -54,8 +54,8 @@
                     <span><i class="bi bi-share"></i> Common Vulnerabilities</span>
                   </div>
                   <div v-else-if="section === 'register'" class="sub-tabs">
-                    <span class="on"><i class="bi bi-card-list"></i> Register</span>
-                    <span><i class="bi bi-file-code"></i> Script</span>
+                    <span :class="{ on: screen === 'register' }"><i class="bi bi-card-list"></i> Register</span>
+                    <button ref="sScript" type="button" :class="{ on: screen === 'script' }" @click="jump('script')"><i class="bi bi-file-code"></i> Script</button>
                   </div>
                   <div v-else-if="section === 'timeline'" class="sub-tabs">
                     <span :class="{ on: screen === 'timeline' }"><i class="bi bi-calendar2-plus"></i> Extension Requests</span>
@@ -248,6 +248,17 @@
                           <small>{{ row.host }} · {{ row.status }} · 31/12/2024</small>
                         </div>
                         <span class="view">View</span>
+                      </div>
+                    </div>
+
+                    <div v-else-if="screen === 'script'" class="bot-screen">
+                      <p class="bot-kicker"><i class="bi bi-file-code"></i> Script</p>
+                      <p class="bot-note">Findings from the XYZ internal report that have a fix path.</p>
+                      <div v-for="row in scriptRows" :key="'ss-' + row.host" class="line">
+                        <div>
+                          <b>{{ row.name }}</b>
+                          <small>{{ row.host }} · {{ row.coverage }} · {{ row.team }}</small>
+                        </div>
                       </div>
                     </div>
 
@@ -871,20 +882,28 @@
 </template>
 
 <script>
+const SCREEN_MS = 1000;
+
 export default {
   name: 'AnimatedChatDemo',
   props: {
     platform: { type: String, default: 'teams' },
+    screens: { type: Array, default: () => [] },
+    controlled: { type: Boolean, default: false },
+    go: { type: Object, default: null },
   },
   emits: ['finished'],
   data() {
     return {
-      screen: 'home',
+      screen: (this.controlled && this.go && this.go.from) || 'home',
+      moreOpen: false,
       paused: false,
       cursorX: 18,
       cursorY: 22,
       clicking: false,
       timer: null,
+      navToken: 0,
+      lastGoId: -1,
       assetRows: [
         { host: '172.28.1.84', detail: '9 findings · 3 critical · 1 high' },
         { host: '161.126.61.102', detail: '14 findings · 3 critical · 5 medium' },
@@ -913,7 +932,7 @@ export default {
       return { left: `${this.cursorX}%`, top: `${this.cursorY}%` };
     },
     slackMore() {
-      return ['timeline', 'reminder', 'download'].includes(this.section);
+      return this.moreOpen || ['timeline', 'reminder', 'download'].includes(this.section);
     },
     section() {
       if (this.screen === 'home') return 'home';
@@ -927,8 +946,20 @@ export default {
       return 'fix';
     },
   },
+  watch: {
+    go: {
+      immediate: true,
+      handler(go) {
+        if (!this.controlled || !go || !go.screen || go.id === this.lastGoId) return;
+        this.lastGoId = go.id;
+        this.runTo(go.screen);
+      },
+    },
+  },
   mounted() {
-    this.play();
+    if (this.controlled) return;
+    if (this.screens.length) this.playScreens(this.screens);
+    else this.play();
   },
   beforeUnmount() {
     this.clearTimer();
@@ -960,19 +991,117 @@ export default {
       this.cursorX = ((r.left + r.width / 2 - fr.left) / fr.width) * 100;
       this.cursorY = ((r.top + r.height / 2 - fr.top) / fr.height) * 100;
     },
-    async clickRef(refName, next, dwell) {
+    paint() {
+      return new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      });
+    },
+    async press(refName) {
       if (this.paused) return false;
       await this.$nextTick();
       this.aim(refName);
-      await this.delay(480);
+      await this.delay(760);
       if (this.paused) return false;
       this.clicking = true;
-      setTimeout(() => { this.clicking = false; }, 200);
-      await this.delay(240);
-      if (this.paused) return false;
+      setTimeout(() => { this.clicking = false; }, 340);
+      await this.delay(280);
+      return !this.paused;
+    },
+    async clickRef(refName, next, dwell) {
+      if (!(await this.press(refName))) return false;
       this.screen = next;
       await this.delay(dwell);
       return !this.paused;
+    },
+    openRef(screen) {
+      const slack = {
+        assets: 'sFix',
+        register: 'sRegister',
+        team: 'sTeam',
+      };
+      const teams = {
+        assets: 'fixTabBtn',
+        register: 'registerTab',
+        automations: 'automationsTab',
+        team: 'teamTab',
+        timeline: 'timelineTab',
+        reminder: 'reminderTab',
+        download: 'downloadTab',
+      };
+      return (this.platform === 'slack' ? slack : teams)[screen] || '';
+    },
+    edgeRef(from, to) {
+      const slack = {
+        'home>assets': 'sFix',
+        'assets>assets-hold': 'sPager',
+        'assets-hold>asset': 'sViewHold',
+        'asset>manual': 'sFinding',
+        'manual>auto': 'sAuto',
+        'auto>register': 'sRegister',
+        'register>script': 'sScript',
+        'script>team': 'sTeam',
+        'register>team': 'sTeam',
+        'team>add': 'sAdd',
+        'add>add-picked': 'sPick',
+        'add-picked>user-updated': 'sAdded',
+        'user-updated>delete': 'sDelete',
+        'delete>role': 'sRole',
+        'role>role-picked': 'sRoleUser',
+        'role-picked>external': 'sExternal',
+        'external>timeline': 'sMore',
+        'timeline>timeline-history': 'sHist',
+        'timeline-history>reminder': 'sReminder',
+        'reminder>reminder-support': 'sSupport',
+        'reminder-support>reminder-detail': 'sSupView',
+        'reminder-detail>reply': 'sReply',
+        'reply>download': 'sDownload',
+      };
+      const teams = {
+        'home>assets': 'fixTabBtn',
+        'assets>asset': 'viewAsset',
+        'asset>manual': 'viewFinding',
+        'manual>auto': 'autoTab',
+        'auto>register': 'registerTab',
+        'register>script': 'scriptTab',
+        'script>automations': 'automationsTab',
+        'automations>team': 'teamTab',
+        'team>add': 'addUserTab',
+        'add>delete': 'deleteUserTab',
+        'delete>delete-detail': 'viewUser',
+        'delete-detail>role': 'roleTab',
+        'role>role-detail': 'viewRole',
+        'role-detail>external': 'externalTab',
+        'external>timeline': 'timelineTab',
+        'timeline>timeline-history': 'historyTab',
+        'timeline-history>timeline-detail': 'viewHistory',
+        'timeline-detail>reminder': 'reminderTab',
+        'reminder>reminder-detail': 'viewReminder',
+        'reminder-detail>download': 'downloadTab',
+      };
+      const map = this.platform === 'slack' ? slack : teams;
+      return map[`${from}>${to}`] || '';
+    },
+    async runTo(screen) {
+      this.clearTimer();
+      const token = this.navToken + 1;
+      this.navToken = token;
+      await this.$nextTick();
+      await this.paint();
+      if (token !== this.navToken) return;
+      if (this.screen !== screen) {
+        if (screen === 'home') {
+          this.screen = 'home';
+          this.moreOpen = false;
+        } else {
+          const refName = this.edgeRef(this.screen, screen);
+          if (refName && !(await this.press(refName))) return;
+          if (token !== this.navToken) return;
+          this.screen = screen;
+        }
+      }
+      await this.delay(SCREEN_MS);
+      if (token !== this.navToken || this.paused) return;
+      this.$emit('finished');
     },
     async play() {
       this.screen = 'home';
@@ -998,6 +1127,90 @@ export default {
       if (!(await this.clickRef('reminderTab', 'reminder', 1200))) return;
       if (!(await this.clickRef('viewReminder', 'reminder-detail', 1100))) return;
       if (!(await this.clickRef('downloadTab', 'download', 1400))) return;
+      if (!this.paused) this.$emit('finished');
+    },
+    nextRef(screen) {
+      const slack = {
+        'assets-hold': 'sPager',
+        asset: 'sViewHold',
+        manual: 'sFinding',
+        auto: 'sAuto',
+        'add-picked': 'sPick',
+        'user-updated': 'sAdded',
+        delete: 'sDelete',
+        role: 'sRole',
+        'role-picked': 'sRoleUser',
+        external: 'sExternal',
+        'timeline-history': 'sHist',
+        'reminder-support': 'sSupport',
+        'reminder-detail': 'sSupView',
+        reply: 'sReply',
+        add: 'sAdd',
+      };
+      const teams = {
+        asset: 'viewAsset',
+        manual: 'viewFinding',
+        auto: 'autoTab',
+        script: 'scriptTab',
+        add: 'addUserTab',
+        delete: 'deleteUserTab',
+        'delete-detail': 'viewUser',
+        role: 'roleTab',
+        'role-detail': 'viewRole',
+        external: 'externalTab',
+        'timeline-history': 'historyTab',
+        'timeline-detail': 'viewHistory',
+        'reminder-detail': 'viewReminder',
+      };
+      return (this.platform === 'slack' ? slack : teams)[screen] || '';
+    },
+    async openFirst(screen) {
+      this.screen = 'home';
+      this.moreOpen = false;
+      await this.$nextTick();
+      await this.paint();
+      if (this.paused) return false;
+      const slackHidden = this.platform === 'slack' && ['timeline', 'reminder', 'download'].includes(screen);
+      if (slackHidden) {
+        if (!(await this.press('sMore'))) return false;
+        if (screen === 'timeline') {
+          this.screen = 'timeline';
+        } else {
+          this.moreOpen = true;
+          await this.$nextTick();
+          const tab = screen === 'reminder' ? 'sReminder' : 'sDownload';
+          if (!(await this.press(tab))) return false;
+          this.screen = screen;
+        }
+      } else {
+        const refName = this.openRef(screen);
+        if (refName && !(await this.press(refName))) return false;
+        this.screen = screen;
+      }
+      await this.delay(SCREEN_MS);
+      return !this.paused;
+    },
+    async playScreens(list) {
+      const first = list[0];
+      if (first === 'home') {
+        this.screen = 'home';
+        await this.$nextTick();
+        await this.paint();
+        await this.delay(SCREEN_MS);
+      } else if (!(await this.openFirst(first))) {
+        return;
+      }
+      if (this.paused) return;
+      for (let i = 1; i < list.length; i += 1) {
+        const refName = this.nextRef(list[i]);
+        if (!refName) {
+          this.screen = list[i];
+          await this.delay(SCREEN_MS);
+        } else if (!(await this.clickRef(refName, list[i], SCREEN_MS))) {
+          return;
+        }
+        if (this.paused) return;
+      }
       if (!this.paused) this.$emit('finished');
     },
     async playSlack() {
@@ -1029,7 +1242,10 @@ export default {
 </script>
 
 <style scoped>
-.chat-demo { width: 100%; display: flex; justify-content: center; padding: 20px; }
+.chat-demo {
+  width: 100%; display: flex; justify-content: center; padding: 20px;
+  animation: chat-screen-in 0.32s ease;
+}
 .chat-frame {
   width: 100%;
   max-width: 920px;
@@ -1099,7 +1315,14 @@ export default {
 }
 .sub-tabs, .chip-row { margin-top: 4px; }
 .screen-slot { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-.bot-screen { flex: 1; min-height: 0; overflow: hidden; margin-top: 6px; }
+.bot-screen {
+  flex: 1; min-height: 0; overflow: hidden; margin-top: 6px;
+  animation: chat-screen-in 0.32s ease;
+}
+@keyframes chat-screen-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 .bot-kicker { margin: 0; font-size: 13px; font-weight: 800; color: #1a1a1a; display: flex; align-items: center; gap: 6px; }
 .bot-note { margin: 3px 0 8px; font-size: 11px; color: #64748b; }
 .back {
@@ -1217,13 +1440,29 @@ export default {
 }
 .check.on { border-color: #5b5fc7; color: #312e81; }
 .mock-cursor {
-  position: absolute; width: 16px; height: 16px; margin-left: -8px; margin-top: -8px;
-  pointer-events: none; z-index: 5; transition: left 0.4s ease, top 0.4s ease;
+  position: absolute; width: 18px; height: 18px; margin-left: -9px; margin-top: -9px;
+  pointer-events: none; z-index: 40;
+  transition: left 0.72s cubic-bezier(0.4, 0, 0.2, 1), top 0.72s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .cursor-dot {
   width: 10px; height: 10px; border-radius: 50%; background: #111; border: 2px solid #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
 }
-.cursor-ring { position: absolute; inset: -4px; border-radius: 50%; border: 2px solid transparent; }
-.mock-cursor.clicking .cursor-ring { border-color: rgba(91, 95, 199, 0.7); }
+.cursor-ring {
+  position: absolute; top: 50%; left: 50%; width: 18px; height: 18px;
+  border-radius: 50%; border: 2px solid rgba(91, 95, 199, 0.55);
+  transform: translate(-50%, -50%); opacity: 0.7;
+}
+.chat-frame--slack .cursor-ring { border-color: rgba(26, 143, 60, 0.65); }
+.mock-cursor.clicking .cursor-dot { background: #e53e3e; animation: chat-click 0.28s ease; }
+.mock-cursor.clicking .cursor-ring { border-color: #e53e3e; animation: chat-ring 0.36s ease; }
+@keyframes chat-click {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.35); }
+}
+@keyframes chat-ring {
+  from { transform: translate(-50%, -50%) scale(1); opacity: 0.7; }
+  to { transform: translate(-50%, -50%) scale(1.85); opacity: 0; }
+}
 </style>

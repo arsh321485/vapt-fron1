@@ -36,7 +36,7 @@
           <main ref="contentScroller" class="ld-content">
 
           <div class="ld-callout" v-show="activeTocHash === '#background'">
-            <p>This Data Processing Agreement ("DPA") is entered into between the Customer ("Controller") and VAPTFIX.ai ("Processor"), and forms part of the VAPTFIX.ai Terms of Service. This DPA governs VAPTFIX.ai's processing of personal data on behalf of the Customer under applicable data protection laws globally, including GDPR, UK GDPR, Swiss revFADP, CCPA/CPRA, LGPD, PIPL, PDPA (Singapore), PDPA (Thailand), PIPA (South Korea), APPI (Japan), POPIA (South Africa), UAE PDPL, Saudi Arabia PDPL, India DPDP Act, Australian Privacy Act, and other applicable frameworks.</p>
+            <p>This Data Processing Agreement ("DPA") is entered into between the Customer ("Controller") and VAPTFIX.ai ("Processor"), and forms part of the VAPTFIX.ai Terms of Service. VAPTFIX.ai is a product of Secureitabservices Inc, a Delaware corporation. This DPA governs VAPTFIX.ai's processing of personal data on behalf of the Customer under applicable data protection laws globally, including GDPR, UK GDPR, Swiss revFADP, CCPA/CPRA, LGPD, PIPL, PDPA (Singapore), PDPA (Thailand), PIPA (South Korea), APPI (Japan), POPIA (South Africa), UAE PDPL, Saudi Arabia PDPL, India DPDP Act, Australian Privacy Act, and other applicable frameworks.</p>
           </div>
 
           <!-- CORE PROVISIONS -->

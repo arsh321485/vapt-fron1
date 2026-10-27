@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Security and trust · VAPTFIX</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Inter, Arial, sans-serif; background: #fff; color: #0f172a; }
+    a { color: inherit; }
+    .nav { display: flex; align-items: center; gap: 28px; padding: 18px 6vw; background: #241447; color: #fff; }
+    .logo { font-weight: 800; letter-spacing: 0.04em; text-decoration: none; font-size: 18px; }
+    .nav a { color: #fff; text-decoration: none; font-size: 15px; }
+    .nav-links { display: flex; gap: 22px; flex-wrap: wrap; }
+    .mkt-container { width: min(920px, calc(100% - 40px)); margin: 0 auto; }
+    .mkt-hero { background: #241447; color: #fff; padding: 72px 0 64px; }
+    .mkt-kicker { margin: 0 0 12px; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5eead4; }
+    .mkt-hero h1 { margin: 0 0 16px; font-size: clamp(32px, 4vw, 48px); line-height: 1.15; font-weight: 800; }
+    .mkt-hero p { margin: 0; max-width: 720px; font-size: 17px; line-height: 1.7; color: rgba(255,255,255,0.78); }
+    .mkt-section { padding: 56px 0 72px; }
+    .mkt-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 22px 24px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+    .mkt-card h2 { margin: 0 0 10px; font-size: 20px; font-weight: 800; color: #241447; }
+    .mkt-card p, .mkt-card li { font-size: 15px; line-height: 1.7; color: #475569; }
+    .mkt-card ul { margin: 8px 0 0; padding-left: 18px; }
+    .mkt-card a { color: #0f696e; font-weight: 700; }
+    .mkt-table-wrap { overflow-x: auto; margin-top: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+    th { color: #241447; font-size: 12px; letter-spacing: 0.03em; text-transform: uppercase; }
+    .footer { background: #18181e; color: #fff; padding: 40px 6vw 28px; }
+    .footer-top { display: flex; justify-content: space-between; gap: 32px; flex-wrap: wrap; }
+    .footer-brand p { color: rgba(255,255,255,0.6); max-width: 280px; line-height: 1.5; }
+    .footer-nav { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; }
+    .footer-nav a { color: #fff; text-decoration: none; }
+    .footer-nav .title { font-weight: 500; }
+    .footer-nav ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; font-size: 14px; }
+    .footer-bottom { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin-top: 28px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.12); }
+    .footer-copy { font-size: 13px; color: rgba(255,255,255,0.85); }
+    .footer-copy .entity { display: block; margin-bottom: 4px; color: rgba(255,255,255,0.7); font-size: 12px; }
+    .legal { display: flex; gap: 22px; list-style: none; margin: 0; padding: 0; font-size: 13px; }
+    .legal a { color: #fff; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <a class="logo" href="security.html">VAPTFIX</a>
+    <nav class="nav-links">
+      <a href="security.html">Home</a>
+      <a href="security.html">Features</a>
+      <a href="security.html">Pricing</a>
+      <a href="security.html">Knowledge Base</a>
+      <a href="security.html">How VAPTFIX Works</a>
+    </nav>
+  </header>
+
+  <section class="mkt-hero">
+    <div class="mkt-container">
+      <p class="mkt-kicker">Security and trust</p>
+      <h1>What happens to a finding after you upload it</h1>
+      <p>This page states what is sent to the model, what is kept out of logs, where data is hosted, how it is protected, how long it is kept, who the subprocessors are, and where to report a vulnerability.</p>
+    </div>
+  </section>
+
+  <section class="mkt-section">
+    <div class="mkt-container">
+      <article class="mkt-card">
+        <h2>What is sent to the model</h2>
+        <p>OpenAI, L.L.C. is the model provider. It is a subprocessor because customer vulnerability findings from uploaded assessment reports are sent to it. The model uses that material to extract and classify findings and to write remediation recommendations: steps, a script where automation applies, verification, and rollback.</p>
+        <p>Slack data and customer vulnerability data are not used to train or fine-tune VAPTFIX's own models, or third-party models. Customer reports are not used to train VAPTFIX's own AI models.</p>
+      </article>
+
+      <article class="mkt-card">
+        <h2>What is masked</h2>
+        <p>Sensitive credentials, OAuth tokens, and secrets are redacted from operational logs. Slack OAuth tokens are encrypted and are not written to application logs or returned in API responses. The finding text needed to build the remediation plan is what is sent to the model. Passwords and tokens are not part of that plan.</p>
+      </article>
+
+      <article class="mkt-card">
+        <h2>Hosting</h2>
+        <p>Application data is hosted with Contabo GmbH in France. Account, assessment, and operational data in the database are on MongoDB Atlas in Frankfurt (eu-central-1). A customer can request a specific hosting region where that region is supported and written into the customer agreement.</p>
+      </article>
+
+      <article class="mkt-card">
+        <h2>Encryption</h2>
+        <ul>
+          <li>Connections use TLS 1.2 or higher.</li>
+          <li>Databases, file storage, and backups are encrypted with AES-256, or an equivalent control on that infrastructure.</li>
+          <li>Slack OAuth tokens are encrypted at field level with a managed key service.</li>
+          <li>Keys and secrets are rotated at least annually, and immediately if exposure is suspected.</li>
+        </ul>
+      </article>
+
+      <article class="mkt-card">
+        <h2>Access control</h2>
+        <ul>
+          <li>Customer records stay on that customer's account. A user sees only what their role allows.</li>
+          <li>Production data is limited to authorised VAPTFIX personnel with a support or operational need. Support access needs a ticket and stays inside that ticket's scope and time.</li>
+          <li>Privileged and production access uses single sign-on and multi-factor authentication where that workflow applies. This is VAPTFIX staff access, not customer SSO.</li>
+          <li>Access is reviewed quarterly and removed within 24 hours of a role change or departure, where that applies.</li>
+        </ul>
+      </article>
+
+      <article class="mkt-card">
+        <h2>Retention</h2>
+        <p>Data is kept only as long as the service, the contract, security, and the law require. The working schedule is below. A written contract or a legal duty can set a different period. Full terms are in the Privacy Policy.</p>
+        <div class="mkt-table-wrap">
+          <table>
+            <thead>
+              <tr><th>Data</th><th>Period</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Slack OAuth tokens</td><td>Deleted immediately after uninstall or revocation, once that event is processed.</td></tr>
+              <tr><td>Slack workspace, user, and channel identifiers</td><td>Deleted within 30 days after uninstall.</td></tr>
+              <tr><td>Vulnerability findings and remediation records</td><td>Deleted within 30 days after the contract ends, or sooner on an approved request.</td></tr>
+              <tr><td>Audit logs</td><td>12 months from the event, unless the contract says otherwise.</td></tr>
+              <tr><td>Operational logs</td><td>Rolling 30 days.</td></tr>
+              <tr><td>Encrypted backups</td><td>Up to 35 days, then overwritten.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="mkt-card">
+        <h2>Subprocessors</h2>
+        <p>The live list, including what each provider processes and where, is on the Sub-processors page. Because uploaded vulnerability findings are sent to the model, the model provider is on that list:</p>
+        <ul>
+          <li>OpenAI, L.L.C. — vulnerability findings from uploaded assessment reports</li>
+          <li>Contabo GmbH — platform hosting</li>
+          <li>MongoDB Inc. (MongoDB Atlas) — account and assessment data</li>
+          <li>Twilio Inc. (SendGrid) — email</li>
+          <li>Stripe, Inc. — billing</li>
+        </ul>
+      </article>
+
+      <article class="mkt-card">
+        <h2>Responsible disclosure</h2>
+        <p>Report a security vulnerability or a security incident to <a href="mailto:security@vaptfix.ai">security@vaptfix.ai</a>. Do not include passwords, OAuth tokens, or other secrets in the email.</p>
+        <p>Privacy requests, including access, correction, export, and deletion, go to <a href="mailto:privacy@vaptfix.ai">privacy@vaptfix.ai</a>.</p>
+      </article>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <strong>VAPTFIX</strong>
+        <p>Eliminate Vulnerabilities Before They Become Threats.</p>
+      </div>
+      <nav class="footer-nav">
+        <div>
+          <div class="title">Partners</div>
+          <ul>
+            <li>Partner Registration</li>
+            <li>Lead Registration</li>
+          </ul>
+        </div>
+        <a href="security.html">Pricing</a>
+        <a href="security.html">Features</a>
+      </nav>
+    </div>
+    <div class="footer-bottom">
+      <p class="footer-copy">
+        <span class="entity">VAPTFIX.ai is a product of Secureitabservices Inc, a Delaware corporation.</span>
+        © 2026 VAPTFIX.ai. All rights reserved.
+      </p>
+      <ul class="legal">
+        <li>Privacy</li>
+        <li>Terms</li>
+        <li>Support</li>
+        <li>DPA</li>
+        <li>Sub-processors</li>
+      </ul>
+    </div>
+  </footer>
+</body>
+</html>

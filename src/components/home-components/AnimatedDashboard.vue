@@ -8,8 +8,9 @@
         </div>
         <button
           type="button"
+          ref="homeNav"
           class="sidebar-item"
-          :class="{ active: currentPage === 'dashboard' }"
+          :class="{ active: currentPage === 'dashboard' || currentPage === 'timeline' || currentPage === 'timeline-detail' }"
           aria-label="Home"
           @click="goToPage('dashboard')"
         >
@@ -20,7 +21,7 @@
           ref="fixNav"
           type="button"
           class="sidebar-item"
-          :class="{ active: currentPage === 'assets' }"
+          :class="{ active: currentPage === 'assets' || currentPage === 'manual' || currentPage === 'auto' }"
           aria-label="Fix"
           @click="goToPage('assets')"
         >
@@ -31,7 +32,7 @@
           ref="registerNav"
           type="button"
           class="sidebar-item"
-          :class="{ active: currentPage === 'register' }"
+          :class="{ active: currentPage === 'register' || currentPage === 'script' }"
           aria-label="Register"
           @click="goToPage('register')"
         >
@@ -42,7 +43,7 @@
           ref="teamNav"
           type="button"
           class="sidebar-item"
-          :class="{ active: currentPage === 'team' }"
+          :class="{ active: currentPage === 'team' || String(currentPage).startsWith('team-') }"
           aria-label="Team"
           @click="goToPage('team')"
         >
@@ -88,7 +89,7 @@
         <header
           :class="[
             'mock-header',
-            { 'mock-header--calendar': currentPage === 'calendar' || currentPage === 'team', 'mock-header--register': currentPage === 'register' }
+            { 'mock-header--calendar': currentPage === 'calendar' || currentPage === 'team' || String(currentPage).startsWith('team-'), 'mock-header--register': currentPage === 'register' || currentPage === 'script' }
           ]"
         >
           <div v-if="currentPage === 'calendar'" class="mock-header-row mock-header-row-top mock-cal-dark-row">
@@ -100,7 +101,7 @@
               <div class="mock-user-avatar" aria-hidden="true">D</div>
             </div>
           </div>
-          <div v-else-if="currentPage === 'register'" class="mock-header-row mock-header-row-top mock-header-register-row">
+          <div v-else-if="currentPage === 'register' || currentPage === 'script'" class="mock-header-row mock-header-row-top mock-header-register-row">
             <div class="mock-title-group mock-title-group-register">
               <div class="mock-register-title-block">
                 <h1 class="mock-page-title">Vulnerability Management Program</h1>
@@ -121,7 +122,7 @@
               </div>
             </div>
           </div>
-          <div v-else-if="currentPage === 'team'" class="mock-header-row mock-header-row-top mock-cal-dark-row" style="justify-content: flex-end;">
+          <div v-else-if="currentPage === 'team' || String(currentPage).startsWith('team-')" class="mock-header-row mock-header-row-top mock-cal-dark-row" style="justify-content: flex-end;">
             <div class="mock-header-notify-profile">
               <span class="mock-bell-wrap">
                 <i class="bi bi-bell"></i>
@@ -137,7 +138,7 @@
                 <i class="bi bi-info-circle mock-info-ico" aria-hidden="true"></i>
               </div>
               <div class="mock-register-header-actions">
-                <button type="button" class="mock-btn-report" aria-label="View Report">
+                <button ref="viewReportBtn" type="button" class="mock-btn-report" aria-label="View Report" @click="currentPage = 'download'">
                   <i class="bi bi-eye" aria-hidden="true"></i>
                   <span class="mock-btn-report-label">View Report</span>
                 </button>
@@ -155,10 +156,11 @@
 
         <div class="dashboard-main-body">
           <transition name="fade">
-            <div v-if="currentPage === 'dashboard'" class="dashboard-home-content">
+            <div v-if="currentPage === 'dashboard' || currentPage === 'timeline' || currentPage === 'timeline-detail'" class="dashboard-home-content">
               <div class="mock-stats">
                 <!-- Card 1: Total Assets -->
                 <div
+                  ref="assetsCard"
                   class="vmp-card vmp-card-compact"
                   :class="{ 'vmp-card-active': activeDashCard === 'assets' }"
                 >
@@ -333,13 +335,13 @@
                     <span><span class="pill p-l">0D</span></span>
                   </div>
                 </div>
-                <button type="button" class="mock-link-report">View full report <i class="bi bi-chevron-right"></i></button>
+                <button ref="mteOpenBtn" type="button" class="mock-link-report">View full report <i class="bi bi-chevron-right"></i></button>
               </div>
             </div>
           </transition>
 
           <transition name="slide-left">
-            <div v-if="currentPage === 'assets'" class="page-view page-view-assets">
+            <div v-if="currentPage === 'assets' || currentPage === 'manual' || currentPage === 'auto'" class="page-view page-view-assets">
               <div class="assets-split">
                 <aside class="assets-col-left">
                   <div class="assets-list-head">
@@ -408,18 +410,80 @@
                       {{ f }}
                     </button>
                   </div>
-                  <div class="ad-threats">
-                    <div v-for="(t, idx) in demoThreats" :key="idx" class="ad-threat-row">
-                      <i class="bi bi-exclamation-triangle-fill ad-threat-ico" :class="'ico-' + t.sev.toLowerCase()"></i>
-                      <div class="ad-threat-mid">
-                        <div class="ad-threat-title">{{ t.title }}</div>
-                        <div class="ad-threat-meta">
-                          <span class="ad-mini-sev" :class="'sev-' + t.sev.toLowerCase()">{{ t.sev }}</span>
-                          <span class="ad-mini-open"><i class="bi bi-circle-fill"></i> {{ t.status }}</span>
+                  <div v-if="currentPage === 'assets'" class="ad-threats">
+                    <template v-for="(t, idx) in demoThreats" :key="idx">
+                      <button
+                        v-if="idx === 0"
+                        ref="findingRow"
+                        type="button"
+                        class="ad-threat-row ad-threat-btn"
+                        @click="currentPage = 'manual'"
+                      >
+                        <i class="bi bi-exclamation-triangle-fill ad-threat-ico" :class="'ico-' + t.sev.toLowerCase()"></i>
+                        <div class="ad-threat-mid">
+                          <div class="ad-threat-title">{{ t.title }}</div>
+                          <div class="ad-threat-meta">
+                            <span class="ad-mini-sev" :class="'sev-' + t.sev.toLowerCase()">{{ t.sev }}</span>
+                            <span class="ad-mini-open"><i class="bi bi-circle-fill"></i> {{ t.status }}</span>
+                          </div>
                         </div>
+                        <span class="ad-fix-open">Manual Fix</span>
+                      </button>
+                      <div v-else class="ad-threat-row">
+                        <i class="bi bi-exclamation-triangle-fill ad-threat-ico" :class="'ico-' + t.sev.toLowerCase()"></i>
+                        <div class="ad-threat-mid">
+                          <div class="ad-threat-title">{{ t.title }}</div>
+                          <div class="ad-threat-meta">
+                            <span class="ad-mini-sev" :class="'sev-' + t.sev.toLowerCase()">{{ t.sev }}</span>
+                            <span class="ad-mini-open"><i class="bi bi-circle-fill"></i> {{ t.status }}</span>
+                          </div>
+                        </div>
+                        <i class="bi bi-chevron-down ad-threat-chev"></i>
                       </div>
-                      <i class="bi bi-chevron-down ad-threat-chev"></i>
+                    </template>
+                  </div>
+                  <div v-else class="fix-detail">
+                    <div class="fix-mode-tabs">
+                      <button
+                        type="button"
+                        class="fix-mode-tab"
+                        :class="{ on: currentPage === 'manual' }"
+                        @click="currentPage = 'manual'"
+                      >
+                        Manual Fix
+                      </button>
+                      <button
+                        ref="autoFixTab"
+                        type="button"
+                        class="fix-mode-tab"
+                        :class="{ on: currentPage === 'auto' }"
+                        @click="currentPage = 'auto'"
+                      >
+                        Automation Fix
+                      </button>
                     </div>
+                    <h3 class="fix-detail-title">VMware ESXi Multiple Vulnerabilities (VMSA-2025-0004)</h3>
+                    <div class="fix-detail-meta">
+                      <span>Host <b>172.28.1.84</b></span>
+                      <span>Severity <b>Critical</b></span>
+                      <span>Status <b>Open</b></span>
+                    </div>
+                    <template v-if="currentPage === 'manual'">
+                      <p class="fix-detail-label">Mitigation</p>
+                      <p class="fix-detail-copy">Apply the fixed ESXi builds in VMSA-2025-0004, such as 7.0 U3s and 8.0 U2d or U3d, or later.</p>
+                      <p class="fix-detail-copy">Until patched, limit admin access inside guest VMs and restrict untrusted workloads.</p>
+                    </template>
+                    <template v-else>
+                      <p class="fix-detail-note">Read-only script preview for this XYZ finding.</p>
+                      <div class="fix-detail-meta">
+                        <span>OS <b>ESXi</b></span>
+                        <span>Automation <b>Yes</b></span>
+                      </div>
+                      <p class="fix-detail-label">What this does</p>
+                      <p class="fix-detail-copy">Checks that the host is still on a build affected by VMSA-2025-0004 and records the XYZ finding.</p>
+                      <p class="fix-detail-label">Remediation</p>
+                      <p class="fix-detail-cmd">Apply ESXi 7.0 U3s or 8.0 U2d / U3d, or a later fixed build.</p>
+                    </template>
                   </div>
                 </main>
               </div>
@@ -533,6 +597,48 @@
           </transition>
 
           <transition name="slide-left">
+            <div v-if="currentPage === 'download'" class="page-view page-view-report">
+              <div class="report-demo">
+                <div class="report-demo-head">
+                  <div>
+                    <p class="report-demo-eyebrow">Comprehensive Audit</p>
+                    <h2 class="report-demo-title">Vulnerability Management Program Report</h2>
+                    <p class="report-demo-meta"><span>Report generated on</span> <b>10 January 2025</b></p>
+                    <p class="report-demo-meta"><span>Program</span> <b>XYZ Internal VAPT Report Dec 2025</b></p>
+                    <p class="report-demo-meta"><span>Date of testing</span> <b>31 Dec 2024 – 5 Jan 2025</b></p>
+                  </div>
+                  <button type="button" class="report-demo-download">Download as HTML</button>
+                </div>
+                <div class="report-demo-scores">
+                  <div>
+                    <span>Total assets</span>
+                    <strong>200</strong>
+                  </div>
+                  <div>
+                    <span>Risk</span>
+                    <strong>High</strong>
+                  </div>
+                  <div>
+                    <span>Sensitivity</span>
+                    <strong>Concerning</strong>
+                  </div>
+                  <div>
+                    <span>Open findings</span>
+                    <strong>48</strong>
+                  </div>
+                </div>
+                <div class="report-demo-sevs">
+                  <span class="sev-critical">18 Critical</span>
+                  <span class="sev-high">11 High</span>
+                  <span class="sev-medium">18 Medium</span>
+                  <span class="sev-low">4 Low</span>
+                </div>
+                <p class="report-demo-file">xyz-internal-vapt-dec-2025.html</p>
+              </div>
+            </div>
+          </transition>
+
+          <transition name="slide-left">
             <div v-if="currentPage === 'calendar'" class="page-view page-view-cal-pro">
               <div class="cal-pro-toolbar">
                 <div class="cal-pro-toolbar-left">
@@ -623,16 +729,16 @@
           </transition>
 
           <transition name="slide-left">
-            <div v-if="currentPage === 'team'" class="page-view page-view-teams-pro">
+            <div v-if="currentPage === 'team' || String(currentPage).startsWith('team-')" class="page-view page-view-teams-pro">
               <div class="teams-pro-scroll">
                 <div class="teams-pro-top">
                   <h2 class="teams-pro-h2">Your Teams</h2>
-                  <button type="button" class="teams-pro-add">
+                  <button ref="addMemberBtn" type="button" class="teams-pro-add">
                     <i class="bi bi-person-plus"></i>
                     Add a team member
                   </button>
                 </div>
-                <div class="teams-pro-card">
+                <div class="teams-pro-card" :class="{ 'menu-open': currentPage === 'team-role' }">
                   <div class="teams-pro-tabs">
                     <button
                       type="button"
@@ -668,8 +774,8 @@
                     </button>
                   </div>
                   <section class="teams-pro-block">
-                    <h3 class="teams-pro-block-title">Internal Team Members(1)</h3>
-                    <div class="teams-pro-table-wrap">
+                    <h3 class="teams-pro-block-title">Internal Team Members({{ showAddedMember ? 2 : 1 }})</h3>
+                    <div class="teams-pro-table-wrap" :class="{ 'menu-open': currentPage === 'team-role' }">
                       <table class="teams-pro-table">
                         <thead>
                           <tr>
@@ -703,11 +809,42 @@
                               </button>
                             </td>
                           </tr>
+                          <tr v-if="showAddedMember">
+                            <td>
+                              <div class="teams-name-cell">
+                                <span class="teams-ava">XD</span>
+                                <span class="teams-name-txt">Xyz Demo</span>
+                              </div>
+                            </td>
+                            <td class="teams-td-mail">xyz.demo@example.com</td>
+                            <td class="teams-role-cell">
+                              <button ref="roleDropdown" type="button" class="teams-role-btn">
+                                {{ addedRoleLabel }}
+                                <i class="bi bi-chevron-down"></i>
+                              </button>
+                              <div v-if="currentPage === 'team-role'" class="teams-role-menu">
+                                <span class="on"><i class="bi bi-check2"></i> Patch Management</span>
+                                <button ref="roleOption" type="button">Configuration Management</button>
+                                <span>Network Security</span>
+                                <span>Architectural Flaws</span>
+                              </div>
+                            </td>
+                            <td class="teams-td-actions">
+                              <button type="button" class="teams-info-btn" aria-label="Info">
+                                <i class="bi bi-info-circle"></i>
+                              </button>
+                              <button ref="removeMemberBtn" type="button" class="teams-remove-btn">
+                                <i class="bi bi-trash"></i>
+                                Remove
+                              </button>
+                            </td>
+                          </tr>
                         </tbody>
                       </table>
                     </div>
                   </section>
-                  <section class="teams-pro-block teams-pro-block-ext">
+                  <p v-if="currentPage === 'team-remove'" class="team-removed-note">Xyz Demo removed from Patch Management.</p>
+                  <section ref="externalBlock" class="teams-pro-block teams-pro-block-ext" :class="{ 'is-focus': currentPage === 'team-external' }">
                     <h3 class="teams-pro-block-title">External Team Members(0)</h3>
                     <div class="teams-pro-table-wrap teams-pro-table-empty">
                       <table class="teams-pro-table">
@@ -725,13 +862,52 @@
                   </section>
                 </div>
               </div>
+              <div v-if="currentPage === 'team-add'" class="demo-modal-backdrop">
+                <div class="demo-modal">
+                  <div class="demo-modal-head">
+                    <b>Add Team Member</b>
+                    <span>Fill in the details to add a new user to your team</span>
+                  </div>
+                  <div class="demo-modal-grid">
+                    <label>User Type<input value="Internal" readonly /></label>
+                    <label>First Name<input value="Xyz" readonly /></label>
+                    <label>Last Name<input value="Demo" readonly /></label>
+                    <label>Member Role<input value="Patch Management" readonly /></label>
+                    <label>Email<input value="xyz.demo@example.com" readonly /></label>
+                  </div>
+                  <div class="demo-modal-foot">
+                    <button type="button" class="demo-btn-ghost">Cancel</button>
+                    <button ref="addUserSave" type="button" class="demo-btn-teal">Add User</button>
+                  </div>
+                </div>
+              </div>
             </div>
           </transition>
 
           <transition name="slide-left">
-            <div v-if="currentPage === 'register'" class="page-view page-view-register-pro">
+            <div v-if="currentPage === 'register' || currentPage === 'script'" class="page-view page-view-register-pro">
               <div class="register-pro-scroll">
                 <div class="register-pro-card">
+                  <div class="register-mode-tabs">
+                    <button
+                      type="button"
+                      class="register-mode-tab"
+                      :class="{ on: currentPage === 'register' }"
+                      @click="currentPage = 'register'"
+                    >
+                      Register
+                    </button>
+                    <button
+                      ref="scriptPageTab"
+                      type="button"
+                      class="register-mode-tab"
+                      :class="{ on: currentPage === 'script' }"
+                      @click="currentPage = 'script'"
+                    >
+                      Script
+                    </button>
+                  </div>
+                  <template v-if="currentPage === 'register'">
                   <div class="register-pro-toolbar">
                     <div class="reg-sev-pills">
                       <button
@@ -806,6 +982,32 @@
                       </button>
                     </div>
                   </div>
+                  </template>
+                  <template v-else>
+                    <div class="register-pro-table-scroll">
+                      <table class="register-data-table">
+                        <thead>
+                          <tr>
+                            <th>Vulnerability name</th>
+                            <th>Asset</th>
+                            <th>Coverage</th>
+                            <th>Team</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr v-for="row in scriptDemoRows" :key="row.name">
+                            <td class="reg-td-vuln">{{ row.name }}</td>
+                            <td class="reg-td-ip">{{ row.host }}</td>
+                            <td>{{ row.coverage }}</td>
+                            <td>{{ row.team }}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <div class="register-pro-foot">
+                      <span class="register-pro-showing">Showing 1-3 of 3 results</span>
+                    </div>
+                  </template>
                 </div>
               </div>
             </div>
@@ -865,6 +1067,32 @@
             </div>
           </transition>
         </div>
+        <div v-if="currentPage === 'timeline' || currentPage === 'timeline-detail'" class="mte-demo-backdrop">
+          <div class="mte-demo-box">
+            <div class="mte-demo-head">
+              <div>
+                <h3>Mitigation timeline extension</h3>
+                <p>Review and manage pending extension requests.</p>
+              </div>
+              <span class="mte-demo-team">All Teams</span>
+            </div>
+            <button ref="mteRow" type="button" class="mte-demo-row">
+              <span>
+                <b>SMB Signing Not Required</b>
+                <small>172.28.1.121 · Configuration Management · +2 days · abc.demo@example.com</small>
+              </span>
+              <em>Pending</em>
+            </button>
+            <div v-if="currentPage === 'timeline-detail'" class="mte-demo-reason">
+              <b>Extension Reason</b>
+              <p>Signing still not required</p>
+              <div>
+                <button type="button" class="mte-reject">Reject</button>
+                <button type="button" class="mte-approve">Approve</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Demo pointer (hidden while user drives sidebar) -->
@@ -887,17 +1115,22 @@ export default {
   name: 'AnimatedDashboard',
   props: {
     loop: { type: Boolean, default: true },
+    pages: { type: Array, default: () => [] },
+    controlled: { type: Boolean, default: false },
+    go: { type: Object, default: null },
   },
   emits: ['finished'],
   data() {
     return {
-      currentPage: 'dashboard',
+      currentPage: (this.controlled && this.go && this.go.from) || 'dashboard',
       demoPaused: false,
       cursorX: 50,
       cursorY: 50,
       isCursorClicking: false,
       activeDashCard: '',
       animationTimer: null,
+      navToken: 0,
+      lastGoId: -1,
       tableRows: [
         'Patch Management',
         'Configuration Management',
@@ -923,6 +1156,11 @@ export default {
       teamTab: 'patch',
       registerSeverityOptions: ['All', 'Critical', 'High', 'Medium', 'Low'],
       registerSeverityFilter: 'All',
+      scriptDemoRows: [
+        { name: 'VMware ESXi Multiple Vulnerabilities (VMSA-2025-0004)', host: '172.28.1.84', coverage: 'Full', team: 'Patch' },
+        { name: 'SMB Signing Not Required', host: '172.28.1.121', coverage: 'Full', team: 'Configuration' },
+        { name: 'TLS Version 1.0 Protocol Detection', host: '172.28.1.250', coverage: 'Full', team: 'Network' },
+      ],
       registerDemoRows: [
         {
           no: '01',
@@ -1110,6 +1348,12 @@ export default {
         top: `${this.cursorY}%`
       };
     },
+    showAddedMember() {
+      return this.currentPage === 'team-added' || this.currentPage === 'team-role' || this.currentPage === 'team-updated';
+    },
+    addedRoleLabel() {
+      return this.currentPage === 'team-updated' ? 'Patch, Configuration' : 'Patch Management';
+    },
     mockBellCount() {
       return this.currentPage === 'register' ? 18 : 19;
     },
@@ -1174,7 +1418,18 @@ export default {
       return cells.slice(0, 42);
     }
   },
+  watch: {
+    go: {
+      immediate: true,
+      handler(go) {
+        if (!this.controlled || !go || !go.screen || go.id === this.lastGoId) return;
+        this.lastGoId = go.id;
+        this.runToPage(go.screen);
+      },
+    },
+  },
   mounted() {
+    if (this.controlled) return;
     this.startAnimation();
   },
   beforeUnmount() {
@@ -1209,10 +1464,205 @@ export default {
         this.registerSeverityFilter = 'All';
       }
     },
-    startAnimation() {
-      if (!this.demoPaused) {
-        this.runAnimationSequence();
+    async press(refName, token) {
+      await this.$nextTick();
+      await this.paint();
+      if (token !== this.navToken || this.demoPaused) return false;
+      if (refName) this.aimNav(refName);
+      await this.delay(780);
+      if (token !== this.navToken || this.demoPaused) return false;
+      this.clickCursor();
+      await this.delay(320);
+      return token === this.navToken && !this.demoPaused;
+    },
+    async holdAndFinish(token) {
+      await this.delay(1000);
+      if (token !== this.navToken || this.demoPaused) return;
+      this.$emit('finished');
+    },
+    async ensurePage(page, token) {
+      if (this.currentPage === page) return true;
+      this.currentPage = page;
+      await this.$nextTick();
+      await this.paint();
+      return token === this.navToken && !this.demoPaused;
+    },
+    async runTeamOrTimeline(page, token) {
+      if (page === 'team-add') {
+        if (!String(this.currentPage).startsWith('team')) {
+          if (!(await this.press('teamNav', token))) return true;
+          this.currentPage = 'team';
+          this.teamTab = 'patch';
+        }
+        if (!(await this.press('addMemberBtn', token))) return true;
+        this.currentPage = 'team-add';
+        await this.holdAndFinish(token);
+        return true;
       }
+      if (page === 'team-added') {
+        if (!(await this.ensurePage('team-add', token))) return true;
+        if (!(await this.press('addUserSave', token))) return true;
+        this.currentPage = 'team-added';
+        await this.holdAndFinish(token);
+        return true;
+      }
+      if (page === 'team-role') {
+        if (!(await this.ensurePage('team-added', token))) return true;
+        if (!(await this.press('roleDropdown', token))) return true;
+        this.currentPage = 'team-role';
+        await this.holdAndFinish(token);
+        return true;
+      }
+      if (page === 'team-updated') {
+        if (!(await this.ensurePage('team-role', token))) return true;
+        if (!(await this.press('roleOption', token))) return true;
+        this.currentPage = 'team-updated';
+        await this.holdAndFinish(token);
+        return true;
+      }
+      if (page === 'team-remove') {
+        if (!(await this.ensurePage('team-updated', token))) return true;
+        if (!(await this.press('removeMemberBtn', token))) return true;
+        this.currentPage = 'team-remove';
+        await this.holdAndFinish(token);
+        return true;
+      }
+      if (page === 'team-external') {
+        if (!String(this.currentPage).startsWith('team')) {
+          if (!(await this.press('teamNav', token))) return true;
+          this.currentPage = 'team';
+          this.teamTab = 'patch';
+        }
+        if (!(await this.press('externalBlock', token))) return true;
+        this.currentPage = 'team-external';
+        await this.holdAndFinish(token);
+        return true;
+      }
+      if (page === 'timeline' || page === 'timeline-detail') {
+        const onHome = this.currentPage === 'dashboard' || this.currentPage === 'timeline' || this.currentPage === 'timeline-detail';
+        if (!onHome) {
+          if (!(await this.press('homeNav', token))) return true;
+          this.currentPage = 'dashboard';
+          await this.$nextTick();
+          await this.paint();
+          if (token !== this.navToken || this.demoPaused) return true;
+        }
+        if (this.currentPage !== 'timeline' && this.currentPage !== 'timeline-detail') {
+          if (!(await this.press('mteOpenBtn', token))) return true;
+          this.currentPage = 'timeline';
+          await this.$nextTick();
+          await this.paint();
+          if (token !== this.navToken || this.demoPaused) return true;
+        }
+        if (page === 'timeline-detail' && this.currentPage !== 'timeline-detail') {
+          if (!(await this.press('mteRow', token))) return true;
+          this.currentPage = 'timeline-detail';
+        }
+        await this.holdAndFinish(token);
+        return true;
+      }
+      return false;
+    },
+    async runToPage(page) {
+      this.clearTimers();
+      const token = this.navToken + 1;
+      this.navToken = token;
+      await this.$nextTick();
+      await this.paint();
+      if (token !== this.navToken) return;
+      if (await this.runTeamOrTimeline(page, token)) return;
+      const navFor = {
+        assets: 'fixNav',
+        manual: 'findingRow',
+        auto: 'autoFixTab',
+        register: 'registerNav',
+        script: 'scriptPageTab',
+        team: 'teamNav',
+        performance: 'perfNav',
+        calendar: 'calNav',
+        support: 'supportNav',
+        download: 'viewReportBtn',
+      };
+      if (this.currentPage !== page) {
+        if (page === 'dashboard') {
+          this.currentPage = 'dashboard';
+          this.activeDashCard = '';
+        } else {
+          await this.$nextTick();
+          const refName = navFor[page];
+          if (refName) this.aimNav(refName);
+          await this.delay(780);
+          if (token !== this.navToken || this.demoPaused) return;
+          this.clickCursor();
+          await this.delay(320);
+          if (token !== this.navToken || this.demoPaused) return;
+          this.currentPage = page;
+          if (page === 'assets' || page === 'manual' || page === 'auto') {
+            this.selectedAssetIp = '172.28.1.84';
+            this.activeVulnFilter = 'All';
+          }
+          if (page === 'support') this.supportStatusTab = 'all';
+          if (page === 'calendar') this.calViewTab = 'month';
+          if (page === 'team') this.teamTab = 'patch';
+          if (page === 'register') this.registerSeverityFilter = 'All';
+        }
+      }
+      await this.delay(1000);
+      if (token !== this.navToken || this.demoPaused) return;
+      this.$emit('finished');
+    },
+    startAnimation() {
+      if (this.demoPaused) return;
+      if (this.pages.length) this.playPages();
+      else this.runAnimationSequence();
+    },
+    paint() {
+      return new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      });
+    },
+    async playPages() {
+      const navFor = {
+        assets: 'fixNav',
+        register: 'registerNav',
+        team: 'teamNav',
+        performance: 'perfNav',
+        calendar: 'calNav',
+        support: 'supportNav',
+      };
+      await this.$nextTick();
+      await this.paint();
+      for (const page of this.pages) {
+        if (this.demoPaused) return;
+        if (page !== 'dashboard') {
+          this.currentPage = 'dashboard';
+          this.activeDashCard = '';
+          await this.$nextTick();
+        }
+        if (page === 'dashboard') {
+          this.aimNav('assetsCard');
+          await this.delay(780);
+          if (this.demoPaused) return;
+          this.clickCursor();
+          this.activeDashCard = 'assets';
+          await this.delay(1000);
+          if (this.demoPaused) return;
+          this.activeDashCard = '';
+          continue;
+        }
+        const refName = navFor[page];
+        if (!(await this.clickNav(refName, page))) return;
+        if (page === 'assets') {
+          this.selectedAssetIp = '172.28.1.84';
+          this.activeVulnFilter = 'All';
+        }
+        if (page === 'support') this.supportStatusTab = 'all';
+        if (page === 'calendar') this.calViewTab = 'month';
+        if (page === 'team') this.teamTab = 'patch';
+        if (page === 'register') this.registerSeverityFilter = 'All';
+        await this.delay(1000);
+      }
+      if (!this.demoPaused) this.$emit('finished');
     },
     async runAnimationSequence() {
       if (this.demoPaused) return;
@@ -1257,22 +1707,24 @@ export default {
       if (this.loop) this.runAnimationSequence();
       else this.$emit('finished');
     },
-    async clickNav(refName, page) {
-      await this.$nextTick();
+    aimNav(refName) {
       const frame = this.$el && this.$el.querySelector('.dashboard-mockup');
       const target = this.$refs[refName];
       const node = Array.isArray(target) ? target[0] : target;
-      if (frame && node && node.getBoundingClientRect) {
-        const fr = frame.getBoundingClientRect();
-        const r = node.getBoundingClientRect();
-        this.moveCursor(
-          ((r.left + r.width / 2 - fr.left) / fr.width) * 100,
-          ((r.top + r.height / 2 - fr.top) / fr.height) * 100
-        );
-      }
-      await this.delay(650);
+      if (!frame || !node || !node.getBoundingClientRect) return;
+      const fr = frame.getBoundingClientRect();
+      const r = node.getBoundingClientRect();
+      this.moveCursor(
+        ((r.left + r.width / 2 - fr.left) / fr.width) * 100,
+        ((r.top + r.height / 2 - fr.top) / fr.height) * 100
+      );
+    },
+    async clickNav(refName, page) {
+      await this.$nextTick();
+      this.aimNav(refName);
+      await this.delay(780);
       this.clickCursor();
-      await this.delay(380);
+      await this.delay(320);
       if (this.demoPaused) return false;
       this.currentPage = page;
       return true;
@@ -1322,6 +1774,11 @@ export default {
   justify-content: center;
   padding: 20px;
   overflow: hidden;
+  animation: dash-in 0.32s ease;
+}
+@keyframes dash-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .dashboard-mockup {
@@ -2384,15 +2841,95 @@ export default {
   gap: 8px;
 }
 
-.ad-threat-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
+.ad-threat-btn {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.ad-fix-open {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 800;
+  color: #0f696e;
+}
+
+.fix-detail {
   background: #fff;
   border: 1px solid #e8edf3;
-  border-radius: 10px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.fix-mode-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.fix-mode-tab {
+  border: 1px solid #d7e3e4;
+  background: #f8fafc;
+  color: #475569;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.fix-mode-tab.on {
+  background: #0f696e;
+  border-color: #0f696e;
+  color: #fff;
+}
+
+.fix-detail-title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: #0f172a;
+}
+
+.fix-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-bottom: 10px;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.fix-detail-meta b {
+  color: #0f172a;
+}
+
+.fix-detail-label {
+  margin: 8px 0 4px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #0f696e;
+}
+
+.fix-detail-copy,
+.fix-detail-note {
+  margin: 0 0 6px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #334155;
+}
+
+.fix-detail-cmd {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: #0f172a;
 }
 
 .ad-threat-ico {
@@ -2480,6 +3017,113 @@ export default {
 .page-view-support {
   padding: 0;
   overflow: hidden;
+}
+
+.page-view-report {
+  background: #f4f6f8;
+  padding: 12px;
+}
+
+.report-demo {
+  background: #fff;
+  border: 1px solid #e8edf3;
+  border-radius: 12px;
+  padding: 14px;
+  height: 100%;
+  overflow: auto;
+}
+
+.report-demo-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.report-demo-eyebrow {
+  margin: 0 0 4px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #0f696e;
+}
+
+.report-demo-title {
+  margin: 0 0 8px;
+  font-size: 16px;
+  line-height: 1.3;
+  color: #0f172a;
+}
+
+.report-demo-meta {
+  margin: 0 0 4px;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.report-demo-meta b {
+  color: #0f172a;
+}
+
+.report-demo-download {
+  flex-shrink: 0;
+  border: none;
+  background: #0f696e;
+  color: #fff;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.report-demo-scores {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.report-demo-scores div {
+  background: #f8fafc;
+  border: 1px solid #e8edf3;
+  border-radius: 10px;
+  padding: 8px;
+}
+
+.report-demo-scores span {
+  display: block;
+  font-size: 10px;
+  color: #64748b;
+}
+
+.report-demo-scores strong {
+  font-size: 16px;
+  color: #0f172a;
+}
+
+.report-demo-sevs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.report-demo-sevs .sev-critical { color: #b42318; }
+.report-demo-sevs .sev-high { color: #dc2626; }
+.report-demo-sevs .sev-medium { color: #d97706; }
+.report-demo-sevs .sev-low { color: #059669; }
+
+.report-demo-file {
+  margin: 12px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: #0f172a;
 }
 
 .support-mock-inner {
@@ -2976,6 +3620,11 @@ export default {
   overflow: hidden;
 }
 
+.teams-pro-card.menu-open,
+.teams-pro-table-wrap.menu-open {
+  overflow: visible;
+}
+
 .teams-pro-tabs {
   display: flex;
   flex-wrap: nowrap;
@@ -3140,6 +3789,256 @@ export default {
   font-size: 11px;
 }
 
+.teams-role-cell {
+  position: relative;
+}
+
+.teams-role-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 150px;
+  padding: 4px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #fff;
+  color: #0f172a;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.teams-role-menu {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 4px);
+  left: 8px;
+  min-width: 180px;
+  padding: 4px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+}
+
+.teams-role-menu span,
+.teams-role-menu button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.teams-role-menu .on {
+  background: #f0fdfa;
+  color: #0f696e;
+}
+
+.team-removed-note {
+  margin: 8px 0 0;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #b42318;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.teams-pro-block-ext.is-focus {
+  outline: 2px solid #0f696e;
+  border-radius: 8px;
+}
+
+.demo-modal-backdrop,
+.mte-demo-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.45);
+  padding: 16px;
+}
+
+.demo-modal,
+.mte-demo-box {
+  width: min(440px, 100%);
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.22);
+  padding: 14px;
+}
+
+.demo-modal-head b,
+.mte-demo-head h3 {
+  display: block;
+  margin: 0;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.demo-modal-head span,
+.mte-demo-head p {
+  display: block;
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.demo-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.demo-modal-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.demo-modal-grid label:last-child {
+  grid-column: 1 / -1;
+}
+
+.demo-modal-grid input {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 11px;
+  color: #0f172a;
+  background: #f8fafc;
+}
+
+.demo-modal-foot,
+.mte-demo-reason div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.demo-btn-ghost,
+.mte-reject {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #334155;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.demo-btn-teal,
+.mte-approve {
+  border: none;
+  background: #0f696e;
+  color: #fff;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.mte-reject {
+  color: #b42318;
+  border-color: #fecaca;
+}
+
+.mte-demo-backdrop {
+  align-items: stretch;
+  justify-content: flex-end;
+  padding: 0;
+}
+
+.mte-demo-box {
+  width: min(420px, 92%);
+  height: 100%;
+  border-radius: 12px 0 0 12px;
+  overflow: auto;
+}
+
+.mte-demo-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.mte-demo-team {
+  flex-shrink: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.mte-demo-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  margin-top: 12px;
+  padding: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  text-align: left;
+}
+
+.mte-demo-row b {
+  display: block;
+  font-size: 12px;
+  color: #0f172a;
+}
+
+.mte-demo-row small {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  color: #64748b;
+}
+
+.mte-demo-row em {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 800;
+  color: #d97706;
+}
+
+.mte-demo-reason {
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.mte-demo-reason b {
+  font-size: 12px;
+  color: #0f172a;
+}
+
+.mte-demo-reason p {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: #334155;
+}
+
 .teams-ext-empty {
   margin: 0;
   position: absolute;
@@ -3173,6 +4072,29 @@ export default {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+.register-mode-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 12px 12px 0;
+}
+
+.register-mode-tab {
+  border: 1px solid #d7e3e4;
+  background: #f8fafc;
+  color: #475569;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.register-mode-tab.on {
+  background: #0f696e;
+  border-color: #0f696e;
+  color: #fff;
 }
 
 .register-pro-toolbar {

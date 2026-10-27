@@ -14,12 +14,11 @@
               Vetted, tested security. Trusted by experts.
             </div>
             <h1 class="hv-hero-title">
-              Welcome to the
-              <span class="hv-gradient-text">Vulnerability Management</span>
-              Program as a service platform
+              Turn Vulnerabilities into
+              <span class="hv-gradient-text">Verified Remediation.</span>
             </h1>
             <p class="hv-hero-sub">
-              Security isn't just about finding flaws—it's about fixing them fast. We close the gaps that reports leave behind, giving you lasting protection.
+              VAPTFIX transforms vulnerability findings into actionable, AI-powered remediation plans. Your team reviews, approves, and executes fixes directly through the VAPTFIX website, Slack, or Microsoft Teams—all while maintaining a clear, traceable audit trail.
             </p>
             <!-- Register for Webinar button hidden -->
             <div class="hv-hero-btns">
@@ -817,10 +816,10 @@ export default {
 }
 
 .hv-hero-sub {
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 400;
   color: #49454f;
-  line-height: 1.6;
+  line-height: 1.65;
   margin-bottom: 24px;
 }
 

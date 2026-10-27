@@ -45,9 +45,10 @@
                     </div>
 
                     <div class="footer-bottom-row">
-                        <p class="footer-copyright mb-0">
-                            © 2026 VAPTFIX.ai. All rights reserved.
-                        </p>
+                        <div class="footer-copyright">
+                            <p class="footer-entity mb-0">VAPTFIX.ai is a product of Secureitabservices Inc, a Delaware corporation.</p>
+                            <p class="mb-0">© 2026 VAPTFIX.ai. All rights reserved.</p>
+                        </div>
                         <ul class="list-unstyled mb-0 footer-legal-links">
                             <li class="footer-privacy-group">
                                 <router-link to="/privacy" class="footer-legal-link text-decoration-none">Privacy</router-link>
@@ -92,6 +93,8 @@ export default {
 
 .footer-nav-links {
   align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px 28px;
 }
 
 .footer-link-title {
@@ -115,7 +118,7 @@ export default {
 .footer-bottom-row {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 1rem 1.5rem;
   margin-top: 1.5rem;
@@ -124,10 +127,22 @@ export default {
 }
 
 .footer-copyright {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
   font-size: 13px;
   color: rgba(255, 255, 255, 0.85);
-  flex: 1 1 220px;
+  flex: 1 1 280px;
   min-width: 0;
+  line-height: 1.5;
+}
+
+.footer-entity {
+  display: block;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
 }
 
 .footer-legal-links {

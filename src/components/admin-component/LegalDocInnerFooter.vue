@@ -1,6 +1,9 @@
 <template>
   <div class="legal-doc-inner-footer">
-    <p class="legal-doc-inner-copy">© 2026 VAPTFIX.ai. All rights reserved.</p>
+    <div class="legal-doc-inner-copy">
+      <p class="legal-doc-entity">VAPTFIX.ai is a product of Secureitabservices Inc, a Delaware corporation.</p>
+      <p>© 2026 VAPTFIX.ai. All rights reserved.</p>
+    </div>
     <p class="legal-doc-inner-links mb-0">
       <router-link to="/privacy">Privacy</router-link>
       <span class="legal-doc-inner-sep">·</span>
@@ -38,6 +41,15 @@ export default {
   font-size: 13px;
   color: #64748b;
   margin: 0;
+  line-height: 1.5;
+}
+
+.legal-doc-inner-copy p {
+  margin: 0;
+}
+
+.legal-doc-entity {
+  margin-bottom: 4px !important;
 }
 
 .legal-doc-inner-links {

@@ -58,7 +58,7 @@
             <div class="ld-section-number">02 / DEFINITIONS</div>
             <h2>Definitions</h2>
             <ul>
-              <li><strong>"VAPTFIX.ai," "we," "us," "our"</strong> — the company operating the Service at VAPTFIX.ai</li>
+              <li><strong>"VAPTFIX.ai," "we," "us," "our"</strong> — Secureitabservices Inc, a Delaware corporation, operating the Service at VAPTFIX.ai. VAPTFIX.ai is a product of Secureitabservices Inc, a Delaware corporation.</li>
               <li><strong>"User," "you," "your"</strong> — any individual or entity accessing the Service</li>
               <li><strong>"Customer"</strong> — a User who has entered into a paid subscription or enterprise agreement</li>
               <li><strong>"Service"</strong> — the VAPTFIX.ai VAPT platform, tools, APIs, and related offerings</li>
@@ -313,7 +313,7 @@
             <div class="ld-section-number">15 / GOVERNING LAW</div>
             <h2>Governing Law &amp; Disputes</h2>
             <p>
-              These Terms are governed by the laws of [Jurisdiction — e.g., the State of Delaware, USA], without regard to
+              These Terms are governed by the laws of the State of Delaware, USA, without regard to
               conflict of law principles. Any disputes shall be resolved by binding arbitration administered by the
               American Arbitration Association (AAA) under its Commercial Arbitration Rules, with proceedings conducted in
               English.

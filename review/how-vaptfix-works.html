@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How VAPTFIX Works · VAPTFIX</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Inter, Arial, sans-serif; background: #fff; color: #0f172a; }
+    a { color: inherit; }
+    .nav { display: flex; align-items: center; gap: 28px; padding: 18px 6vw; background: #241447; color: #fff; }
+    .logo { font-weight: 800; letter-spacing: 0.04em; text-decoration: none; font-size: 18px; }
+    .nav a { color: #fff; text-decoration: none; font-size: 15px; }
+    .nav-links { display: flex; gap: 22px; flex-wrap: wrap; }
+    .wrap { width: min(920px, calc(100% - 40px)); margin: 0 auto; }
+    .hero { background: #241447; color: #fff; text-align: center; padding: 72px 0 56px; }
+    .tag { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #5eead4; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; }
+    .hero h1 { margin: 16px 0; font-size: clamp(36px, 5vw, 56px); line-height: 1.15; font-weight: 800; }
+    .accent { color: #5eead4; }
+    .hero p { margin: 0 auto; max-width: 640px; font-size: 17px; line-height: 1.7; color: rgba(255,255,255,0.78); }
+    .pills { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-top: 28px; }
+    .pill { border-radius: 999px; padding: 10px 18px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16); font-weight: 700; }
+    .section { padding: 64px 0; }
+    .alt { background: #f8f9fc; }
+    .kicker { margin: 0 0 10px; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #64748b; }
+    h2 { margin: 0 0 12px; font-size: clamp(26px, 3.5vw, 36px); font-weight: 800; color: #241447; }
+    .sub { margin: 0 0 28px; max-width: 720px; font-size: 16px; line-height: 1.7; color: #64748b; }
+    .steps { display: flex; flex-direction: column; gap: 14px; }
+    .section.flow-section { background: #f1f5f9; }
+    .flow-section .kicker { color: #0f696e; letter-spacing: 0.08em; font-size: 12px; }
+    .flow { list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; grid-template-rows: repeat(2, auto); grid-template-columns: 1fr 1fr; column-gap: 48px; }
+    .flow li { position: relative; padding-bottom: 28px; }
+    .flow li:not(:last-child)::after { content: ""; position: absolute; left: 25px; top: 68px; bottom: 10px; width: 2px; background: #d9d3e8; }
+    .flow button { position: relative; z-index: 1; display: grid; grid-template-columns: 52px 1fr; gap: 16px; align-items: start; width: 100%; margin: 0; padding: 0; border: 0; background: transparent; text-align: left; cursor: pointer; font: inherit; color: inherit; }
+    .flow .copy { display: block; padding: 14px 18px 16px; border-radius: 16px; border: 1px solid transparent; }
+    .flow li.is-active .copy { background: #fff; border-color: #ebe6f3; box-shadow: 0 10px 28px rgba(36, 20, 71, 0.08); }
+    .flow .num { width: 52px; height: 52px; margin-top: 10px; border: 2px solid #0f696e; background: #fff; color: #0f696e; position: relative; z-index: 1; }
+    .flow li.is-active .num { background: #241447; border-color: #241447; color: #ccfbf1; }
+    .flow h3 { margin: 0 0 6px; font-size: 18px; font-weight: 700; color: #241447; }
+    .flow p { margin: 0; font-size: 15px; line-height: 1.6; color: #64748b; }
+    @media (min-width: 801px) { .flow li:nth-child(2)::after { display: none; } }
+    @media (max-width: 800px) { .flow { grid-auto-flow: row; grid-template-rows: none; grid-template-columns: 1fr; } }
+    .card { display: flex; gap: 16px; align-items: flex-start; background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 22px 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+    .num { flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; background: #0f696e; color: #fff; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+    .num.dark { background: #241447; }
+    .card h3 { margin: 0 0 8px; font-size: 18px; color: #241447; }
+    .card p, .card li { margin: 0; font-size: 15px; line-height: 1.7; color: #475569; }
+    .where { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: #f1f5f9; color: #334155; font-size: 11px; font-weight: 800; vertical-align: middle; }
+    .badge { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: #fff7ed; color: #9a3412; font-size: 11px; font-weight: 800; }
+    .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .tagpill { border-radius: 999px; padding: 4px 10px; background: #f1f5f9; color: #334155; font-size: 12px; font-weight: 700; }
+    .c { background: #fef2f2; color: #b42318; } .h { background: #fff1f2; color: #dc2626; } .m { background: #fffbeb; color: #d97706; } .l { background: #ecfdf5; color: #059669; }
+    .paths { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; margin-top: 12px; }
+    .path { border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; }
+    .path strong { display: block; margin-bottom: 6px; color: #241447; }
+    .or { align-self: center; font-size: 12px; font-weight: 800; color: #94a3b8; }
+    .part { display: flex; align-items: center; gap: 10px; margin: 36px 0 8px; }
+    .part span { background: #241447; color: #fff; border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 800; }
+    .part.off span { background: #b42318; }
+    .part h3 { margin: 0; font-size: 20px; color: #241447; }
+    .note { margin: 0 0 16px; color: #64748b; font-size: 14px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 0; }
+    .chip { border-radius: 999px; padding: 6px 10px; background: #f8fafc; border: 1px solid #e2e8f0; font-size: 13px; font-weight: 700; color: #334155; }
+    .danger { border-color: #fecaca; }
+    .footer { background: #18181e; color: #fff; padding: 40px 6vw 28px; }
+    .footer-top { display: flex; justify-content: space-between; gap: 32px; flex-wrap: wrap; }
+    .footer-brand p { color: rgba(255,255,255,0.6); max-width: 280px; line-height: 1.5; }
+    .footer-nav { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; }
+    .footer-nav a { color: #fff; text-decoration: none; }
+    .footer-bottom { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin-top: 28px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.12); }
+    .footer-copy { font-size: 13px; color: rgba(255,255,255,0.85); }
+    .footer-copy .entity { display: block; margin-bottom: 4px; color: rgba(255,255,255,0.7); font-size: 12px; }
+    .legal { display: flex; gap: 22px; list-style: none; margin: 0; padding: 0; font-size: 13px; }
+    @media (max-width: 720px) { .paths { grid-template-columns: 1fr; } .or { justify-self: center; } }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <a class="logo" href="how-vaptfix-works.html">VAPTFIX</a>
+    <nav class="nav-links">
+      <a href="how-vaptfix-works.html">Home</a>
+      <a href="how-vaptfix-works.html">Features</a>
+      <a href="how-vaptfix-works.html">Pricing</a>
+      <a href="how-vaptfix-works.html">Knowledge Base</a>
+      <a href="how-vaptfix-works.html">How VAPTFIX Works</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="wrap">
+      <div class="tag"><span class="dot"></span> VAPTFIX Onboarding</div>
+      <h1>Three Ways to Access<br><span class="accent">VAPTFIX</span></h1>
+      <p>Choose your entry point — Email, Slack, or Microsoft Teams. All three follow the same onboarding journey.</p>
+      <div class="pills">
+        <span class="pill">Company Email</span>
+        <span class="pill">Slack</span>
+        <span class="pill">Microsoft Teams</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section flow-section">
+    <div class="wrap">
+      <p class="kicker">Product flow</p>
+      <h2>From a finding to a verified fix</h2>
+      <p class="sub">Four steps. The model writes the plan. A person approves it before anything runs. The plan stays on record with the finding it came from and the model that wrote it.</p>
+      <ol class="flow" id="product-flow-list">
+        <li class="is-active"><button type="button"><span class="num">01</span><span class="copy"><h3>Ingest</h3><p>Findings come in from an uploaded assessment. Accepted today: Nessus files, AWS Security Hub exports, and custom assessment files. VAPTFIX reads the file for assets, findings, severity, and the technical evidence already in the report.</p></span></button></li>
+        <li><button type="button"><span class="num">02</span><span class="copy"><h3>Prioritise</h3><p>Each finding is ranked by severity. This step is rules and ownership in VAPTFIX. The model does not decide priority.</p></span></button></li>
+        <li><button type="button"><span class="num">03</span><span class="copy"><h3>Plan</h3><p>This is the step the model performs. NVIDIA NIM processes the ingested finding and generates a remediation plan: ordered steps, a script where automation applies, instructions to verify the fix, and rollback guidance. Nothing in that plan runs automatically. A person on your team must approve it first. VAPTFIX stores the plan alongside the source finding and records which NVIDIA model generated the remediation steps, preserving traceability between the original finding and the proposed fix.</p></span></button></li>
+        <li><button type="button"><span class="num">04</span><span class="copy"><h3>Execute</h3><p>Approved work runs in the order on the plan, in the website, Slack, or Microsoft Teams. A step that changes a system waits for approval. If the change should not stand, the team stops it and follows the rollback written in the plan. The model does not execute the fix.</p></span></button></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="section alt">
+    <div class="wrap">
+      <h2>From Sign-Up to Full Access</h2>
+      <p class="sub">Company Email. Admin signs up directly on the VAPTFIX website using their company email address and a password. Five clear steps take the admin from registration to full dashboard access.</p>
+      <div class="steps">
+        <article class="card"><span class="num dark">01</span><div><h3>Sign-Up &amp; Sign-In</h3><p>Admin arrives at the VAPTFIX website and clicks "Get Started." Enters company email, sets a password and confirms it, then signs in. At this stage also, the admin can choose a plan based on their requirements before proceeding to the Upload Report page.</p></div></article>
+        <article class="card"><span class="num dark">02</span><div><h3>Report Submission</h3><p>Admin chooses one of two paths to get a VA report into the system:</p>
+          <div class="paths">
+            <div class="path"><strong>Path A — Upload Existing Report</strong><p>Admin uploads an existing VA report on the website. Accepted today: Nessus files, AWS Security Hub exports, and custom assessment files. Configuration and CIS benchmark results are included when they are already inside that report. There is no separate live connector for other scanners. The system reads the assets in the file and sets the plan from that count.</p><div class="tags"><span class="tagpill">Nessus</span><span class="tagpill">AWS Security Hub</span><span class="tagpill">Custom assessment</span></div></div>
+            <div class="or">OR</div>
+            <div class="path"><strong>Path B — Provide Scope</strong><p>Admin provides the required scope by entering the IP ranges/assets, and they are then assessed using Nessus or equivalent tools. The generated report is uploaded into the backend. The applicable plan is determined based on the total number of IPs/assets provided in the scope.</p><div class="tags"><span class="tagpill">Internal IP</span><span class="tagpill">External IP</span><span class="tagpill">Web App</span><span class="tagpill">Mobile App</span></div></div>
+          </div>
+        </div></article>
+        <article class="card"><span class="num dark">03</span><div><h3>Add Users</h3><p>Admin lands on the Add Users page and adds users to the workspace. The teams visible are based on the selected plan. On Freemium, only the team with the maximum number of assets is visible; Premium and Enterprise provide access to all four teams.</p><div class="tags"><span class="tagpill">Network Security</span><span class="tagpill">Configuration Management</span><span class="tagpill">Architecture Flaw</span><span class="tagpill">Patch Management</span></div></div></article>
+        <article class="card"><span class="num dark">04</span><div><h3>Risk Criteria</h3><p>Admin lands on the Risk Criteria page and completes a one-time setup defining four risk criteria: Critical, High, Medium, and Low.</p><div class="tags"><span class="tagpill c">Critical</span><span class="tagpill h">High</span><span class="tagpill m">Medium</span><span class="tagpill l">Low</span></div></div></article>
+        <article class="card"><span class="num dark">05</span><div><h3>Onboarding Complete</h3><p>Once risk criteria are submitted, the admin is fully onboarded and can begin using VAPTFIX — dashboard, vulnerability tracking, fix management, and team collaboration are all live.</p></div></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <h2>Slack Onboarding Flow</h2>
+      <p class="sub">The Slack journey follows the same onboarding logic, delivered through interactive Slack cards within the workspace.</p>
+      <article class="card" style="border-left: 4px solid #4A154B;">
+        <span class="num" style="background:#4A154B;">S</span>
+        <div>
+          <h3>Slack <span class="badge">Marketplace: in review</span></h3>
+          <p>Sign up with Slack and run remediation from cards in the workspace: assign a finding, approve a step, and close it with the audit record attached. The Slack app is available for that workflow. The Slack Marketplace listing is in review.</p>
+        </div>
+      </article>
+      <div class="part"><span>Part 1</span><h3>Connect your Slack workspace</h3></div>
+      <p class="note">Already have a Slack workspace? Skip steps 5 and 6.</p>
+      <div class="steps">
+        <article class="card"><span class="num dark">01</span><div><h3>Sign up with Slack <span class="where">VAPTFIX</span></h3><p>On VAPTFIX.ai, open Get Started and click Sign up with Slack.</p></div></article>
+        <article class="card"><span class="num dark">02</span><div><h3>Choose Workspace <span class="where">Slack</span></h3><p>Pick a workspace you are signed in to, or create a new one.</p></div></article>
+        <article class="card"><span class="num dark">03</span><div><h3>Enter Email <span class="where">Slack</span></h3><p>Enter your work email, or continue with Google, Microsoft or Apple.</p></div></article>
+        <article class="card"><span class="num dark">04</span><div><h3>Verify Code <span class="where">Slack</span></h3><p>Enter the 6-digit code Slack sends to your email.</p></div></article>
+        <article class="card"><span class="num dark">05</span><div><h3>Name Workspace <span class="where">Slack</span><span class="badge">New users only</span></h3><p>Name your new workspace and finish the quick setup.</p></div></article>
+        <article class="card"><span class="num dark">06</span><div><h3>Close Slack Window <span class="where">Slack</span><span class="badge">New users only</span></h3><p>Your workspace is ready. Close the Slack window and return to VAPTFIX.</p></div></article>
+        <article class="card"><span class="num dark">07</span><div><h3>Sign up with Slack Again <span class="where">VAPTFIX</span></h3><p>In the Get Started modal, click Sign up with Slack once more.</p></div></article>
+        <article class="card"><span class="num dark">08</span><div><h3>Select &amp; Allow <span class="where">Slack</span></h3><p>Select your workspace and click Allow to install the VAPTFIX app.</p></div></article>
+        <article class="card"><span class="num dark">09</span><div><h3>Verify Code Again <span class="where">Slack</span></h3><p>Enter the new 6-digit code Slack emails you to confirm the install.</p></div></article>
+        <article class="card"><span class="num dark">10</span><div><h3>Land in Slack <span class="where">Slack</span></h3><p>VAPTFIX creates your channels and opens the admin dashboard.</p></div></article>
+      </div>
+      <p class="note" style="margin-top:16px">Channels created for you</p>
+      <div class="chips"><span class="chip">VAPTFIX-admin-dashboard</span><span class="chip">VAPTFIX-network-security-team</span><span class="chip">VAPTFIX-configuration-management-team</span><span class="chip">VAPTFIX-architectural-flaws-team</span><span class="chip">VAPTFIX-patch-management-team</span></div>
+
+      <div class="part"><span>Part 2</span><h3>Onboard inside Slack</h3></div>
+      <div class="steps">
+        <article class="card"><span class="num dark">01</span><div><h3>Welcome Card</h3><p>VAPTFIX posts a Welcome Card in the Slack workspace confirming the Admin role. The admin is then prompted to begin onboarding by uploading a VA report or providing the required scope.</p></div></article>
+        <article class="card"><span class="num dark">02</span><div><h3>Report Submission</h3>
+          <div class="paths">
+            <div class="path"><strong>Path A — Upload Report Card</strong><p>Admin uploads an existing VA report directly in Slack. Accepted today: Nessus files, AWS Security Hub exports, and custom assessment files. Configuration and CIS benchmark results are included when they are already inside that report. There is no separate live connector for other scanners.</p><div class="tags"><span class="tagpill">Nessus</span><span class="tagpill">AWS Security Hub</span><span class="tagpill">Custom assessment</span></div></div>
+            <div class="or">OR</div>
+            <div class="path"><strong>Path B — Provide Scope Card</strong><p>Enter Internal assets, External assets, Web Apps, and Mobile Apps directly in the Slack card. VAPTFIX runs the scans and uploads the report to the backend.</p><div class="tags"><span class="tagpill">Internal IP</span><span class="tagpill">External IP</span><span class="tagpill">Web App</span><span class="tagpill">Mobile App</span></div></div>
+          </div>
+        </div></article>
+        <article class="card"><span class="num dark">03</span><div><h3>Plan Limit Check <span class="badge">Conditional</span></h3><p>If the selected plan's limits are exceeded, the Plan Limit Card will appear automatically in Slack. The Admin can either upgrade to Premium/Enterprise, which redirects to the VAPTFIX website, or adjust the scope to remain within the selected plan's limits.</p></div></article>
+        <article class="card"><span class="num dark">04</span><div><h3>Add Users Card</h3><p>Admin adds team members directly from Slack. The teams visible are based on the selected plan. On Freemium, only the team with the maximum number of assets is visible; Premium and Enterprise provide access to all four teams.</p><div class="tags"><span class="tagpill">Network Security</span><span class="tagpill">Configuration Management</span><span class="tagpill">Architecture Flaw</span><span class="tagpill">Patch Management</span></div></div></article>
+        <article class="card"><span class="num dark">05</span><div><h3>Risk Criteria Form</h3><p>A one-time fillable form opens to define four risk criteria: Critical, High, Medium, and Low. These criteria establish the organisation’s vulnerability scoring baseline.</p><div class="tags"><span class="tagpill c">Critical</span><span class="tagpill h">High</span><span class="tagpill m">Medium</span><span class="tagpill l">Low</span></div></div></article>
+        <article class="card"><span class="num dark">06</span><div><h3>Workspace Set Up</h3><p>Once the risk criteria are submitted, the workspace is fully set up. A final Slack card confirms onboarding is complete and provides a link to the live VAPTFIX dashboard.</p></div></article>
+        <article class="card"><span class="num dark">07</span><div><h3>Onboarding Complete</h3><p>A final Slack card confirms your workspace is fully set up. A link to the live VAPTFIX dashboard is provided directly in the card.</p></div></article>
+      </div>
+
+      <div class="part off"><span>Part 3</span><h3>Offboard: remove VAPTFIX from Slack</h3></div>
+      <p class="note">Uninstalling only disconnects Slack. Your VAPTFIX data stays safe unless you confirm deletion from the email.</p>
+      <div class="steps">
+        <article class="card"><span class="num dark">01</span><div><h3>Open Admin Tools <span class="where">Slack</span></h3><p>In Slack, click Admin in the sidebar and open Apps &amp; workflows.</p></div></article>
+        <article class="card"><span class="num dark">02</span><div><h3>Find VAPTFIX <span class="where">Slack</span></h3><p>Under Installed apps, click ••• next to VAPTFIX and choose Uninstall.</p></div></article>
+        <article class="card"><span class="num dark">03</span><div><h3>Confirm Uninstall <span class="where">Slack</span></h3><p>Tick "I want to uninstall VAPTFIX from my team" and click Uninstall.</p></div></article>
+        <article class="card"><span class="num dark">04</span><div><h3>Removal Email <span class="where">Email</span></h3><p>VAPTFIX emails you that Slack is disconnected. Your data is still safe.</p></div></article>
+        <article class="card"><span class="num dark">05</span><div><h3>Delete Account <span class="where">Email</span><span class="badge">Optional</span></h3><p>Click the delete button within 48 hours to erase your account. This cannot be undone.</p></div></article>
+        <article class="card danger"><span class="num dark">06</span><div><h3>Deletion Confirmed <span class="where">VAPTFIX</span></h3><p>A page confirms your VAPTFIX account and all its data are permanently deleted.</p></div></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section alt">
+    <div class="wrap">
+      <h2>Microsoft Teams Onboarding Flow</h2>
+      <p class="sub">The MS Teams journey mirrors the Slack journey exactly. The VAPTFIX bot posts Adaptive Cards inside a Teams chat or channel. Richer views like Add Users can use a Teams Tab.</p>
+      <article class="card" style="border-left: 4px solid #5059C9; margin-bottom: 28px;">
+        <span class="num" style="background:#5059C9;">T</span>
+        <div>
+          <h3>Microsoft Teams <span class="badge">Marketplace: in review</span></h3>
+          <p>Sign up with Microsoft Teams and use the same remediation cards inside Teams: the plan, the approval, and the closure stay on the finding. The Microsoft Teams Marketplace listing is in review.</p>
+        </div>
+      </article>
+      <div class="part"><span>Part 1</span><h3>Connect Microsoft Teams</h3></div>
+      <p class="note">One pass only: no need to close the window and sign up again like Slack.</p>
+      <div class="steps">
+        <article class="card"><span class="num dark">01</span><div><h3>Sign up with Microsoft Teams <span class="where">VAPTFIX</span></h3><p>On VAPTFIX.ai, open Get Started and click Sign up with Microsoft Teams.</p></div></article>
+        <article class="card"><span class="num dark">02</span><div><h3>Pick an Account <span class="where">Microsoft</span></h3><p>Choose your signed-in work account, or click Use another account.</p></div></article>
+        <article class="card"><span class="num dark">03</span><div><h3>Approve Sign-in <span class="where">Microsoft</span></h3><p>Open Microsoft Authenticator and enter the number shown to approve the request.</p></div></article>
+        <article class="card"><span class="num dark">04</span><div><h3>Open Microsoft Teams <span class="where">Teams</span></h3><p>Click Open Microsoft Teams for the desktop app, or Cancel to stay in the browser.</p></div></article>
+        <article class="card"><span class="num dark">05</span><div><h3>Choose App or Web <span class="where">Teams</span></h3><p>Click Launch it now for the desktop app, or Use the web app instead.</p></div></article>
+        <article class="card"><span class="num dark">06</span><div><h3>Land in Teams <span class="where">Teams</span></h3><p>VAPTFIX creates your channels and opens the VAPTFIX admin dashboard channel.</p></div></article>
+      </div>
+      <p class="note" style="margin-top:16px">Channels created in the VAPTFIX team</p>
+      <div class="chips"><span class="chip">VAPTFIX admin dashboard</span><span class="chip">VAPTFIX Network Security team</span><span class="chip">VAPTFIX Configuration Management team</span><span class="chip">VAPTFIX Architectural Flaws team</span><span class="chip">VAPTFIX patch management team</span></div>
+
+      <div class="part"><span>Part 2</span><h3>Onboard inside Microsoft Teams</h3></div>
+      <div class="steps">
+        <article class="card"><span class="num dark">01</span><div><h3>Welcome Adaptive Card</h3><p>VAPTFIX bot posts a Welcome Adaptive Card on install inside your Teams chat or channel. Confirms Admin role and presents a CTA to begin onboarding.</p></div></article>
+        <article class="card"><span class="num dark">02</span><div><h3>Report Submission</h3>
+          <div class="paths">
+            <div class="path"><strong>Path A — Upload Report Card</strong><p>Upload an existing VA report via the Teams card. Accepted today: Nessus files, AWS Security Hub exports, and custom assessment files. Configuration and CIS benchmark results are included when they are already inside that report. There is no separate live connector for other scanners.</p><div class="tags"><span class="tagpill">Nessus</span><span class="tagpill">AWS Security Hub</span><span class="tagpill">Custom assessment</span></div></div>
+            <div class="or">OR</div>
+            <div class="path"><strong>Path B — Provide Scope Card</strong><p>Enter asset scope in the Teams Adaptive Card — Internal IPs, External IPs, Web Apps, Mobile Apps. VAPTFIX runs the assessment and uploads the report.</p><div class="tags"><span class="tagpill">Internal IP</span><span class="tagpill">External IP</span><span class="tagpill">Web App</span><span class="tagpill">Mobile App</span></div></div>
+          </div>
+        </div></article>
+        <article class="card"><span class="num dark">03</span><div><h3>Plan Limit Check <span class="badge">Conditional</span></h3><p>If the selected plan's limits are exceeded, the Plan Limit Adaptive Card will appear automatically in Teams. The Admin can upgrade to Premium/Enterprise and continue via the VAPTFIX website, or adjust the assessment scope to remain within the limits of the selected plan.</p><div class="tags"><span class="tagpill">Upgrade Plan</span><span class="tagpill">Edit Scope</span></div></div></article>
+        <article class="card"><span class="num dark">04</span><div><h3>Add Users</h3><p>The Add Users Card or Teams Tab appears. The teams visible are based on the selected plan. On Freemium, only the team with the maximum number of assets is visible; Premium and Enterprise provide access to all four teams.</p><div class="tags"><span class="tagpill">Network Security</span><span class="tagpill">Configuration Management</span><span class="tagpill">Architecture Flaw</span><span class="tagpill">Patch Management</span></div></div></article>
+        <article class="card"><span class="num dark">05</span><div><h3>Risk Criteria</h3><p>A one-time fillable form opens in Teams to define four risk criteria: Critical, High, Medium, and Low. Consistent with the Slack journey, the same four criteria are used.</p><div class="tags"><span class="tagpill c">Critical</span><span class="tagpill h">High</span><span class="tagpill m">Medium</span><span class="tagpill l">Low</span></div></div></article>
+        <article class="card"><span class="num dark">06</span><div><h3>Onboarding Complete</h3><p>The Onboarding Complete Adaptive Card confirms setup is done and links to the live dashboard as a Teams Tab. You're ready to track and fix vulnerabilities from within Teams.</p></div></article>
+      </div>
+
+      <div class="part off"><span>Part 3</span><h3>Offboard: remove VAPTFIX from Microsoft Teams</h3></div>
+      <p class="note">Removing the app only disconnects Microsoft Teams. Your VAPTFIX data stays safe unless you confirm deletion from the email.</p>
+      <div class="steps">
+        <article class="card"><span class="num dark">01</span><div><h3>Open the Vaptfix team <span class="where">Teams</span></h3><p>In Microsoft Teams, open the Vaptfix team from the sidebar.</p></div></article>
+        <article class="card"><span class="num dark">02</span><div><h3>Open Apps <span class="where">Teams</span></h3><p>Inside the Vaptfix team, open the Apps tab.</p></div></article>
+        <article class="card"><span class="num dark">03</span><div><h3>Choose Remove <span class="where">Teams</span></h3><p>Next to the VaptFix app, click ••• and choose Remove.</p></div></article>
+        <article class="card"><span class="num dark">04</span><div><h3>Confirm Remove <span class="where">Teams</span></h3><p>In the Remove VaptFix dialog, click Remove.</p></div></article>
+        <article class="card"><span class="num dark">05</span><div><h3>Removal Email <span class="where">Email</span></h3><p>VAPTFIX emails you that Microsoft Teams is disconnected. Your account and data are still safe.</p></div></article>
+        <article class="card"><span class="num dark">06</span><div><h3>Delete Account <span class="where">Email</span><span class="badge">Optional</span></h3><p>From that email, click "Yes, permanently delete my account &amp; data" within 48 hours. This cannot be undone. If you do nothing, nothing is deleted.</p></div></article>
+        <article class="card danger"><span class="num dark">07</span><div><h3>Deletion Confirmed <span class="where">VAPTFIX</span></h3><p>Clicking the button in the email permanently deletes your VAPTFIX account and all of its data.</p></div></article>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <strong>VAPTFIX</strong>
+        <p>Eliminate Vulnerabilities Before They Become Threats.</p>
+      </div>
+      <nav class="footer-nav">
+        <a href="how-vaptfix-works.html">Pricing</a>
+        <a href="how-vaptfix-works.html">Features</a>
+      </nav>
+    </div>
+    <div class="footer-bottom">
+      <p class="footer-copy">
+        <span class="entity">VAPTFIX.ai is a product of Secureitabservices Inc, a Delaware corporation.</span>
+        © 2026 VAPTFIX.ai. All rights reserved.
+      </p>
+      <ul class="legal">
+        <li>Privacy</li>
+        <li>Terms</li>
+        <li>Support</li>
+        <li>DPA</li>
+        <li>Sub-processors</li>
+      </ul>
+    </div>
+  </footer>
+  <script>
+    document.getElementById('product-flow-list').addEventListener('click', function (event) {
+      var item = event.target.closest('li');
+      if (!item) return;
+      this.querySelectorAll('li').forEach(function (li) { li.classList.remove('is-active'); });
+      item.classList.add('is-active');
+    });
+  </script>
+</body>
+</html>
