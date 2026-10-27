@@ -172,6 +172,8 @@
               </button>
             </div>
 
+            <ManagementLockedAssetsBanner />
+
             <!-- ===== 6-CARD ANALYTICS GRID ===== -->
             <!-- ROW 1: Assets + MTTR | Vulnerabilities | Mitigation Timeline -->
             <div class="row g-2 mb-3 align-items-stretch">
@@ -1480,6 +1482,7 @@ import DashboardMenu from '@/components/admin-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/admin-component/DashboardHeader.vue';
 // import AdminProjectField from '@/components/admin-component/AdminProjectField.vue'; // Project name functionality commented out per request
 import TruncatedVulnName from '@/components/common/TruncatedVulnName.vue';
+import ManagementLockedAssetsBanner from '@/components/admin-component/ManagementLockedAssetsBanner.vue';
 import { isRealScanHost } from '@/utils/assetDummyData';
 import { filterActiveThreatVulnerabilities } from '@/utils/assetVulnerabilities';
 import { formatStatusLabel } from '@/utils/statusLabel';
@@ -1501,6 +1504,7 @@ export default {
   components: {
     DashboardMenu,
     DashboardHeader,
+    ManagementLockedAssetsBanner,
     // AdminProjectField, // Project name functionality commented out per request
     TruncatedVulnName,
   },

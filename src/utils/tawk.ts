@@ -1,5 +1,5 @@
-const PROPERTY_ID = "57aef82d717479844c75f896";
-const WIDGET_ID = "default";
+const PROPERTY_ID = "6a040fae8d8e5a1c32557122";
+const WIDGET_ID = "1joftqh44";
 const SCRIPT_ID = "tawk-embed";
 
 /** Marketing pages only. Login, signup, and every dashboard stay off this list. */

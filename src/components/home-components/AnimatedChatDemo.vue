@@ -39,14 +39,8 @@
                     <span :class="{ on: section === 'home' }"><i class="bi bi-house"></i> Home</span>
                     <button ref="sFix" type="button" :class="{ on: section === 'fix' }" @click="jump('assets')"><i class="bi bi-wrench"></i> Fix</button>
                     <button ref="sRegister" type="button" :class="{ on: section === 'register' }" @click="jump('register')"><i class="bi bi-card-list"></i> Register</button>
-                    <span><i class="bi bi-robot"></i> Automations</span>
                     <button ref="sTeam" type="button" :class="{ on: section === 'team' }" @click="jump('team')"><i class="bi bi-people"></i> Team</button>
-                    <template v-if="slackMore">
-                      <button ref="sTimeline" type="button" :class="{ on: section === 'timeline' }" @click="jump('timeline')">Timeline Ext.</button>
-                      <button ref="sReminder" type="button" :class="{ on: section === 'reminder' }" @click="jump('reminder')">Reminder</button>
-                      <button ref="sDownload" type="button" :class="{ on: section === 'download' }" @click="jump('download')">Download Report</button>
-                    </template>
-                    <button v-else ref="sMore" type="button" @click="jump('timeline')">+ 3 more</button>
+                    <button ref="sReminder" type="button" :class="{ on: section === 'reminder' }" @click="jump('reminder')"><i class="bi bi-bell"></i> Reminder</button>
                   </div>
                   <div v-if="section === 'fix'" class="sub-tabs">
                     <span class="on"><i class="bi bi-laptop"></i> All Assets</span>
@@ -472,11 +466,8 @@
                   <span :class="{ on: section === 'home' }">Home</span>
                   <button ref="fixTabBtn" type="button" :class="{ on: section === 'fix' }" @click="jump('assets')">Fix</button>
                   <button ref="registerTab" type="button" :class="{ on: section === 'register' }" @click="jump('register')">Register</button>
-                  <button ref="automationsTab" type="button" :class="{ on: section === 'automations' }" @click="jump('automations')">Automations</button>
                   <button ref="teamTab" type="button" :class="{ on: section === 'team' }" @click="jump('team')">Team</button>
-                  <button ref="timelineTab" type="button" :class="{ on: section === 'timeline' }" @click="jump('timeline')">Timeline Ext.</button>
                   <button ref="reminderTab" type="button" :class="{ on: section === 'reminder' }" @click="jump('reminder')">Reminder</button>
-                  <button ref="downloadTab" type="button" :class="{ on: section === 'download' }" @click="jump('download')">Download Report</button>
                 </div>
 
                 <div v-if="section === 'fix'" class="sub-tabs">
@@ -1037,10 +1028,12 @@ export default {
         'assets-hold>asset': 'sViewHold',
         'asset>manual': 'sFinding',
         'manual>auto': 'sAuto',
+        'assets>register': 'sRegister',
         'auto>register': 'sRegister',
         'register>script': 'sScript',
         'script>team': 'sTeam',
         'register>team': 'sTeam',
+        'team>reminder': 'sReminder',
         'team>add': 'sAdd',
         'add>add-picked': 'sPick',
         'add-picked>user-updated': 'sAdded',
@@ -1061,10 +1054,13 @@ export default {
         'assets>asset': 'viewAsset',
         'asset>manual': 'viewFinding',
         'manual>auto': 'autoTab',
+        'assets>register': 'registerTab',
         'auto>register': 'registerTab',
         'register>script': 'scriptTab',
+        'register>team': 'teamTab',
         'script>automations': 'automationsTab',
         'automations>team': 'teamTab',
+        'team>reminder': 'reminderTab',
         'team>add': 'addUserTab',
         'add>delete': 'deleteUserTab',
         'delete>delete-detail': 'viewUser',

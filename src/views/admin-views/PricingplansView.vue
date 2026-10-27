@@ -53,6 +53,10 @@
                 <div v-if="lockedUpgradeNotice" class="pricing-alert pricing-alert--warn">
                   {{ lockedUpgradeNotice }}
                 </div>
+                <div v-if="managementLockedNotice" class="pricing-alert pricing-alert--warn">
+                  {{ managementLockedNotice }}
+                  <button type="button" class="pricing-alert-link" @click="goToPayment">Pay to unlock</button>
+                </div>
                 <div v-if="estimate?.over_ceiling" class="pricing-alert pricing-alert--warn">
                   {{ estimate.message || '250+ assets — this account must use the Custom plan.' }}
                 </div>
@@ -148,55 +152,40 @@
                     </div>
 
                     <div v-if="premiumDetailsOpen && premiumMode === 'management'" class="pricing-cycle-block">
-                      <p class="pricing-cycle-label">Billing cycle</p>
+                      <p class="pricing-cycle-label">Your price</p>
+                      <p class="pricing-mode-copy">
+                        One 3-month period. One block covers 100 assets and 1,000 vulnerabilities. A larger report is billed for every block it needs, in one payment.
+                      </p>
                       <div class="pricing-cycle-options">
-                        <label
-                          v-for="cycle in billingCycles"
-                          :key="cycle.id"
-                          class="pricing-cycle-option"
-                          :class="{ active: billingCycle === cycle.id }"
-                        >
-                          <input
-                            v-model="billingCycle"
-                            type="radio"
-                            name="billingCycle"
-                            :value="cycle.id"
-                            class="visually-hidden"
-                          />
+                        <div class="pricing-cycle-option active">
                           <span class="pricing-cycle-head">
-                            <span class="pricing-cycle-name">{{ cycle.label }}</span>
-                            <span class="pricing-cycle-rate">{{ cycle.rate }}</span>
+                            <span class="pricing-cycle-name">Management Only</span>
+                            <span class="pricing-cycle-rate">{{ liveAmountLabel || (estimateLoading ? 'Calculating…' : '—') }}</span>
                           </span>
-                          <span class="pricing-cycle-commit">{{ cycle.commitment }}</span>
-                          <span class="pricing-cycle-example">
-                            <span class="pricing-cycle-example-label">Example · 50 IPs</span>
-                            <span class="pricing-cycle-example-math">{{ cycle.example }}</span>
-                            <span class="pricing-cycle-example-label is-total">Total</span>
-                            <span class="pricing-cycle-example-total">{{ cycle.total }}</span>
+                          <span class="pricing-cycle-commit">for 3 months</span>
+                          <span v-if="managementBlockNote" class="pricing-cycle-example">
+                            <span class="pricing-cycle-example-math">{{ managementBlockNote }}</span>
                           </span>
-                        </label>
+                        </div>
                       </div>
                     </div>
 
                     <div v-else-if="premiumDetailsOpen && premiumMode === 'testing'" class="pricing-cycle-block">
-                      <p class="pricing-cycle-label">Included Items</p>
-                      <div class="pricing-cycle-options pricing-testing-options">
+                      <p class="pricing-cycle-label">Where your money goes</p>
+                      <p v-if="testingSourceNote" class="pricing-mode-copy">{{ testingSourceNote }}</p>
+                      <p v-if="estimateLoading && !testingLines.length" class="pricing-mode-copy">Calculating your price…</p>
+                      <div v-else-if="testingLines.length" class="pricing-cycle-options pricing-testing-options">
                         <div class="pricing-cycle-option active">
-                          <div class="pricing-testing-rate-row">
-                            <span class="pricing-cycle-name">Testing &amp; Retesting</span>
-                            <span class="pricing-testing-badge">Annual</span>
-                          </div>
-                          <span class="pricing-cycle-commit">Includes two testing cycles per year, with one cycle consisting of testing and retesting.</span>
-                          <span class="pricing-cycle-example">
-                            <span class="pricing-cycle-example-label">Included Items</span>
-                            <ul class="pricing-testing-included">
-                              <li>Includes two security assessments per year.</li>
-                              <li>Includes both initial testing and retesting.</li>
-                              <li>Retesting included as part of each testing cycle.</li>
-                            </ul>
-                            <span class="pricing-cycle-example-label is-total">Annual rate</span>
-                            <span class="pricing-cycle-example-total">$20 / IP / year</span>
+                          <span
+                            v-for="line in testingLines"
+                            :key="line.label"
+                            class="pricing-cycle-example"
+                          >
+                            <span class="pricing-cycle-example-label">{{ line.label }}</span>
+                            <span v-if="line.detail" class="pricing-cycle-example-math">{{ line.detail }}</span>
+                            <span class="pricing-cycle-example-total">{{ line.amount }}</span>
                           </span>
+                          <span class="pricing-cycle-commit">Billed once for 6 months. Two testing cycles are included.</span>
                         </div>
                       </div>
                     </div>
@@ -327,7 +316,13 @@
                       <i class="bi bi-shield-lock" aria-hidden="true"></i>
                       <div>
                         <strong>Secure Stripe Checkout</strong>
-                        <p class="mb-0">
+                        <p v-if="activePlan.id === 'premium' && premiumMode === 'management'" class="mb-0">
+                          Continue to Stripe to pay <strong>{{ summaryTotal }}</strong> for 3 months.
+                        </p>
+                        <p v-else-if="activePlan.id === 'premium'" class="mb-0">
+                          Continue to Stripe to pay <strong>{{ summaryTotal }}</strong> for 6 months.
+                        </p>
+                        <p v-else class="mb-0">
                           Continue to Stripe to pay for
                           <strong>{{ billedAssetCount || 'your' }} {{ billedAssetCount === 1 ? 'IP' : 'IPs' }}</strong>.
                         </p>
@@ -363,10 +358,10 @@
                     Mode: <strong>{{ premiumModeLabel }}</strong>
                   </div>
                   <div v-if="activePlan.id === 'premium' && premiumMode === 'management'" class="pricing-summary-meta">
-                    Billing cycle: <strong>{{ selectedCycleLabel }}</strong>
+                    Period: <strong>3 months</strong>
                   </div>
                   <div v-else-if="activePlan.id === 'premium'" class="pricing-summary-meta">
-                    Commitment: <strong>Annual</strong>
+                    Period: <strong>6 months</strong>
                   </div>
                   <div class="pricing-summary-total-bar">
                     <span>Total due today</span>
@@ -474,7 +469,6 @@ import {
   isExistingSubscriptionMessage,
   isFreemiumPlan,
   localCustomEstimate,
-  localPremiumEstimate,
   markFreemiumActiveNotice,
   peekBillingReturnTo,
   peekBillableAssetCount,
@@ -522,8 +516,8 @@ const PLAN_CONFIG = {
   premium: {
     id: 'premium',
     name: 'Premium',
-    priceLabel: 'From $1.25',
-    priceNote: 'per IP/year · Management or Management + Testing',
+    priceLabel: 'From your report',
+    priceNote: 'Management Only is billed in blocks for 3 months. Management + Testing is one 6-month bill.',
     cta: 'Upgrade to Premium',
     featured: true,
     featuresHeading: 'Everything in Freemium, plus:',
@@ -716,6 +710,66 @@ export default {
       if (this.selectedPlan !== 'freemium') return '';
       return formatLockedUpgradeNotice(this.estimate || this.currentSubscription);
     },
+    managementLockedNotice() {
+      if (this.selectedPlan !== 'premium' || this.premiumMode !== 'management') return '';
+      const locked = Number(this.estimate?.locked_asset_count ?? this.billingBreakdown?.locked_asset_count) || 0;
+      if (locked <= 0) return '';
+      return `${locked} assets are locked. Pay for the additional block(s) needed to unlock them — see your updated price above.`;
+    },
+    managementBlockNote() {
+      if (this.premiumMode !== 'management') return '';
+      const estimate = this.estimate || {};
+      const blocks = Number(estimate.blocks_needed) || 0;
+      if (blocks <= 1 || !this.liveAmountLabel) return '';
+      const assets = Number(estimate.asset_count) || 0;
+      const vulns = Number(estimate.vulnerability_count) || 0;
+      const assetCap = Number(estimate.asset_cap) || 100;
+      const vulnCap = Number(estimate.vulnerability_cap) || 1000;
+      return `${this.liveAmountLabel} for 3 months — your report has ${assets} assets / ${vulns} vulnerabilities, which needs ${blocks} blocks of ${assetCap} assets / ${vulnCap.toLocaleString('en-US')} vulnerabilities each.`;
+    },
+    testingSourceNote() {
+      if (this.premiumMode !== 'testing') return '';
+      const source = String(this.estimate?.asset_source || '').toLowerCase();
+      if (source === 'scope') return 'Counts come from your scope.';
+      if (source === 'report') return 'Counts come from your report.';
+      return '';
+    },
+    testingLines() {
+      if (this.premiumMode !== 'testing' || !this.estimate || this.estimate.needs_scope) return [];
+      const estimate = this.estimate;
+      const ip = Number(estimate.ip_count) || 0;
+      const web = Number(estimate.web_app_count) || 0;
+      const mobile = Number(estimate.mobile_app_count) || 0;
+      const ipRate = estimate.rate_per_ip || '25.00';
+      const webRate = estimate.rate_per_web_app || '1250.00';
+      const mobileRate = estimate.rate_per_mobile_app || '1250.00';
+      const lines = [{ label: 'Platform fee', detail: '6 months', amount: formatUsd('300.00') }];
+      if (ip > 0) {
+        lines.push({
+          label: 'IP addresses',
+          detail: `${ip} × ${formatUsd(ipRate)}`,
+          amount: formatUsd(ip * Number(ipRate)),
+        });
+      }
+      if (web > 0) {
+        lines.push({
+          label: 'Web applications',
+          detail: `${web} × ${formatUsd(webRate)}`,
+          amount: formatUsd(web * Number(webRate)),
+        });
+      }
+      if (mobile > 0) {
+        lines.push({
+          label: 'Mobile applications',
+          detail: `${mobile} × ${formatUsd(mobileRate)}`,
+          amount: formatUsd(mobile * Number(mobileRate)),
+        });
+      }
+      if (this.liveAmountLabel) {
+        lines.push({ label: 'Total', detail: '6 months', amount: this.liveAmountLabel });
+      }
+      return lines;
+    },
     freemiumLockedExtrasNotice() {
       // Scope / manual entry is Premium-only — never show Freemium lock copy.
       if (this.fromScopeFile && !this.fromScanReport) return '';
@@ -804,14 +858,7 @@ export default {
     // the shopper picked, so the "upload report (from $X/IP)" line needs to
     // quote that cycle's rate instead of always showing the Annual one.
     orderSummaryFeatures() {
-      const features = this.activePlan?.features || [];
-      if (this.activePlan?.id !== 'premium') return features;
-      const rate = (this.selectedCycle?.rate || '$1.25 / IP').replace(/\s*\/\s*/, '/');
-      return features.map((feature) =>
-        this.isManagementFeature(feature.text)
-          ? { ...feature, text: `Management: upload report (from ${rate})` }
-          : feature,
-      );
+      return this.activePlan?.features || [];
     },
     estimateAssetLabel() {
       if (this.needsScope) return '';
@@ -840,12 +887,7 @@ export default {
       if (this.liveAmountLabel) return this.liveAmountLabel;
       if (this.selectedPlan === 'freemium') return this.activePlan?.priceLabel || '$0';
       if (this.selectedPlan === 'premium') {
-        const local = localPremiumEstimate(this.pendingAssetCount, this.premiumMode, this.billingCycle);
-        if (local?.amount_due && !local.over_ceiling && Number(local.amount_due) > 0) {
-          return formatUsd(local.amount_due, local.currency || 'usd');
-        }
-        if (this.premiumMode === 'testing') return '$20';
-        return this.selectedCycle?.rate?.replace(' / IP', '') || 'From $1.25';
+        return this.estimateLoading ? '…' : '—';
       }
       return this.activePlan?.priceLabel || '';
     },
@@ -856,15 +898,15 @@ export default {
       if (this.estimate?.over_ceiling) return this.estimate.message || this.activePlan?.priceNote || '';
       if (this.selectedPlan !== 'premium') return this.activePlan?.priceNote || '';
       if (this.premiumMode === 'testing') {
-        return 'per IP/year · Management + Testing (annual only)';
+        return 'for 6 months · platform fee plus per asset';
       }
-      return `per IP · Management · ${this.selectedCycleLabel} billing`;
+      return 'for 3 months · billed in blocks of 100 assets and 1,000 vulnerabilities';
     },
     summaryRate() {
       if (this.selectedPlan === 'freemium') return '$0 · free for 30 days';
       if (this.selectedPlan === 'premium') {
-        if (this.premiumMode === 'testing') return '$20 / IP / year · testing included';
-        return `${this.selectedCycle.rate} · Management`;
+        if (this.premiumMode === 'testing') return 'Management + Testing · 6 months';
+        return 'Management Only · 3 months';
       }
       if (this.selectedPlan === 'custom') return '$15 / IP / year · Management';
       return 'Custom quote';
@@ -873,16 +915,7 @@ export default {
       if (this.needsScope) return 'Pending';
       if (this.liveAmountLabel) return this.liveAmountLabel;
       if (this.selectedPlan === 'freemium') return '$0';
-      if (this.selectedPlan === 'premium') {
-        const local = localPremiumEstimate(this.pendingAssetCount, this.premiumMode, this.billingCycle);
-        if (local?.amount_due && !local.over_ceiling && Number(local.amount_due) > 0) {
-          return formatUsd(local.amount_due, local.currency || 'usd');
-        }
-        if (this.premiumMode === 'testing') return '$20 / IP / year';
-        if (this.billingCycle === 'monthly') return '$2.00 / IP / month';
-        if (this.billingCycle === 'semi') return '$1.50 / IP / 6 months';
-        return '$1.25 / IP / year';
-      }
+      if (this.selectedPlan === 'premium') return this.estimateLoading ? '…' : '—';
       if (this.selectedPlan === 'custom') {
         const assetCount = Number(this.leadForm.assets) || this.detectedAssetCount || 0;
         const local = localCustomEstimate(assetCount);
@@ -1043,10 +1076,10 @@ export default {
     },
     planPriceNote(plan) {
       if (plan?.id === 'premium' && this.testingModeLocked) {
-        return 'per IP/year · Management';
+        return 'for 3 months · priced from your report';
       }
       if (plan?.id === 'premium' && this.managementModeLocked) {
-        return 'per IP/year · Management + Testing';
+        return 'for 6 months · platform fee plus per asset';
       }
       return plan?.priceNote || '';
     },
@@ -1089,7 +1122,6 @@ export default {
           const payload = {
             plan: 'premium',
             mode: 'management_testing',
-            billing_cycle: 'annual',
           };
           if (detected) payload.asset_count = detected;
           const data = await estimatePlan(payload);
@@ -1138,7 +1170,6 @@ export default {
         const data = await estimatePlan({
           plan: 'premium',
           mode: 'management',
-          billing_cycle: 'annual',
         });
         if (data) this.estimate = data;
         // Only trust estimate when it has genuine unique_ip_count — never host_count.
@@ -1224,9 +1255,6 @@ export default {
       const payload = { plan: this.selectedPlan };
       if (this.selectedPlan === 'premium') {
         payload.mode = this.apiPremiumMode;
-        if (this.apiPremiumMode === 'management') {
-          payload.billing_cycle = this.apiBillingCycle;
-        }
       }
       // billedAssetCount (unique_ip_count-derived) is authoritative — prefer it over
       // detectedFileAssetCount(this.estimate), whose visible/locked breakdown can be
@@ -1236,20 +1264,13 @@ export default {
         this.billedAssetCount ||
         detectedFileAssetCount(this.estimate) ||
         detectedFileAssetCount(this.currentSubscription);
-      if (billable) {
+      if (billable && this.selectedPlan !== 'premium') {
         payload.asset_count = billable;
       }
       return payload;
     },
     applyLocalEstimate() {
-      if (this.selectedPlan !== 'premium' || !this.pendingAssetCount) return false;
-      const local = localPremiumEstimate(this.pendingAssetCount, this.premiumMode, this.billingCycle);
-      if (!local || !(Number(local.amount_due) > 0)) return false;
-      // Keep any useful API fields, but never keep a $0 amount when IPs are known.
-      this.estimate = { ...(this.estimate || {}), ...local };
-      this.needsReportUpload = false;
-      this.estimateError = '';
-      return true;
+      return false;
     },
     async fetchEstimate() {
       if (!this.selectedPlan) return;
@@ -1263,8 +1284,6 @@ export default {
       this.estimateLoading = true;
       this.estimateError = '';
       this.needsReportUpload = false;
-      // Show IP×rate immediately so the UI never flashes $0 while the API loads.
-      this.applyLocalEstimate();
       try {
         const data = await estimatePlan(this.buildEstimatePayload());
         this.estimate = data || null;
@@ -1276,15 +1295,18 @@ export default {
         }
         rememberFullAssetCount(data, detected || this.pendingAssetCount);
         const due = Number(data?.amount_due);
-        // API returned $0 / empty but we know IP count → keep local Premium price.
         if (
           this.selectedPlan === 'premium' &&
-          this.pendingAssetCount > 0 &&
           !data?.over_ceiling &&
           !data?.needs_scope &&
           (!Number.isFinite(due) || due <= 0)
         ) {
-          this.applyLocalEstimate();
+          const hasBillableReport = Number(data?.asset_count) > 0 || Number(data?.blocks_needed) > 0;
+          if (hasBillableReport) {
+            this.estimateError = 'The price could not be calculated from your report. Try again in a moment.';
+          } else if (!this.isTestingMode) {
+            this.needsReportUpload = true;
+          }
         }
         if (data?.needs_scope) {
           this.estimateError = '';
@@ -1310,7 +1332,7 @@ export default {
           this.estimate = {
             plan: 'premium',
             mode: 'management_testing',
-            billing_cycle: 'annual',
+            billing_cycle: 'semi_annual',
             asset_count: 0,
             amount_due: '0.00',
             currency: 'usd',
@@ -1734,11 +1756,6 @@ export default {
       this.checkoutLoading = true;
       try {
         const payload = { mode: this.apiPremiumMode };
-        if (this.apiPremiumMode === 'management') {
-          payload.billing_cycle = this.apiBillingCycle;
-        }
-        const billable = this.billedAssetCount;
-        if (billable) payload.asset_count = billable;
         // Stripe redirects the browser away and back — echo the Teams/Slack
         // handoff source through the backend's success_url so /billing/success
         // can still show the "head back to Slack/Teams" popup after that trip.

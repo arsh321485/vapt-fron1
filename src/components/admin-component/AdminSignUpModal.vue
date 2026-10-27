@@ -11,6 +11,7 @@
         <!-- Sign Up Form -->
         <div v-if="!otpSent" class="form-container">
           <div class="signup-header">
+            <img src="@/assets/images/logo-capital.png" alt="VAPTFIX" class="signup-logo" width="124" height="40">
             <h3 class="form-title">Get Started</h3>
             <p class="form-subtitle">Create your VAPTFIX account to begin your security engagement</p>
           </div>
@@ -1188,6 +1189,13 @@ export default {
 .signup-header {
   text-align: center;
   margin-bottom: 4px;
+}
+.signup-logo {
+  display: block;
+  width: 124px;
+  height: auto;
+  margin: 0 auto 12px;
+  background: transparent;
 }
 .form-title {
   font-size: 20px;

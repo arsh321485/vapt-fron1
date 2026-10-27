@@ -24,9 +24,20 @@ export interface BillingAssetBreakdown {
 export interface EstimateResult extends BillingAssetBreakdown {
   plan?: BillingPlan;
   mode?: PremiumMode | null;
-  billing_cycle?: BillingCycle | null;
+  billing_cycle?: BillingCycle | "quarterly" | "semi_annual" | string | null;
   asset_limit?: number;
   asset_ceiling?: number;
+  asset_cap?: number;
+  vulnerability_cap?: number;
+  vulnerability_count?: number;
+  blocks_needed?: number;
+  ip_count?: number;
+  web_app_count?: number;
+  mobile_app_count?: number;
+  rate_per_ip?: string;
+  rate_per_web_app?: string;
+  rate_per_mobile_app?: string;
+  asset_source?: "report" | "scope" | string;
   over_limit?: boolean;
   over_ceiling?: boolean;
   price_per_ip?: string | null;
@@ -193,9 +204,6 @@ export async function checkoutPremium(payload: {
   source?: string;
 }) {
   const body: Record<string, string | number> = { mode: payload.mode };
-  if (payload.mode === "management" && payload.billing_cycle) {
-    body.billing_cycle = payload.billing_cycle;
-  }
   if (payload.asset_count) {
     body.asset_count = payload.asset_count;
   }

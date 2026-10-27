@@ -10,7 +10,7 @@
         </div>
         <div class="pill"><b></b> Simple, transparent pricing</div>
         <h1>Every vulnerability fixed.<br><span>Every risk closed.</span></h1>
-        <p class="lead">Start free for 30 days. Already have reports? Management Only is a flat $300 for 3 months. Need VAPTFIX to test for you? Choose Management + Testing.</p>
+        <p class="lead">Start free for 30 days. Already have reports? Management Only is $300 per block for 3 months. One block covers 100 assets and 1,000 vulnerabilities. Need VAPTFIX to test for you? Choose Management + Testing.</p>
         <div class="hero-cta">
           <a href="#calculator" class="btn btn-grad">Calculate my price <span class="arrow">→</span></a>
           <a href="#plans" class="btn btn-ghost">See plans</a>
@@ -60,15 +60,15 @@
               <p class="pm-eyebrow">Management Only</p>
               <h4>I Already Have an Assessment Report</h4>
               <p class="pm-desc">Upload multiple existing assessment reports. VAPTFIX manages the rest, providing centralized dashboard visibility, vulnerability tracking, remediation management, and reporting.</p>
-              <div class="price"><b>$300</b><small>flat platform fee<br>no per-asset charges</small></div>
+              <div class="price"><b>$300</b><small>per block<br>for 3 months</small></div>
               <div class="tiles">
-                <div class="tile"><div class="ico">🗓️</div><div class="v">3 months</div><div class="nm">platform access</div></div>
-                <div class="tile"><div class="ico">🖥️</div><div class="v">100</div><div class="nm">assets max</div></div>
-                <div class="tile"><div class="ico">🐞</div><div class="v">1,000</div><div class="nm">vulnerabilities max</div></div>
+                <div class="tile"><div class="ico">🗓️</div><div class="v">3 months</div><div class="nm">one billing period</div></div>
+                <div class="tile"><div class="ico">🖥️</div><div class="v">100</div><div class="nm">assets per block</div></div>
+                <div class="tile"><div class="ico">🐞</div><div class="v">1,000</div><div class="nm">vulnerabilities per block</div></div>
               </div>
               <div class="flow">
-                <div class="ok-box"><b>Under the limit?</b>Keep uploading reports until you reach 100 assets or 1,000 vulnerabilities.</div>
-                <div class="warn-box"><b>Over the limit?</b>Upload the rest in your next 3-month period and pay $300 again.</div>
+                <div class="ok-box"><b>Within one block?</b>Keep uploading reports until you reach 100 assets or 1,000 vulnerabilities.</div>
+                <div class="warn-box"><b>Need more than one block?</b>Every extra block is another $300, charged in the same 3-month period. 101 assets is 2 blocks: $600 for 3 months.</div>
               </div>
               <p v-if="managementLocked" class="lock-note">Not available — you uploaded a scope file for testing.</p>
               <button type="button" class="btn" :disabled="managementLocked" @click="setMode('mgmt')">Choose Management Only <span class="arrow">→</span></button>
@@ -132,14 +132,14 @@
               </tr>
             </thead>
             <tbody>
-              <tr><td>Price</td><td><span class="hl">$0</span></td><td><span class="hl">$300</span> flat</td><td><span class="hl">$300</span> platform fee + per asset</td></tr>
+              <tr><td>Price</td><td><span class="hl">$0</span></td><td><span class="hl">$300</span> per block</td><td><span class="hl">$300</span> platform fee + per asset</td></tr>
               <tr><td>Period</td><td>30 days</td><td>3 months</td><td>6 months</td></tr>
               <tr><td>🖧 IP</td><td>5 IPs only</td><td>Included</td><td><span class="hl">$25</span> per IP</td></tr>
               <tr><td>🌐 Web application</td><td>Not included</td><td>Included</td><td><span class="hl">$1,250</span> per app</td></tr>
               <tr><td>📱 Mobile application</td><td>Not included</td><td>Included</td><td><span class="hl">$1,250</span> per app</td></tr>
-              <tr><td>Limits</td><td>5 IPs</td><td>100 assets and 1,000 vulnerabilities per period</td><td>Based on the scope you buy</td></tr>
+              <tr><td>Limits</td><td>5 IPs</td><td>100 assets and 1,000 vulnerabilities per block</td><td>Based on the scope you buy</td></tr>
               <tr><td>Report uploads</td><td>Less than 1 MB</td><td>Multiple, until a limit is reached</td><td>VAPTFIX produces the findings</td></tr>
-              <tr><td>Over the limit</td><td>Upgrade to Premium</td><td>Next 3-month period, +$300</td><td>Add more assets</td></tr>
+              <tr><td>Over the limit</td><td>Upgrade to Premium</td><td>More blocks in the same 3-month bill</td><td>Add more assets</td></tr>
               <tr><td>Testing</td><td>No</td><td>No</td><td>Test + 1 rescan of mitigated vulnerabilities, 2 cycles per year</td></tr>
               <tr><td>Access</td><td>Slack / Teams only</td><td>Web dashboard + Slack / Teams</td><td>Web dashboard + Slack / Teams</td></tr>
             </tbody>
@@ -298,9 +298,9 @@
       <div class="wrap">
         <div class="sec-head"><p class="eyebrow">FAQ</p><h2>Questions, answered</h2></div>
         <div class="faq">
-          <details open><summary>What do I get for $300 on Management Only?</summary><p>3 months of full platform access for up to 100 assets and 1,000 vulnerabilities, with no per-IP or per-app charges. IPs, web apps and mobile apps all count towards the 100-asset limit.</p></details>
-          <details><summary>Can I upload more than one report?</summary><p>Yes. On Management Only, keep uploading reports during your 3 months until you reach 100 assets or 1,000 vulnerabilities, whichever comes first.</p></details>
-          <details><summary>What if I have more than 100 assets or 1,000 vulnerabilities?</summary><p>Upload reports up to the limit now. The rest can be uploaded in your next 3-month period, after you pay the $300 platform fee again.</p></details>
+          <details open><summary>What do I get for $300 on Management Only?</summary><p>One block: 3 months of platform access for up to 100 assets and 1,000 vulnerabilities. IPs, web apps and mobile apps all count towards the 100-asset limit. A bigger report is priced for every block it needs, still as one 3-month bill.</p></details>
+          <details><summary>Can I upload more than one report?</summary><p>Yes. On Management Only, keep uploading reports during your 3 months. Everything in those reports counts toward the blocks on that same bill.</p></details>
+          <details><summary>What if I have more than 100 assets or 1,000 vulnerabilities?</summary><p>You are billed for every block the report needs, in one 3-month payment. 101 assets is 2 blocks, $600 for 3 months. 2,500 vulnerabilities is 3 blocks, $900 for 3 months.</p></details>
           <details><summary>How is Management + Testing priced?</summary><p>A $300 platform fee every 6 months, plus $25 per IP, $1,250 per web application and $1,250 per mobile application. For example, 80 IPs and 2 web apps is $300 + $2,000 + $2,500 = $4,800 for 6 months.</p></details>
           <details><summary>What does a testing cycle include?</summary><p>One test of your scope by VAPTFIX, then one rescan of the vulnerabilities you've mitigated to confirm they're closed. You get two cycles per year.</p></details>
           <details><summary>What are the Freemium limits?</summary><p>Freemium is free for 30 days and covers 5 IPs only. Each uploaded report must be less than 1 MB. It works straight in Slack or Teams, with no web client.</p></details>
@@ -474,14 +474,10 @@ export default {
       }
       if (this.state.mode === 'mgmt') {
         if (!result.any) return '';
-        if (result.periods === 1) {
-          return `<div class="s-note ok-box">✓ Within your limit. You can still add <b>${countLabel(RULES.mgmt.assets - result.assets, 'asset', 'assets')}</b> and <b>${countLabel(RULES.mgmt.vulns - this.state.vulns, 'vulnerability', 'vulnerabilities')}</b> by uploading more reports.</div>`;
+        if ((result.blocks || 1) <= 1) {
+          return `<div class="s-note ok-box">✓ Within one block. You can still add <b>${countLabel(RULES.mgmt.assets - result.assets, 'asset', 'assets')}</b> and <b>${countLabel(RULES.mgmt.vulns - this.state.vulns, 'vulnerability', 'vulnerabilities')}</b> by uploading more reports.</div>`;
         }
-        const why = [
-          result.assets > RULES.mgmt.assets ? `${Math.round(result.assets).toLocaleString('en-US')} assets` : '',
-          this.state.vulns > RULES.mgmt.vulns ? `${Math.round(this.state.vulns).toLocaleString('en-US')} vulnerabilities` : '',
-        ].filter(Boolean).join(' and ');
-        return `<div class="s-note warn-box">⚠ Over the limit with ${why}. Upload what fits now; the rest needs <b>${result.periods - 1} more period${result.periods > 2 ? 's' : ''}</b> at ${money(RULES.mgmt.fee)}${result.periods > 2 ? ' each' : ''}.</div>`;
+        return `<div class="s-note warn-box">This report needs <b>${result.blocks} blocks</b> (${money(result.total)} for 3 months). One block covers 100 assets and 1,000 vulnerabilities.</div>`;
       }
       return result.any ? '<div class="s-note ok-box">🛡️ Includes 2 testing cycles a year, each a test + 1 rescan.</div>' : '';
     },
@@ -536,22 +532,21 @@ export default {
         };
       }
       if (mode === 'mgmt') {
-        const periods = assetCount
-          ? Math.max(1, Math.ceil(assetCount / RULES.mgmt.assets), Math.ceil(this.state.vulns / RULES.mgmt.vulns))
+        const blocks = assetCount
+          ? Math.max(1, Math.ceil(assetCount / RULES.mgmt.assets), Math.ceil((Number(this.state.vulns) || 0) / RULES.mgmt.vulns))
           : 0;
         const items = [];
-        if (periods) {
-          items.push({ nm: 'Management Only platform', sub: 'Flat fee, no per-asset charges', amt: RULES.mgmt.fee, color: '#f5a524' });
-          if (periods > 1) {
-            items.push({
-              nm: `${periods - 1} more 3-month period${periods > 2 ? 's' : ''}`,
-              sub: `${periods - 1} × ${money(RULES.mgmt.fee)} for assets / vulnerabilities over the limit`,
-              amt: (periods - 1) * RULES.mgmt.fee,
-              color: '#ec4899',
-            });
-          }
+        if (blocks) {
+          items.push({
+            nm: blocks === 1 ? 'Management Only' : `${blocks} blocks of Management Only`,
+            sub: blocks === 1
+              ? 'One block · 100 assets and 1,000 vulnerabilities · 3 months'
+              : `${blocks} × ${money(RULES.mgmt.fee)} · one 3-month period`,
+            amt: blocks * RULES.mgmt.fee,
+            color: '#f5a524',
+          });
         }
-        return { items, total: periods * RULES.mgmt.fee, months: Math.max(1, periods) * RULES.mgmt.months, periods, assets: assetCount, any: assetCount > 0 };
+        return { items, total: blocks * RULES.mgmt.fee, months: RULES.mgmt.months, blocks, assets: assetCount, any: assetCount > 0 };
       }
       const items = [];
       if (active.length) items.push({ nm: 'Platform fee', sub: 'Charged once, covers all assets', amt: RULES.test.fee, color: '#f5a524' });

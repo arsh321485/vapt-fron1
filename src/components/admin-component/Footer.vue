@@ -8,51 +8,17 @@
                      <router-link :to="appHomePath">
                        <img src="@/assets/images/vaptfix_white.png" alt="logo" width="90" height="30" style="cursor: pointer; height: auto;">
                      </router-link>
-                    <p class="mt-4">Eliminate Vulnerabilities Before They<br> Become Threats.</p>
-                    <div class="footer-iso-badges">
-                        <img src="@/assets/images/iso-standards/iso1.png" alt="AICPA SOC" class="iso-logo" width="72" height="72">
-                        <img src="@/assets/images/iso-standards/iso27001.png" alt="ISO 27001 certified" class="iso-logo" width="72" height="72">
-                        <img src="@/assets/images/iso-standards/iso22301.png" alt="ISO 22301 certified" class="iso-logo" width="72" height="72">
-                        <img src="@/assets/images/iso-standards/iso27017.png" alt="ISO 27017 certified" class="iso-logo" width="72" height="72">
-                        <img src="@/assets/images/iso-standards/iso27701.png" alt="ISO 27701 certified" class="iso-logo" width="72" height="72">
-                    </div>
+                    <p class="mt-4 mb-0">Eliminate Vulnerabilities Before They<br> Become Threats.</p>
                 </div>
-                <div class="col-lg-7 col-md-6 text-white d-flex flex-column justify-content-end">
-                    <div>
-                        <ul class="d-flex justify-content-between list-unstyled footer-nav-links">
-                            <li class="footer-partners-group">
-                                <span class="footer-link-title">Partners</span>
-                                <ul class="list-unstyled footer-partners-submenu mt-2">
-                                    <li>
-                                        <router-link to="/partner" class="footer-sub-link text-decoration-none">
-                                            Partner Registration
-                                        </router-link>
-                                    </li>
-                                    <li>
-                                        <router-link to="/partner-lead-portal" class="footer-sub-link text-decoration-none">
-                                            Lead Registration
-                                        </router-link>
-                                    </li>
-                                </ul>
-                            </li>
-                            <li>
-                                <router-link to="/pricingplan" style="text-decoration: none; color: #ffffff;">Pricing</router-link>
-                            </li>
-                            <li>
-                                <router-link to="/features" style="text-decoration: none; color: #ffffff;">Features</router-link>
-                            </li>
-                        </ul>
-                    </div>
-
+                <div class="col-12">
                     <div class="footer-bottom-row">
                         <div class="footer-copyright">
                             <p class="footer-entity mb-0">VAPTFIX.ai is a product of Secureitabservices Inc, a Delaware corporation.</p>
-                            <p class="mb-0">© 2026 VAPTFIX.ai. All rights reserved.</p>
+                            <p class="footer-copy mb-0">© 2026 VAPTFIX.ai. All rights reserved.</p>
                         </div>
                         <ul class="list-unstyled mb-0 footer-legal-links">
-                            <li class="footer-privacy-group">
+                            <li>
                                 <router-link to="/privacy" class="footer-legal-link text-decoration-none">Privacy</router-link>
-                                <router-link to="/sub-processors" class="footer-legal-link text-decoration-none">Sub-processors</router-link>
                             </li>
                             <li>
                                 <router-link to="/terms" class="footer-legal-link text-decoration-none">Terms</router-link>
@@ -63,9 +29,11 @@
                             <li>
                                 <router-link to="/dpa" class="footer-legal-link text-decoration-none">DPA</router-link>
                             </li>
+                            <li>
+                                <router-link to="/sub-processors" class="footer-legal-link text-decoration-none">Sub-processors</router-link>
+                            </li>
                         </ul>
                     </div>
-
                 </div>
             </div>
         </div>
@@ -91,37 +59,13 @@ export default {
   padding-top: 40px !important;
 }
 
-.footer-nav-links {
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: 12px 28px;
-}
-
-.footer-link-title {
-  font-weight: 500;
-}
-
-.footer-partners-submenu {
-  display: grid;
-  gap: 10px;
-}
-
-.footer-sub-link {
-  color: #ffffff;
-  font-size: 14px;
-}
-
-.footer-sub-link:hover {
-  text-decoration: underline !important;
-}
-
 .footer-bottom-row {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 1rem 1.5rem;
-  margin-top: 1.5rem;
+  gap: 1rem 2rem;
+  margin-top: 1.75rem;
   padding-top: 1.25rem;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
@@ -131,14 +75,14 @@ export default {
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.85);
-  flex: 1 1 280px;
+  color: rgba(255, 255, 255, 0.7);
+  flex: 1 1 320px;
   min-width: 0;
   line-height: 1.5;
 }
 
-.footer-entity {
+.footer-entity,
+.footer-copy {
   display: block;
   margin: 0;
   color: rgba(255, 255, 255, 0.7);
@@ -147,26 +91,12 @@ export default {
 
 .footer-legal-links {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: flex-start;
-  gap: 0.75rem 1.5rem;
-  padding-right: 90px;
-}
-
-.footer-privacy-group {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.35rem;
-}
-
-@media (min-width: 768px) {
-  .footer-legal-links {
-    justify-content: flex-end;
-    flex: 0 1 auto;
-    padding-right: 90px;
-  }
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1.25rem;
+  margin: 0;
+  padding: 0 72px 0 0;
 }
 
 .footer-legal-link {
@@ -180,11 +110,11 @@ export default {
   color: #ffffff;
 }
 
-.footer-iso-badges {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 0.65rem;
-  margin-top: 1.25rem;
+@media (max-width: 767px) {
+  .footer-legal-links {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    padding-right: 0;
+  }
 }
 </style>

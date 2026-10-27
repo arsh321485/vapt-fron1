@@ -40,17 +40,6 @@
           <span class="sidebar-item-label">Register</span>
         </button>
         <button
-          ref="teamNav"
-          type="button"
-          class="sidebar-item"
-          :class="{ active: currentPage === 'team' || String(currentPage).startsWith('team-') }"
-          aria-label="Team"
-          @click="goToPage('team')"
-        >
-          <i class="bi bi-people"></i>
-          <span class="sidebar-item-label">Team</span>
-        </button>
-        <button
           ref="perfNav"
           type="button"
           class="sidebar-item"
@@ -60,17 +49,6 @@
         >
           <i class="bi bi-graph-up-arrow"></i>
           <span class="sidebar-item-label">Team Performance</span>
-        </button>
-        <button
-          ref="calNav"
-          type="button"
-          class="sidebar-item"
-          :class="{ active: currentPage === 'calendar' }"
-          aria-label="Calendar"
-          @click="goToPage('calendar')"
-        >
-          <i class="bi bi-calendar3"></i>
-          <span class="sidebar-item-label">Calendar</span>
         </button>
         <button
           ref="supportNav"
@@ -109,10 +87,6 @@
               <i class="bi bi-info-circle mock-info-ico" aria-hidden="true"></i>
             </div>
             <div class="mock-register-header-actions">
-              <button type="button" class="mock-btn-report" aria-label="View Report">
-                <i class="bi bi-eye" aria-hidden="true"></i>
-                <span class="mock-btn-report-label">View Report</span>
-              </button>
               <div class="mock-header-notify-profile">
                 <span class="mock-bell-wrap">
                   <i class="bi bi-bell"></i>
@@ -138,10 +112,6 @@
                 <i class="bi bi-info-circle mock-info-ico" aria-hidden="true"></i>
               </div>
               <div class="mock-register-header-actions">
-                <button ref="viewReportBtn" type="button" class="mock-btn-report" aria-label="View Report" @click="currentPage = 'download'">
-                  <i class="bi bi-eye" aria-hidden="true"></i>
-                  <span class="mock-btn-report-label">View Report</span>
-                </button>
                 <div class="mock-header-notify-profile">
                   <span class="mock-bell-wrap">
                     <i class="bi bi-bell"></i>
@@ -1684,15 +1654,7 @@ export default {
       await this.delay(1800);
       if (this.demoPaused) return;
 
-      if (!(await this.clickNav('teamNav', 'team'))) return;
-      await this.delay(1800);
-      if (this.demoPaused) return;
-
       if (!(await this.clickNav('perfNav', 'performance'))) return;
-      await this.delay(1800);
-      if (this.demoPaused) return;
-
-      if (!(await this.clickNav('calNav', 'calendar'))) return;
       await this.delay(1800);
       if (this.demoPaused) return;
 

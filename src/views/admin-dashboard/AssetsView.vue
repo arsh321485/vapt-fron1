@@ -12,6 +12,7 @@
 
           <div class="col-11 assets-content">
             <div class="assets-page-shell">
+              <ManagementLockedAssetsBanner />
               <div class="assets-list-mode-tabs">
                 <button
                   type="button"
@@ -773,6 +774,7 @@ import AutomationNotSafeBanner from "@/components/assets/AutomationNotSafeBanner
 import FixPanelHeaderAlerts from "@/components/assets/FixPanelHeaderAlerts.vue";
 import { hasSeenPythonInstallAlert, hasSeenVaptfixVerifiedAlert } from "@/utils/fixPanelAlertsOnce";
 import TruncatedVulnName from "@/components/common/TruncatedVulnName.vue";
+import ManagementLockedAssetsBanner from "@/components/admin-component/ManagementLockedAssetsBanner.vue";
 import {
   filterOpenAssetVulnerabilities,
   filterActiveThreatVulnerabilities,
@@ -829,6 +831,7 @@ export default {
     AutomationNotSafeBanner,
     FixPanelHeaderAlerts,
     TruncatedVulnName,
+    ManagementLockedAssetsBanner,
   },
   data() {
     return {
