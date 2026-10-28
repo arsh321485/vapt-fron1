@@ -41,6 +41,7 @@
 
         <!-- User Sign In Form -->
         <div v-if="showForm && formType === 'user'" class="form-container">
+          <img src="@/assets/images/logo-capital.png" alt="VAPTFIX" class="signin-logo" width="96" height="31">
           <div class="back-header">
             <button class="back-btn" @click="goBack">
               <i class="bi bi-arrow-left"></i> Back
@@ -236,6 +237,7 @@
 
         <!-- Admin Sign In Form -->
         <div v-if="showForm && formType === 'admin'" class="form-container">
+          <img src="@/assets/images/logo-capital.png" alt="VAPTFIX" class="signin-logo" width="96" height="31">
           <div class="back-header">
             <button class="back-btn" @click="goBack">
               <i class="bi bi-arrow-left"></i> Back
@@ -1889,9 +1891,8 @@ export default {
   padding-top: 44px;
   position: relative;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-  max-height: 88vh;
-  overflow-y: auto;
-  overflow-x: hidden;
+  max-height: none;
+  overflow: visible;
 }
 
 .modal-content::-webkit-scrollbar { width: 4px; }
@@ -1991,21 +1992,27 @@ export default {
 
 /* Form Container */
 .form-container {
-  max-height: 72vh;
-  overflow-y: auto;
-  padding-right: 4px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(0,0,0,0.1) transparent;
+  overflow: visible;
 }
-.form-container::-webkit-scrollbar { width: 4px; }
-.form-container::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+.form-container .user-tabs { margin-bottom: 12px; }
+.form-container .field-group { margin-bottom: 10px; }
+.form-container .recaptcha-field { margin-bottom: 12px; }
+.form-container .back-header { margin-bottom: 8px; }
+
+.signin-logo {
+  display: block;
+  width: 96px;
+  height: auto;
+  margin: 0 auto 8px;
+  background: transparent;
+}
 
 /* Back Header */
 .back-header {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 .back-btn {
   background: transparent;
