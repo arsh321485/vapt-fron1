@@ -173,7 +173,7 @@
           </div>
           <div class="hv-feature-item">
             <div class="hv-feature-img">
-              <img src="@/assets/images/home/operational.webp" srcset="@/assets/images/home/operational-480.webp 480w, @/assets/images/home/operational.webp 512w" sizes="(max-width: 768px) 92vw, 50vw" alt="Operational Reality" width="640" height="360" loading="lazy" decoding="async" />
+              <img src="@/assets/images/home/operational.webp" srcset="@/assets/images/home/operational-480.webp 854w, @/assets/images/home/operational.webp 1280w" sizes="(max-width: 768px) 92vw, 50vw" alt="Operational Reality" class="hv-feature-photo" width="640" height="360" loading="lazy" decoding="async" />
             </div>
             <h3 class="hv-feature-title">Operational Reality Mapping</h3>
             <p class="hv-feature-desc">Ascertain exactly how your operational timeline stacks up against the risk criteria set in your management policy. We surface real-world exposure windows that static SLAs hide.</p>
@@ -1092,6 +1092,10 @@ export default {
   height: 100%;
   object-fit: cover;
   opacity: 0.85;
+}
+
+.hv-feature-img img.hv-feature-photo {
+  opacity: 1;
 }
 
 .hv-feature-title {
