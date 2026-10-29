@@ -1,6 +1,6 @@
 <template>
   <main class="pricing-page">
-    <Header />
+    <Header ref="pageHeader" />
 
     <section class="vulnerability-explorer" :class="{ 'pricing-bg-bleed': step === 'plans' }">
       <div class="container-fluid py-4 py-md-5">
@@ -612,9 +612,6 @@ export default {
     hasSignedInAccount() {
       if (!this.isAuthenticated) return false;
       try {
-        if (sessionStorage.getItem('isNewUser') === 'true' || localStorage.getItem('isNewUser') === 'true') {
-          return false;
-        }
         const raw = sessionStorage.getItem('user') || localStorage.getItem('user');
         const user = raw ? JSON.parse(raw) : null;
         return !!(user && (user.email || user._id || user.id));
@@ -1382,6 +1379,13 @@ export default {
       this.openAdminSignUpModal();
       return Promise.resolve(false);
     },
+    promptSignIn() {
+      // Checkout rejected a token that was already saved. The account exists,
+      // so ask them to sign in instead of creating another one.
+      this.closeAdminSignUpModal();
+      this.$refs.pageHeader?.handleOpenSignInFromAdminSignUp();
+      return Promise.resolve(false);
+    },
     selectPaymentMethod(method) {
       if (!method || method.comingSoon) return;
       this.paymentMethod = method.id;
@@ -1694,7 +1698,7 @@ export default {
       } catch (error) {
         const message = billingErrorMessage(error);
         if (isBillingAuthError(error)) {
-          this.openAdminSignUpModal();
+          this.promptSignIn();
           return;
         }
         if (isScopeBlocksFreemiumError(error, message)) {
@@ -1773,7 +1777,7 @@ export default {
       } catch (error) {
         const message = billingErrorMessage(error);
         if (isBillingAuthError(error)) {
-          await this.promptAuth();
+          await this.promptSignIn();
           return;
         }
         if (/250\+|custom plan/i.test(message)) {
@@ -1859,7 +1863,7 @@ export default {
       } catch (error) {
         const message = billingErrorMessage(error);
         if (isBillingAuthError(error)) {
-          await this.promptAuth();
+          await this.promptSignIn();
           return;
         }
         this.checkoutError = message;
