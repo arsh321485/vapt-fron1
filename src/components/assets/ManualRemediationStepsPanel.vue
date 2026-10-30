@@ -41,7 +41,7 @@
             v-for="name in displayedAssignedTeams"
             :key="name"
             class="mf-team-pill"
-            :class="teamPillClass(name)"
+            :style="teamChipStyle(name)"
             :title="name"
           >{{ name }}</span>
         </div>
@@ -98,7 +98,7 @@
                 v-for="name in teamNamesFor(task)"
                 :key="name"
                 class="mf-team-pill"
-                :class="teamPillClass(name)"
+                :style="teamChipStyle(name)"
                 :title="name"
               >{{ name }}</span>
             </div>
@@ -256,7 +256,7 @@
 <script>
 import Swal from 'sweetalert2';
 import { MOCK_MANUAL_STEPS } from '@/constants/mockManualRemediationSteps';
-import { colorForTeamName, getTeamColor } from '@/utils/teamColors';
+import { teamChipStyle } from '@/utils/teamColors';
 import { useAuthStore } from '@/stores/authStore';
 import { FREEMIUM_RETEST_MESSAGE } from '@/utils/planLimits';
 import { pickVulnDescription, extractCreatedFixVulnerabilityId } from '@/utils/assetVulnerabilities';
@@ -554,16 +554,7 @@ export default {
         this.cardGenPending = this.scheduleAdminFixPoll(seq);
       }
     },
-    getTeamColor,
-    colorForTeamName,
-    teamPillClass(name) {
-      const team = String(name || '').trim();
-      if (team === 'Architectural Flaws') return 'mf-pill-architectural';
-      if (team === 'Network Security') return 'mf-pill-network';
-      if (team === 'Configuration Management') return 'mf-pill-configuration';
-      if (team === 'Patch Management') return 'mf-pill-patch';
-      return 'mf-pill-default';
-    },
+    teamChipStyle,
     teamNamesFor(task) {
       if (this.displayedAssignedTeams.length) return this.displayedAssignedTeams;
       return task?.assignedTeam ? [task.assignedTeam] : [];
@@ -1656,12 +1647,6 @@ export default {
   border: 1px solid;
   font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
-
-.mf-pill-network { color: #3b82f6; background: #eff6ff; border-color: #3b82f6; }
-.mf-pill-patch { color: #5b21b6; background: #f5f3ff; border-color: #5b21b6; }
-.mf-pill-configuration { color: #06b6d4; background: #ecfeff; border-color: #06b6d4; }
-.mf-pill-architectural { color: #c026d3; background: #fdf4ff; border-color: #c026d3; }
-.mf-pill-default { color: #475569; background: #f1f5f9; border-color: #e2e8f0; }
 
 .mf-step-card--current .mf-step-head {
   border-left: 3px solid #0f696e;

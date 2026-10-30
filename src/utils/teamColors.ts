@@ -82,6 +82,68 @@ export function teamKeyFromSlug(slug?: string | null): TeamKey | null {
   return TEAM_SLUG_TO_KEY[String(slug).toLowerCase()] ?? resolveTeamKey(slug);
 }
 
+export type SupportTeamOption = { value: string; label: string; color: string };
+
+function teamLabel(item: unknown): string {
+  if (item && typeof item === "object") {
+    const row = item as Record<string, unknown>;
+    return String(row.name || row.team_name || row.team || "").trim();
+  }
+  return String(item || "").trim();
+}
+
+/** Team names stored on a support-request row, including a custom team. */
+export function supportRequestTeamNames(req: unknown): string[] {
+  if (!req || typeof req !== "object") return [];
+  const row = req as Record<string, unknown>;
+  const raw: unknown[] = [
+    row.assigned_team,
+    row.team_name,
+    row.team,
+    row.assigned_to_team,
+  ];
+  ["all_assigned_teams", "additional_teams", "assigned_teams"].forEach((key) => {
+    if (Array.isArray(row[key])) raw.push(...row[key]);
+  });
+  const seen = new Set<string>();
+  const names: string[] = [];
+  raw.forEach((item) => {
+    const name = teamLabel(item);
+    const key = name.toLowerCase();
+    if (!name || key === "all" || key === "all teams" || seen.has(key)) return;
+    seen.add(key);
+    names.push(name);
+  });
+  return names;
+}
+
+export function requestMatchesSupportTeam(req: unknown, selected: string): boolean {
+  const sel = String(selected || "").toLowerCase().trim();
+  if (!sel || sel === "all") return true;
+  if (!req || typeof req !== "object") return false;
+  const teams = (req as Record<string, unknown>).all_assigned_teams;
+  if (!Array.isArray(teams)) return false;
+  return teams.some((item) => teamLabel(item).toLowerCase() === sel);
+}
+
+/** Built-in support pills, then custom_teams from the support-request list. */
+export function buildSupportTeamOptions(extraNames: Array<string | null | undefined> = []): SupportTeamOption[] {
+  const options: SupportTeamOption[] = SUPPORT_TEAM_OPTIONS.map((team) => ({
+    value: team.value,
+    label: team.label,
+    color: team.color,
+  }));
+  const known = new Set(options.map((team) => team.value.toLowerCase()));
+  extraNames.forEach((raw) => {
+    const label = String(raw || "").trim();
+    const key = label.toLowerCase();
+    if (!label || known.has(key)) return;
+    known.add(key);
+    options.push({ value: label, label, color: colorForTeamName(label) });
+  });
+  return options;
+}
+
 export function teamPillStyle(
   team: { value: string; label?: string; color?: string },
   selectedTeam: string,
@@ -115,3 +177,47 @@ export const CANONICAL_TEAM_NAMES = [
   'Configuration Management',
   'Architectural Flaws',
 ] as const;
+
+const CANONICAL_CHIP_STYLE: Record<string, { color: string; backgroundColor: string; borderColor: string }> = {
+  'Network Security': { color: '#3b82f6', backgroundColor: '#eff6ff', borderColor: '#3b82f6' },
+  'Patch Management': { color: '#5b21b6', backgroundColor: '#f5f3ff', borderColor: '#5b21b6' },
+  'Configuration Management': { color: '#06b6d4', backgroundColor: '#ecfeff', borderColor: '#06b6d4' },
+  'Architectural Flaws': { color: '#c026d3', backgroundColor: '#fdf4ff', borderColor: '#c026d3' },
+};
+
+const OWN_TEAM_CHIP_STYLE = {
+  color: '#f97316',
+  backgroundColor: '#fff7ed',
+  borderColor: '#f97316',
+};
+
+/** Prefer all_assigned_teams. Fall back to the primary team plus additional_teams. */
+export function listAssignedTeams(source: unknown): string[] {
+  if (!source || typeof source !== "object") return [];
+  const row = source as Record<string, unknown>;
+  const all = Array.isArray(row.all_assigned_teams) ? row.all_assigned_teams : [];
+  const raw = all.length
+    ? all
+    : [
+        ...(row.assigned_to_team ? [row.assigned_to_team] : []),
+        ...(Array.isArray(row.additional_teams) ? row.additional_teams : []),
+      ];
+  const seen = new Set<string>();
+  const names: string[] = [];
+  raw.forEach((item) => {
+    const name = teamLabel(item);
+    const key = name.toLowerCase();
+    if (!name || seen.has(key)) return;
+    seen.add(key);
+    names.push(name);
+  });
+  return names;
+}
+
+/** One pill per team. Built-in teams keep their colors. A custom team is orange. */
+export function teamChipStyle(name?: string | null) {
+  const label = String(name || '').trim();
+  const canonical = CANONICAL_TEAM_NAMES.find((team) => team.toLowerCase() === label.toLowerCase());
+  if (canonical && CANONICAL_CHIP_STYLE[canonical]) return { ...CANONICAL_CHIP_STYLE[canonical] };
+  return { ...OWN_TEAM_CHIP_STYLE };
+}
