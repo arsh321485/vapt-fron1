@@ -220,7 +220,7 @@
                     <b>{{ state.mode === 'mgmt' ? 'Vulnerabilities' : 'Report file size (MB)' }}</b>
                     <span>{{ state.mode === 'mgmt' ? 'Total across all reports, all severities' : 'Freemium accepts reports under 1 MB' }}</span>
                   </span>
-                  <span class="cov-rate">{{ state.mode === 'mgmt' ? 'Limit 1,000' : 'Limit 1 MB' }}</span>
+                  <span class="cov-rate">{{ state.mode === 'mgmt' ? vulnLimitLabel : 'Limit 1 MB' }}</span>
                 </div>
                 <div class="cov-body"><div>
                   <div class="slide-row">
@@ -373,6 +373,8 @@ export default {
     managementLocked: { type: Boolean, default: false },
     testingLocked: { type: Boolean, default: false },
     assetCount: { type: Number, default: 0 },
+    vulnerabilityCount: { default: null },
+    vulnerabilityCap: { default: null },
     checkoutLoading: { type: Boolean, default: false },
     notice: { type: String, default: '' },
     error: { type: String, default: '' },
@@ -385,6 +387,7 @@ export default {
       assets: ASSETS,
       premiumTab: 'mgmt',
       touched: false,
+      vulnsTouched: false,
       copied: false,
       state: {
         mode: 'mgmt',
@@ -441,6 +444,14 @@ export default {
     extraStep() {
       return this.state.mode === 'mgmt' ? 10 : 0.1;
     },
+    mgmtVulnLimit() {
+      const cap = Number(this.vulnerabilityCap);
+      if (Number.isFinite(cap) && cap > 0) return cap;
+      return RULES.mgmt.vulns;
+    },
+    vulnLimitLabel() {
+      return `Limit ${Math.round(this.mgmtVulnLimit).toLocaleString('en-US')}`;
+    },
     extraSliderStyle() {
       const span = this.extraMax - this.extraMin || 1;
       const pct = ((this.extraValue - this.extraMin) / span) * 100;
@@ -454,7 +465,7 @@ export default {
       }
       if (this.state.mode === 'mgmt') {
         return this.bar('Assets', result.assets, RULES.mgmt.assets, '#8b6cff')
-          + this.bar('Vulnerabilities', this.state.vulns, RULES.mgmt.vulns, '#14b88a');
+          + this.bar('Vulnerabilities', this.state.vulns, this.mgmtVulnLimit, '#14b88a');
       }
       if (!result.any) return '';
       const parts = result.items.map((item) => `<div style="width:${(item.amt / result.total) * 100}%;background:${item.color}"></div>`).join('');
@@ -475,9 +486,9 @@ export default {
       if (this.state.mode === 'mgmt') {
         if (!result.any) return '';
         if ((result.blocks || 1) <= 1) {
-          return `<div class="s-note ok-box">✓ Within one block. You can still add <b>${countLabel(RULES.mgmt.assets - result.assets, 'asset', 'assets')}</b> and <b>${countLabel(RULES.mgmt.vulns - this.state.vulns, 'vulnerability', 'vulnerabilities')}</b> by uploading more reports.</div>`;
+          return `<div class="s-note ok-box">✓ Within one block. You can still add <b>${countLabel(RULES.mgmt.assets - result.assets, 'asset', 'assets')}</b> and <b>${countLabel(this.mgmtVulnLimit - this.state.vulns, 'vulnerability', 'vulnerabilities')}</b> by uploading more reports.</div>`;
         }
-        return `<div class="s-note warn-box">This report needs <b>${result.blocks} blocks</b> (${money(result.total)} for 3 months). One block covers 100 assets and 1,000 vulnerabilities.</div>`;
+        return `<div class="s-note warn-box">This report needs <b>${result.blocks} blocks</b> (${money(result.total)} for 3 months). One block covers 100 assets and ${Math.round(this.mgmtVulnLimit).toLocaleString('en-US')} vulnerabilities.</div>`;
       }
       return result.any ? '<div class="s-note ok-box">🛡️ Includes 2 testing cycles a year, each a test + 1 rescan.</div>' : '';
     },
@@ -506,6 +517,15 @@ export default {
         this.state.ip.qty = Math.max(1, Math.min(300, n));
       },
     },
+    vulnerabilityCount: {
+      immediate: true,
+      handler(count) {
+        if (this.vulnsTouched || count === null || count === undefined || count === '') return;
+        const n = Number(count);
+        if (!Number.isFinite(n) || n < 0) return;
+        this.state.vulns = Math.max(0, Math.min(5000, Math.round(n)));
+      },
+    },
     initialMode: {
       immediate: true,
       handler(mode) {
@@ -532,15 +552,16 @@ export default {
         };
       }
       if (mode === 'mgmt') {
+        const vulnCap = this.mgmtVulnLimit;
         const blocks = assetCount
-          ? Math.max(1, Math.ceil(assetCount / RULES.mgmt.assets), Math.ceil((Number(this.state.vulns) || 0) / RULES.mgmt.vulns))
+          ? Math.max(1, Math.ceil(assetCount / RULES.mgmt.assets), Math.ceil((Number(this.state.vulns) || 0) / vulnCap))
           : 0;
         const items = [];
         if (blocks) {
           items.push({
             nm: blocks === 1 ? 'Management Only' : `${blocks} blocks of Management Only`,
             sub: blocks === 1
-              ? 'One block · 100 assets and 1,000 vulnerabilities · 3 months'
+              ? `One block · 100 assets and ${Math.round(vulnCap).toLocaleString('en-US')} vulnerabilities · 3 months`
               : `${blocks} × ${money(RULES.mgmt.fee)} · one 3-month period`,
             amt: blocks * RULES.mgmt.fee,
             color: '#f5a524',
@@ -609,6 +630,7 @@ export default {
     setExtra(value) {
       this.touched = true;
       if (this.state.mode === 'mgmt') {
+        this.vulnsTouched = true;
         this.state.vulns = Math.max(0, Math.min(5000, Math.round(Number(value) || 0)));
         return;
       }
@@ -622,6 +644,7 @@ export default {
     applyPreset(index) {
       const config = PRESETS[this.state.mode][index][1];
       this.touched = true;
+      this.vulnsTouched = true;
       ['ip', 'web', 'mob'].forEach((id) => {
         this.state[id].on = !!config[id][0];
         this.state[id].qty = config[id][1];

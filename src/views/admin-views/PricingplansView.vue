@@ -12,6 +12,8 @@
             :management-locked="managementModeLocked"
             :testing-locked="testingModeLocked"
             :asset-count="detectedAssetCount"
+            :vulnerability-count="detectedVulnerabilityCount"
+            :vulnerability-cap="detectedVulnerabilityCap"
             :checkout-loading="checkoutLoading"
             :notice="showcaseNotice"
             :error="checkoutError"
@@ -693,6 +695,18 @@ export default {
       if (fromSub) return fromSub;
       const fromMeta = peekPendingUploadMeta()?.count || 0;
       return fromMeta || Number(this.autoSelectedFromAssets) || 0;
+    },
+    detectedVulnerabilityCount() {
+      const raw = this.estimate?.vulnerability_count;
+      if (raw === undefined || raw === null || raw === '') return null;
+      const count = Number(raw);
+      return Number.isFinite(count) && count >= 0 ? Math.round(count) : null;
+    },
+    detectedVulnerabilityCap() {
+      const raw = this.estimate?.vulnerability_cap;
+      if (raw === undefined || raw === null || raw === '') return null;
+      const cap = Number(raw);
+      return Number.isFinite(cap) && cap > 0 ? Math.round(cap) : null;
     },
     billingBreakdown() {
       const fromEstimate = billingAssetBreakdown(this.estimate);
