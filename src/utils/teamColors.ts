@@ -214,6 +214,21 @@ export function listAssignedTeams(source: unknown): string[] {
   return names;
 }
 
+function teamInitial(word: string): string {
+  const match = String(word || '').match(/[A-Za-z0-9]/);
+  return match ? match[0].toUpperCase() : '';
+}
+
+/** Two-letter chip label. First letter, plus the second word's first letter when there is one. */
+export function shortTeamLabel(name?: string | null): string {
+  const label = String(name || '').trim();
+  if (!label) return '';
+  const words = label.split(/[\s\-_/+]+/).filter(Boolean);
+  const first = teamInitial(words[0] || '');
+  const second = words.length > 1 ? teamInitial(words[1]) : '';
+  return (first + second) || label.slice(0, 1).toUpperCase();
+}
+
 /** One pill per team. Built-in teams keep their colors. A custom team is orange. */
 export function teamChipStyle(name?: string | null) {
   const label = String(name || '').trim();

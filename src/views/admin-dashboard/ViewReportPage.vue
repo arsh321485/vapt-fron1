@@ -191,12 +191,13 @@
                         <td :title="row.name"><span class="vuln-name-cell">{{ truncateVulnName(row.name) }}</span></td>
                         <td>{{ row.asset }}</td>
                         <td>
-                          <div class="team-pill-cell">
+                          <div class="team-pill-cell" :title="row.teamLabel">
                             <span
-                              v-for="team in row.teamPills"
+                              v-for="team in row.teamPills.slice(0, 2)"
                               :key="team.name"
                               :class="['team-pill', 'team-pill-' + team.pill]"
-                            >{{ team.name }}</span>
+                            >{{ shortTeamLabel(team.name) }}</span>
+                            <span v-if="row.teamPills.length > 2" class="team-pill team-pill-more">+{{ row.teamPills.length - 2 }}</span>
                           </div>
                         </td>
                         <td><span :class="['sev-pill', row.severity]">{{ row.severity }}</span></td>
@@ -224,7 +225,7 @@ import Chart from 'chart.js/auto';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { useAuthStore } from '@/stores/authStore';
-import { PERFORMANCE_TEAM_CONFIGS, colorForTeamName, resolveTeamKey } from '@/utils/teamColors';
+import { PERFORMANCE_TEAM_CONFIGS, colorForTeamName, resolveTeamKey, shortTeamLabel } from '@/utils/teamColors';
 import { SEV, SEV_CHART, getSeverityColor, getSeverityBg } from '@/utils/severityColors';
 import { formatStatusLabel } from '@/utils/statusLabel';
 import { filterAssetsByType } from '@/utils/assetDummyData';
@@ -492,6 +493,7 @@ export default {
 
   methods: {
     formatStatusLabel,
+    shortTeamLabel,
     truncateVulnName(name, wordLimit = 4) {
       const words = String(name || '').trim().split(/\s+/).filter(Boolean);
       if (words.length <= wordLimit) return words.join(' ');
@@ -1412,14 +1414,15 @@ ${this.getExportLayoutCss()}
 .status-pill { font-size: 12px; font-weight: 700; }
 .status-pill.open { color: #b91c1c; }
 .status-pill.closed { color: #0f766e; }
-.team-pill-cell { display: flex; flex-wrap: wrap; gap: 6px; }
-.team-pill { font-size: 12px; font-weight: 700; border-radius: 999px; padding: 4px 10px; border: 1px solid transparent; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.team-pill-cell { display: flex; flex-wrap: nowrap; align-items: center; gap: 6px; }
+.team-pill { font-size: 12px; font-weight: 700; border-radius: 999px; padding: 4px 10px; border: 1px solid transparent; display: inline-block; white-space: nowrap; }
 .team-pill-network { color: var(--team-network-color); background: var(--team-network-bg); border-color: var(--team-network-color); }
 .team-pill-patch { color: var(--team-patch-color); background: var(--team-patch-bg); border-color: var(--team-patch-color); }
 .team-pill-configuration { color: var(--team-configuration-color); background: var(--team-configuration-bg); border-color: var(--team-configuration-color); }
 .team-pill-architectural { color: var(--team-architectural-color); background: var(--team-architectural-bg); border-color: var(--team-architectural-color); }
 .team-pill-unassigned { color: #475569; background: #f1f5f9; border-color: #e2e8f0; }
 .team-pill-custom { color: #9a3412; background: #ffedd5; border-color: #fdba74; }
+.team-pill-more { color: #475569; background: #f1f5f9; border-color: #e2e8f0; }
 .table-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 4px 0; color: #7b8497; font-size: 12px; }
 .table-footer-actions button { border: none; background: transparent; color: #6b7280; font-size: 12px; margin-left: 8px; }
 .btn-export {
