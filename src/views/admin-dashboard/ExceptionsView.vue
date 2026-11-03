@@ -158,7 +158,7 @@
 import DashboardMenu from '@/components/admin-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/admin-component/DashboardHeader.vue';
 import { useAuthStore } from "@/stores/authStore";
-import { SUPPORT_TEAM_OPTIONS, teamPillStyle } from '@/utils/teamColors';
+import { buildSupportTeamOptions, requestMatchesSupportTeam, teamPillStyle } from '@/utils/teamColors';
 import { formatStatusLabel } from '@/utils/statusLabel';
 
 export default {
@@ -183,13 +183,16 @@ export default {
       selectedLocation: "greece",
       sortOrder: 'asc' ,
       selectedTeam: "all",
-      teamOptions: [...SUPPORT_TEAM_OPTIONS],
+      customTeamNames: [],
       activeTab: "all",
       currentPage: 1,
       itemsPerPage: 6,
     };
   },
   computed: {
+  teamOptions() {
+    return buildSupportTeamOptions(this.customTeamNames);
+  },
   sortedSupportRequests() {
     const sorted = [...this.supportRequests];
 
@@ -207,19 +210,7 @@ export default {
    finalSupportRequests() {
     let rows = this.sortedSupportRequests;
     if (this.selectedTeam !== "all") {
-      const sel = this.selectedTeam.toLowerCase().trim();
-      rows = rows.filter(req => {
-        // Check all possible team field names from API
-        const teamVal = (
-          req.assigned_team ||
-          req.team_name ||
-          req.team ||
-          req.assigned_to_team ||
-          ''
-        ).toLowerCase().trim();
-        // Flexible match: exact or partial
-        return teamVal === sel || teamVal.includes(sel) || sel.includes(teamVal);
-      });
+      rows = rows.filter((req) => requestMatchesSupportTeam(req, this.selectedTeam));
     }
     if (this.activeTab === "all") return rows;
     return rows.filter((req) => (req.status || "").toLowerCase() === this.activeTab);
@@ -331,9 +322,11 @@ export default {
       console.log("⬅️ API response:", res);
 
       if (res.status) {
-        this.supportRequests = res.data;
+        this.supportRequests = res.data || [];
+        this.customTeamNames = res.custom_teams || [];
       } else {
         this.supportRequests = [];
+        this.customTeamNames = [];
       }
       this.$nextTick(() => {
         document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
@@ -391,7 +384,6 @@ export default {
 
   console.log("🔥 Support Requests View mounted");
 
-  // Fetch support requests
   this.fetchSupportRequests();
 
   // Poll every 30s — new user support requests appear without manual refresh

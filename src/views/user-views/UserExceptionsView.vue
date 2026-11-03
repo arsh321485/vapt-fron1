@@ -163,7 +163,7 @@ import DashboardHeader from '@/components/user-component/DashboardHeader.vue';
 import { useAuthStore } from '@/stores/authStore';
 import userTeamFilterWatch from '@/utils/userTeamFilterWatch';
 import { formatStatusLabel } from '@/utils/statusLabel';
-import { SUPPORT_TEAM_OPTIONS, teamPillStyle } from '@/utils/teamColors';
+import { buildSupportTeamOptions, requestMatchesSupportTeam, teamPillStyle } from '@/utils/teamColors';
 
 export default {
   mixins: [userTeamFilterWatch],
@@ -179,12 +179,15 @@ export default {
             loading: false,
             activeTab: 'all',
             selectedTeam: 'all',
-            teamOptions: [...SUPPORT_TEAM_OPTIONS],
+            customTeamNames: [],
             currentPage: 1,
             itemsPerPage: 6,
         };
     },
     computed: {
+        teamOptions() {
+            return buildSupportTeamOptions(this.customTeamNames);
+        },
         sortedRequests() {
             return [...this.supportRequests].sort((a, b) => {
                 const da = new Date(a.requested_at);
@@ -284,19 +287,7 @@ export default {
             return teamPillStyle(team, this.selectedTeam);
         },
         requestMatchesTeam(req, sel) {
-            const values = [
-                req?.assigned_team,
-                req?.team_name,
-                req?.team,
-                req?.assigned_to_team,
-            ];
-            if (Array.isArray(req?.assigned_teams)) values.push(...req.assigned_teams);
-            if (Array.isArray(req?.Member_role)) values.push(...req.Member_role);
-            return values.some((value) => {
-                const teamVal = String(value || '').toLowerCase().trim();
-                if (!teamVal) return false;
-                return teamVal === sel || teamVal.includes(sel) || sel.includes(teamVal);
-            });
+            return requestMatchesSupportTeam(req, sel);
         },
         initTooltips() {
             this.$nextTick(() => {
@@ -309,7 +300,10 @@ export default {
             const reportId = this.authStore.userLatestReportId;
             if (!reportId) return;
             const res = await this.authStore.fetchUserSupportRequestsByReport(reportId, true, this.authStore.userSelectedTeam);
-            if (res.status) this.supportRequests = res.data;
+            if (res.status) {
+                this.supportRequests = res.data || [];
+                this.customTeamNames = res.custom_teams || [];
+            }
         },
         async loadSupportRequests() {
             await this.authStore.fetchUserVulnerabilityRegister();
@@ -319,7 +313,8 @@ export default {
             const res = await this.authStore.fetchUserSupportRequestsByReport(reportId, false, this.authStore.userSelectedTeam);
             this.loading = false;
             if (res.status) {
-                this.supportRequests = res.data;
+                this.supportRequests = res.data || [];
+                this.customTeamNames = res.custom_teams || [];
             }
             this.initTooltips();
         },

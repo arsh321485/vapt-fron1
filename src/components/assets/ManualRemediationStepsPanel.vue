@@ -36,11 +36,15 @@
       </div>
       <div v-if="showAssignedTeamRow" class="mf-fix-info-row">
         <div class="mf-label">ASSIGNED TEAM</div>
-        <p v-if="displayedAssignedTeams.length" class="mf-value mf-team">
-          <template v-for="(name, index) in displayedAssignedTeams" :key="name">
-            <span :style="{ color: colorForTeamName(name) }">{{ name }}</span><span v-if="index < displayedAssignedTeams.length - 1">, </span>
-          </template>
-        </p>
+        <div v-if="displayedAssignedTeams.length" class="mf-team-pills">
+          <span
+            v-for="name in displayedAssignedTeams"
+            :key="name"
+            class="mf-team-pill"
+            :style="teamChipStyle(name)"
+            :title="name"
+          >{{ name }}</span>
+        </div>
         <div v-if="fixVulnData.assigned_team_members && fixVulnData.assigned_team_members.length" class="mf-member-row">
           <span v-for="m in fixVulnData.assigned_team_members" :key="m.user_id" class="mf-member-chip">
             <i class="bi bi-person-fill"></i>{{ m.name }}
@@ -89,11 +93,15 @@
           </div>
           <div class="mf-cell mf-cell-divider">
             <div class="mf-label">ASSIGNED TO</div>
-            <p v-if="teamNamesFor(task).length" class="mf-value mf-team">
-              <template v-for="(name, index) in teamNamesFor(task)" :key="name">
-                <span :style="{ color: colorForTeamName(name) }">{{ name }}</span><span v-if="index < teamNamesFor(task).length - 1">, </span>
-              </template>
-            </p>
+            <div v-if="teamNamesFor(task).length" class="mf-team-pills">
+              <span
+                v-for="name in teamNamesFor(task)"
+                :key="name"
+                class="mf-team-pill"
+                :style="teamChipStyle(name)"
+                :title="name"
+              >{{ name }}</span>
+            </div>
             <div v-if="task.members && task.members.length" class="mf-member-row">
               <span v-for="m in task.members" :key="m.user_id" class="mf-member-chip">
                 <i class="bi bi-person-fill"></i>{{ m.name }}
@@ -248,7 +256,7 @@
 <script>
 import Swal from 'sweetalert2';
 import { MOCK_MANUAL_STEPS } from '@/constants/mockManualRemediationSteps';
-import { colorForTeamName, getTeamColor } from '@/utils/teamColors';
+import { teamChipStyle } from '@/utils/teamColors';
 import { useAuthStore } from '@/stores/authStore';
 import { FREEMIUM_RETEST_MESSAGE } from '@/utils/planLimits';
 import { pickVulnDescription, extractCreatedFixVulnerabilityId } from '@/utils/assetVulnerabilities';
@@ -546,8 +554,7 @@ export default {
         this.cardGenPending = this.scheduleAdminFixPoll(seq);
       }
     },
-    getTeamColor,
-    colorForTeamName,
+    teamChipStyle,
     teamNamesFor(task) {
       if (this.displayedAssignedTeams.length) return this.displayedAssignedTeams;
       return task?.assignedTeam ? [task.assignedTeam] : [];
@@ -1156,6 +1163,8 @@ export default {
             steps: cardSteps,
             next_step: cardData?.next_step,
             assigned_team: cardData?.assigned_team,
+            additional_teams: cardData?.additional_teams,
+            all_assigned_teams: cardData?.all_assigned_teams,
           });
           this.clearFixPoll();
           return;
@@ -1614,6 +1623,29 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.mf-team-pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+}
+
+.mf-team-pill {
+  display: inline-block;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 50px;
+  border: 1px solid;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .mf-step-card--current .mf-step-head {

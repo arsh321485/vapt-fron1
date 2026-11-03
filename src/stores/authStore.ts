@@ -493,6 +493,38 @@ function pickAppUserId(obj: Record<string, any> | null | undefined): string | nu
   return null;
 }
 
+const supportListCustomTeams = new WeakMap<object, string[]>();
+
+function readSupportCustomTeams(payload: any): string[] {
+  const raw = payload?.custom_teams;
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const names: string[] = [];
+  raw.forEach((item: any) => {
+    const name = typeof item === "string"
+      ? item.trim()
+      : String(item?.name || item?.team_name || item?.team || "").trim();
+    const key = name.toLowerCase();
+    if (!name || key === "all" || key === "all teams" || seen.has(key)) return;
+    seen.add(key);
+    names.push(name);
+  });
+  return names;
+}
+
+function rememberSupportList(results: any[], customTeams: string[]) {
+  const rows = Array.isArray(results) ? results : [];
+  supportListCustomTeams.set(rows, customTeams);
+  return rows;
+}
+
+function customTeamsForSupportList(cached: any): string[] {
+  if (cached && typeof cached === "object" && supportListCustomTeams.has(cached)) {
+    return supportListCustomTeams.get(cached) || [];
+  }
+  return [];
+}
+
 export const useAuthStore = defineStore("auth", {
   state: () => ({
     user: safeJsonParse<any>(readSessionItem("user"), null),
@@ -6006,27 +6038,32 @@ export const useAuthStore = defineStore("auth", {
       const teamParam = toTeamQueryParam(team);
       const key = `${reportId}::${teamParam || "__all__"}`;
       if (!force && this.cachedUserSupportRequests[key]) {
+        const cached = this.cachedUserSupportRequests[key];
         return {
           status: true,
-          data: this.cachedUserSupportRequests[key],
-          count: this.cachedUserSupportRequests[key].length,
+          data: cached,
+          count: cached.length,
+          custom_teams: customTeamsForSupportList(cached),
         };
       }
       try {
         const res = await endpoint.get(`/api/user/register/support-requests/report/${reportId}/`, {
           params: teamParam ? { team: teamParam } : {},
         });
-        this.cachedUserSupportRequests[key] = res.data.results || [];
+        const rows = rememberSupportList(res.data.results || [], readSupportCustomTeams(res.data));
+        this.cachedUserSupportRequests[key] = rows;
         return {
           status: true,
-          data: this.cachedUserSupportRequests[key],
+          data: rows,
           count: res.data.count,
+          custom_teams: customTeamsForSupportList(rows),
         };
       } catch (error) {
         const err = error as AxiosError<any>;
         return {
           status: false,
           data: [],
+          custom_teams: [],
           message: err.response?.data?.message || "Failed to fetch support requests",
         };
       }
@@ -6451,18 +6488,20 @@ export const useAuthStore = defineStore("auth", {
       reportId: string,
       force = false,
       retried = false,
-    ): Promise<{ status: boolean; data: any[]; count: number }> {
+    ): Promise<{ status: boolean; data: any[]; count: number; custom_teams: string[] }> {
       const id = retried
         ? String(reportId || "").trim()
         : await this.resolveLatestUploadedReportId(reportId);
       if (!id) {
-        return { status: false, data: [], count: 0 };
+        return { status: false, data: [], count: 0, custom_teams: [] };
       }
       if (!force && this.cachedSupportRequests[id]) {
+        const cached = this.cachedSupportRequests[id];
         return {
           status: true,
-          data: this.cachedSupportRequests[id],
-          count: this.cachedSupportRequests[id].length,
+          data: cached,
+          count: cached.length,
+          custom_teams: customTeamsForSupportList(cached),
         };
       }
       try {
@@ -6472,12 +6511,13 @@ export const useAuthStore = defineStore("auth", {
           `/api/admin/adminregister/support-requests/report/${id}/`,
         );
 
-        const results = res?.data?.results || [];
+        const results = rememberSupportList(res?.data?.results || [], readSupportCustomTeams(res?.data));
         this.cachedSupportRequests[id] = results;
         return {
           status: true,
           data: results,
           count: res?.data?.count || 0,
+          custom_teams: customTeamsForSupportList(results),
         };
       } catch (error) {
         const latest = this.rememberLatestReportId(error);
@@ -6490,6 +6530,7 @@ export const useAuthStore = defineStore("auth", {
           status: false,
           data: [],
           count: 0,
+          custom_teams: [],
         };
       }
     },

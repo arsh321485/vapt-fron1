@@ -1676,21 +1676,25 @@ export default {
 
       const normalize = (s) => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
 
-      const filterByTeam = (rows) => {
+      const filterByTeam = (rows, severity) => {
         const selected = normalize(this.mteSelectedTeam);
         if (!selected || selected === 'all' || selected === 'both') return rows;
-        return rows.filter(r =>
-          normalize(r.team) === normalize(this.mteSelectedTeam) ||
-          normalize(r.by) === normalize(this.mteSelectedTeam)
-        );
+        const matched = rows.filter((r) => {
+          const names = Array.isArray(r.teams) && r.teams.length ? r.teams : [r.team, r.by];
+          return names.some((name) => normalize(name) === selected);
+        });
+        if (matched.length || !severity) return matched;
+        const summary = (this.adminMteTeams || []).find((row) => normalize(row.team) === selected);
+        if (summary && Number(summary[severity] || 0) > 0 && rows.length === 1) return rows;
+        return matched;
       };
 
       if (hasApi) {
         return {
-          critical: filterByTeam(apiC),
-          high:     filterByTeam(apiH),
-          medium:   filterByTeam(apiM),
-          low:      filterByTeam(apiL),
+          critical: filterByTeam(apiC, 'critical'),
+          high:     filterByTeam(apiH, 'high'),
+          medium:   filterByTeam(apiM, 'medium'),
+          low:      filterByTeam(apiL, 'low'),
         };
       }
       return {
@@ -2127,7 +2131,29 @@ export default {
       if (team && this.adminMtePendingTeams.includes(team)) return true;
       if (row.has_pending === true || row.has_pending_request === true) return true;
       if (Number(row.pending || row.pending_count || 0) > 0) return true;
-      return false;
+      return ['critical', 'high', 'medium', 'low'].some((key) => Number(row[key] || 0) > 0);
+    },
+    mteNamesFromItem(item) {
+      if (!item || typeof item !== 'object') return [];
+      const raw = [item.team, item.team_name, item.assigned_team];
+      ['all_assigned_teams', 'additional_teams', 'all_teams', 'assigned_teams', 'teams'].forEach((key) => {
+        if (Array.isArray(item[key])) raw.push(...item[key]);
+      });
+      const names = [];
+      const seen = new Set();
+      raw.forEach((value) => {
+        const label = value && typeof value === 'object'
+          ? (value.name || value.team_name || value.team || '')
+          : value;
+        String(label || '').split(',').forEach((part) => {
+          const team = part.trim();
+          const key = this.normalizeMteTeamName(team);
+          if (!team || !key || seen.has(key)) return;
+          seen.add(key);
+          names.push(team);
+        });
+      });
+      return names;
     },
     normalizeMteTeamName(name) {
       return String(name || "").toLowerCase().replace(/\s+/g, " ").trim();
@@ -2177,10 +2203,7 @@ export default {
       const names = new Set();
       const addItem = (item) => {
         if (!item || !this.isPendingMteStatus(item.status)) return;
-        const team = this.normalizeMteTeamName(
-          item.team || item.team_name || item.assigned_team || item.requested_by || item.by || "",
-        );
-        if (team) names.add(team);
+        this.mteNamesFromItem(item).forEach((team) => names.add(this.normalizeMteTeamName(team)));
       };
       if (Array.isArray(payload?.results)) {
         payload.results.forEach(addItem);
@@ -2189,7 +2212,8 @@ export default {
         (payload?.[sev] || []).forEach(addItem);
       });
       (this.adminMteTeams || []).forEach((row) => {
-        if (row.has_pending || Number(row.pending || 0) > 0) {
+        const counted = ['critical', 'high', 'medium', 'low'].some((key) => Number(row[key] || 0) > 0);
+        if (row.has_pending || Number(row.pending || 0) > 0 || counted) {
           const team = this.normalizeMteTeamName(row.team);
           if (team) names.add(team);
         }
@@ -2223,7 +2247,9 @@ export default {
       if (!(res.status && res.data)) return;
 
       const grouped = { critical: [], high: [], medium: [], low: [] };
-      const normalizeRow = (item) => ({
+      const normalizeRow = (item) => {
+        const teams = this.mteNamesFromItem(item);
+        return {
         ip: item.asset || item.ip || '—',
         vulName: item.vul_name || item.vulnerability_name || item.vulName || '—',
         status: item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : '—',
@@ -2233,9 +2259,11 @@ export default {
           : (item.date ? String(item.date).split('T')[0] : '—'),
         ext: item.extension_days ? `${item.extension_days} Days` : (item.ext || '—'),
         reason: item.reason || '—',
-        team: item.team || item.team_name || item.assigned_team || item.requested_by || item.by || '',
+        team: teams[0] || item.team || item.team_name || item.assigned_team || '',
+        teams,
         request_id: item.request_id || null,
-      });
+      };
+      };
 
       if (Array.isArray(res.data.results)) {
         res.data.results.forEach((item) => {

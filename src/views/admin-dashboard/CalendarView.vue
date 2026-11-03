@@ -113,6 +113,7 @@
                   <div v-for="evt in getEventsForDay(dayObj.day, dayObj.currentMonth)" :key="evt.id">
                     <span
                       :class="['cal-event-pill', 'cal-event-' + evt.color]"
+                      :title="eventTeamsLabel(evt)"
                       @click.stop="openEventPopup(evt, dayObj, $event)"
                     >
                       {{ evt.isDeadlineEvent ? (
@@ -121,9 +122,9 @@
                         evt.color === 'dl-orange' ? 'Medium Deadline' :
                         evt.color === 'dl-green' ? 'Low Deadline' : evt.title
                       ) : (
-                        (evt.isExtensionEvent && evt.team ? (
-                          (evt.severityLabel || 'High') + ' Level Deadline - ' + evt.team
-                        ) : (evt.team || evt.title))
+                        (evt.isExtensionEvent && eventTeamsLabel(evt) ? (
+                          (evt.severityLabel || 'High') + ' Level Deadline - ' + eventTeamsLabel(evt)
+                        ) : (eventTeamsLabel(evt) || evt.title))
                       ) }}
                     </span>
                   </div>
@@ -158,13 +159,13 @@
                     >
                       <span :class="['cal-week-type-badge', 'cal-badge-' + evt.color]">
                         {{ evt.isDeadlineEvent ? (evt.severityLabel || '').toUpperCase() + ' DEADLINE' :
-                           evt.isExtensionEvent ? (evt.severityLabel || '').toUpperCase() + ' - ' + (evt.team || '') : evt.type.toUpperCase() }}
+                           evt.isExtensionEvent ? (evt.severityLabel || '').toUpperCase() + ' - ' + eventTeamsLabel(evt) : evt.type.toUpperCase() }}
                       </span>
                       <p class="cal-week-event-title">
                         {{ evt.isExtensionEvent ? (evt.vulnerabilityName || evt.title) : evt.title }}
                       </p>
-                      <p v-if="evt.isExtensionEvent && evt.team" class="cal-week-event-team">
-                        <i class="bi bi-people-fill me-1"></i>{{ evt.team }}
+                      <p v-if="evt.isExtensionEvent && eventTeamsLabel(evt)" class="cal-week-event-team">
+                        <i class="bi bi-people-fill me-1"></i>{{ eventTeamsLabel(evt) }}
                       </p>
                       <p v-if="evt.isDeadlineEvent && evt.remainingLabel" class="cal-week-event-team">
                         <i class="bi bi-hourglass-split me-1"></i>{{ evt.remainingLabel }} remaining
@@ -233,8 +234,8 @@
                       </div>
                       <p class="cal-day-event-title">{{ evt.vulnerabilityName || evt.title }}</p>
                       <div class="d-flex justify-content-between align-items-center mt-1">
-                        <div v-if="evt.team" class="cal-day-event-team">
-                          <i class="bi bi-people-fill me-1"></i>{{ evt.team }}
+                        <div v-if="eventTeamsLabel(evt)" class="cal-day-event-team">
+                          <i class="bi bi-people-fill me-1"></i>{{ eventTeamsLabel(evt) }}
                         </div>
                         <span
                           v-if="evt.status"
@@ -274,7 +275,16 @@
                     <p class="cal-detail-label">ASSIGNED TO TEAM</p>
                     <div class="cal-detail-team-row">
                       <div class="cal-detail-team-icon"><i class="bi bi-people-fill"></i></div>
-                      <span class="cal-detail-val" :class="getTeamTextClass(selectedEvent.team)">{{ selectedEvent.team || 'Network Security' }}</span>
+                      <div v-if="selectedEventTeams.length" class="cal-detail-team-pills">
+                        <span
+                          v-for="name in selectedEventTeams"
+                          :key="name"
+                          class="cal-detail-team-chip"
+                          :style="teamChipStyle(name)"
+                          :title="name"
+                        >{{ name }}</span>
+                      </div>
+                      <span v-else class="cal-detail-val">Network Security</span>
                     </div>
                   </div>
 
@@ -298,7 +308,7 @@
                         <div>
                           <p class="cal-detail-history-title">Assigned to Team</p>
                           <p class="cal-detail-history-sub">
-                            Assigned to {{ selectedEvent.historicalDetail?.assigned_to_team || selectedEvent.team || 'Team' }}.
+                            Assigned to {{ selectedHistoryTeamLabel }}.
                           </p>
                         </div>
                       </div>
@@ -414,9 +424,9 @@
                     <i class="bi bi-hdd-network" style="color:#0f696e;"></i>
                     <span>Asset: {{ selectedEvent.asset }}</span>
                   </div>
-                  <div v-if="selectedEvent.team" class="cal-popup-row">
+                  <div v-if="selectedEventTeams.length" class="cal-popup-row">
                     <i class="bi bi-people-fill" style="color:#241447;"></i>
-                    <span>{{ selectedEvent.team }}</span>
+                    <span class="cal-popup-teams">{{ selectedEventTeams.join(', ') }}</span>
                   </div>
                   <div v-if="selectedEvent.deadline" class="cal-popup-row">
                     <i class="bi bi-clock" style="color:#64748b;"></i>
@@ -451,7 +461,7 @@
 import DashboardMenu from '@/components/admin-component/DashboardMenu.vue';
 import DashboardHeader from '@/components/admin-component/DashboardHeader.vue';
 import { useAuthStore } from '@/stores/authStore';
-import { getTeamTextClass } from '@/utils/teamColors';
+import { listAssignedTeams, teamChipStyle } from '@/utils/teamColors';
 
 export default {
   name: 'CalendarView',
@@ -564,7 +574,12 @@ export default {
     };
   },
   methods: {
-    getTeamTextClass,
+    teamChipStyle,
+    eventTeamsLabel(evt) {
+      if (!evt) return '';
+      if (Array.isArray(evt.teams) && evt.teams.length) return evt.teams.join(', ');
+      return evt.team || '';
+    },
     authStore() {
       return useAuthStore();
     },
@@ -650,6 +665,7 @@ export default {
             type: 'deadline',
             color: this.teamColor(evt.assigned_to_team),
             team: evt.assigned_to_team,
+            teams: listAssignedTeams(evt),
             severityLabel: evt.severity ? evt.severity.charAt(0).toUpperCase() + evt.severity.slice(1) : '',
             deadline: evt.due,
             extended: evt.extended_by_days ? `${evt.extended_by_days} Days` : null,
@@ -812,6 +828,7 @@ export default {
             color: this.teamColor(evt.assigned_to_team),
             severityLabel: evt.severity ? evt.severity.charAt(0).toUpperCase() + evt.severity.slice(1) : '',
             team: evt.assigned_to_team,
+            teams: listAssignedTeams(evt),
             deadline: evt.due,
             extended: evt.extended_by_days ? `${evt.extended_by_days} Days` : null,
             asset: evt.asset,
@@ -1024,6 +1041,26 @@ export default {
     await this.loadCalendarData();
   },
   computed: {
+    selectedEventTeams() {
+      const event = this.selectedEvent;
+      if (!event) return [];
+      if (Array.isArray(event.teams) && event.teams.length) return event.teams;
+      return event.team ? [event.team] : [];
+    },
+    selectedHistoryTeams() {
+      const event = this.selectedEvent;
+      if (!event) return [];
+      const fromDetail = listAssignedTeams({
+        all_assigned_teams: event.historicalDetail?.all_assigned_teams,
+      });
+      if (fromDetail.length) return fromDetail;
+      if (Array.isArray(event.teams) && event.teams.length) return event.teams;
+      const single = event.historicalDetail?.assigned_to_team || event.team;
+      return single ? [single] : [];
+    },
+    selectedHistoryTeamLabel() {
+      return this.selectedHistoryTeams.length ? this.selectedHistoryTeams.join(', ') : 'Team';
+    },
     dayViewTitle() {
       return this.currentDayLabel;
     },
@@ -1366,12 +1403,14 @@ export default {
 }
 .cal-popup-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   font-size: 0.82rem;
   color: #475569;
   margin-bottom: 6px;
 }
+.cal-popup-row > i { margin-top: 1px; flex-shrink: 0; }
+.cal-popup-teams { min-width: 0; line-height: 1.4; }
 .cal-popup-desc {
   font-size: 0.78rem;
   color: #64748b;
@@ -1437,6 +1476,19 @@ export default {
 .cal-detail-sub { font-size: 0.75rem; color: #64748b; margin: 2px 0 0; }
 
 .cal-detail-team-row { display: flex; align-items: center; gap: 10px; background: #f8f9fc; border-radius: 10px; padding: 12px 14px; }
+.cal-detail-team-pills { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.cal-detail-team-chip {
+  display: inline-block;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 50px;
+  border: 1px solid;
+}
 .cal-detail-team-icon { width: 36px; height: 36px; border-radius: 50%; background: #e0f2f1; color: #0f696e; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
 
 .cal-detail-history { display: flex; flex-direction: column; gap: 12px; padding-left: 8px; }
