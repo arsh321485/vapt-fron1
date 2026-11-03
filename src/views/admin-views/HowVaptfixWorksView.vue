@@ -806,6 +806,7 @@ export default {
   mounted() {
     this.authStore = useAuthStore();
     window.addEventListener('message', this.onPlatformOAuthMessage);
+    window.scrollTo(0, 0);
   },
   beforeUnmount() {
     window.removeEventListener('message', this.onPlatformOAuthMessage);

@@ -76,6 +76,11 @@ const router = createRouter({
       component: () => import("../views/admin-views/HowVaptfixWorksView.vue"),
     },
     {
+      path: "/nvidia-inception",
+      name: "nvidia-inception",
+      component: () => import("../views/admin-views/NvidiaInceptionView.vue"),
+    },
+    {
       path: "/integrations",
       name: "integrations",
       component: () => import("../views/admin-views/IntegrationsView.vue"),
@@ -568,9 +573,12 @@ const router = createRouter({
     if (
       to.path === "/admindashboardonboarding" ||
       to.path === "/webinarform-thankyou" ||
-      to.path === "/webinarform"
+      to.path === "/webinarform" ||
+      to.path === "/how-vaptfix-works"
     ) {
-      return { top: 0, left: 0 };
+      return new Promise((resolve) => {
+        setTimeout(() => resolve({ top: 0, left: 0 }), 0);
+      });
     }
     // For other routes, preserve default behavior
     return false;
@@ -643,7 +651,8 @@ router.beforeEach(async (to, from, next) => {
   // bounce /home → dashboard → /home and leave a white screen).
   const isPublicMarketing =
     to.path === "/" || to.path === "/home" || to.path === "/features" ||
-    to.path === "/integrations" || to.path === "/security" || to.path === "/how-vaptfix-works";
+    to.path === "/integrations" || to.path === "/security" || to.path === "/how-vaptfix-works" ||
+    to.path === "/nvidia-inception";
 
   // Typed URL / refresh (no previous in-app route). Stay on the last real page.
   // Deep links (Teams / Slack / email) skip this lock and use token auth only.

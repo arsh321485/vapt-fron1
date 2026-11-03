@@ -73,6 +73,28 @@
       </div>
     </section>
 
+    <section class="hv-nvidia" aria-label="NVIDIA Inception Program">
+      <div class="hv-container">
+        <div class="hv-nvidia-row">
+          <img
+            class="hv-nvidia-badge"
+            src="@/assets/images/nvidia-inception-badge.png"
+            alt="NVIDIA Inception Program"
+            width="240"
+            height="90"
+          />
+          <div class="hv-nvidia-copy">
+            <h2>NVIDIA Inception Program Member</h2>
+            <p>
+              VAPTFIX and its parent company Secureitabservices Inc are members of the NVIDIA Inception program,
+              supporting AI-assisted vulnerability triage, remediation, and security operations.
+            </p>
+            <router-link class="hv-nvidia-more" to="/nvidia-inception">Learn more →</router-link>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- PROBLEM SECTION -->
     <section class="hv-problem" id="problem">
       <div class="hv-container">
@@ -649,6 +671,53 @@ export default {
   background-image: radial-gradient(#ebe6f3 1px, #ffffff 1px);
   background-size: 20px 20px;
   overflow-x: clip;
+}
+
+.hv-nvidia {
+  background: #f8f9fc;
+  border-top: 1px solid #ebe6f3;
+  border-bottom: 1px solid #ebe6f3;
+  padding: 28px 0 32px;
+}
+.hv-nvidia-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 28px;
+  align-items: center;
+}
+.hv-nvidia-badge {
+  width: 210px;
+  height: auto;
+  display: block;
+  background: #fff;
+}
+.hv-nvidia-copy h2 {
+  margin: 0 0 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f696e;
+  line-height: 1.3;
+}
+.hv-nvidia-copy p {
+  margin: 0;
+  max-width: 680px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #3f4f4f;
+}
+.hv-nvidia-more {
+  display: table;
+  margin-top: 8px;
+  color: #0f696e;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.hv-nvidia-more:hover { text-decoration: underline; }
+@media (max-width: 700px) {
+  .hv-nvidia-row { grid-template-columns: 1fr; }
+  .hv-nvidia-badge { width: 180px; }
 }
 
 .hv-slider-viewport {

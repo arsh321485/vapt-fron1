@@ -9,6 +9,7 @@ const PUBLIC_ROUTES = new Set([
   "pricingplan",
   "knowledge-base",
   "how-vaptfix-works",
+  "nvidia-inception",
   "integrations",
   "security",
   "partner",
