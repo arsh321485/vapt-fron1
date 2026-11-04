@@ -653,7 +653,7 @@
               <!-- Team Cards -->
               <div class="row g-3 mb-4">
                 <div class="col-md-3" v-for="team in allTeamsData" :key="team.key">
-                  <div class="cv-team-card" :class="selectedTeam === team.key ? 'cv-team-card-active' : ''" @click="selectTeam(team.key)">
+                  <div class="cv-team-card" :class="cvActiveTeam === team.key ? 'cv-team-card-active' : ''" @click="selectTeam(team.key)">
                     <div class="d-flex justify-content-between align-items-start mb-1">
                       <div class="cv-team-icon-wrap">
                         <i :class="team.icon"></i>
@@ -695,7 +695,7 @@
 
               <!-- Vulnerabilities for selected team -->
               <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="cv-vuln-heading mb-0">Vulnerabilities ({{ selectedTeam === 'both' ? 'All Teams' : selectedTeam }}) — {{ uniqueVulns.length }}</h6>
+                <h6 class="cv-vuln-heading mb-0">Vulnerabilities ({{ cvActiveTeam }}) — {{ uniqueVulns.length }}</h6>
                 <button class="cv-more-details-btn" @click="openMsuModal">
                   More details <i class="bi bi-arrow-right"></i>
                 </button>
@@ -708,7 +708,7 @@
                 <div class="col-md-3" v-for="vuln in uniqueVulns.slice(0, 8)" :key="vuln.plugin_name">
                   <div class="cv-vuln-card">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                      <span class="cv-vuln-assets"><i class="bi bi-hdd-network me-1"></i>{{ getVulnAssetCount(vuln) }} affected asset{{ getVulnAssetCount(vuln) !== 1 ? 's' : '' }}</span>
+                      <span class="cv-vuln-assets"><i class="bi bi-hdd-network me-1"></i>{{ getVulnAssetCount(vuln) ?? 1 }} affected asset{{ (getVulnAssetCount(vuln) ?? 1) !== 1 ? 's' : '' }}</span>
                       <span class="cv-sev-badge" :class="'cv-badge-' + (vuln.risk_factor || '').toLowerCase()">{{ (vuln.risk_factor || '').toUpperCase() }}</span>
                     </div>
                     <h6 class="cv-vuln-name" :title="vuln.plugin_name">{{ vuln.plugin_name }}</h6>
@@ -977,7 +977,7 @@
           <div class="mte-modal-header">
             <div class="d-flex align-items-baseline gap-3">
               <h3 class="mte-modal-title">Common Vulnerabilities</h3>
-              <span v-if="selectedTeam" class="msu-team-badge" :class="teamTextClass(selectedTeam)">{{ selectedTeam }}</span>
+              <span v-if="cvActiveTeam" class="msu-team-badge" :class="teamTextClass(cvActiveTeam)">{{ cvActiveTeam }}</span>
             </div>
             <button type="button" class="mte-close-btn" @click="closeMsuModal">
               <i class="bi bi-x-lg"></i>
@@ -985,7 +985,7 @@
           </div>
 
           <div class="msu-modal-body">
-            <p class="msu-modal-subtitle">Showing vulnerabilities for team — <strong>{{ selectedTeam }}</strong></p>
+            <p class="msu-modal-subtitle">Showing vulnerabilities for team — <strong>{{ cvActiveTeam }}</strong></p>
 
             <div
               v-if="msuBySeverity.critical.length === 0 && msuBySeverity.high.length === 0 && msuBySeverity.medium.length === 0 && msuBySeverity.low.length === 0"
@@ -1100,6 +1100,7 @@ export default {
       monthNames: ["January","February","March","April","May","June","July","August","September","October","November","December"],
       userTeams: [],
       selectedTeam: '',
+      cvActiveTeam: 'Patch Management',
       totalAssets: null,
       assetsLoading: false,
       vulns: { critical: null, high: null, medium: null, low: null },
@@ -1317,9 +1318,9 @@ export default {
       if (!this.mitigationByTeamData) return { count: 0, vulnerabilities: [] };
       const teams = this.mitigationByTeamData.teams || this.mitigationByTeamData;
       if (!teams || typeof teams !== 'object') return { count: 0, vulnerabilities: [] };
-      if (teams[this.selectedTeam]) return teams[this.selectedTeam];
+      if (teams[this.cvActiveTeam]) return teams[this.cvActiveTeam];
       const normalize = (s) => String(s).toLowerCase().replace(/\s+/g, ' ').trim();
-      const matchedKey = Object.keys(teams).find(k => normalize(k) === normalize(this.selectedTeam));
+      const matchedKey = Object.keys(teams).find(k => normalize(k) === normalize(this.cvActiveTeam));
       return matchedKey ? teams[matchedKey] : { count: 0, vulnerabilities: [] };
     },
     modalSeverityLabel() {
@@ -1330,9 +1331,10 @@ export default {
       if (!this.vulnAssetCountData?.teams) return {};
       const map = {};
       const norm = (s) => String(s || '').trim().toLowerCase();
-      for (const teamData of Object.values(this.vulnAssetCountData.teams)) {
+      for (const [team, teamData] of Object.entries(this.vulnAssetCountData.teams)) {
+        const teamKey = norm(team);
         for (const v of (teamData.vulnerabilities || [])) {
-          map[norm(v.plugin_name)] = v.asset_count;
+          map[`${teamKey}::${norm(v.plugin_name)}`] = v.asset_count;
         }
       }
       return map;
@@ -1376,35 +1378,46 @@ export default {
         ? [...teamConfigs.filter(cfg => effectiveSet.has(canonicalTeam(cfg.key))), ...extraConfigs]
         : [];
 
-      return visibleTeamConfigs.map(cfg => {
-        const matchKey = Object.keys(teams).find(k => normalize(k) === normalize(cfg.key));
-        const teamData = matchKey ? teams[matchKey] : null;
-        const vulns = teamData?.vulnerabilities || [];
-        const total = vulns.length;
-        const critical = vulns.filter(v => (v.risk_factor || '').toLowerCase() === 'critical').length;
-        const high     = vulns.filter(v => (v.risk_factor || '').toLowerCase() === 'high').length;
-        const medium   = vulns.filter(v => (v.risk_factor || '').toLowerCase() === 'medium').length;
-        const low      = vulns.filter(v => (v.risk_factor || '').toLowerCase() === 'low').length;
-        // Sum every vulnerability's affected-asset count for this team — matches
-        // the per-vulnerability "N affected assets" cards below it (which add up
-        // to this total), instead of de-duplicating hosts that show up under more
-        // than one vulnerability type down to a single count.
-        let affectedAssets = 0;
-        vulns.forEach(v => {
-          if (Array.isArray(v.assets)) affectedAssets += v.assets.filter(isRealScanHost).length;
-          else if (isRealScanHost(v.host_name)) affectedAssets += 1;
-        });
-        return { ...cfg, total, critical, high, medium, low, affectedAssets };
-      });
+      return visibleTeamConfigs.map(cfg => ({
+        ...cfg,
+        total: this.getTeamVulnCount(cfg.key),
+        critical: this.getTeamSevCount(cfg.key, 'critical'),
+        high: this.getTeamSevCount(cfg.key, 'high'),
+        medium: this.getTeamSevCount(cfg.key, 'medium'),
+        low: this.getTeamSevCount(cfg.key, 'low'),
+        affectedAssets: this.getTeamAssetCount(cfg.key),
+      }));
     },
     uniqueVulns() {
-      const vulns = this.mitigationActiveTeamData.vulnerabilities || [];
       const seen = new Map();
-      for (const v of vulns) {
-        const key = (v.plugin_name || '').trim().toLowerCase();
-        if (!seen.has(key)) seen.set(key, v);
+      const addHost = (set, value) => {
+        const host = String(value || '').trim();
+        if (isRealScanHost(host)) set.add(host);
+      };
+      for (const vuln of this.mitigationActiveTeamData.vulnerabilities || []) {
+        const key = (vuln.plugin_name || '').trim().toLowerCase();
+        if (!key) continue;
+        if (!seen.has(key)) {
+          const assets = new Set();
+          if (Array.isArray(vuln.assets)) vuln.assets.forEach(a => addHost(assets, a));
+          addHost(assets, vuln.host_name);
+          addHost(assets, vuln.asset);
+          addHost(assets, vuln.ip);
+          addHost(assets, vuln.hostname);
+          seen.set(key, { ...vuln, _assetSet: assets, assetCount: assets.size });
+        } else {
+          const existing = seen.get(key);
+          if (Array.isArray(vuln.assets)) vuln.assets.forEach(a => addHost(existing._assetSet, a));
+          addHost(existing._assetSet, vuln.host_name);
+          addHost(existing._assetSet, vuln.asset);
+          addHost(existing._assetSet, vuln.ip);
+          addHost(existing._assetSet, vuln.hostname);
+          existing.assetCount = existing._assetSet.size;
+        }
       }
-      return Array.from(seen.values());
+      return Array.from(seen.values())
+        .filter((item) => item.assetCount > 0)
+        .map(({ _assetSet, ...rest }) => rest);
     },
     daysInMonth() {
       const year = this.currentDate.getFullYear();
@@ -1444,7 +1457,7 @@ export default {
     vulFixedMedium() { return this.vulnsFixed.medium ?? 0; },
     vulFixedLow() { return this.vulnsFixed.low ?? 0; },
     msuGroupedVulns() {
-      const vulns = this.mitigationActiveTeamData.vulnerabilities || [];
+      const vulns = this.teamVulnRows(this.cvActiveTeam);
       const map = new Map();
       for (const vuln of vulns) {
         const key = (vuln.plugin_name || '').trim();
@@ -1455,7 +1468,7 @@ export default {
     },
     msuBySeverity() {
       const base = { critical: [], high: [], medium: [], low: [] };
-      const vulns = this.mitigationActiveTeamData.vulnerabilities || [];
+      const vulns = this.teamVulnRows(this.cvActiveTeam);
       for (const vuln of vulns) {
         const sev = String(vuln.risk_factor || "").toLowerCase();
         if (base[sev]) base[sev].push(vuln);
@@ -1772,6 +1785,7 @@ export default {
         if (Array.isArray(result.data.member_teams) && result.data.member_teams.length) {
           this.userTeams = result.data.member_teams;
         }
+        this.syncCvActiveTeam();
       }
     },
     async fetchVulnAssetCount() {
@@ -1781,10 +1795,119 @@ export default {
         this.vulnAssetCountData = result.data;
       }
     },
-    getVulnAssetCount(vuln) {
+    cvHostKey(value) {
+      return String(value || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/+$/, '');
+    },
+    teamVulnRows(teamKey) {
+      const teams = this.mitigationByTeamData?.teams || this.mitigationByTeamData || {};
+      const normalize = (s) => String(s).toLowerCase().replace(/\s+/g, ' ').trim();
+      const matchKey = Object.keys(teams).find((key) => normalize(key) === normalize(teamKey));
+      const vulns = matchKey ? [...(teams[matchKey]?.vulnerabilities || [])] : [];
+      const byPlugin = new Map();
+      vulns.forEach((vuln) => {
+        const pluginKey = String(vuln.plugin_name || '').trim().toLowerCase();
+        if (!pluginKey) return;
+        if (!byPlugin.has(pluginKey)) {
+          byPlugin.set(pluginKey, { name: vuln.plugin_name, risk: vuln.risk_factor, hosts: new Set() });
+        }
+        const host = vuln.host_name || vuln.asset || vuln.ip || vuln.hostname;
+        const key = this.cvHostKey(host);
+        if (key) byPlugin.get(pluginKey).hosts.add(key);
+      });
+      const countTeams = this.vulnAssetCountData?.teams || {};
+      const countKey = Object.keys(countTeams).find((key) => normalize(key) === normalize(teamKey));
+      const counted = countKey ? (countTeams[countKey].vulnerabilities || []) : [];
+      counted.forEach((entry) => {
+        const pluginKey = String(entry.plugin_name || '').trim().toLowerCase();
+        const known = byPlugin.get(pluginKey);
+        if (!known || !Array.isArray(entry.assets)) return;
+        entry.assets.forEach((asset) => {
+          const key = this.cvHostKey(asset);
+          if (!key || known.hosts.has(key)) return;
+          known.hosts.add(key);
+          vulns.push({
+            plugin_name: known.name,
+            host_name: asset,
+            os: '',
+            status: 'Open',
+            risk_factor: known.risk || '',
+          });
+        });
+      });
+      return vulns;
+    },
+    getTeamVulnCount(teamKey) {
+      const rows = this.teamVulnRows(teamKey).length;
+      const fromApi = this.getTeamAssetCount(teamKey);
+      return Math.max(rows, fromApi);
+    },
+    getTeamSevCount(teamKey, sev) {
+      return this.teamVulnRows(teamKey).filter((v) => (v.risk_factor || '').toLowerCase() === sev).length;
+    },
+    hostCountsByVulnName(vulns) {
+      const addHost = (set, value) => {
+        const host = String(value || '').trim();
+        if (isRealScanHost(host)) set.add(host);
+      };
+      const map = new Map();
+      (vulns || []).forEach((v) => {
+        const key = String(v.plugin_name || '').trim().toLowerCase();
+        if (!key) return;
+        if (!map.has(key)) map.set(key, new Set());
+        const hosts = map.get(key);
+        if (Array.isArray(v.assets)) v.assets.forEach((a) => addHost(hosts, a));
+        addHost(hosts, v.host_name);
+        addHost(hosts, v.asset);
+        addHost(hosts, v.ip);
+        addHost(hosts, v.hostname);
+      });
+      return map;
+    },
+    getTeamAssetCount(teamKey) {
+      const teams = this.mitigationByTeamData?.teams || this.mitigationByTeamData || {};
+      const normalize = s => String(s).toLowerCase().replace(/\s+/g, ' ').trim();
+      const matchKey = Object.keys(teams).find(k => normalize(k) === normalize(teamKey));
+      if (!matchKey) return 0;
+      const vulns = teams[matchKey]?.vulnerabilities || [];
+      const hostCounts = this.hostCountsByVulnName(vulns);
+      const seen = new Set();
+      let affectedAssets = 0;
+      vulns.forEach(v => {
+        const key = String(v.plugin_name || '').trim().toLowerCase();
+        if (key) {
+          if (seen.has(key)) return;
+          seen.add(key);
+        }
+        const accurate = Number(this.getVulnAssetCount(v, teamKey)) || 0;
+        const ownHostCount = key ? (hostCounts.get(key)?.size || 0) : 0;
+        if (accurate) affectedAssets += accurate;
+        else if (ownHostCount) affectedAssets += ownHostCount;
+        else if (Array.isArray(v.assets)) affectedAssets += v.assets.length;
+        else if (v.host_name) affectedAssets += 1;
+      });
+      return affectedAssets;
+    },
+    getVulnAssetCount(vuln, team = this.cvActiveTeam) {
       const key = String(vuln?.plugin_name || '').trim().toLowerCase();
-      if (!key) return vuln?.assets?.length ?? 1;
-      return this.vulnAssetCountMap[key] ?? vuln?.assets?.length ?? 1;
+      if (!key) return vuln?.assetCount ?? 0;
+      const teamKey = String(team || '').trim().toLowerCase();
+      const scoped = this.vulnAssetCountMap[`${teamKey}::${key}`];
+      return scoped ?? vuln?.assetCount ?? 0;
+    },
+    syncCvActiveTeam() {
+      const keys = (this.allTeamsData || []).map((team) => team.key);
+      const selected = String(this.selectedTeam || '').trim();
+      const same = (a, b) => String(a || '').toLowerCase() === String(b || '').toLowerCase();
+      if (selected && selected !== 'both') {
+        const match = keys.find((key) => same(key, selected));
+        if (match) {
+          this.cvActiveTeam = match;
+          return;
+        }
+      }
+      if (keys.some((key) => same(key, this.cvActiveTeam))) return;
+      const patch = keys.find((key) => same(key, 'Patch Management'));
+      this.cvActiveTeam = patch || keys[0] || 'Patch Management';
     },
     async refreshInProcessCount() {
       const store = useAuthStore();
@@ -1896,6 +2019,7 @@ export default {
     },
     async selectTeam(team, options = {}) {
       this.selectedTeam = team || "both";
+      this.syncCvActiveTeam();
       if (!options.fromHeader) {
         this.authStore.setUserSelectedTeam(this.selectedTeam);
       }
