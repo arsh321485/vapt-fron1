@@ -3009,6 +3009,26 @@ export const useAuthStore = defineStore("auth", {
       return { status: false };
     },
 
+    async getGoogleChatOAuthUrl(adminId?: string | null) {
+      try {
+        const res = await endpoint.post("/api/admin/users/google-chat/oauth-url/", {
+          admin_id: adminId ? String(adminId) : null,
+        });
+        if (res.data?.success && res.data?.auth_url) {
+          return { status: true, data: res.data };
+        }
+        return {
+          status: false,
+          message: res.data?.error || "Unable to start Google Chat",
+        };
+      } catch (error: unknown) {
+        return {
+          status: false,
+          message: extractApiErrorMessage(error, "Unable to start Google Chat"),
+        };
+      }
+    },
+
     async getSlackConnectionStatus() {
       try {
         const res = await endpoint.get("/api/admin/users/slack/status/");
@@ -3050,6 +3070,10 @@ export const useAuthStore = defineStore("auth", {
       localStorage.removeItem("slack_user_login_data");
       localStorage.removeItem("admin_slack_connected");
       localStorage.removeItem("teams_connected");
+      localStorage.removeItem("google_chat_connected");
+      localStorage.removeItem("google_chat_email");
+      sessionStorage.removeItem("google_chat_connected");
+      sessionStorage.removeItem("google_chat_email");
       localStorage.removeItem("microsoft_graph_token");
       localStorage.removeItem("microsoft_tenant_id");
       localStorage.removeItem("vaptfix_team");
@@ -8780,29 +8804,29 @@ export const useAuthStore = defineStore("auth", {
     },
 
     /** Persist how the admin signed in — Slack/Teams skip Add Users only for non-invite signups. */
-    setAdminLoginMethod(method: "email" | "slack" | "teams") {
+    setAdminLoginMethod(method: "email" | "slack" | "teams" | "google_chat") {
       sessionStorage.setItem("adminLoginMethod", method);
       localStorage.setItem("adminLoginMethod", method);
-      if ((method === "slack" || method === "teams") && !isClaimInviteFlow()) {
+      if ((method === "slack" || method === "teams" || method === "google_chat") && !isClaimInviteFlow()) {
         this.initCompletedSteps();
         this.markStepCompleted(1);
       }
     },
 
-    getAdminLoginMethod(): "email" | "slack" | "teams" {
+    getAdminLoginMethod(): "email" | "slack" | "teams" | "google_chat" {
       const raw =
         sessionStorage.getItem("adminLoginMethod") ||
         localStorage.getItem("adminLoginMethod") ||
         "";
-      if (raw === "slack" || raw === "teams") return raw;
+      if (raw === "slack" || raw === "teams" || raw === "google_chat") return raw;
       // Connecting Slack/Teams later on an email account is not a Slack/Teams login.
       return "email";
     },
 
-    /** Slack/Teams OAuth already provision workspace users — skip /communication */
+    /** Slack/Teams/Google Chat OAuth already provision workspace users — skip /communication */
     isSlackOrTeamsLogin(): boolean {
       const method = this.getAdminLoginMethod();
-      return method === "slack" || method === "teams";
+      return method === "slack" || method === "teams" || method === "google_chat";
     },
 
     /** Visit Add Users until Continue is clicked — do not auto-skip to risk criteria. */

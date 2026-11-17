@@ -157,6 +157,30 @@
                 <i class="bi bi-check-circle-fill"></i>
                 Microsoft Teams connected
               </button>
+
+              <button
+                v-if="!googleChatConnected"
+                type="button"
+                class="social-btn social-btn-google"
+                :disabled="isGoogleChatDisabled || invitePending || googleChatLoading"
+                @click.prevent="startGoogleChatLogin"
+              >
+                <span v-if="googleChatLoading" class="spinner-border spinner-border-sm"></span>
+                <template v-else>
+                  <i class="bi bi-chat-dots-fill social-btn-google-icon"></i>
+                  Sign up with Google Chat
+                </template>
+              </button>
+              <button
+                v-else
+                type="button"
+                class="social-connected-btn social-btn-google"
+                @click.prevent="startGoogleChatLogin"
+              >
+                <i class="bi bi-chat-dots-fill social-btn-google-icon"></i>
+                <i class="bi bi-check-circle-fill"></i>
+                Google Chat connected
+              </button>
             </div>
 
             <!-- Already have account -->
@@ -274,6 +298,12 @@ import {
   openTeamsAppInstall,
 } from '@/utils/teamsDeepLink';
 import { consumeAdminPlatformOAuthError } from '@/utils/platformOAuthMessage';
+import {
+  GOOGLE_CHAT_INSTALL_MESSAGE,
+  isGoogleChatConnected,
+  openGoogleChatConnectPopup,
+  rememberGoogleChatConnection,
+} from '@/utils/googleChatConnect';
 import { extractDjangoOAuthTokens, persistDjangoOAuthTokens } from '@/utils/djangoOAuthTokens';
 import { consumePendingPlanResume, pendingPlanResumeUrl } from '@/utils/planLimits';
 
@@ -302,6 +332,8 @@ export default {
       slackIcon,
       teamsIcon,
       slackConnected: false,
+      googleChatConnected: false,
+      googleChatLoading: false,
       teamsConnected: false,
       backendBase: 'https://vaptbackend.secureitlab.com',
       inviteToken: '',
@@ -322,10 +354,13 @@ export default {
       return `0:${String(secs).padStart(2, '0')}`;
     },
     isSlackDisabled() {
-      return this.teamsConnected && !this.slackConnected;
+      return (this.teamsConnected || this.googleChatConnected) && !this.slackConnected;
     },
     isTeamsDisabled() {
-      return this.slackConnected && !this.teamsConnected;
+      return (this.slackConnected || this.googleChatConnected) && !this.teamsConnected;
+    },
+    isGoogleChatDisabled() {
+      return (this.slackConnected || this.teamsConnected) && !this.googleChatConnected;
     },
     recaptchaContainerId() {
       return `recaptcha-signup-modal-${this.recaptchaKey}`;
@@ -783,7 +818,12 @@ export default {
         this.slackConnected = false;
       }
       this.checkTeamsConnection();
+      this.googleChatConnected = isGoogleChatConnected();
       if (this.slackConnected && this.teamsConnected) {
+        this.teamsConnected = false;
+      }
+      if (this.googleChatConnected) {
+        this.slackConnected = false;
         this.teamsConnected = false;
       }
     },
@@ -923,6 +963,67 @@ export default {
         });
         this.ensureAuthSessionFromOAuth();
         this.maybeFinishSignupAfterOAuth();
+      }
+    },
+    async startGoogleChatLogin() {
+      if (this.googleChatConnected) {
+        await Swal.fire({
+          icon: 'success',
+          title: 'Google Chat connected',
+          text: GOOGLE_CHAT_INSTALL_MESSAGE,
+          confirmButtonColor: '#241447',
+        });
+        return;
+      }
+      if (this.isGoogleChatDisabled) return;
+      this.googleChatLoading = true;
+      try {
+        const inviteToken = this.signupInviteToken || null;
+        const adminId = inviteToken ? null : this.getAdminId();
+        const res = await this.authStore.getGoogleChatOAuthUrl(adminId);
+        if (!res.status || !res.data?.auth_url) {
+          Swal.fire('Error', res.message || 'Unable to start Google Chat', 'error');
+          return;
+        }
+        const result = await openGoogleChatConnectPopup(res.data.auth_url);
+        if (result.blocked) {
+          Swal.fire('Popup blocked', 'Please allow popups for this site.', 'warning');
+          return;
+        }
+        if (result.closed) return;
+        if (!result.success) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Cannot connect',
+            text: result.error || 'Could not connect Google Chat',
+            confirmButtonColor: '#241447',
+          });
+          return;
+        }
+        rememberGoogleChatConnection(result.email);
+        this.googleChatConnected = true;
+        try {
+          this.authStore.setAdminLoginMethod('google_chat');
+        } catch (e) { /* ignore */ }
+        this.slackConnected = false;
+        this.teamsConnected = false;
+        persistDjangoOAuthTokens(result.payload);
+        if (result.payload?.user) {
+          localStorage.setItem('local_user', JSON.stringify(result.payload.user));
+        }
+        markAdminSetPasswordEmailIfNew(result.payload?.is_new_user === true);
+        this.ensureAuthSessionFromOAuth(result.payload);
+        await Swal.fire({
+          icon: 'success',
+          title: result.email ? `Connected as ${result.email}` : 'Google Chat connected',
+          text: GOOGLE_CHAT_INSTALL_MESSAGE,
+          confirmButtonColor: '#241447',
+        });
+        this.maybeFinishSignupAfterOAuth();
+      } catch {
+        Swal.fire('Error', 'Something went wrong while connecting Google Chat', 'error');
+      } finally {
+        this.googleChatLoading = false;
       }
     },
     async startSlackLogin() {
@@ -1409,6 +1510,17 @@ export default {
 .social-btn-teams:hover:not(:disabled) {
   border-color: #5059c9;
   background: #f5f6fd;
+}
+.social-btn-google {
+  grid-column: 1 / -1;
+}
+.social-btn-google:hover:not(:disabled) {
+  border-color: #00ac47;
+  background: #f3fbf6;
+}
+.social-btn-google-icon {
+  color: #00ac47;
+  font-size: 16px;
 }
 .social-connected-btn {
   width: 100%;

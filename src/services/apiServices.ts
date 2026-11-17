@@ -65,6 +65,7 @@ const PUBLIC_URL_PATTERNS = [
   "/api/admin/users/teams/member-login/",
   "/api/admin/users/slack/pricing-handoff/",
   "/api/admin/users/slack/oauth-url/",
+  "/api/admin/users/google-chat/oauth-url/",
   "/api/admin/users/microsoft-teams/oauth-url/",
   "/api/admin/upload_report/claim-invite/validate/",
   "/api/admin/report-invite/validate/",

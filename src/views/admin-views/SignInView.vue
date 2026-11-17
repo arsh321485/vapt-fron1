@@ -67,7 +67,7 @@
             v-if="!slackConnected"
             type="button"
             class="social-btn social-btn-slack"
-            :disabled="oauthLoading === 'teams'"
+            :disabled="oauthLoading === 'teams' || oauthLoading === 'google' || googleChatConnected"
             @click.prevent="startSlackLogin"
           >
             <span v-if="oauthLoading === 'slack'" class="spinner-border spinner-border-sm"></span>
@@ -80,7 +80,7 @@
             v-else
             type="button"
             class="social-connected-btn social-connected-slack"
-            :disabled="oauthLoading === 'teams'"
+            :disabled="oauthLoading === 'teams' || oauthLoading === 'google' || googleChatConnected"
             @click.prevent="startSlackLogin"
           >
             <span class="slack-logo-frame"><img :src="slackIcon" alt="" /></span>
@@ -92,7 +92,7 @@
             v-if="!teamsConnected"
             type="button"
             class="social-btn social-btn-teams"
-            :disabled="oauthLoading === 'slack'"
+            :disabled="oauthLoading === 'slack' || oauthLoading === 'google' || googleChatConnected"
             @click.prevent="startTeamsLogin"
           >
             <span v-if="oauthLoading === 'teams'" class="spinner-border spinner-border-sm"></span>
@@ -105,12 +105,36 @@
             v-else
             type="button"
             class="social-connected-btn social-connected-teams"
-            :disabled="oauthLoading === 'slack'"
+            :disabled="oauthLoading === 'slack' || oauthLoading === 'google' || googleChatConnected"
             @click.prevent="startTeamsLogin"
           >
             <img :src="teamsIcon" alt="" class="social-btn-icon" />
             <i class="bi bi-check-circle-fill"></i>
             Teams connected
+          </button>
+
+          <button
+            v-if="!googleChatConnected"
+            type="button"
+            class="social-btn social-btn-google"
+            :disabled="oauthLoading === 'slack' || oauthLoading === 'teams' || slackConnected || teamsConnected"
+            @click.prevent="startGoogleChatLogin"
+          >
+            <span v-if="oauthLoading === 'google'" class="spinner-border spinner-border-sm"></span>
+            <template v-else>
+              <i class="bi bi-chat-dots-fill social-btn-google-icon"></i>
+              Sign in with Google Chat
+            </template>
+          </button>
+          <button
+            v-else
+            type="button"
+            class="social-connected-btn social-btn-google"
+            @click.prevent="startGoogleChatLogin"
+          >
+            <i class="bi bi-chat-dots-fill social-btn-google-icon"></i>
+            <i class="bi bi-check-circle-fill"></i>
+            Google Chat connected
           </button>
         </div>
       </form>
@@ -165,6 +189,12 @@ import {
 } from '@/utils/teamsDeepLink'
 import { extractClaimInviteToken, readClaimInviteToken, setClaimInviteValid, storeClaimInviteToken, currentClaimInviteToken, ensureClaimInviteCaptured } from '@/utils/claimInvite'
 import { consumeAdminPlatformOAuthError } from '@/utils/platformOAuthMessage'
+import {
+  GOOGLE_CHAT_INSTALL_MESSAGE,
+  isGoogleChatConnected,
+  openGoogleChatConnectPopup,
+  rememberGoogleChatConnection,
+} from '@/utils/googleChatConnect'
 import { extractDjangoOAuthTokens, persistDjangoOAuthTokens } from '@/utils/djangoOAuthTokens'
 import { consumePendingPlanResume, pendingPlanResumeUrl } from '@/utils/planLimits'
 import Swal from 'sweetalert2'
@@ -185,6 +215,7 @@ export default {
       forgotLoading: false,
       slackConnected: false,
       teamsConnected: false,
+      googleChatConnected: false,
       teamsIcon,
       slackIcon,
       backendBase: 'https://vaptbackend.secureitlab.com'
@@ -195,6 +226,12 @@ export default {
       this.teamsConnected = !!(
         localStorage.getItem('microsoft_graph_token') || localStorage.getItem('teams_connected') === 'true'
       )
+      this.googleChatConnected = isGoogleChatConnected()
+      if (this.googleChatConnected) {
+        this.slackConnected = false
+        this.teamsConnected = false
+        return
+      }
       const botToken = localStorage.getItem('slack_bot_token')
       if (!botToken) {
         this.slackConnected = false
@@ -240,6 +277,75 @@ export default {
         return
       }
       await this.checkAndRedirect()
+    },
+    async startGoogleChatLogin() {
+      if (this.googleChatConnected) {
+        const hasSession =
+          !!sessionStorage.getItem('authorization') ||
+          sessionStorage.getItem('authenticated') === 'true'
+        if (hasSession) {
+          try {
+            useAuthStore().setAdminLoginMethod('google_chat')
+          } catch (_) { /* ignore */ }
+          await this.finishOAuthSignIn()
+          return
+        }
+        await Swal.fire({
+          icon: 'success',
+          title: 'Google Chat connected',
+          text: GOOGLE_CHAT_INSTALL_MESSAGE,
+          confirmButtonColor: '#241447',
+        })
+        return
+      }
+      if (this.slackConnected || this.teamsConnected) return
+      this.oauthLoading = 'google'
+      try {
+        const authStore = useAuthStore()
+        const adminId = authStore.user?._id || authStore.user?.id || null
+        const res = await authStore.getGoogleChatOAuthUrl(adminId)
+        if (!res.status || !res.data?.auth_url) {
+          Swal.fire('Error', res.message || 'Unable to start Google Chat', 'error')
+          return
+        }
+        const result = await openGoogleChatConnectPopup(res.data.auth_url)
+        if (result.blocked) {
+          Swal.fire('Popup blocked', 'Please allow popups for this site.', 'warning')
+          return
+        }
+        if (result.closed) return
+        if (!result.success) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Cannot connect',
+            text: result.error || 'Could not connect Google Chat',
+            confirmButtonColor: '#241447',
+          })
+          return
+        }
+        rememberGoogleChatConnection(result.email)
+        persistDjangoOAuthTokens(result.payload)
+        if (result.payload?.user) localStorage.setItem('local_user', JSON.stringify(result.payload.user))
+        this.googleChatConnected = true
+        this.slackConnected = false
+        this.teamsConnected = false
+        this.ensureOAuthSession(result.payload)
+        try {
+          useAuthStore().setAdminLoginMethod('google_chat')
+        } catch (_) { /* ignore */ }
+        markAdminSetPasswordEmailIfNew(result.payload?.is_new_user === true)
+        await Swal.fire({
+          icon: 'success',
+          title: result.email ? `Connected as ${result.email}` : 'Google Chat connected',
+          text: GOOGLE_CHAT_INSTALL_MESSAGE,
+          confirmButtonColor: '#241447',
+        })
+        await this.finishOAuthSignIn()
+      } catch {
+        Swal.fire('Error', 'Something went wrong while connecting Google Chat', 'error')
+      } finally {
+        this.oauthLoading = false
+      }
     },
     async startSlackLogin() {
       if (this.slackConnected) {
@@ -686,6 +792,18 @@ export default {
 .social-btn-slack:hover:not(:disabled) {
   border-color: #611f69;
   background: #faf5fb;
+}
+.social-btn-google,
+.social-connected-btn.social-btn-google {
+  grid-column: 1 / -1;
+}
+.social-btn-google:hover:not(:disabled) {
+  border-color: #00ac47;
+  background: #f3fbf6;
+}
+.social-btn-google-icon {
+  color: #00ac47;
+  font-size: 16px;
 }
 .social-btn-teams:hover:not(:disabled) {
   border-color: #5059c9;
