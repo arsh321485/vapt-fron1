@@ -1,5 +1,28 @@
+import Swal from "sweetalert2";
+
+export const GOOGLE_CHAT_APP_URL = "https://chat.google.com/";
+
 export const GOOGLE_CHAT_INSTALL_MESSAGE =
-  "Ab Google Chat kholo, 'VaptFix' search karo, aur apne space me Add karo.";
+  "Open Google Chat, search for VaptFix, and add it to your space.";
+
+export function openGoogleChatApp() {
+  window.open(GOOGLE_CHAT_APP_URL, "_blank", "noopener,noreferrer");
+}
+
+export function showGoogleChatConnectedDialog(email) {
+  const who = String(email || "").trim();
+  return Swal.fire({
+    icon: "success",
+    title: who ? `Connected as ${who}` : "Google Chat connected",
+    text: GOOGLE_CHAT_INSTALL_MESSAGE,
+    confirmButtonText: "Open Google Chat",
+    confirmButtonColor: "#241447",
+    allowOutsideClick: false,
+    preConfirm: () => {
+      openGoogleChatApp();
+    },
+  });
+}
 
 const ALLOWED_ORIGINS = [
   "https://vaptbackend.secureitlab.com",

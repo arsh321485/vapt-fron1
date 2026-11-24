@@ -190,10 +190,10 @@ import {
 import { extractClaimInviteToken, readClaimInviteToken, setClaimInviteValid, storeClaimInviteToken, currentClaimInviteToken, ensureClaimInviteCaptured } from '@/utils/claimInvite'
 import { consumeAdminPlatformOAuthError } from '@/utils/platformOAuthMessage'
 import {
-  GOOGLE_CHAT_INSTALL_MESSAGE,
   isGoogleChatConnected,
   openGoogleChatConnectPopup,
   rememberGoogleChatConnection,
+  showGoogleChatConnectedDialog,
 } from '@/utils/googleChatConnect'
 import { extractDjangoOAuthTokens, persistDjangoOAuthTokens } from '@/utils/djangoOAuthTokens'
 import { consumePendingPlanResume, pendingPlanResumeUrl } from '@/utils/planLimits'
@@ -290,12 +290,7 @@ export default {
           await this.finishOAuthSignIn()
           return
         }
-        await Swal.fire({
-          icon: 'success',
-          title: 'Google Chat connected',
-          text: GOOGLE_CHAT_INSTALL_MESSAGE,
-          confirmButtonColor: '#241447',
-        })
+        await showGoogleChatConnectedDialog()
         return
       }
       if (this.slackConnected || this.teamsConnected) return
@@ -334,12 +329,7 @@ export default {
           useAuthStore().setAdminLoginMethod('google_chat')
         } catch (_) { /* ignore */ }
         markAdminSetPasswordEmailIfNew(result.payload?.is_new_user === true)
-        await Swal.fire({
-          icon: 'success',
-          title: result.email ? `Connected as ${result.email}` : 'Google Chat connected',
-          text: GOOGLE_CHAT_INSTALL_MESSAGE,
-          confirmButtonColor: '#241447',
-        })
+        await showGoogleChatConnectedDialog(result.email)
         await this.finishOAuthSignIn()
       } catch {
         Swal.fire('Error', 'Something went wrong while connecting Google Chat', 'error')

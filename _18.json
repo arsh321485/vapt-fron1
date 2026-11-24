@@ -1,0 +1,37 @@
+{
+  "eng": {
+    "Ref": "1.8",
+    "Who does this": "Azure engineer",
+    "Target date": "2026-11-20 00:00:00",
+    "Do this first": "None. Domain 9 testing cannot start until this tenant exists.",
+    "Requirement": "Microsoft 365 test tenant with custom app upload",
+    "In simple words": "A test tenant is a practice Microsoft 365 company, separate from real customers. Sideload means installing our app package before it is in the public Store. Teams blocks that unless Upload custom apps is turned on.",
+    "Result right now": "Pending Evidence",
+    "What we already know": "No Microsoft 365 test tenant is saved in this file. Without a tenant that allows custom app upload, the Teams package cannot be sideloaded.",
+    "What is still missing": "The app cannot be sideloaded or tested at all without a tenant that allows custom app upload.",
+    "Where to go": "https://developer.microsoft.com/microsoft-365/dev-program  and then https://admin.teams.microsoft.com",
+    "Easy steps": "1. If the team does not already have a test tenant, join the Microsoft 365 Developer Program with a work account and create the sandbox.\n2. Write down the tenant ID from https://entra.microsoft.com  →  Overview. It will be different from the SECUREITLAB tenant.\n3. Open the Teams admin centre of THAT test tenant: Teams apps  →  Setup policies  →  Global.\n4. Turn Upload custom apps to On. Save. Wait if the page says it can take a few hours.\n5. Screenshot the toggle set to On, and screenshot the tenant ID.",
+    "Save this proof": "1.8-tenant-id.png and 1.8-upload-custom-apps-on.png",
+    "When finished, change the result to": "Change Result right now to Compliant only after the proof file is saved. If the steps say this does not apply, change it to Not Applicable and write the reason in What is still missing.",
+    "Why Not Applicable": null
+  },
+  "master": {
+    "Ref": "1.8",
+    "Domain": "1. Accounts & App Registration",
+    "Requirement": "Microsoft 365 test tenant with custom app upload",
+    "Status\n(as per Source)": null,
+    "What to Check": "A Microsoft 365 tenant is available for testing, with Teams licences and an app setup policy that allows custom app upload, so the package can be sideloaded.",
+    "Question / Discussion Point": "Which tenant is used for testing, and is custom app upload enabled in the Teams admin centre app setup policy?",
+    "What to Tell / Explain": "Explain that a Teams app cannot be tested at all without a tenant where sideloading is permitted. If this has not been enabled, every testing task in the plan is blocked regardless of development progress.",
+    "Why It Is Required": "The app cannot be sideloaded or tested at all without a tenant that allows custom app upload.",
+    "Expected Evidence": "Tenant ID; screenshot of the app setup policy showing custom app upload enabled.",
+    "Source Remarks &\nOther Recorded Statuses": "Priority / Track: Critical Blocker\nWhere to look: Teams admin centre > Teams apps > Setup policies\nMicrosoft reference: Prepare your Microsoft 365 tenant – https://learn.microsoft.com/en-us/microsoftteams/platform/concepts/build-and-test/prepare-your-o365-tenant\nSource ref: TM-08",
+    "Response / Evidence Observed": null,
+    "Verified Status\n(after evidence review)": null,
+    "Observation / Gap": null,
+    "Action Required": null,
+    "Owner": null,
+    "Target Date": null,
+    "Steps / How To Complete": "1) If no dev tenant exists, get a free sandbox from the Microsoft 365 Developer Program (developer.microsoft.com/microsoft-365/dev-program) -- instant. 2) In that tenant's Teams admin centre > Teams apps > Setup policies > Global, turn 'Upload custom apps' On. 3) Screenshot the toggle ON plus the tenant ID (Azure AD > Overview)."
+  }
+}

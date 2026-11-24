@@ -528,10 +528,10 @@ import {
 } from '@/utils/teamsDeepLink';
 import { consumeAdminPlatformOAuthError } from '@/utils/platformOAuthMessage';
 import {
-  GOOGLE_CHAT_INSTALL_MESSAGE,
   isGoogleChatConnected,
   openGoogleChatConnectPopup,
   rememberGoogleChatConnection,
+  showGoogleChatConnectedDialog,
 } from '@/utils/googleChatConnect';
 import { persistDjangoOAuthTokens } from '@/utils/djangoOAuthTokens';
 
@@ -1347,12 +1347,7 @@ export default {
       if (result.payload?.user) {
         localStorage.setItem('local_user', JSON.stringify(result.payload.user));
       }
-      await Swal.fire({
-        icon: 'success',
-        title: result.email ? `Connected as ${result.email}` : 'Google Chat connected',
-        text: GOOGLE_CHAT_INSTALL_MESSAGE,
-        confirmButtonColor: '#241447',
-      });
+      await showGoogleChatConnectedDialog(result.email);
     },
     async startUserGoogleChatLogin() {
       const email = (this.userForm.email || '').trim();
@@ -1414,12 +1409,7 @@ export default {
           await this.finishAdminOAuthSignIn();
           return;
         }
-        await Swal.fire({
-          icon: 'success',
-          title: 'Google Chat connected',
-          text: GOOGLE_CHAT_INSTALL_MESSAGE,
-          confirmButtonColor: '#241447',
-        });
+        await showGoogleChatConnectedDialog();
         return;
       }
       if (this.adminSlackConnected || this.adminTeamsConnected) return;

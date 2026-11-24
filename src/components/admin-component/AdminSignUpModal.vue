@@ -299,10 +299,10 @@ import {
 } from '@/utils/teamsDeepLink';
 import { consumeAdminPlatformOAuthError } from '@/utils/platformOAuthMessage';
 import {
-  GOOGLE_CHAT_INSTALL_MESSAGE,
   isGoogleChatConnected,
   openGoogleChatConnectPopup,
   rememberGoogleChatConnection,
+  showGoogleChatConnectedDialog,
 } from '@/utils/googleChatConnect';
 import { extractDjangoOAuthTokens, persistDjangoOAuthTokens } from '@/utils/djangoOAuthTokens';
 import { consumePendingPlanResume, pendingPlanResumeUrl } from '@/utils/planLimits';
@@ -967,12 +967,7 @@ export default {
     },
     async startGoogleChatLogin() {
       if (this.googleChatConnected) {
-        await Swal.fire({
-          icon: 'success',
-          title: 'Google Chat connected',
-          text: GOOGLE_CHAT_INSTALL_MESSAGE,
-          confirmButtonColor: '#241447',
-        });
+        await showGoogleChatConnectedDialog();
         return;
       }
       if (this.isGoogleChatDisabled) return;
@@ -1013,12 +1008,7 @@ export default {
         }
         markAdminSetPasswordEmailIfNew(result.payload?.is_new_user === true);
         this.ensureAuthSessionFromOAuth(result.payload);
-        await Swal.fire({
-          icon: 'success',
-          title: result.email ? `Connected as ${result.email}` : 'Google Chat connected',
-          text: GOOGLE_CHAT_INSTALL_MESSAGE,
-          confirmButtonColor: '#241447',
-        });
+        await showGoogleChatConnectedDialog(result.email);
         this.maybeFinishSignupAfterOAuth();
       } catch {
         Swal.fire('Error', 'Something went wrong while connecting Google Chat', 'error');
@@ -1186,7 +1176,9 @@ export default {
 
       this._oauthFinishing = true;
 
-      if (this.teamsConnected || localStorage.getItem('teams_connected') === 'true') {
+      if (this.googleChatConnected || isGoogleChatConnected()) {
+        this.authStore.setAdminLoginMethod('google_chat');
+      } else if (this.teamsConnected || localStorage.getItem('teams_connected') === 'true') {
         this.authStore.setAdminLoginMethod('teams');
       } else {
         this.authStore.setAdminLoginMethod('slack');

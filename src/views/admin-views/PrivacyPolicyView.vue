@@ -25,9 +25,9 @@
           <div class="ld-doc-tag">Global Privacy · 20+ Jurisdictions</div>
           <h1 class="ld-doc-title">{{ activeSectionLabel }}</h1>
           <p class="ld-doc-meta">
-            <span><strong>Last updated:</strong> October 26, 2026</span>
+            <span><strong>Last updated:</strong> November 18, 2026</span>
             <span style="color:#e2e8f0">|</span>
-            <span><strong>Version:</strong> 3.0</span>
+            <span><strong>Version:</strong> 3.1</span>
           </p>
         </div>
 
@@ -40,7 +40,7 @@
         <section id="overview" v-show="activeTocHash === '#overview'">
           <div class="ld-section-number">01 / OVERVIEW</div>
           <h2>Overview</h2>
-          <p>VAPTFIX.ai ("VAPTFIX," "we," "our," or "us") is a vulnerability management platform that helps organizations identify, assign, track, and remediate security vulnerabilities. VAPTFIX.ai is a product of Secureitabservices Inc, a Delaware corporation. The platform may integrate with third-party services, including Slack, to support notifications, remediation workflows, task assignments, and audit logging.</p>
+          <p>VAPTFIX.ai ("VAPTFIX," "we," "our," or "us") is a vulnerability management platform that helps organizations identify, assign, track, and remediate security vulnerabilities. VAPTFIX.ai is a product of Secureitabservices Inc, a Delaware corporation. The platform may integrate with third-party services to support notifications, remediation workflows, task assignments, and audit logging.</p>
           <p>VAPTFIX follows data-minimization, purpose-limitation, access-control, and secure-data-handling principles. Information is processed only as needed to provide, secure, and maintain the service, subject to applicable agreements and laws.</p>
           <p>General provisions apply to all users. The jurisdiction-specific notices later on this page supplement those provisions with rights and obligations specific to your location. Where local law provides greater protections, those protections apply.</p>
         </section>
@@ -61,11 +61,11 @@
           <p>Task assignments and responsible users; remediation status changes and due dates; comments and supporting evidence; approval decisions and closure records; timeline-extension and support requests.</p>
 
           <h3>Operational, security, and audit information</h3>
-          <p>User actions and timestamps; authentication and authorization events; application requests, errors, and performance information; administrative changes, data exports, and security-relevant events; relevant actions performed through the website, Slack, or authorized APIs. Sensitive credentials, OAuth tokens, and secrets are redacted from operational logs.</p>
+          <p>User actions and timestamps; authentication and authorization events; application requests, errors, and performance information; administrative changes, data exports, and security-relevant events; relevant actions performed through the website, a connected third-party service, or authorized APIs. Sensitive credentials, OAuth tokens, and secrets are redacted from operational logs.</p>
 
-          <h3>Slack integration information</h3>
-          <p>OAuth access tokens used to authenticate authorized API requests; workspace and enterprise IDs and workspace names; Slack user IDs; display names and email addresses where permitted by granted permissions and available; authorized channel IDs; slash-command text, button clicks, form inputs, and other interactive payloads; timestamps of messages posted by VAPTFIX to update or close vulnerability cards.</p>
-          <p>VAPTFIX requests only the Slack permissions needed for its documented functionality. It does not read, index, or store general Slack channel conversation history, or collect unrelated channel messages, files, or conversations that are not addressed to the app or needed for an authorized interaction. Slack-derived information is used to provide requested functionality, maintain security, enforce permissions, and support customer-authorized remediation workflows. VAPTFIX does not build behavioral profiles of Slack users or use Slack data for advertising.</p>
+          <h3>Connected third-party service information</h3>
+          <p>OAuth access tokens used to authenticate authorized API requests; organization and workspace identifiers and names; user identifiers; display names and email addresses where permitted by granted permissions and available; authorized conversation or group identifiers; command text, button clicks, form inputs, and other interactive payloads; timestamps of messages posted by VAPTFIX to update or close vulnerability cards.</p>
+          <p>VAPTFIX requests only the permissions needed for its documented functionality. It does not read, index, or store general conversation history in a connected third-party service, or collect unrelated messages, files, or conversations that are not addressed to the app or needed for an authorized interaction. Information received from a connected third-party service is used to provide requested functionality, maintain security, enforce permissions, and support customer-authorized remediation workflows. VAPTFIX does not build behavioral profiles of users of a connected third-party service or use that data for advertising.</p>
         </section>
 
         <section id="how-we-use" v-show="activeTocHash === '#how-we-use'">
@@ -74,11 +74,11 @@
           <ul>
             <li>Create and administer customer accounts, configure integrations, and provide support.</li>
             <li>Organize vulnerability findings, prioritize risks, assign remediation work, and track resolution.</li>
-            <li>Execute user-requested actions through authorized platform and Slack workflows.</li>
+            <li>Execute user-requested actions through authorized platform and connected third-party service workflows.</li>
             <li>Maintain auditability, troubleshoot errors, monitor service performance, detect misuse, and protect the platform.</li>
             <li>Meet contractual requirements and applicable legal obligations.</li>
           </ul>
-          <p>Vulnerability and remediation data is treated as confidential customer information and processed to provide the contracted service. Slack data and customer vulnerability data are not used to train or fine-tune AI or machine-learning models, including third-party models. VAPTFIX may use AI-assisted processing to analyze customer-uploaded assessment reports, extract and classify findings, and generate remediation recommendations. Customer reports are not used to train or fine-tune VAPTFIX's own AI models. Any third-party AI processing is subject to applicable service terms, data-protection requirements, and security controls.</p>
+          <p>Vulnerability and remediation data is treated as confidential customer information and processed to provide the contracted service. Data received from a connected third-party service and customer vulnerability data are not used to train or fine-tune AI or machine-learning models, including third-party models. VAPTFIX may use AI-assisted processing to analyze customer-uploaded assessment reports, extract and classify findings, and generate remediation recommendations. Customer reports are not used to train or fine-tune VAPTFIX's own AI models. Any third-party AI processing is subject to applicable service terms, data-protection requirements, and security controls.</p>
         </section>
 
         <section id="storage" v-show="activeTocHash === '#storage'">
@@ -95,12 +95,12 @@
           <ul>
             <li>Connections use TLS 1.2 or higher.</li>
             <li>Databases, file storage, and backups are encrypted using AES-256 or equivalent controls supported by the applicable infrastructure.</li>
-            <li>Slack OAuth tokens are encrypted at the field level using keys maintained through a managed key-management service. Tokens are not exposed through API responses or written to application logs.</li>
+            <li>OAuth tokens for a connected third-party service are encrypted at the field level using keys maintained through a managed key-management service. Tokens are not exposed through API responses or written to application logs.</li>
             <li>Application secrets and encryption keys are maintained in managed secrets or key-management facilities, with access restricted to authorized services and personnel. Keys and secrets are rotated at least annually and immediately when exposure is suspected.</li>
           </ul>
           <h3>Integration and operational safeguards</h3>
           <ul>
-            <li>Incoming Slack requests are verified using Slack's request-signing mechanism and configured signing secret. Interactive actions are validated against applicable Slack security requirements; where interactive tokens are used, they are time-limited and validated before processing.</li>
+            <li>Incoming requests from a connected third-party service are verified using that service's request-signing mechanism and configured signing secret. Interactive actions are validated against the applicable security requirements of that service; where interactive tokens are used, they are time-limited and validated before processing.</li>
             <li>Single sign-on and multi-factor authentication are required for applicable privileged and production-access workflows.</li>
             <li>Access rights are reviewed quarterly and removed within 24 hours of a role change or departure, where applicable.</li>
             <li>Production access, configuration changes, and data exports are logged to tamper-evident storage and monitored for anomalies.</li>
@@ -527,8 +527,8 @@
         <section id="sharing" v-show="activeTocHash === '#sharing'">
           <div class="ld-section-number">06 / SHARING AND SERVICE PROVIDERS</div>
           <h2>Sharing and Service Providers</h2>
-          <p>VAPTFIX does not sell, rent, or share Slack data with third parties for their independent purposes. Information may be processed by authorized sub-processors when necessary to provide and maintain the service, including cloud hosting and infrastructure providers, database and file-storage providers, transactional email services, and error-monitoring or operational-support services.</p>
-          <p>Sub-processors may process information only for authorized service purposes and are subject to appropriate contractual confidentiality, data-protection, and security obligations. VAPTFIX provides at least 30 days' notice before adding a new sub-processor, subject to the applicable customer agreement and legal requirements.</p>
+          <p>VAPTFIX does not sell, rent, or share data received from a connected third-party service with other parties for their independent purposes. Information may be processed by authorized sub-processors when necessary to provide and maintain the service, including cloud hosting and infrastructure providers, database and file-storage providers, transactional email services, and error-monitoring or operational-support services.</p>
+          <p>Sub-processors may process information only for authorized service purposes and are subject to appropriate contractual confidentiality, data-protection, and security obligations. VAPTFIX provides at least 14 days' notice before adding a new sub-processor, subject to the applicable customer agreement and legal requirements.</p>
           <p>VAPTFIX may disclose information when required by applicable law, valid legal process, or a binding order from a competent authority. Where legally permitted, VAPTFIX will notify the affected customer before disclosure.</p>
         </section>
 
@@ -541,9 +541,9 @@
               <tr><th>Data category</th><th>Retention period</th></tr>
             </thead>
             <tbody>
-              <tr><td>Slack OAuth tokens</td><td>Deleted immediately after app uninstall or token revocation, subject to receipt and processing of the applicable event.</td></tr>
-              <tr><td>Slack workspace, user, and channel identifiers; display names and email addresses</td><td>Deleted within 30 days after uninstall.</td></tr>
-              <tr><td>Slash-command and interactive payloads</td><td>Retained only as relevant audit-log entries and deleted according to the audit-log schedule.</td></tr>
+              <tr><td>Connected third-party service OAuth tokens</td><td>Deleted immediately after app uninstall or token revocation, subject to receipt and processing of the applicable event.</td></tr>
+              <tr><td>Connected third-party service organization, user, and conversation identifiers; display names and email addresses</td><td>Deleted within 30 days after uninstall.</td></tr>
+              <tr><td>Command and interactive payloads</td><td>Retained only as relevant audit-log entries and deleted according to the audit-log schedule.</td></tr>
               <tr><td>Vulnerability findings and remediation records</td><td>Deleted within 30 days after contract termination, or earlier upon an approved customer request.</td></tr>
               <tr><td>Audit logs</td><td>Retained for 12 months from the event, unless the customer agreement specifies otherwise; deleted within 30 days after contract termination where a shorter contractual period applies.</td></tr>
               <tr><td>Operational logs</td><td>Rolling 30-day retention.</td></tr>
@@ -557,11 +557,11 @@
         <section id="deletion" v-show="activeTocHash === '#deletion'">
           <div class="ld-section-number">08 / DELETION AND ACCOUNT CLOSURE</div>
           <h2>Deletion and Account Closure</h2>
-          <p>VAPTFIX supports deletion following Slack app removal, token revocation, approved customer requests, and contract termination. Deletion requests may cover original uploaded files, extracted vulnerability records, generated reports, and associated customer data, subject to applicable legal and contractual retention requirements. Where third-party services process data on VAPTFIX's behalf, deletion is handled under the applicable service arrangements and retention requirements.</p>
-          <h3>Slack app uninstall</h3>
-          <p>After VAPTFIX receives and processes Slack's app_uninstalled event, associated OAuth tokens are deleted immediately and other Slack-derived data is deleted within 30 days. Relevant deletion activity is recorded without retaining the deleted content.</p>
+          <p>VAPTFIX supports deletion following removal of the app from a connected third-party service, token revocation, approved customer requests, and contract termination. Deletion requests may cover original uploaded files, extracted vulnerability records, generated reports, and associated customer data, subject to applicable legal and contractual retention requirements. Where third-party services process data on VAPTFIX's behalf, deletion is handled under the applicable service arrangements and retention requirements.</p>
+          <h3>App uninstall</h3>
+          <p>After VAPTFIX receives and processes an app-uninstalled event from a connected third-party service, associated OAuth tokens are deleted immediately and other data received from that service is deleted within 30 days. Relevant deletion activity is recorded without retaining the deleted content.</p>
           <h3>Token revocation</h3>
-          <p>After VAPTFIX receives and processes a tokens_revoked event, affected OAuth tokens are deleted immediately. Related Slack-derived user data is deleted within 30 days where no other lawful or contractual retention requirement applies.</p>
+          <p>After VAPTFIX receives and processes a token-revocation event, affected OAuth tokens are deleted immediately. Related user data received from that connected third-party service is deleted within 30 days where no other lawful or contractual retention requirement applies.</p>
           <h3>Customer deletion requests</h3>
           <p>An authorized workspace administrator or VAPTFIX account owner may email <a href="mailto:privacy@vaptfix.ai">privacy@vaptfix.ai</a>. VAPTFIX verifies the request and the requester's authority. Approved requests are completed within 30 days, subject to applicable legal requirements, and confirmation is provided in writing.</p>
           <h3>Contract termination</h3>
@@ -628,7 +628,7 @@
           <div class="ld-section-number">12 / SECURITY INCIDENTS</div>
           <h2>Security Incidents and Breach Notification</h2>
           <p>VAPTFIX maintains processes to identify, investigate, contain, and respond to security incidents affecting customer information. Where a confirmed personal-data breach or security incident affects customer data, VAPTFIX will notify the affected customer without undue delay and within 72 hours of confirmation, in accordance with applicable contractual commitments and legal requirements.</p>
-          <p>Notifications will include available information about the nature of the incident, categories of data affected, known or reasonably identifiable impacts, containment and remediation measures taken or planned, and relevant follow-up actions. Where Slack OAuth tokens may have been exposed, VAPTFIX will revoke and rotate affected credentials as appropriate and investigate potential unauthorized access. VAPTFIX will cooperate with affected customers in investigation, remediation, and applicable notification obligations.</p>
+          <p>Notifications will include available information about the nature of the incident, categories of data affected, known or reasonably identifiable impacts, containment and remediation measures taken or planned, and relevant follow-up actions. Where OAuth tokens for a connected third-party service may have been exposed, VAPTFIX will revoke and rotate affected credentials as appropriate and investigate potential unauthorized access. VAPTFIX will cooperate with affected customers in investigation, remediation, and applicable notification obligations.</p>
         </section>
 
         <section id="changes" v-show="activeTocHash === '#changes'">
