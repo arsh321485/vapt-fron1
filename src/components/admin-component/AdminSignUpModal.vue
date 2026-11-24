@@ -770,9 +770,6 @@ export default {
       this.$emit('close');
       this.$emit('open-signin');
     },
-    getAdminId() {
-      return this.authStore.resolveAdminId();
-    },
     ensureAuthSessionFromOAuth(payload = null) {
       try {
         return this.authStore.hydrateAuthSessionFromOAuth(payload);
@@ -871,8 +868,7 @@ export default {
       try {
         const redirectUri = `${window.location.origin}/microsoft/callback`;
         const inviteToken = this.signupInviteToken || null;
-        const adminId = inviteToken ? null : this.getAdminId();
-        const res = await this.authStore.getMicrosoftOAuthUrl(redirectUri, adminId, inviteToken);
+        const res = await this.authStore.getMicrosoftOAuthUrl(redirectUri, null, inviteToken);
         if (res.status && res.data.auth_url) {
           openTeamsOAuthPopup(res.data.auth_url);
         } else {
@@ -973,9 +969,7 @@ export default {
       if (this.isGoogleChatDisabled) return;
       this.googleChatLoading = true;
       try {
-        const inviteToken = this.signupInviteToken || null;
-        const adminId = inviteToken ? null : this.getAdminId();
-        const res = await this.authStore.getGoogleChatOAuthUrl(adminId);
+        const res = await this.authStore.getGoogleChatOAuthUrl(null);
         if (!res.status || !res.data?.auth_url) {
           Swal.fire('Error', res.message || 'Unable to start Google Chat', 'error');
           return;
@@ -1036,8 +1030,7 @@ export default {
       if (this.isSlackDisabled && !this.slackConnected) return;
       try {
         const inviteToken = this.signupInviteToken || null;
-        const adminId = inviteToken ? null : this.getAdminId();
-        const res = await this.authStore.getSlackOAuthUrl(this.backendBase, adminId, inviteToken);
+        const res = await this.authStore.getSlackOAuthUrl(this.backendBase, null, inviteToken);
 
         if (res.status && res.data?.auth_url) {
           const width = 1000;

@@ -11,16 +11,13 @@ export function openGoogleChatApp() {
 
 export function showGoogleChatConnectedDialog(email) {
   const who = String(email || "").trim();
+  openGoogleChatApp();
   return Swal.fire({
     icon: "success",
     title: who ? `Connected as ${who}` : "Google Chat connected",
     text: GOOGLE_CHAT_INSTALL_MESSAGE,
-    confirmButtonText: "Open Google Chat",
-    confirmButtonColor: "#241447",
-    allowOutsideClick: false,
-    preConfirm: () => {
-      openGoogleChatApp();
-    },
+    showConfirmButton: false,
+    timer: 2800,
   });
 }
 
